@@ -34,7 +34,7 @@
 #define READ_ENTITY_PROPERTY(P,T,S)                                                \
         if (propertyFlags.getHasProperty(P)) {                                     \
             T fromBuffer;                                                          \
-            int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer); \
+            int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer, (char*)#P, QString(__PRETTY_FUNCTION__)); \
             dataAt += bytes;                                                       \
             bytesRead += bytes;                                                    \
             if (overwriteLocalData) {                                              \
@@ -50,9 +50,8 @@
 
 #define READ_ENTITY_PROPERTY_TO_PROPERTIES(P,T,O)                                  \
         if (propertyFlags.getHasProperty(P)) {                                     \
-            qDebug() << #P << #T; \
-            T fromBuffer;                                               \
-            int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer); \
+            T fromBuffer;                                                          \
+            int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer, (char*)#P, EntityTypes::getEntityTypeName(properties.getType())); \
             dataAt += bytes;                                                       \
             processedBytes += bytes;                                               \
             properties.O(fromBuffer);                                              \

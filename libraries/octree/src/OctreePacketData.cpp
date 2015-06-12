@@ -294,6 +294,7 @@ bool OctreePacketData::appendValue(const rgbColor& color) {
 }
 
 bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blue) {
+    if (!prependTag("YYYcolr")) return false;
     // eventually we can make this use a dictionary...
     bool success = false;
     const int BYTES_PER_COLOR = 3;
@@ -308,6 +309,9 @@ bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blu
         }
     }
     if (success) {
+        success = appendTag("YYZcolr");
+    }
+    if (success) {
         _bytesOfColor += BYTES_PER_COLOR;
         _totalBytesOfColor += BYTES_PER_COLOR;
     }
@@ -315,7 +319,7 @@ bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blu
 }
 
 
-void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag) {
+void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag, char *who, const QString& what) {
     if (strncmp((char*)dataBytes, tag, 7) != 0) {
         // qDebug() << "unpackDataFromBytes float -- bad tag" << QByteArray((char*)dataBytes, 10).toHex();
         char before[9];
@@ -328,18 +332,30 @@ void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag) {
         before[6] = *(dataBytes - 2);
         before[7] = *(dataBytes - 1);
         before[8] = '\0';
-        qDebug() << "---------- tag mismatch, expected" << tag << "got" << before << "|" << qPrintable((char*)dataBytes);
+        qDebug() << "----------" << who << what
+                 << "tag mismatch, expected" << tag << "got" << before << "|" << qPrintable((char*)dataBytes);
+        qDebug() << "          " << QByteArray(before).toHex() << "|" << QByteArray((char*)dataBytes, 10).toHex();
     }
 }
 
 
 bool OctreePacketData::prependTag(const char *tag) {
-    return append((const unsigned char *)tag, 7);
+    bool success = append((const unsigned char *)tag, 7);
+    if (success) {
+        _bytesOfValues += 7;
+        _totalBytesOfValues += 7;
+    }
+    return success;
 }
 
 
 bool OctreePacketData::appendTag(const char *tag) {
-    return append((const unsigned char *)tag, 7);
+    bool success = append((const unsigned char *)tag, 7);
+    if (success) {
+        _bytesOfValues += 7;
+        _totalBytesOfValues += 7;
+    }
+    return success;
 }
 
 
@@ -456,12 +472,17 @@ bool OctreePacketData::appendValue(bool value) {
 }
 
 bool OctreePacketData::appendValue(const QString& string) {
-    // if (!prependTag("YYYstng")) return false;
+    if (!prependTag("YYYstng")) return false;
     // TODO: make this a ByteCountCoded leading byte
-    uint16_t length = string.size() + 1; // include NULL
+
+    QByteArray forWire = string.toUtf8();
+    uint16_t length = forWire.size();
     bool success = appendValue(length);
     if (success) {
-        success = appendRawData((const unsigned char*)qPrintable(string), length);
+        success = appendRawData((const unsigned char*)forWire.constData(), length);
+        if (success) {
+            return appendTag("YYZstng");
+        }
     }
     return success;
 }
@@ -618,93 +639,103 @@ void OctreePacketData::debugContent() {
 
 
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, float& result) {
-    checkTag(dataBytes, (char*)"YYYflot");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, float& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYflot", who, what);
     memcpy(&result, dataBytes + 7, sizeof(result));
-    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZflot");
+    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZflot", who, what);
     return sizeof(result) + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result) {
-    checkTag(dataBytes, (char*)"YYYvec3");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYvec3", who, what);
     memcpy(&result, dataBytes + 7, sizeof(result));
-    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZvec3");
+    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZvec3", who, what);
     return sizeof(result) + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, bool& result) {
-    checkTag(dataBytes, (char*)"YYYbool");
-    memcpy(&result, dataBytes + 7, sizeof(result));
-    checkTag(dataBytes + sizeof(result) + 7, (char*)"YYZbool");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, bool& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYbool", who, what);
+    dataBytes += 7;
+    memcpy(&result, dataBytes, sizeof(result));
+    dataBytes += sizeof(result);
+    checkTag(dataBytes, (char*)"YYZbool", who, what);
     return sizeof(result) + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, quint64& result) {
-    // checkTag(dataBytes, (char*)"YYYui64");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, quint64& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui64", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result) {
-    // checkTag(dataBytes, (char*)"YYYui32");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui32", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result) {
-    // checkTag(dataBytes, (char*)"YYYui16");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui16", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result) {
-    // checkTag(dataBytes, (char*)"YYYui08");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui08", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result) {
-    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYcolr", who, what);
+    dataBytes += 7;
+    memcpy(&result, dataBytes, sizeof(result));
+    dataBytes += sizeof(result);
+    checkTag(dataBytes, (char*)"YYZcolr", who, what);
+    return sizeof(result) + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result) {
-    checkTag(dataBytes, (char*)"YYYquat");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYquat", who, what);
     int bytes = unpackOrientationQuatFromBytes(dataBytes+7, result);
-    checkTag(dataBytes + bytes + 7, (char*)"YYZquat");
+    checkTag(dataBytes + bytes + 7, (char*)"YYZquat", who, what);
     return bytes + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result) {
-    // checkTag(dataBytes, (char*)"YYYui32");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui32", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result) {
-    // checkTag(dataBytes, (char*)"YYYui32");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result, char *who, const QString& what) {
+    // checkTag(dataBytes, (char*)"YYYui32", who, what);
     // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QString& result) {
-    // checkTag(dataBytes, (char*)"YYYstng");
-    // uint16_t length;
-    // memcpy(&length, dataBytes + 7, sizeof(length));
-    // dataBytes += sizeof(length);
-    // QString value((const char*)(dataBytes + 7));
-    // result = value;
-    // return sizeof(length) + length + 7;
-
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QString& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYstng", who, what);
+    dataBytes += 7;
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);
-    QString value((const char*)dataBytes);
-    result = value;
-    return sizeof(length) + length;
+    QByteArray fromWire = QByteArray((const char*)dataBytes, length);
+    result = QString::fromUtf8(fromWire);
+    dataBytes += length;
+    checkTag(dataBytes, (char*)"YYZstng", who, what);
+    return sizeof(length) + length + 14;
+
+    // uint16_t length;
+    // memcpy(&length, dataBytes, sizeof(length));
+    // dataBytes += sizeof(length);
+    // QString value((const char*)dataBytes);
+    // result = value;
+    // return sizeof(length) + length;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result) {
-    checkTag(dataBytes, (char*)"YYYuuid");
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYuuid", who, what);
     dataBytes += 7;
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
@@ -716,30 +747,34 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid&
         result = QUuid::fromRfc4122(ba);
         dataBytes += length;
     }
-    checkTag(dataBytes, (char*)"YYZuuid");
+    checkTag(dataBytes, (char*)"YYZuuid", who, what);
     return sizeof(length) + length + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, xColor& result) {
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, xColor& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYcolr", who, what);
+    dataBytes += 7;
     result.red = dataBytes[RED_INDEX];
     result.green = dataBytes[GREEN_INDEX];
     result.blue = dataBytes[BLUE_INDEX];
-    return sizeof(rgbColor);
+    dataBytes += 3;
+    checkTag(dataBytes, (char*)"YYZcolr", who, what);
+    return sizeof(rgbColor) + 14;
 }
 
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char *dataBytes, QVector<glm::vec3>& result) {
-    checkTag(dataBytes, (char*)"YYYvvec");
+int OctreePacketData::unpackDataFromBytes(const unsigned char *dataBytes, QVector<glm::vec3>& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYvvec", who, what);
     uint16_t length;
     memcpy(&length, dataBytes + 7, sizeof(uint16_t));
     dataBytes += sizeof(length);
     result.resize(length);
     memcpy(result.data(), dataBytes + 7, length * sizeof(glm::vec3));
-    checkTag(dataBytes + sizeof(uint16_t) + length * sizeof(glm::vec3) + 7, (char*)"YYZvvec");
+    checkTag(dataBytes + sizeof(uint16_t) + length * sizeof(glm::vec3) + 7, (char*)"YYZvvec", who, what);
     return sizeof(uint16_t) + length * sizeof(glm::vec3) + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result) {
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result, char *who, const QString& what) {
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);

@@ -232,27 +232,27 @@ public:
 
 
 
-    static void checkTag(const unsigned char* dataBytes, char* tag);
+    static void checkTag(const unsigned char* dataBytes, char* tag, char *who, const QString& what);
     bool prependTag(const char *tag);
     bool appendTag(const char *tag);
 
 
-    static int unpackDataFromBytes(const unsigned char* dataBytes, float& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, bool& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, quint64& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, QString& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, xColor& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, QVector<glm::vec3>& result);
-    static int unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, float& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, bool& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, quint64& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, QString& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, xColor& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, QVector<glm::vec3>& result, char *who, const QString& what);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result, char *who, const QString& what);
 
 
 private:

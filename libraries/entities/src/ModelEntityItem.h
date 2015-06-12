@@ -54,8 +54,8 @@ public:
     // TODO: Move these to subclasses, or other appropriate abstraction
     // getters/setters applicable to models and particles
 
-    const rgbColor& getColor() const { return _color; }
-    xColor getXColor() const { xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color; }
+    // const rgbColor& getColor() const { return _color; }
+    // xColor getXColor() const { xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color; }
     bool hasModel() const { return !_modelURL.isEmpty(); }
     virtual bool hasCompoundShapeURL() const { return !_compoundShapeURL.isEmpty(); }
 
@@ -69,12 +69,12 @@ public:
     static const QString DEFAULT_ANIMATION_URL;
     const QString& getAnimationURL() const { return _animationURL; }
 
-    void setColor(const rgbColor& value) { memcpy(_color, value, sizeof(_color)); }
-    void setColor(const xColor& value) {
-            _color[RED_INDEX] = value.red;
-            _color[GREEN_INDEX] = value.green;
-            _color[BLUE_INDEX] = value.blue;
-    }
+    /* void setColor(const rgbColor& value) { memcpy(_color, value, sizeof(_color)); } */
+    /* void setColor(const xColor& value) { */
+    /*         _color[RED_INDEX] = value.red; */
+    /*         _color[GREEN_INDEX] = value.green; */
+    /*         _color[BLUE_INDEX] = value.blue; */
+    /* } */
     
     // model related properties
     void setModelURL(const QString& url) { _modelURL = url; }
@@ -126,7 +126,7 @@ protected:
 
     bool isAnimatingSomething() const;
 
-    rgbColor _color;
+// rgbColor _color;
     QString _modelURL;
     QString _compoundShapeURL;
 

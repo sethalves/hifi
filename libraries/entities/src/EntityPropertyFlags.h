@@ -176,5 +176,6 @@ typedef PropertyFlags<EntityPropertyList> EntityPropertyFlags;
 // one greater than the last item property due to the enum's auto-incrementing.
 extern EntityPropertyList PROP_LAST_ITEM;
 
+QString propertyFlagsToString(EntityPropertyFlags propertyFlags);
 
 #endif // hifi_EntityPropertyFlags_h

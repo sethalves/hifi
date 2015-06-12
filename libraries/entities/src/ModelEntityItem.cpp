@@ -39,13 +39,13 @@ ModelEntityItem::ModelEntityItem(const EntityItemID& entityItemID, const EntityI
     setProperties(properties);
     _lastAnimated = usecTimestampNow();
     _jointMappingCompleted = false;
-    _color[0] = _color[1] = _color[2] = 0;
+    // _color[0] = _color[1] = _color[2] = 0;
 }
 
 EntityItemProperties ModelEntityItem::getProperties() const {
     EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
+    // COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(modelURL, getModelURL);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURL);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationURL, getAnimationURL);
@@ -63,7 +63,7 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties) {
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
+    // SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(modelURL, setModelURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationURL, setAnimationURL);
@@ -95,7 +95,7 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
+    // READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
     READ_ENTITY_PROPERTY(PROP_MODEL_URL, QString, setModelURL);
     if (args.bitstreamVersion < VERSION_ENTITIES_HAS_COLLISION_MODEL) {
         setCompoundShapeURL("");
@@ -128,7 +128,7 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
         setAnimationFrameIndex(animationFrameIndex);
     }
 
-    READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTextures);
+    // READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTextures);
     READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettings);
     READ_ENTITY_PROPERTY(PROP_SHAPE_TYPE, ShapeType, updateShapeType);
 
@@ -146,7 +146,7 @@ EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& 
     requestedProperties += PROP_ANIMATION_FRAME_INDEX;
     requestedProperties += PROP_ANIMATION_PLAYING;
     requestedProperties += PROP_ANIMATION_SETTINGS;
-    requestedProperties += PROP_TEXTURES;
+    // requestedProperties += PROP_TEXTURES;
     requestedProperties += PROP_SHAPE_TYPE;
 
     return requestedProperties;
@@ -162,14 +162,14 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
 
     bool successPropertyFits = true;
 
-    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
+    // APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
     APPEND_ENTITY_PROPERTY(PROP_MODEL_URL, getModelURL());
     APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURL());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_URL, getAnimationURL());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPS());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndex());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlaying());
-    APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTextures());
+    // APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTextures());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettings());
     APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeType());
 }

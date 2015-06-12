@@ -204,7 +204,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     if (successLastUpdatedFits) {
         successLastSimulatedFits = packetData->appendRawData(encodedSimulatedDelta);
     }
-    
     if (successLastSimulatedFits) {
         propertyFlagsOffset = packetData->getUncompressedByteOffset();
         encodedPropertyFlags = propertyFlags;
@@ -212,8 +211,15 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         successPropertyFlagsFits = packetData->appendRawData(encodedPropertyFlags);
     }
 
+    // bool tagFits = false;
+    // if (successPropertyFlagsFits) {
+    //     tagFits = packetData->appendRawData(QByteArray("YYYokok"));
+    // }
+
+
     bool headerFits = successIDFits && successTypeFits && successCreatedFits && successLastEditedFits 
-                              && successLastUpdatedFits && successPropertyFlagsFits;
+                              && successLastUpdatedFits && successPropertyFlagsFits // && tagFits
+        ;
 
     int startOfEntityItemData = packetData->getUncompressedByteOffset();
 
@@ -271,6 +277,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         
         // if the size of the PropertyFlags shrunk, we need to shift everything down to front of packet.
         if (newPropertyFlagsLength < oldPropertyFlagsLength) {
+            qDebug() << "properyflags shrank by" << (oldPropertyFlagsLength - newPropertyFlagsLength);
             int oldSize = packetData->getUncompressedSize();
             const unsigned char* modelItemData = packetData->getUncompressedData(propertyFlagsOffset + oldPropertyFlagsLength);
             int modelItemDataLength = endOfEntityItemData - startOfEntityItemData;
@@ -486,7 +493,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     encodedUpdateDelta = updateDeltaCoder; // determine true length
     dataAt += encodedUpdateDelta.size();
     bytesRead += encodedUpdateDelta.size();
-    
+
     // Newer bitstreams will have a last simulated and a last updated value
     quint64 lastSimulatedFromBufferAdjusted = now;
     if (args.bitstreamVersion >= VERSION_ENTITIES_HAS_LAST_SIMULATED_TIME) {
@@ -525,6 +532,17 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     EntityPropertyFlags propertyFlags = encodedPropertyFlags;
     dataAt += propertyFlags.getEncodedLength();
     bytesRead += propertyFlags.getEncodedLength();
+
+    // if (strncmp((char*)dataAt, "YYYokok", 7) != 0) {
+    //     qDebug() << "-------------- DIDN'T SEE YYYokok --------------";
+    // }
+    // dataAt += 7;
+    // bytesRead += 7;
+
+    QByteArray flags = QByteArray(encodedPropertyFlags, propertyFlags.getEncodedLength());
+    qDebug() << "props:" << propertyFlagsToString(propertyFlags) << bytesLeftToRead << "bytesLeftToRead";
+
+
     READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
 
     // Old bitstreams had PROP_RADIUS, new bitstreams have PROP_DIMENSIONS
@@ -542,6 +560,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, updateDimensions);
     }
 
+    
     READ_ENTITY_PROPERTY(PROP_ROTATION, glm::quat, updateRotation);
     READ_ENTITY_PROPERTY(PROP_DENSITY, float, updateDensity);
     READ_ENTITY_PROPERTY(PROP_VELOCITY, glm::vec3, updateVelocity);
@@ -1391,4 +1410,70 @@ void EntityItem::clearActions(EntitySimulation* simulation) {
         action->setOwnerEntity(nullptr);
         action->removeFromSimulation(simulation);
     }
+}
+
+
+QString propertyFlagsToString(EntityPropertyFlags propertyFlags) {
+    QString result;
+
+    if (propertyFlags.getHasProperty(PROP_PAGED_PROPERTY)) result += "paged_property ";
+    if (propertyFlags.getHasProperty(PROP_CUSTOM_PROPERTIES_INCLUDED)) result += "custom_properties_included ";
+    if (propertyFlags.getHasProperty(PROP_VISIBLE)) result += "visible ";
+    if (propertyFlags.getHasProperty(PROP_POSITION)) result += "position ";
+    if (propertyFlags.getHasProperty(PROP_RADIUS)) result += "radius ";
+    if (propertyFlags.getHasProperty(PROP_ROTATION)) result += "rotation ";
+    if (propertyFlags.getHasProperty(PROP_DENSITY)) result += "density ";
+    if (propertyFlags.getHasProperty(PROP_VELOCITY)) result += "velocity ";
+    if (propertyFlags.getHasProperty(PROP_GRAVITY)) result += "gravity ";
+    if (propertyFlags.getHasProperty(PROP_DAMPING)) result += "damping ";
+    if (propertyFlags.getHasProperty(PROP_LIFETIME)) result += "lifetime ";
+    if (propertyFlags.getHasProperty(PROP_SCRIPT)) result += "script ";
+    if (propertyFlags.getHasProperty(PROP_COLOR)) result += "color ";
+    if (propertyFlags.getHasProperty(PROP_MODEL_URL)) result += "model_url ";
+    if (propertyFlags.getHasProperty(PROP_ANIMATION_URL)) result += "animation_url ";
+    if (propertyFlags.getHasProperty(PROP_ANIMATION_FPS)) result += "animation_fps ";
+    if (propertyFlags.getHasProperty(PROP_ANIMATION_FRAME_INDEX)) result += "animation_frame_index ";
+    if (propertyFlags.getHasProperty(PROP_ANIMATION_PLAYING)) result += "animation_playing ";
+    if (propertyFlags.getHasProperty(PROP_REGISTRATION_POINT)) result += "registration_point ";
+    if (propertyFlags.getHasProperty(PROP_ANGULAR_VELOCITY)) result += "angular_velocity ";
+    if (propertyFlags.getHasProperty(PROP_ANGULAR_DAMPING)) result += "angular_damping ";
+    if (propertyFlags.getHasProperty(PROP_IGNORE_FOR_COLLISIONS)) result += "ignore_for_collisions ";
+    if (propertyFlags.getHasProperty(PROP_COLLISIONS_WILL_MOVE)) result += "collisions_will_move ";
+    if (propertyFlags.getHasProperty(PROP_IS_SPOTLIGHT)) result += "is_spotlight ";
+    if (propertyFlags.getHasProperty(PROP_DIFFUSE_COLOR)) result += "diffuse_color ";
+    if (propertyFlags.getHasProperty(PROP_AMBIENT_COLOR_UNUSED)) result += "ambient_color_unused ";
+    if (propertyFlags.getHasProperty(PROP_SPECULAR_COLOR_UNUSED)) result += "specular_color_unused ";
+    if (propertyFlags.getHasProperty(PROP_INTENSITY)) result += "intensity ";
+    if (propertyFlags.getHasProperty(PROP_LINEAR_ATTENUATION_UNUSED)) result += "linear_attenuation_unused ";
+    if (propertyFlags.getHasProperty(PROP_QUADRATIC_ATTENUATION_UNUSED)) result += "quadratic_attenuation_unused ";
+    if (propertyFlags.getHasProperty(PROP_EXPONENT)) result += "exponent ";
+    if (propertyFlags.getHasProperty(PROP_CUTOFF)) result += "cutoff ";
+    if (propertyFlags.getHasProperty(PROP_LOCKED)) result += "locked ";
+    if (propertyFlags.getHasProperty(PROP_TEXTURES)) result += "textures ";
+    if (propertyFlags.getHasProperty(PROP_ANIMATION_SETTINGS)) result += "animation_settings ";
+    if (propertyFlags.getHasProperty(PROP_USER_DATA)) result += "user_data ";
+    if (propertyFlags.getHasProperty(PROP_SHAPE_TYPE)) result += "shape_type ";
+    if (propertyFlags.getHasProperty(PROP_MAX_PARTICLES)) result += "max_particles ";
+    if (propertyFlags.getHasProperty(PROP_LIFESPAN)) result += "lifespan ";
+    if (propertyFlags.getHasProperty(PROP_EMIT_RATE)) result += "emit_rate ";
+    if (propertyFlags.getHasProperty(PROP_EMIT_DIRECTION)) result += "emit_direction ";
+    if (propertyFlags.getHasProperty(PROP_EMIT_STRENGTH)) result += "emit_strength ";
+    if (propertyFlags.getHasProperty(PROP_LOCAL_GRAVITY)) result += "local_gravity ";
+    if (propertyFlags.getHasProperty(PROP_PARTICLE_RADIUS)) result += "particle_radius ";
+    if (propertyFlags.getHasProperty(PROP_COMPOUND_SHAPE_URL)) result += "compound_shape_url ";
+    if (propertyFlags.getHasProperty(PROP_MARKETPLACE_ID)) result += "marketplace_id ";
+    if (propertyFlags.getHasProperty(PROP_ACCELERATION)) result += "acceleration ";
+    if (propertyFlags.getHasProperty(PROP_SIMULATOR_ID)) result += "simulator_id ";
+    if (propertyFlags.getHasProperty(PROP_NAME)) result += "name ";
+    if (propertyFlags.getHasProperty(PROP_COLLISION_SOUND_URL)) result += "collision_sound_url ";
+    if (propertyFlags.getHasProperty(PROP_RESTITUTION)) result += "restitution ";
+    if (propertyFlags.getHasProperty(PROP_FRICTION)) result += "friction ";
+    if (propertyFlags.getHasProperty(PROP_VOXEL_VOLUME_SIZE)) result += "voxel_volume_size ";
+    if (propertyFlags.getHasProperty(PROP_VOXEL_DATA)) result += "voxel_data ";
+    if (propertyFlags.getHasProperty(PROP_VOXEL_SURFACE_STYLE)) result += "voxel_surface_style ";
+    if (propertyFlags.getHasProperty(PROP_LINE_WIDTH)) result += "line_width ";
+    if (propertyFlags.getHasProperty(PROP_LINE_POINTS)) result += "line_points ";
+    if (propertyFlags.getHasProperty(PROP_HREF)) result += "href ";
+    if (propertyFlags.getHasProperty(PROP_DESCRIPTION)) result += "description ";
+    return result;
 }
