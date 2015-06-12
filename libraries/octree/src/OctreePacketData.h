@@ -234,6 +234,7 @@ public:
 
     static void checkTag(const unsigned char* dataBytes, char* tag);
     bool prependTag(const char *tag);
+    bool appendTag(const char *tag);
 
 
     static int unpackDataFromBytes(const unsigned char* dataBytes, float& result);

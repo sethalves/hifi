@@ -50,7 +50,8 @@
 
 #define READ_ENTITY_PROPERTY_TO_PROPERTIES(P,T,O)                                  \
         if (propertyFlags.getHasProperty(P)) {                                     \
-            T fromBuffer;                                                          \
+            qDebug() << #P << #T; \
+            T fromBuffer;                                               \
             int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer); \
             dataAt += bytes;                                                       \
             processedBytes += bytes;                                               \

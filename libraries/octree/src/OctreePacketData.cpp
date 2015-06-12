@@ -318,12 +318,27 @@ bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blu
 void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag) {
     if (strncmp((char*)dataBytes, tag, 7) != 0) {
         // qDebug() << "unpackDataFromBytes float -- bad tag" << QByteArray((char*)dataBytes, 10).toHex();
-        qDebug() << "---------- tag mismatch, expected" << tag << "got" << qPrintable((char*)dataBytes);
+        char before[9];
+        before[0] = *(dataBytes - 8);
+        before[1] = *(dataBytes - 7);
+        before[2] = *(dataBytes - 6);
+        before[3] = *(dataBytes - 5);
+        before[4] = *(dataBytes - 4);
+        before[5] = *(dataBytes - 3);
+        before[6] = *(dataBytes - 2);
+        before[7] = *(dataBytes - 1);
+        before[8] = '\0';
+        qDebug() << "---------- tag mismatch, expected" << tag << "got" << before << "|" << qPrintable((char*)dataBytes);
     }
 }
 
 
 bool OctreePacketData::prependTag(const char *tag) {
+    return append((const unsigned char *)tag, 7);
+}
+
+
+bool OctreePacketData::appendTag(const char *tag) {
     return append((const unsigned char *)tag, 7);
 }
 
@@ -376,18 +391,14 @@ bool OctreePacketData::appendValue(quint64 value) {
 }
 
 bool OctreePacketData::appendValue(float value) {
-    const unsigned char* tag = (const unsigned char*)"YYYflot";
-    bool success = append(tag, 7);
-    if (!success) {
-        return success;
-    }
-
+    if (!prependTag("YYYflot")) return false;
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
-    success = append(data, length);
+    bool success = append(data, length);
     if (success) {
         _bytesOfValues += length;
         _totalBytesOfValues += length;
+        return appendTag("YYZflot");
     }
     return success;
 }
@@ -400,22 +411,26 @@ bool OctreePacketData::appendValue(const glm::vec3& value) {
     if (success) {
         _bytesOfValues += length;
         _totalBytesOfValues += length;
+        return appendTag("YYZvec3");
     }
     return success;
 }
 
 bool OctreePacketData::appendValue(const QVector<glm::vec3>& value) {
+    if (!prependTag("YYYvvec")) return false;
     uint16_t qVecSize = value.size();
     bool success = appendValue(qVecSize);
     success = append((const unsigned char*)value.constData(), qVecSize * sizeof(glm::vec3));
     if (success) {
         _bytesOfValues += qVecSize * sizeof(glm::vec3);
         _totalBytesOfValues += qVecSize * sizeof(glm::vec3);
+        return appendTag("YYZvvec");
     }
     return success;
 }
 
 bool OctreePacketData::appendValue(const glm::quat& value) {
+    if (!prependTag("YYYquat")) return false;
     const size_t VALUES_PER_QUAT = 4;
     const size_t PACKED_QUAT_SIZE = sizeof(uint16_t) * VALUES_PER_QUAT;
     unsigned char data[PACKED_QUAT_SIZE];
@@ -424,26 +439,24 @@ bool OctreePacketData::appendValue(const glm::quat& value) {
     if (success) {
         _bytesOfValues += length;
         _totalBytesOfValues += length;
+        return appendTag("YYZquat");
     }
     return success;
 }
 
 bool OctreePacketData::appendValue(bool value) {
-    const unsigned char* tag = (const unsigned char*)"YYYbool";
-    bool success = append(tag, 7);
-    if (!success) {
-        return success;
-    }
-
-    success = append((uint8_t)value); // used unsigned char version
+    if (!prependTag("YYYbool")) return false;
+    bool success = append((uint8_t)value); // used unsigned char version
     if (success) {
         _bytesOfValues++;
         _totalBytesOfValues++;
+        return appendTag("YYZbool");
     }
     return success;
 }
 
 bool OctreePacketData::appendValue(const QString& string) {
+    // if (!prependTag("YYYstng")) return false;
     // TODO: make this a ByteCountCoded leading byte
     uint16_t length = string.size() + 1; // include NULL
     bool success = appendValue(length);
@@ -454,17 +467,22 @@ bool OctreePacketData::appendValue(const QString& string) {
 }
 
 bool OctreePacketData::appendValue(const QUuid& uuid) {
+    if (!prependTag("YYYuuid")) return false;
     QByteArray bytes = uuid.toRfc4122();
+    bool success;
     if (uuid.isNull()) {
-        return appendValue((uint16_t)0); // zero length for null uuid
+        success = appendValue((uint16_t)0); // zero length for null uuid
     } else {
         uint16_t length = bytes.size();
         bool success = appendValue(length);
         if (success) {
             success = appendRawData((const unsigned char*)bytes.constData(), bytes.size());
         }
-        return success;
     }
+    if (success) {
+        success = appendTag("YYZuuid");
+    }
+    return success;
 }
 
 bool OctreePacketData::appendValue(const QByteArray& bytes) {
@@ -602,22 +620,28 @@ void OctreePacketData::debugContent() {
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, float& result) {
     checkTag(dataBytes, (char*)"YYYflot");
-    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes + 7, sizeof(result));
+    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZflot");
+    return sizeof(result) + 14;
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result) {
     checkTag(dataBytes, (char*)"YYYvec3");
-    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes + 7, sizeof(result));
+    checkTag(dataBytes + 7 + sizeof(result), (char*)"YYZvec3");
+    return sizeof(result) + 14;
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, bool& result) {
     checkTag(dataBytes, (char*)"YYYbool");
-    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes + 7, sizeof(result));
+    checkTag(dataBytes + sizeof(result) + 7, (char*)"YYZbool");
+    return sizeof(result) + 14;
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, quint64& result) {
     // checkTag(dataBytes, (char*)"YYYui64");
-    //memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
@@ -644,18 +668,33 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, rgbCol
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result) {
-    int bytes = unpackOrientationQuatFromBytes(dataBytes, result); return bytes;
+    checkTag(dataBytes, (char*)"YYYquat");
+    int bytes = unpackOrientationQuatFromBytes(dataBytes+7, result);
+    checkTag(dataBytes + bytes + 7, (char*)"YYZquat");
+    return bytes + 14;
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result) {
+    // checkTag(dataBytes, (char*)"YYYui32");
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result) {
+    // checkTag(dataBytes, (char*)"YYYui32");
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
     memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QString& result) { 
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QString& result) {
+    // checkTag(dataBytes, (char*)"YYYstng");
+    // uint16_t length;
+    // memcpy(&length, dataBytes + 7, sizeof(length));
+    // dataBytes += sizeof(length);
+    // QString value((const char*)(dataBytes + 7));
+    // result = value;
+    // return sizeof(length) + length + 7;
+
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);
@@ -664,7 +703,9 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QStrin
     return sizeof(length) + length;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result) { 
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result) {
+    checkTag(dataBytes, (char*)"YYYuuid");
+    dataBytes += 7;
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);
@@ -673,11 +714,13 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QUuid&
     } else {
         QByteArray ba((const char*)dataBytes, length);
         result = QUuid::fromRfc4122(ba);
+        dataBytes += length;
     }
-    return sizeof(length) + length;
+    checkTag(dataBytes, (char*)"YYZuuid");
+    return sizeof(length) + length + 14;
 }
 
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, xColor& result) { 
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, xColor& result) {
     result.red = dataBytes[RED_INDEX];
     result.green = dataBytes[GREEN_INDEX];
     result.blue = dataBytes[BLUE_INDEX];
@@ -686,14 +729,17 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, xColor
 
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char *dataBytes, QVector<glm::vec3>& result) {
+    checkTag(dataBytes, (char*)"YYYvvec");
     uint16_t length;
-    memcpy(&length, dataBytes, sizeof(uint16_t));
+    memcpy(&length, dataBytes + 7, sizeof(uint16_t));
     dataBytes += sizeof(length);
     result.resize(length);
-    memcpy(result.data(), dataBytes, length * sizeof(glm::vec3));
-    return sizeof(uint16_t) + length * sizeof(glm::vec3);
+    memcpy(result.data(), dataBytes + 7, length * sizeof(glm::vec3));
+    checkTag(dataBytes + sizeof(uint16_t) + length * sizeof(glm::vec3) + 7, (char*)"YYZvvec");
+    return sizeof(uint16_t) + length * sizeof(glm::vec3) + 14;
 }
-int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result) { 
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result) {
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);
