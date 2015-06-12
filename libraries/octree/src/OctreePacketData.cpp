@@ -314,7 +314,22 @@ bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blu
     return success;
 }
 
+
+void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag) {
+    if (strncmp((char*)dataBytes, tag, 7) != 0) {
+        // qDebug() << "unpackDataFromBytes float -- bad tag" << QByteArray((char*)dataBytes, 10).toHex();
+        qDebug() << "---------- tag mismatch, expected" << tag << "got" << qPrintable((char*)dataBytes);
+    }
+}
+
+
+bool OctreePacketData::prependTag(const char *tag) {
+    return append((const unsigned char *)tag, 7);
+}
+
+
 bool OctreePacketData::appendValue(uint8_t value) {
+    // if (!prependTag("YYYui08")) return false;
     bool success = append(value); // used unsigned char version
     if (success) {
         _bytesOfValues++;
@@ -324,8 +339,8 @@ bool OctreePacketData::appendValue(uint8_t value) {
 }
 
 bool OctreePacketData::appendValue(uint16_t value) {
+    // if (!prependTag("YYYui16")) return false;
     const unsigned char* data = (const unsigned char*)&value;
-    
     int length = sizeof(value);
     bool success = append(data, length);
     if (success) {
@@ -336,6 +351,7 @@ bool OctreePacketData::appendValue(uint16_t value) {
 }
 
 bool OctreePacketData::appendValue(uint32_t value) {
+    // if (!prependTag("YYYui32")) return false;
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
     bool success = append(data, length);
@@ -347,6 +363,7 @@ bool OctreePacketData::appendValue(uint32_t value) {
 }
 
 bool OctreePacketData::appendValue(quint64 value) {
+    // if (!prependTag("YYYui64")) return false;
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
     bool success = append(data, length);
@@ -359,10 +376,15 @@ bool OctreePacketData::appendValue(quint64 value) {
 }
 
 bool OctreePacketData::appendValue(float value) {
-    
+    const unsigned char* tag = (const unsigned char*)"YYYflot";
+    bool success = append(tag, 7);
+    if (!success) {
+        return success;
+    }
+
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
-    bool success = append(data, length);
+    success = append(data, length);
     if (success) {
         _bytesOfValues += length;
         _totalBytesOfValues += length;
@@ -371,6 +393,7 @@ bool OctreePacketData::appendValue(float value) {
 }
 
 bool OctreePacketData::appendValue(const glm::vec3& value) {
+    if (!prependTag("YYYvec3")) return false;
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
     bool success = append(data, length);
@@ -406,7 +429,13 @@ bool OctreePacketData::appendValue(const glm::quat& value) {
 }
 
 bool OctreePacketData::appendValue(bool value) {
-    bool success = append((uint8_t)value); // used unsigned char version
+    const unsigned char* tag = (const unsigned char*)"YYYbool";
+    bool success = append(tag, 7);
+    if (!success) {
+        return success;
+    }
+
+    success = append((uint8_t)value); // used unsigned char version
     if (success) {
         _bytesOfValues++;
         _totalBytesOfValues++;
@@ -567,6 +596,63 @@ void OctreePacketData::debugContent() {
         }
     }
     printf("\n");
+}
+
+
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, float& result) {
+    checkTag(dataBytes, (char*)"YYYflot");
+    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result) {
+    checkTag(dataBytes, (char*)"YYYvec3");
+    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, bool& result) {
+    checkTag(dataBytes, (char*)"YYYbool");
+    memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, quint64& result) {
+    // checkTag(dataBytes, (char*)"YYYui64");
+    //memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result) {
+    // checkTag(dataBytes, (char*)"YYYui32");
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result) {
+    // checkTag(dataBytes, (char*)"YYYui16");
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result) {
+    // checkTag(dataBytes, (char*)"YYYui08");
+    // memcpy(&result, dataBytes + 7, sizeof(result)); return sizeof(result) + 7;
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result) {
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result) {
+    int bytes = unpackOrientationQuatFromBytes(dataBytes, result); return bytes;
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result) {
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
+}
+
+int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result) {
+    memcpy(&result, dataBytes, sizeof(result)); return sizeof(result);
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QString& result) { 

@@ -229,18 +229,24 @@ public:
     static quint64 getTotalBytesOfOctalCodes() { return _totalBytesOfOctalCodes; }  /// total bytes for octal codes
     static quint64 getTotalBytesOfBitMasks() { return _totalBytesOfBitMasks; }  /// total bytes of bitmasks
     static quint64 getTotalBytesOfColor() { return _totalBytesOfColor; } /// total bytes of color
-    
-    static int unpackDataFromBytes(const unsigned char* dataBytes, float& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, bool& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, quint64& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result) { int bytes = unpackOrientationQuatFromBytes(dataBytes, result); return bytes; }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
-    static int unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result) { memcpy(&result, dataBytes, sizeof(result)); return sizeof(result); }
+
+
+
+    static void checkTag(const unsigned char* dataBytes, char* tag);
+    bool prependTag(const char *tag);
+
+
+    static int unpackDataFromBytes(const unsigned char* dataBytes, float& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::vec3& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, bool& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, quint64& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint32_t& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint16_t& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, uint8_t& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, rgbColor& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, glm::quat& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, ShapeType& result);
+    static int unpackDataFromBytes(const unsigned char* dataBytes, BackgroundMode& result);
     static int unpackDataFromBytes(const unsigned char* dataBytes, QString& result);
     static int unpackDataFromBytes(const unsigned char* dataBytes, QUuid& result);
     static int unpackDataFromBytes(const unsigned char* dataBytes, xColor& result);
