@@ -130,4 +130,6 @@ QString formatUsecTime(float usecs, int prec = 3);
 QString formatSecondsElapsed(float seconds);
 bool similarStrings(const QString& stringA, const QString& stringB);
 
+QString debugBufferSegment(const unsigned char *bufferAt, int beforeAmount, int afterAmount);
+
 #endif // hifi_SharedUtil_h

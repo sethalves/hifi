@@ -277,7 +277,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         
         // if the size of the PropertyFlags shrunk, we need to shift everything down to front of packet.
         if (newPropertyFlagsLength < oldPropertyFlagsLength) {
-            qDebug() << "properyflags shrank by" << (oldPropertyFlagsLength - newPropertyFlagsLength);
+            // qDebug() << "properyflags shrank by" << (oldPropertyFlagsLength - newPropertyFlagsLength);
             int oldSize = packetData->getUncompressedSize();
             const unsigned char* modelItemData = packetData->getUncompressedData(propertyFlagsOffset + oldPropertyFlagsLength);
             int modelItemDataLength = endOfEntityItemData - startOfEntityItemData;
@@ -289,7 +289,17 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         } else {
             assert(newPropertyFlagsLength == oldPropertyFlagsLength); // should not have grown
         }
-       
+
+        QString typeName = EntityTypes::getEntityTypeName(getType());
+        QString shortName = typeName.left(7);
+        while (shortName.size() < 7) {
+            shortName += 'x';
+        }
+        if (!packetData->appendTag((char *)(shortName.toLatin1().constData()))) {
+            packetData->discardLevel(entityLevel);
+            appendState = OctreeElement::NONE;
+        }
+
         packetData->endLevel(entityLevel);
     } else {
         packetData->discardLevel(entityLevel);
@@ -540,7 +550,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // bytesRead += 7;
 
     QByteArray flags = QByteArray(encodedPropertyFlags, propertyFlags.getEncodedLength());
-    qDebug() << "props:" << propertyFlagsToString(propertyFlags) << bytesLeftToRead << "bytesLeftToRead";
+    // qDebug() << "props:" << propertyFlagsToString(propertyFlags) << bytesLeftToRead << "bytesLeftToRead";
 
 
     READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
@@ -603,6 +613,10 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescription);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args, propertyFlags, overwriteLocalData);
+
+    // skip over type
+    dataAt += 7;
+    bytesRead += 7;
 
     ////////////////////////////////////
     // WARNING: Do not add stream content here after the subclass. Always add it before the subclass

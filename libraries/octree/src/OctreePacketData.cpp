@@ -57,6 +57,15 @@ bool OctreePacketData::append(const unsigned char* data, int length) {
     bool success = false;
 
     if (length <= _bytesAvailable) {
+        if (length >= 2 &&
+            data[0] == 0xc0 &&
+            data[1] == 0//  &&
+            // data[2] == 0 &&
+            // data[3] == 0
+            ) {
+            qDebug() << "HERE";
+        }
+
         memcpy(&_uncompressed[_bytesInUse], data, length);
         _bytesInUse += length;
         _bytesAvailable -= length;
@@ -79,6 +88,15 @@ bool OctreePacketData::append(const unsigned char* data, int length) {
 bool OctreePacketData::append(unsigned char byte) {
     bool success = false;
     if (_bytesAvailable > 0) {
+        if (_bytesInUse > 4 &&
+            _uncompressed[_bytesInUse - 1] == 'x' &&
+            _uncompressed[_bytesInUse - 2] == 'e' &&
+            _uncompressed[_bytesInUse - 3] == 'r' &&
+            _uncompressed[_bytesInUse - 4] == 'e' &&
+            byte == 0xc0) {
+            qDebug() << "HERE1";
+        }
+
         _uncompressed[_bytesInUse] = byte;
         _bytesInUse++;
         _bytesAvailable--; 
@@ -273,6 +291,7 @@ bool OctreePacketData::endLevel(LevelDetails key) {
 }
 
 bool OctreePacketData::appendBitMask(unsigned char bitmask) {
+    qDebug() << "bitmask" << QString::number(bitmask, 16);
     bool success = append(bitmask); // handles checking compression
     if (success) {
         _bytesOfBitMasks++;
@@ -321,40 +340,42 @@ bool OctreePacketData::appendColor(colorPart red, colorPart green, colorPart blu
 
 void OctreePacketData::checkTag(const unsigned char* dataBytes, char* tag, char *who, const QString& what) {
     if (strncmp((char*)dataBytes, tag, 7) != 0) {
-        // qDebug() << "unpackDataFromBytes float -- bad tag" << QByteArray((char*)dataBytes, 10).toHex();
-        char before[9];
-        before[0] = *(dataBytes - 8);
-        before[1] = *(dataBytes - 7);
-        before[2] = *(dataBytes - 6);
-        before[3] = *(dataBytes - 5);
-        before[4] = *(dataBytes - 4);
-        before[5] = *(dataBytes - 3);
-        before[6] = *(dataBytes - 2);
-        before[7] = *(dataBytes - 1);
-        before[8] = '\0';
+
+        // char before[9];
+        // before[0] = *(dataBytes - 8);
+        // before[1] = *(dataBytes - 7);
+        // before[2] = *(dataBytes - 6);
+        // before[3] = *(dataBytes - 5);
+        // before[4] = *(dataBytes - 4);
+        // before[5] = *(dataBytes - 3);
+        // before[6] = *(dataBytes - 2);
+        // before[7] = *(dataBytes - 1);
+        // before[8] = '\0';
         qDebug() << "----------" << who << what
-                 << "tag mismatch, expected" << tag << "got" << before << "|" << qPrintable((char*)dataBytes);
-        qDebug() << "          " << QByteArray(before).toHex() << "|" << QByteArray((char*)dataBytes, 10).toHex();
+                 << "tag mismatch, expected" << tag << "got"
+                 << debugBufferSegment(dataBytes, 10, 10);
+            // << before << "|" << qPrintable((char*)dataBytes);
+        // qDebug() << "          " << QByteArray(before).toHex() << "|" << QByteArray((char*)dataBytes, 10).toHex();
     }
 }
 
 
 bool OctreePacketData::prependTag(const char *tag) {
     bool success = append((const unsigned char *)tag, 7);
-    if (success) {
-        _bytesOfValues += 7;
-        _totalBytesOfValues += 7;
-    }
+    // if (success) {
+    //     _bytesOfValues += 7;
+    //     _totalBytesOfValues += 7;
+    // }
     return success;
 }
 
 
 bool OctreePacketData::appendTag(const char *tag) {
     bool success = append((const unsigned char *)tag, 7);
-    if (success) {
-        _bytesOfValues += 7;
-        _totalBytesOfValues += 7;
-    }
+    // if (success) {
+    //     _bytesOfValues += 7;
+    //     _totalBytesOfValues += 7;
+    // }
     return success;
 }
 
@@ -507,11 +528,15 @@ bool OctreePacketData::appendValue(const QUuid& uuid) {
 }
 
 bool OctreePacketData::appendValue(const QByteArray& bytes) {
+    if (!prependTag("YYYbyts")) return false;
     // TODO: make this a ByteCountCoded leading byte
     uint16_t length = bytes.size();
     bool success = appendValue(length);
     if (success) {
         success = appendRawData((const unsigned char*)bytes.constData(), bytes.size());
+    }
+    if (success) {
+        success = appendTag("YYZbyts");
     }
     return success;
 }
@@ -775,10 +800,14 @@ int OctreePacketData::unpackDataFromBytes(const unsigned char *dataBytes, QVecto
 }
 
 int OctreePacketData::unpackDataFromBytes(const unsigned char* dataBytes, QByteArray& result, char *who, const QString& what) {
+    checkTag(dataBytes, (char*)"YYYbyts", who, what);
+    dataBytes += 7;
     uint16_t length;
     memcpy(&length, dataBytes, sizeof(length));
     dataBytes += sizeof(length);
     QByteArray value((const char*)dataBytes, length);
     result = value;
-    return sizeof(length) + length;
+    dataBytes += length;
+    checkTag(dataBytes, (char*)"YYZbyts", who, what);
+    return sizeof(length) + length + 14;
 }

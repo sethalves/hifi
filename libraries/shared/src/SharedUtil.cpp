@@ -678,3 +678,31 @@ bool similarStrings(const QString& stringA, const QString& stringB) {
     return similarity >= SIMILAR_ENOUGH;
 }
 
+QString debugBufferSegment(const unsigned char *bufferAt, int beforeAmount, int afterAmount) {
+    QString result;
+    for (const unsigned char *at = bufferAt - beforeAmount;
+         at < bufferAt;
+         at++) {
+        if (*at > ' ' && *at <= 'z') {
+            result += (char)(*at);
+        } else {
+            result += QString::number(*at, 16);
+        }
+        result += ' ';
+    }
+
+    result += "| ";
+
+    for (const unsigned char *at = bufferAt;
+         at < bufferAt + afterAmount;
+         at++) {
+        if (*at > ' ' && *at <= 'z') {
+            result += (char)(*at);
+        } else {
+            result += QString::number(*at, 16);
+        }
+        result += ' ';
+    }
+
+    return result;
+}
