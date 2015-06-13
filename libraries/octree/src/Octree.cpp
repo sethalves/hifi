@@ -406,12 +406,12 @@ void Octree::readBitstreamToTree(const unsigned char * bitstream, unsigned long 
 
     while (bitstreamAt < bitstream + bufferSizeBytes) {
 
-        // if (strncmp((const char*)bitstreamAt, "YYYelmt", 7) != 0) {
-        //     qDebug() << "-------------- node start tag mismatch -------------------";
-        //     return;
-        // }
-        // bitstreamAt += 7;
-        // bytesRead += 7;
+        if (strncmp((const char*)bitstreamAt, "YYYtree", 7) != 0) {
+            qDebug() << "-------------- node start tag mismatch:" << debugBufferSegment(bitstreamAt, 15, 15);
+            return;
+        }
+        bitstreamAt += 7;
+        bytesRead += 7;
 
         OctreeElement* bitstreamRootElement = nodeForOctalCode(args.destinationElement, (unsigned char *)bitstreamAt, NULL);
         int numberOfThreeBitSectionsInStream = numberOfThreeBitSectionsInCode(bitstreamAt, bufferSizeBytes);
@@ -430,7 +430,7 @@ void Octree::readBitstreamToTree(const unsigned char * bitstream, unsigned long 
 
             int used = bitstreamAt - bitstream;
             int left = bufferSizeBytes - used;
-            qDebug() << debugBufferSegment(bitstreamAt, 12, left);
+            qDebug() << "left =" << left << ":" << debugBufferSegment(bitstreamAt, 12, left);
             return;
         }
         
@@ -1031,24 +1031,28 @@ int Octree::encodeTreeBitstream(OctreeElement* element,
         return bytesWritten;
     }
 
-    // bool tagFit = packetData->appendTag("YYYelmt");
-    // if (!tagFit) {
-    //     bag.insert(element);
-    //     params.stopReason = EncodeBitstreamParams::DIDNT_FIT;
-    //     return bytesWritten;
-    // }
-    // bytesWritten += 7;
-
     // If we're at a element that is out of view, then we can return, because no nodes below us will be in view!
     if (params.viewFrustum && !element->isInView(*params.viewFrustum)) {
         params.stopReason = EncodeBitstreamParams::OUT_OF_VIEW;
         return bytesWritten;
     }
 
+    LevelDetails beforeTag = packetData->startLevel();
+
+    bool tagFit = packetData->appendTag("YYYtree");
+    if (!tagFit) {
+        bag.insert(element);
+        params.stopReason = EncodeBitstreamParams::DIDNT_FIT;
+        packetData->discardLevel(beforeTag);
+        return bytesWritten;
+    }
+    bytesWritten += 7;
+
     // write the octal code
     bool roomForOctalCode = false; // assume the worst
     int codeLength = 1; // assume root
     if (params.chopLevels) {
+        assert(false);
         unsigned char* newCode = chopOctalCode(element->getOctalCode(), params.chopLevels);
         roomForOctalCode = packetData->startSubTree(newCode);
 
@@ -1067,6 +1071,7 @@ int Octree::encodeTreeBitstream(OctreeElement* element,
     if (!roomForOctalCode) {
         bag.insert(element);
         params.stopReason = EncodeBitstreamParams::DIDNT_FIT;
+        packetData->discardLevel(beforeTag);
         return bytesWritten;
     }
     
@@ -1107,8 +1112,10 @@ int Octree::encodeTreeBitstream(OctreeElement* element,
 
     if (bytesWritten == 0) {
         packetData->discardSubTree();
+        packetData->discardLevel(beforeTag);
     } else {
         packetData->endSubTree();
+        packetData->endLevel(beforeTag);
     }
 
     return bytesWritten;

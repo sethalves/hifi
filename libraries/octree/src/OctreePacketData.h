@@ -150,12 +150,14 @@ public:
 
     /// appends a unsigned 16 bit int to the end of the stream, may fail if new data stream is too long to fit in packet
     bool appendValue(uint16_t value);
+    bool appendValueX(uint16_t value);
 
     /// appends a unsigned 32 bit int to the end of the stream, may fail if new data stream is too long to fit in packet
     bool appendValue(uint32_t value);
 
     /// appends a unsigned 64 bit int to the end of the stream, may fail if new data stream is too long to fit in packet
     bool appendValue(quint64 value);
+    bool appendValueX(quint64 value);
 
     /// appends a float value to the end of the stream, may fail if new data stream is too long to fit in packet
     bool appendValue(float value);

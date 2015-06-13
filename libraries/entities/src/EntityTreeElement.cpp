@@ -316,7 +316,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
     }
 
     int numberOfEntitiesOffset = packetData->getUncompressedByteOffset();
-    bool successAppendEntityCount = packetData->appendValue(numberOfEntities);
+    bool successAppendEntityCount = packetData->appendValueX(numberOfEntities);
 
     if (successAppendEntityCount) {
         foreach (uint16_t i, indexesOfEntitiesToInclude) {

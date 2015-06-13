@@ -664,7 +664,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         // Last Edited quint64 always first, before any other details, which allows us easy access to adjusting this
         // timestamp for clock skew
         quint64 lastEdited = properties.getLastEdited();
-        bool successLastEditedFits = packetData->appendValue(lastEdited);
+        bool successLastEditedFits = packetData->appendValueX(lastEdited);
         
         bool successIDFits = packetData->appendRawData(encodedID);
         if (successIDFits) {

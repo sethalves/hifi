@@ -193,10 +193,10 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         successTypeFits = packetData->appendRawData(encodedType);
     }
     if (successTypeFits) {
-        successCreatedFits = packetData->appendValue(_created);
+        successCreatedFits = packetData->appendValueX(_created);
     }
     if (successCreatedFits) {
-        successLastEditedFits = packetData->appendValue(lastEdited);
+        successLastEditedFits = packetData->appendValueX(lastEdited);
     }
     if (successLastEditedFits) {
         successLastUpdatedFits = packetData->appendRawData(encodedUpdateDelta);
@@ -552,23 +552,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     QByteArray flags = QByteArray(encodedPropertyFlags, propertyFlags.getEncodedLength());
     // qDebug() << "props:" << propertyFlagsToString(propertyFlags) << bytesLeftToRead << "bytesLeftToRead";
 
-
     READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
-
-    // Old bitstreams had PROP_RADIUS, new bitstreams have PROP_DIMENSIONS
-    if (args.bitstreamVersion < VERSION_ENTITIES_SUPPORT_DIMENSIONS) {
-        if (propertyFlags.getHasProperty(PROP_RADIUS)) {
-            float fromBuffer;
-            memcpy(&fromBuffer, dataAt, sizeof(fromBuffer));
-            dataAt += sizeof(fromBuffer);
-            bytesRead += sizeof(fromBuffer);
-            if (overwriteLocalData) {
-                setRadius(fromBuffer);
-            }
-        }
-    } else {
-        READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, updateDimensions);
-    }
+    READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, updateDimensions);
 
     
     READ_ENTITY_PROPERTY(PROP_ROTATION, glm::quat, updateRotation);
