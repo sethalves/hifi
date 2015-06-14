@@ -25,6 +25,8 @@ int numberOfThreeBitSectionsInCode(const unsigned char* octalCode, int maxBytes)
         return OVERFLOWED_OCTCODE_BUFFER;
     }
 
+    assert(*octalCode != 255);
+
     assert(octalCode);
     if (*octalCode == 255) {
         int newMaxBytes = (maxBytes == UNKNOWN_OCTCODE_LENGTH) ? UNKNOWN_OCTCODE_LENGTH : maxBytes - 1;

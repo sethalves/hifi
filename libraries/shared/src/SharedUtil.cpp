@@ -680,15 +680,30 @@ bool similarStrings(const QString& stringA, const QString& stringB) {
 
 QString debugBufferSegment(const unsigned char *bufferAt, int beforeAmount, int afterAmount) {
     QString result;
+    bool printingChars = false;
+
     for (const unsigned char *at = bufferAt - beforeAmount;
          at < bufferAt;
          at++) {
         if (*at > ' ' && *at <= 'z') {
+            if (!printingChars) {
+                result += "[";
+                printingChars = true;
+            }
             result += (char)(*at);
         } else {
+            if (printingChars) {
+                result += "] ";
+                printingChars = false;
+            }
             result += QString::number(*at, 16);
+            result += ' ';
         }
-        result += ' ';
+    }
+
+    if (printingChars) {
+        result += "] ";
+        printingChars = false;
     }
 
     result += "| ";
@@ -697,11 +712,23 @@ QString debugBufferSegment(const unsigned char *bufferAt, int beforeAmount, int 
          at < bufferAt + afterAmount;
          at++) {
         if (*at > ' ' && *at <= 'z') {
+            if (!printingChars) {
+                result += "[";
+                printingChars = true;
+            }
             result += (char)(*at);
         } else {
+            if (printingChars) {
+                result += "] ";
+                printingChars = false;
+            }
             result += QString::number(*at, 16);
+            result += ' ';
         }
-        result += ' ';
+    }
+
+    if (printingChars) {
+        result += "] ";
     }
 
     return result;

@@ -57,13 +57,18 @@ bool OctreePacketData::append(const unsigned char* data, int length) {
     bool success = false;
 
     if (length <= _bytesAvailable) {
-        if (length >= 2 &&
-            data[0] == 0xc0 &&
-            data[1] == 0//  &&
-            // data[2] == 0 &&
-            // data[3] == 0
+        if (_bytesInUse > 7 &&
+            *(data - 1) == 'x' &&
+            *(data - 2) == 'x' &&
+            *(data - 3) == 'x' &&
+            *(data - 4) == 'x' &&
+            *(data - 5) == 'x' &&
+            *(data - 6) == 'o' &&
+            *(data - 7) == 'B' &&
+            (data[0] == 0x38 ||
+             data[0] == 0xc0)
             ) {
-            qDebug() << "HERE";
+            qDebug() << "HERE1.1";
         }
 
         memcpy(&_uncompressed[_bytesInUse], data, length);
@@ -88,13 +93,18 @@ bool OctreePacketData::append(const unsigned char* data, int length) {
 bool OctreePacketData::append(unsigned char byte) {
     bool success = false;
     if (_bytesAvailable > 0) {
-        if (_bytesInUse > 4 &&
+        if (_bytesInUse > 7 &&
             _uncompressed[_bytesInUse - 1] == 'x' &&
-            _uncompressed[_bytesInUse - 2] == 'e' &&
-            _uncompressed[_bytesInUse - 3] == 'r' &&
-            _uncompressed[_bytesInUse - 4] == 'e' &&
-            byte == 0xc0) {
-            qDebug() << "HERE1";
+            _uncompressed[_bytesInUse - 2] == 'x' &&
+            _uncompressed[_bytesInUse - 3] == 'x' &&
+            _uncompressed[_bytesInUse - 4] == 'x' &&
+            _uncompressed[_bytesInUse - 5] == 'x' &&
+            _uncompressed[_bytesInUse - 6] == 'o' &&
+            _uncompressed[_bytesInUse - 7] == 'B' &&
+            (byte == 0x38 ||
+             byte == 0xc0)
+            ) {
+            qDebug() << "HERE1.1";
         }
 
         _uncompressed[_bytesInUse] = byte;
@@ -142,9 +152,14 @@ bool OctreePacketData::releaseReservedBytes(int numberOfBytes) {
 bool OctreePacketData::updatePriorBitMask(int offset, unsigned char bitmask) {
     bool success = false;
     if (offset >= 0 && offset < _bytesInUse) {
+        // qDebug() << "    OctreePacketData::updatePriorBitMask"
+        //          << QString::number(_uncompressed[offset], 16)
+        //          << QString::number(bitmask, 16);
         _uncompressed[offset] = bitmask;
         success = true;
         _dirty = true;
+    } else {
+        assert(false);
     }
     return success;
 }
