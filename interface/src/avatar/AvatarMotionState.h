@@ -52,7 +52,7 @@ public:
     virtual glm::vec3 getObjectAngularVelocity() const;
     virtual glm::vec3 getObjectGravity() const;
 
-    virtual const QUuid& getObjectID() const;
+    virtual const QUuid getObjectID() const;
 
     virtual QUuid getSimulatorID() const;
     virtual void bump();

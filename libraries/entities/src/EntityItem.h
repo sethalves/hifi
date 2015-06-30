@@ -68,13 +68,31 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+#if DEBUG
+  #define assertLocked() assert(isLocked);
+#else
+  #define assertLocked()
+#endif
+
+#if DEBUG
+  #define assertWriteLocked() assert(isWriteLocked);
+#else
+  #define assertWriteLocked()
+#endif
+
+#if DEBUG
+  #define assertUnlocked() assert(isLocked);
+#else
+  #define assertUnlocked()
+#endif
+
 
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
 /// one directly, instead you must only construct one of it's derived classes with additional features.
 class EntityItem {
     // These two classes manage lists of EntityItem pointers and must be able to cleanup pointers when an EntityItem is deleted.
-    // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by 
+    // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by
     // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
     // do cleanup.
     friend class EntityTreeElement;
@@ -104,10 +122,11 @@ public:
     EntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
     virtual ~EntityItem();
 
+
     // ID and EntityItemID related methods
-    const QUuid& getID() const { return _id; }
-    void setID(const QUuid& id) { _id = id; }
-    EntityItemID getEntityItemID() const { return EntityItemID(_id); }
+    const QUuid getID() const { assertUnlocked(); lockForRead(); auto result = getIDInternal(); unlock(); return result; }
+    void setID(const QUuid& id) { assertUnlocked(); lockForWrite(); setIDInternal(id); unlock(); }
+    EntityItemID getEntityItemID() const;
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties() const;
@@ -120,10 +139,14 @@ public:
     virtual void somethingChangedNotification() { }
 
     void recordCreationTime();    // set _created to 'now'
-    quint64 getLastSimulated() const { return _lastSimulated; } /// Last simulated time of this entity universal usecs
-    void setLastSimulated(quint64 now) { _lastSimulated = now; }
 
-     /// Last edited time of this entity universal usecs
+    /// Last simulated time of this entity universal usecs
+    quint64 getLastSimulated() const;
+    void setLastSimulated(quint64 now);
+
+/////
+
+    /// Last edited time of this entity universal usecs
     quint64 getLastEdited() const { return _lastEdited; }
     void setLastEdited(quint64 lastEdited)
         { _lastEdited = _lastUpdated = lastEdited; _changedOnServer = glm::max(lastEdited, _changedOnServer); }
@@ -161,9 +184,9 @@ public:
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData)
                                                 { return 0; }
 
-    virtual bool addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, 
+    virtual bool addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                             render::PendingChanges& pendingChanges) { return false; } // by default entity items don't add to scene
-    virtual void removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, 
+    virtual void removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                 render::PendingChanges& pendingChanges) { } // by default entity items don't add to scene
     virtual void render(RenderArgs* args) { } // by default entity items don't know how to render
 
@@ -190,20 +213,20 @@ public:
 
     // attributes applicable to all entity types
     EntityTypes::EntityType getType() const { return _type; }
-    
+
     inline glm::vec3 getCenterPosition() const { return getTransformToCenter().getTranslation(); }
     void setCenterPosition(const glm::vec3& position);
-    
+
     const Transform getTransformToCenter() const;
     void setTranformToCenter(const Transform& transform);
-    
+
     inline const Transform& getTransform() const { return _transform; }
     inline void setTransform(const Transform& transform) { _transform = transform; }
-    
+
     /// Position in meters (0.0 - TREE_SCALE)
     inline const glm::vec3& getPosition() const { return _transform.getTranslation(); }
     inline void setPosition(const glm::vec3& value) { _transform.setTranslation(value); }
-    
+
     inline const glm::quat& getRotation() const { return _transform.getRotation(); }
     inline void setRotation(const glm::quat& rotation) { _transform.setRotation(rotation); }
 
@@ -317,10 +340,9 @@ public:
 
     const QString& getUserData() const { return _userData; }
     void setUserData(const QString& value) { _userData = value; }
-    
+
     QUuid getSimulatorID() const { return _simulatorID; }
     void setSimulatorID(const QUuid& value);
-    void updateSimulatorID(const QUuid& value);
     quint64 getSimulatorIDChangedTime() const { return _simulatorIDChangedTime; }
 
     const QString& getMarketplaceID() const { return _marketplaceID; }
@@ -337,25 +359,6 @@ public:
 
     /// return preferred shape type (actual physical shape may differ)
     virtual ShapeType getShapeType() const { return SHAPE_TYPE_NONE; }
-
-    // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
-    void updatePosition(const glm::vec3& value);
-    void updateDimensions(const glm::vec3& value);
-    void updateRotation(const glm::quat& rotation);
-    void updateDensity(float value);
-    void updateMass(float value);
-    void updateVelocity(const glm::vec3& value);
-    void updateDamping(float value);
-    void updateRestitution(float value);
-    void updateFriction(float value);
-    void updateGravity(const glm::vec3& value);
-    void updateAngularVelocity(const glm::vec3& value);
-    void updateAngularDamping(float value);
-    void updateIgnoreForCollisions(bool value);
-    void updateCollisionsWillMove(bool value);
-    void updateLifetime(float value);
-    void updateCreated(uint64_t value);
-    virtual void updateShapeType(ShapeType type) { /* do nothing */ }
 
     uint32_t getDirtyFlags() const { return _dirtyFlags; }
     void clearDirtyFlags(uint32_t mask = 0xffff) { _dirtyFlags &= ~mask; }
@@ -386,6 +389,31 @@ public:
 
 protected:
 
+    const QUuid& getIDInternal() const { assertLocked(); return _id; }
+    void setIDInternal(const QUuid& id) { assertWriteLocked(); _id = id; }
+    EntityItemID getEntityItemIDInternal() const { assertLocked(); return EntityItemID(_id); }
+    quint64 getLastSimulatedInternal() const;
+
+    // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
+    void updatePosition(const glm::vec3& value);
+    void updateDimensions(const glm::vec3& value);
+    void updateRotation(const glm::quat& rotation);
+    void updateDensity(float value);
+    void updateMass(float value);
+    void updateVelocity(const glm::vec3& value);
+    void updateDamping(float value);
+    void updateRestitution(float value);
+    void updateFriction(float value);
+    void updateGravity(const glm::vec3& value);
+    void updateAngularVelocity(const glm::vec3& value);
+    void updateAngularDamping(float value);
+    void updateIgnoreForCollisions(bool value);
+    void updateCollisionsWillMove(bool value);
+    void updateLifetime(float value);
+    void updateCreated(uint64_t value);
+    virtual void updateShapeType(ShapeType type) { /* do nothing */ }
+    void updateSimulatorID(const QUuid& value);
+
     static bool _sendPhysicsUpdates;
     EntityTypes::EntityType _type;
     QUuid _id;
@@ -404,7 +432,7 @@ protected:
     float _glowLevel;
     float _localRenderAlpha;
     float _density = ENTITY_ITEM_DEFAULT_DENSITY; // kg/m^3
-    // NOTE: _volumeMultiplier is used to allow some mass properties code exist in the EntityItem base class 
+    // NOTE: _volumeMultiplier is used to allow some mass properties code exist in the EntityItem base class
     // rather than in all of the derived classes.  If we ever collapse these classes to one we could do it a
     // different way.
     float _volumeMultiplier = 1.0f;
@@ -458,6 +486,15 @@ protected:
     bool _simulated; // set by EntitySimulation
 
     QHash<QUuid, EntityActionPointer> _objectActions;
+
+    mutable QReadWriteLock _lock;
+    void lockForRead() const { _lock.lockForRead(); }
+    bool tryLockForRead() const { return _lock.tryLockForRead(); }
+    void lockForWrite() const { _lock.lockForWrite(); }
+    bool tryLockForWrite() const { return _lock.tryLockForWrite(); }
+    void unlock() const { _lock.unlock(); }
+    bool isLocked() const;
+    bool isWriteLocked() const;
 };
 
 #endif // hifi_EntityItem_h

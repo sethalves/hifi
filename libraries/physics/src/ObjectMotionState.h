@@ -109,14 +109,14 @@ public:
     virtual float getObjectFriction() const = 0;
     virtual float getObjectLinearDamping() const = 0;
     virtual float getObjectAngularDamping() const = 0;
-    
+
     virtual glm::vec3 getObjectPosition() const = 0;
     virtual glm::quat getObjectRotation() const = 0;
     virtual glm::vec3 getObjectLinearVelocity() const = 0;
     virtual glm::vec3 getObjectAngularVelocity() const = 0;
     virtual glm::vec3 getObjectGravity() const = 0;
 
-    virtual const QUuid& getObjectID() const = 0;
+    virtual const QUuid getObjectID() const = 0;
 
     virtual QUuid getSimulatorID() const = 0;
     virtual void bump() = 0;
