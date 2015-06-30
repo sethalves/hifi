@@ -68,20 +68,22 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+#define DEBUG 1
+
 #if DEBUG
-  #define assertLocked() assert(isLocked);
+  #define assertLocked() assert(isLocked())
 #else
   #define assertLocked()
 #endif
 
 #if DEBUG
-  #define assertWriteLocked() assert(isWriteLocked);
+  #define assertWriteLocked() assert(isWriteLocked())
 #else
   #define assertWriteLocked()
 #endif
 
 #if DEBUG
-  #define assertUnlocked() assert(isLocked);
+  #define assertUnlocked() assert(isUnlocked())
 #else
   #define assertUnlocked()
 #endif
@@ -144,14 +146,13 @@ public:
     quint64 getLastSimulated() const;
     void setLastSimulated(quint64 now);
 
-/////
-
     /// Last edited time of this entity universal usecs
-    quint64 getLastEdited() const { return _lastEdited; }
-    void setLastEdited(quint64 lastEdited)
-        { _lastEdited = _lastUpdated = lastEdited; _changedOnServer = glm::max(lastEdited, _changedOnServer); }
-    float getEditedAgo() const /// Elapsed seconds since this entity was last edited
-        { return (float)(usecTimestampNow() - getLastEdited()) / (float)USECS_PER_SECOND; }
+    quint64 getLastEdited() const;
+    void setLastEdited(quint64 lastEdited);
+     /// Elapsed seconds since this entity was last edited
+    float getEditedAgo() const;
+
+/////
 
     /// Last time we sent out an edit packet for this entity
     quint64 getLastBroadcast() const { return _lastBroadcast; }
@@ -393,6 +394,8 @@ protected:
     void setIDInternal(const QUuid& id) { assertWriteLocked(); _id = id; }
     EntityItemID getEntityItemIDInternal() const { assertLocked(); return EntityItemID(_id); }
     quint64 getLastSimulatedInternal() const;
+    quint64 getLastEditedInternal() const;
+    void setLastEditedInternal(quint64 lastEdited);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
@@ -495,6 +498,7 @@ protected:
     void unlock() const { _lock.unlock(); }
     bool isLocked() const;
     bool isWriteLocked() const;
+    bool isUnlocked() const;
 };
 
 #endif // hifi_EntityItem_h

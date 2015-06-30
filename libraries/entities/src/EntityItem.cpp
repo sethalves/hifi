@@ -138,6 +138,8 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
 
 OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                             EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData) const {
+    assertUnlocked();
+    lockForRead();
     // ALL this fits...
     //    object ID [16 bytes]
     //    ByteCountCoded(type code) [~1 byte]
@@ -149,19 +151,19 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     OctreeElement::AppendState appendState = OctreeElement::COMPLETED; // assume the best
 
     // encode our ID as a byte count coded byte stream
-    QByteArray encodedID = getID().toRfc4122();
+    QByteArray encodedID = getIDInternal().toRfc4122();
 
     // encode our type as a byte count coded byte stream
     ByteCountCoded<quint32> typeCoder = getType();
     QByteArray encodedType = typeCoder;
 
     // last updated (animations, non-physics changes)
-    quint64 updateDelta = getLastUpdated() <= getLastEdited() ? 0 : getLastUpdated() - getLastEdited();
+    quint64 updateDelta = getLastUpdated() <= getLastEditedInternal() ? 0 : getLastUpdated() - getLastEditedInternal();
     ByteCountCoded<quint64> updateDeltaCoder = updateDelta;
     QByteArray encodedUpdateDelta = updateDeltaCoder;
 
     // last simulated (velocity, angular velocity, physics changes)
-    quint64 simulatedDelta = getLastSimulated() <= getLastEdited() ? 0 : getLastSimulated() - getLastEdited();
+    quint64 simulatedDelta = getLastSimulatedInternal() <= getLastEditedInternal() ? 0 : getLastSimulatedInternal() - getLastEditedInternal();
     ByteCountCoded<quint64> simulatedDeltaCoder = simulatedDelta;
     QByteArray encodedSimulatedDelta = simulatedDeltaCoder;
 
@@ -172,13 +174,13 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     // If we are being called for a subsequent pass at appendEntityData() that failed to completely encode this item,
     // then our entityTreeElementExtraEncodeData should include data about which properties we need to append.
-    if (entityTreeElementExtraEncodeData && entityTreeElementExtraEncodeData->entities.contains(getEntityItemID())) {
-        requestedProperties = entityTreeElementExtraEncodeData->entities.value(getEntityItemID());
+    if (entityTreeElementExtraEncodeData && entityTreeElementExtraEncodeData->entities.contains(getEntityItemIDInternal())) {
+        requestedProperties = entityTreeElementExtraEncodeData->entities.value(getEntityItemIDInternal());
     }
 
     LevelDetails entityLevel = packetData->startLevel();
 
-    quint64 lastEdited = getLastEdited();
+    quint64 lastEdited = getLastEditedInternal();
 
     #ifdef WANT_DEBUG
         float editedAgo = getEditedAgo();
@@ -304,9 +306,10 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     // If any part of the model items didn't fit, then the element is considered partial
     if (appendState != OctreeElement::COMPLETED) {
         // add this item into our list for the next appendElementData() pass
-        entityTreeElementExtraEncodeData->entities.insert(getEntityItemID(), propertiesDidntFit);
+        entityTreeElementExtraEncodeData->entities.insert(getEntityItemIDInternal(), propertiesDidntFit);
     }
 
+    unlock();
     return appendState;
 }
 
@@ -328,6 +331,8 @@ int EntityItem::expectedBytes() {
 
 
 int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLeftToRead, ReadBitstreamToTreeParams& args) {
+    assertUnlocked();
+    lockForWrite();
 
     if (args.bitstreamVersion < VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
 
@@ -335,6 +340,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         // be handled by the model subclass and shouldn't call this routine.
         qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... "
                         "ERROR CASE...args.bitstreamVersion < VERSION_ENTITIES_SUPPORT_SPLIT_MTU";
+        unlock();
         return 0;
     }
 
@@ -349,6 +355,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     int bytesRead = 0;
     if (bytesLeftToRead < MINIMUM_HEADER_BYTES) {
+        unlock();
         return 0;
     }
 
@@ -399,7 +406,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     }
 
     #ifdef WANT_DEBUG
-        quint64 lastEdited = getLastEdited();
+        quint64 lastEdited = getLastEditedInternal();
         float editedAgo = getEditedAgo();
         QString agoAsString = formatSecondsElapsed(editedAgo);
         QString ageAsString = formatSecondsElapsed(getAge());
@@ -433,7 +440,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         qCDebug(entities) << "data from server **************** ";
         qCDebug(entities) << "                           entityItemID:" << getEntityItemID();
         qCDebug(entities) << "                                    now:" << now;
-        qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
+        qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEditedInternal(), now);
         qCDebug(entities) << "                   lastEditedFromBuffer:" << debugTime(lastEditedFromBuffer, now);
         qCDebug(entities) << "                              clockSkew:" << debugTimeOnly(clockSkew);
         qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
@@ -525,7 +532,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     #ifdef WANT_DEBUG
         if (overwriteLocalData) {
             qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... changed entity:" << getEntityItemID();
-            qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
+            qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEditedInternal(), now);
             qCDebug(entities) << "                       getLastSimulated:" << debugTime(getLastSimulated(), now);
             qCDebug(entities) << "                         getLastUpdated:" << debugTime(getLastUpdated(), now);
         }
@@ -646,6 +653,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         }
     }
 
+    unlock();
     return bytesRead;
 }
 
@@ -898,7 +906,7 @@ EntityItemProperties EntityItem::getProperties() const {
     assertUnlocked();
     lockForRead();
     EntityItemProperties properties;
-    properties._id = getID();
+    properties._id = getIDInternal();
     properties._idSet = true;
     properties._created = _created;
 
@@ -1002,11 +1010,11 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     if (somethingChanged) {
         uint64_t now = usecTimestampNow();
         #ifdef WANT_DEBUG
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "EntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         #endif
-        setLastEdited(now);
+        setLastEditedInternal(now);
         somethingChangedNotification(); // notify derived classes that something has changed
         if (getDirtyFlags() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES)) {
             // anything that sets the transform or velocity must update _lastSimulated which is used
@@ -1062,6 +1070,37 @@ void EntityItem::setLastSimulated(quint64 now) {
     _lastSimulated = now;
     unlock();
 }
+
+quint64 EntityItem::getLastEdited() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _lastEdited;
+    unlock();
+    return result;
+}
+
+quint64 EntityItem::getLastEditedInternal() const {
+    assertLocked();
+    return _lastEdited;
+}
+
+void EntityItem::setLastEdited(quint64 lastEdited) {
+    assertUnlocked();
+    lockForWrite();
+    setLastEditedInternal(lastEdited);
+    unlock();
+}
+
+void EntityItem::setLastEditedInternal(quint64 lastEdited) {
+    assertWriteLocked();
+    _lastEdited = _lastUpdated = lastEdited;
+    _changedOnServer = glm::max(lastEdited, _changedOnServer);
+}
+
+float EntityItem::getEditedAgo() const {
+    return (float)(usecTimestampNow() - getLastEdited()) / (float)USECS_PER_SECOND;
+}
+
 
 void EntityItem::setCenterPosition(const glm::vec3& position) {
     Transform transformToCenter = getTransformToCenter();
@@ -1486,4 +1525,36 @@ bool EntityItem::isWriteLocked() const {
         return false;
     }
     return true; // either read or write failed, so there is some lock in place.
+}
+
+
+bool EntityItem::isUnlocked() const {
+    // this can't be sure -- this may get unlucky and hit locks from other threads.  what we're actually trying
+    // to discover is if *this* thread hasn't locked the EntityItem.  Try repeatedly to take both kinds of lock.
+    bool readSuccess = false;
+    for (int i=0; i<30; i++) {
+        readSuccess = tryLockForRead();
+        if (readSuccess) {
+            unlock();
+            break;
+        }
+        QThread::usleep(200);
+    }
+
+    bool writeSuccess = false;
+    if (readSuccess) {
+        for (int i=0; i<30; i++) {
+            writeSuccess = tryLockForWrite();
+            if (writeSuccess) {
+                unlock();
+                break;
+            }
+            QThread::usleep(200);
+        }
+    }
+
+    if (readSuccess && writeSuccess) {
+        return true;  // if we can take both kinds of lock, there was no previous lock
+    }
+    return false;
 }
