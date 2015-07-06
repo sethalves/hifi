@@ -103,20 +103,26 @@ EntityItem::~EntityItem() {
     assert(!_physicsInfo);
 }
 
-EntityItemID EntityItem::getEntityItemID(bool doEntityLocking) const {
-    if (doEntityLocking) {
-        assertUnlocked();
-        lockForRead();
-    }
+EntityItemID EntityItem::getEntityItemID() const {
+    assertUnlocked();
+    lockForRead();
     auto result = getEntityItemIDInternal();
-    if (doEntityLocking) {
-        unlock();
-    }
+    unlock();
     return result;
 }
 
+EntityItemID EntityItem::getEntityItemIDInternal() const {
+    return EntityItemID(_id);
+}
 
-EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+
     EntityPropertyFlags requestedProperties;
 
     requestedProperties += PROP_SIMULATION_OWNER;
@@ -149,6 +155,10 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
 
+    if (doLocking) {
+        unlock();
+    }
+
     return requestedProperties;
 }
 
@@ -174,7 +184,8 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     QByteArray encodedType = typeCoder;
 
     // last updated (animations, non-physics changes)
-    quint64 updateDelta = getLastUpdated() <= getLastEditedInternal() ? 0 : getLastUpdated() - getLastEditedInternal();
+    quint64 updateDelta =
+        getLastUpdatedInternal() <= getLastEditedInternal() ? 0 : getLastUpdatedInternal() - getLastEditedInternal();
     ByteCountCoded<quint64> updateDeltaCoder = updateDelta;
     QByteArray encodedUpdateDelta = updateDeltaCoder;
 
@@ -185,7 +196,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
 
     EntityPropertyFlags propertyFlags(PROP_LAST_ITEM);
-    EntityPropertyFlags requestedProperties = getEntityProperties(params);
+    EntityPropertyFlags requestedProperties = getEntityProperties(params, false);
     EntityPropertyFlags propertiesDidntFit = requestedProperties;
 
     // If we are being called for a subsequent pass at appendEntityData() that failed to completely encode this item,
@@ -283,7 +294,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURL());
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
-        APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
+        APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionDataInternal());
 
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
@@ -551,7 +562,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
             qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... changed entity:" << getEntityItemID();
             qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEditedInternal(), now);
             qCDebug(entities) << "                       getLastSimulated:" << debugTime(getLastSimulated(), now);
-            qCDebug(entities) << "                         getLastUpdated:" << debugTime(getLastUpdated(), now);
+            qCDebug(entities) << "                         getLastUpdated:" << debugTime(getLastUpdatedInternal(), now);
         }
     #endif
 
@@ -652,7 +663,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_HREF, QString, setHref);
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescription);
 
-    READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionData);
+    READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionDataInternal);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
@@ -734,6 +745,25 @@ void EntityItem::adjustEditPacketForClockSkew(unsigned char* editPacketBuffer, s
         qCDebug(entities) << "    lastEditedInServerTime: " << lastEditedInServerTime;
     #endif
     //assert(lastEditedInLocalTime > (quint64)0);
+}
+
+void EntityItem::update(const quint64& now) {
+    assertUnlocked();
+    lockForWrite();
+    _lastUpdated = now;
+    unlock();
+}
+
+quint64 EntityItem::getLastUpdated() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLastUpdatedInternal();
+    unlock();
+    return result;
+}
+
+quint64 EntityItem::getLastUpdatedInternal() const {
+    return _lastUpdated;
 }
 
 float EntityItem::computeMass() const {
@@ -995,7 +1025,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getName);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHref);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionData);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionDataInternal);
 
     properties._defaultSettings = false;
 
@@ -1060,7 +1090,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setName);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHref);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionData);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionDataInternal);
 
     if (somethingChanged) {
         uint64_t now = usecTimestampNow();
@@ -1156,6 +1186,35 @@ float EntityItem::getEditedAgo() const {
     return (float)(usecTimestampNow() - getLastEdited()) / (float)USECS_PER_SECOND;
 }
 
+quint64 EntityItem::getLastBroadcast() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _lastBroadcast;
+    unlock();
+    return result;
+}
+
+void EntityItem::setLastBroadcast(quint64 lastBroadcast) {
+    assertUnlocked();
+    lockForWrite();
+    _lastBroadcast = lastBroadcast;
+    unlock();
+}
+
+void EntityItem::markAsChangedOnServer() {
+    assertUnlocked();
+    lockForWrite();
+    _changedOnServer = usecTimestampNow();
+    unlock();
+}
+
+quint64 EntityItem::getLastChangedOnServer() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _changedOnServer;
+    unlock();
+    return result;
+}
 
 void EntityItem::setCenterPosition(const glm::vec3& position) {
     Transform transformToCenter = getTransformToCenter();
@@ -1515,19 +1574,20 @@ void EntityItem::clearSimulationOwnership() {
 }
 
 bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
+    lockForWrite();
     checkWaitingToRemove(simulation);
-    if (!checkWaitingActionData(simulation)) {
-        return false;
-    }
 
     bool result = addActionInternal(simulation, action);
     if (!result) {
         removeAction(simulation, action->getID());
     }
+
+    unlock();
     return result;
 }
 
 bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPointer action) {
+    assertLocked();
     assert(action);
     assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
@@ -1550,10 +1610,6 @@ bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPoi
 bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments) {
     lockForWrite();
     checkWaitingToRemove(simulation);
-    if (!checkWaitingActionData(simulation)) {
-        unlock();
-        return false;
-    }
 
     if (!_objectActions.contains(actionID)) {
         unlock();
@@ -1573,15 +1629,16 @@ bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionI
 }
 
 bool EntityItem::removeAction(EntitySimulation* simulation, const QUuid& actionID) {
+    lockForWrite();
     checkWaitingToRemove(simulation);
-    if (!checkWaitingActionData(simulation)) {
-        return false;;
-    }
 
-    return removeActionInternal(actionID);
+    bool success = removeActionInternal(actionID);
+    unlock();
+    return success;
 }
 
 bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* simulation) {
+    assertWriteLocked();
     if (_objectActions.contains(actionID)) {
         if (!simulation) {
             EntityTree* entityTree = _element ? _element->getTree() : nullptr;
@@ -1604,7 +1661,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
 }
 
 bool EntityItem::clearActions(EntitySimulation* simulation) {
-    _waitingActionData.clear();
+    lockForWrite();
     QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
     while (i != _objectActions.end()) {
         const QUuid id = i.key();
@@ -1613,85 +1670,84 @@ bool EntityItem::clearActions(EntitySimulation* simulation) {
         action->setOwnerEntity(nullptr);
         action->removeFromSimulation(simulation);
     }
+    // empty _serializedActions means no actions for the EntityItem
     _actionsToRemove.clear();
     _allActionsDataCache.clear();
+    unlock();
     return true;
 }
 
-bool EntityItem::deserializeActions(QByteArray allActionsData, EntitySimulation* simulation) const {
-    bool success = true;
-    QVector<QByteArray> serializedActions;
-    if (allActionsData.size() > 0) {
-        QDataStream serializedActionsStream(allActionsData);
-        serializedActionsStream >> serializedActions;
+
+void EntityItem::deserializeActions() {
+    assertUnlocked();
+    lockForWrite();
+    deserializeActionsInternal();
+    unlock();
+}
+
+
+void EntityItem::deserializeActionsInternal() {
+    assertWriteLocked();
+
+    if (!_element) {
+        return;
     }
 
     // Keep track of which actions got added or updated by the new actionData
-    QSet<QUuid> updated;
 
     EntityTree* entityTree = _element ? _element->getTree() : nullptr;
-    if (!simulation) {
-        simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    assert(entityTree);
+    EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    assert(simulation);
+
+    QVector<QByteArray> serializedActions;
+    if (_allActionsDataCache.size() > 0) {
+        QDataStream serializedActionsStream(_allActionsDataCache);
+        serializedActionsStream >> serializedActions;
     }
 
-    if (simulation && entityTree) {
-        foreach(QByteArray serializedAction, serializedActions) {
-            QDataStream serializedActionStream(serializedAction);
-            EntityActionType actionType;
-            QUuid actionID;
-            serializedActionStream >> actionType;
-            serializedActionStream >> actionID;
-            updated << actionID;
+    QSet<QUuid> updated;
 
-            if (_objectActions.contains(actionID)) {
-                EntityActionPointer action = _objectActions[actionID];
-                // TODO: make sure types match?  there isn't currently a way to
-                // change the type of an existing action.
-                action->deserialize(serializedAction);
-            } else {
-                auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
-                if (simulation) {
-                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(_id, false);
-                    EntityActionPointer action = actionFactory->factoryBA(simulation, entity, serializedAction);
-                    if (action) {
-                        entity->addActionInternal(simulation, action);
-                    }
-                } else {
-                    // we can't yet add the action.  This method will be called later.
-                    success = false;
-                }
+    foreach(QByteArray serializedAction, serializedActions) {
+        QDataStream serializedActionStream(serializedAction);
+        EntityActionType actionType;
+        QUuid actionID;
+        serializedActionStream >> actionType;
+        serializedActionStream >> actionID;
+        updated << actionID;
+
+        if (_objectActions.contains(actionID)) {
+            EntityActionPointer action = _objectActions[actionID];
+            // TODO: make sure types match?  there isn't currently a way to
+            // change the type of an existing action.
+            action->deserialize(serializedAction);
+        } else {
+            auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
+
+            // EntityItemPointer entity = entityTree->findEntityByEntityItemID(_id, false);
+            EntityItemPointer entity = shared_from_this();
+            EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
+            if (action) {
+                entity->addActionInternal(simulation, action);
             }
         }
+    }
 
-        // remove any actions that weren't included in the new data.
-        QHash<QUuid, EntityActionPointer>::const_iterator i = _objectActions.begin();
-        while (i != _objectActions.end()) {
-            const QUuid id = i.key();
-            if (!updated.contains(id)) {
-                _actionsToRemove << id;
-            }
-            i++;
+    // remove any actions that weren't included in the new data.
+    QHash<QUuid, EntityActionPointer>::const_iterator i = _objectActions.begin();
+    while (i != _objectActions.end()) {
+        const QUuid id = i.key();
+        if (!updated.contains(id)) {
+            _actionsToRemove << id;
         }
-    } else {
-        // no simulation
-        success = false;
+        i++;
     }
 
-    return success;
-}
-
-bool EntityItem::checkWaitingActionData(EntitySimulation* simulation) const {
-    if (_waitingActionData.size() == 0) {
-        return true;
-    }
-    bool success = deserializeActions(_waitingActionData, simulation);
-    if (success) {
-        _waitingActionData.clear();
-    }
-    return success;
+    return;
 }
 
 void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
+    assertLocked();
     foreach(QUuid actionID, _actionsToRemove) {
         removeActionInternal(actionID, simulation);
     }
@@ -1699,21 +1755,22 @@ void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
 }
 
 void EntityItem::setActionData(QByteArray actionData) {
+    assertUnlocked();
+    lockForWrite();
+    setActionDataInternal(actionData);
+    unlock();
+}
+
+void EntityItem::setActionDataInternal(QByteArray actionData) {
+    assertWriteLocked();
     checkWaitingToRemove();
-    bool success = deserializeActions(actionData);
     _allActionsDataCache = actionData;
-    if (success) {
-        _waitingActionData.clear();
-    } else {
-        _waitingActionData = actionData;
-    }
+    deserializeActionsInternal();
 }
 
 QByteArray EntityItem::serializeActions(bool& success) const {
+    assertLocked();
     QByteArray result;
-    if (!checkWaitingActionData()) {
-        return _waitingActionData;
-    }
 
     if (_objectActions.size() == 0) {
         success = true;
@@ -1742,23 +1799,54 @@ QByteArray EntityItem::serializeActions(bool& success) const {
     return result;
 }
 
-const QByteArray EntityItem::getActionData() const {
+const QByteArray EntityItem::getActionDataInternal() const {
     return _allActionsDataCache;
+}
+
+const QByteArray EntityItem::getActionData() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getActionDataInternal();
+    unlock();
+    return result;
 }
 
 QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     QVariantMap result;
-
-    if (!checkWaitingActionData()) {
-        return result;
-    }
+    lockForRead();
 
     if (_objectActions.contains(actionID)) {
         EntityActionPointer action = _objectActions[actionID];
         result = action->getArguments();
         result["type"] = EntityActionInterface::actionTypeToString(action->getType());
     }
+    unlock();
     return result;
+}
+
+
+
+#define ENABLE_LOCKING 1
+
+#ifdef ENABLE_LOCKING
+void EntityItem::lockForRead() const {
+    _lock.lockForRead();
+}
+
+bool EntityItem::tryLockForRead() const {
+    return _lock.tryLockForRead();
+}
+
+void EntityItem::lockForWrite() const {
+    _lock.lockForWrite();
+}
+
+bool EntityItem::tryLockForWrite() const {
+    return _lock.tryLockForWrite();
+}
+
+void EntityItem::unlock() const {
+    _lock.unlock();
 }
 
 bool EntityItem::isLocked() const {
@@ -1822,3 +1910,13 @@ bool EntityItem::isUnlocked() const {
     }
     return false;
 }
+#else
+void EntityItem::lockForRead() const { }
+bool EntityItem::tryLockForRead() const { return true; }
+void EntityItem::lockForWrite() const { }
+bool EntityItem::tryLockForWrite() const { return true; }
+void EntityItem::unlock() const { }
+bool EntityItem::isLocked() const { return true; }
+bool EntityItem::isWriteLocked() const { return true; }
+bool EntityItem::isUnlocked() const { return true; }
+#endif

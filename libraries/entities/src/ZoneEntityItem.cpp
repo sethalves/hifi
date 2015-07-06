@@ -165,8 +165,8 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
+EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
 
     requestedProperties += PROP_KEYLIGHT_COLOR;
     requestedProperties += PROP_KEYLIGHT_INTENSITY;

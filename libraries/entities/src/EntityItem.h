@@ -92,7 +92,7 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
 /// one directly, instead you must only construct one of it's derived classes with additional features.
-class EntityItem {
+class EntityItem : public std::enable_shared_from_this<EntityItem> {
     // These two classes manage lists of EntityItem pointers and must be able to cleanup pointers when an EntityItem is deleted.
     // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by
     // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
@@ -129,7 +129,7 @@ public:
     // ID and EntityItemID related methods
     const QUuid getID() const { assertUnlocked(); lockForRead(); auto result = getIDInternal(); unlock(); return result; }
     void setID(const QUuid& id) { assertUnlocked(); lockForWrite(); setIDInternal(id); unlock(); }
-    EntityItemID getEntityItemID(bool doEntityLocking = true) const;
+    EntityItemID getEntityItemID() const;
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties() const;
@@ -153,17 +153,15 @@ public:
      /// Elapsed seconds since this entity was last edited
     float getEditedAgo() const;
 
-/////
-
     /// Last time we sent out an edit packet for this entity
-    quint64 getLastBroadcast() const { return _lastBroadcast; }
-    void setLastBroadcast(quint64 lastBroadcast) { _lastBroadcast = lastBroadcast; }
+    quint64 getLastBroadcast() const;
+    void setLastBroadcast(quint64 lastBroadcast);
 
-    void markAsChangedOnServer() {  _changedOnServer = usecTimestampNow();  }
-    quint64 getLastChangedOnServer() const { return _changedOnServer; }
+    void markAsChangedOnServer();
+    quint64 getLastChangedOnServer() const;
 
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
 
     virtual OctreeElement::AppendState appendEntityData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                                 EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData) const;
@@ -177,7 +175,7 @@ public:
                                     OctreeElement::AppendState& appendState) const { /* do nothing*/ };
 
     static EntityItemID readEntityItemIDFromBuffer(const unsigned char* data, int bytesLeftToRead,
-                                    ReadBitstreamToTreeParams& args);
+                                                   ReadBitstreamToTreeParams& args);
 
     virtual int readEntityDataFromBuffer(const unsigned char* data, int bytesLeftToRead, ReadBitstreamToTreeParams& args);
 
@@ -197,8 +195,11 @@ public:
     static void adjustEditPacketForClockSkew(unsigned char* codeColorBuffer, size_t length, int clockSkew);
 
     // perform update
-    virtual void update(const quint64& now) { _lastUpdated = now; }
-    quint64 getLastUpdated() const { return _lastUpdated; }
+    virtual void update(const quint64& now);
+    quint64 getLastUpdated() const;
+    quint64 getLastUpdatedInternal() const;
+
+/////
 
     // perform linear extrapolation for SimpleEntitySimulation
     void simulate(const quint64& now);
@@ -401,15 +402,18 @@ public:
     bool hasActions() { return !_objectActions.empty(); }
     QList<QUuid> getActionIDs() { return _objectActions.keys(); }
     QVariantMap getActionArguments(const QUuid& actionID) const;
+    void deserializeActions();
 
 protected:
 
     const QUuid& getIDInternal() const { assertLocked(); return _id; }
     void setIDInternal(const QUuid& id) { assertWriteLocked(); _id = id; }
-    EntityItemID getEntityItemIDInternal() const { assertLocked(); return EntityItemID(_id); }
     quint64 getLastSimulatedInternal() const;
     quint64 getLastEditedInternal() const;
     void setLastEditedInternal(quint64 lastEdited);
+    const QByteArray getActionDataInternal() const;
+    void setActionDataInternal(QByteArray actionData);
+    EntityItemID getEntityItemIDInternal() const;
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
@@ -502,7 +506,7 @@ protected:
 
     bool addActionInternal(EntitySimulation* simulation, EntityActionPointer action);
     bool removeActionInternal(const QUuid& actionID, EntitySimulation* simulation = nullptr);
-    bool deserializeActions(QByteArray allActionsData, EntitySimulation* simulation = nullptr) const;
+    void deserializeActionsInternal();
     QByteArray serializeActions(bool& success) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
 
@@ -511,17 +515,15 @@ protected:
     // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
     // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
     // are used to keep track of and work around this situation.
-    bool checkWaitingActionData(EntitySimulation* simulation = nullptr) const;
     void checkWaitingToRemove(EntitySimulation* simulation = nullptr);
-    mutable QByteArray _waitingActionData;
     mutable QSet<QUuid> _actionsToRemove;
 
     mutable QReadWriteLock _lock;
-    void lockForRead() const { _lock.lockForRead(); }
-    bool tryLockForRead() const { return _lock.tryLockForRead(); }
-    void lockForWrite() const { _lock.lockForWrite(); }
-    bool tryLockForWrite() const { return _lock.tryLockForWrite(); }
-    void unlock() const { _lock.unlock(); }
+    void lockForRead() const;
+    bool tryLockForRead() const;
+    void lockForWrite() const;
+    bool tryLockForWrite() const;
+    void unlock() const;
     bool isLocked() const;
     bool isWriteLocked() const;
     bool isUnlocked() const;

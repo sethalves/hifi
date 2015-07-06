@@ -193,8 +193,8 @@ int ParticleEffectEntityItem::readEntitySubclassDataFromBuffer(const unsigned ch
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ParticleEffectEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
+EntityPropertyFlags ParticleEffectEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
 
     requestedProperties += PROP_COLOR;
     requestedProperties += PROP_ANIMATION_FPS;

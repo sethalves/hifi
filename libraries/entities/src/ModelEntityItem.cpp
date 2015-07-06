@@ -136,8 +136,8 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
 }
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
+EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
 
     requestedProperties += PROP_MODEL_URL;
     requestedProperties += PROP_COMPOUND_SHAPE_URL;

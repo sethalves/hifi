@@ -101,8 +101,8 @@ int TextEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags TextEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
+EntityPropertyFlags TextEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
     requestedProperties += PROP_TEXT;
     requestedProperties += PROP_LINE_HEIGHT;
     requestedProperties += PROP_TEXT_COLOR;

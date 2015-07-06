@@ -158,8 +158,8 @@ int LightEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags LightEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
+EntityPropertyFlags LightEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
     requestedProperties += PROP_IS_SPOTLIGHT;
     requestedProperties += PROP_COLOR;
     requestedProperties += PROP_INTENSITY;
