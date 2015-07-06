@@ -29,6 +29,7 @@
 #include "EntityItemProperties.h"
 #include "EntityItemPropertiesDefaults.h"
 #include "EntityTypes.h"
+#include "SimulationOwner.h"
 
 class EntitySimulation;
 class EntityTreeElement;
@@ -59,7 +60,6 @@ const float ACTIVATION_ALIGNMENT_DOT = 0.99990f;
 const float ACTIVATION_LINEAR_VELOCITY_DELTA = 0.01f;
 const float ACTIVATION_GRAVITY_DELTA = 0.1f;
 const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
-
 
 #define DONT_ALLOW_INSTANTIATION virtual void pureVirtualFunctionPlaceHolder() = 0;
 #define ALLOW_INSTANTIATION virtual void pureVirtualFunctionPlaceHolder() { };
@@ -112,8 +112,9 @@ public:
         DIRTY_LIFETIME = 0x0100,
         DIRTY_UPDATEABLE = 0x0200,
         DIRTY_MATERIAL = 0x00400,
-        DIRTY_PHYSICS_ACTIVATION = 0x0800, // we want to activate the object
-        DIRTY_SIMULATOR_ID = 0x1000,
+        DIRTY_PHYSICS_ACTIVATION = 0x0800, // should activate object in physics engine
+        DIRTY_SIMULATOR_OWNERSHIP = 0x1000, // should claim simulator ownership
+        DIRTY_SIMULATOR_ID = 0x2000, // the simulatorID has changed
         DIRTY_TRANSFORM = DIRTY_POSITION | DIRTY_ROTATION,
         DIRTY_VELOCITIES = DIRTY_LINEAR_VELOCITY | DIRTY_ANGULAR_VELOCITY
     };
@@ -342,9 +343,15 @@ public:
     const QString& getUserData() const { return _userData; }
     void setUserData(const QString& value) { _userData = value; }
 
-    QUuid getSimulatorID() const { return _simulatorID; }
-    void setSimulatorID(const QUuid& value);
-    quint64 getSimulatorIDChangedTime() const { return _simulatorIDChangedTime; }
+    const SimulationOwner& getSimulationOwner() const { return _simulationOwner; }
+    void setSimulationOwner(const QUuid& id, quint8 priority);
+    void setSimulationOwner(const SimulationOwner& owner);
+    void promoteSimulationPriority(quint8 priority);
+
+    quint8 getSimulationPriority() const { return _simulationOwner.getPriority(); }
+    QUuid getSimulatorID() const { return _simulationOwner.getID(); }
+    void updateSimulatorID(const QUuid& value);
+    void clearSimulationOwnership();
 
     const QString& getMarketplaceID() const { return _marketplaceID; }
     void setMarketplaceID(const QString& value) { _marketplaceID = value; }
@@ -362,7 +369,7 @@ public:
     virtual ShapeType getShapeType() const { return SHAPE_TYPE_NONE; }
 
     uint32_t getDirtyFlags() const { return _dirtyFlags; }
-    void clearDirtyFlags(uint32_t mask = 0xffff) { _dirtyFlags &= ~mask; }
+    void clearDirtyFlags(uint32_t mask = 0xffffffff) { _dirtyFlags &= ~mask; }
 
     bool isMoving() const;
 
@@ -383,10 +390,17 @@ public:
 
     void getAllTerseUpdateProperties(EntityItemProperties& properties) const;
 
+    void flagForOwnership() { _dirtyFlags |= DIRTY_SIMULATOR_OWNERSHIP; }
+
     bool addAction(EntitySimulation* simulation, EntityActionPointer action);
     bool updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments);
     bool removeAction(EntitySimulation* simulation, const QUuid& actionID);
-    void clearActions(EntitySimulation* simulation);
+    bool clearActions(EntitySimulation* simulation);
+    void setActionData(QByteArray actionData);
+    const QByteArray getActionData() const;
+    bool hasActions() { return !_objectActions.empty(); }
+    QList<QUuid> getActionIDs() { return _objectActions.keys(); }
+    QVariantMap getActionArguments(const QUuid& actionID) const;
 
 protected:
 
@@ -457,8 +471,7 @@ protected:
     bool _collisionsWillMove;
     bool _locked;
     QString _userData;
-    QUuid _simulatorID; // id of Node which is currently responsible for simulating this Entity
-    quint64 _simulatorIDChangedTime; // when was _simulatorID last updated?
+    SimulationOwner _simulationOwner;
     QString _marketplaceID;
     QString _name;
     QString _href; //Hyperlink href
@@ -488,7 +501,21 @@ protected:
     void* _physicsInfo = nullptr; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
+    bool addActionInternal(EntitySimulation* simulation, EntityActionPointer action);
+    bool removeActionInternal(const QUuid& actionID, EntitySimulation* simulation = nullptr);
+    bool deserializeActions(QByteArray allActionsData, EntitySimulation* simulation = nullptr) const;
+    QByteArray serializeActions(bool& success) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
+
+    static int _maxActionsDataSize;
+    mutable QByteArray _allActionsDataCache;
+    // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
+    // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
+    // are used to keep track of and work around this situation.
+    bool checkWaitingActionData(EntitySimulation* simulation = nullptr) const;
+    void checkWaitingToRemove(EntitySimulation* simulation = nullptr);
+    mutable QByteArray _waitingActionData;
+    mutable QSet<QUuid> _actionsToRemove;
 
     mutable QReadWriteLock _lock;
     void lockForRead() const { _lock.lockForRead(); }
