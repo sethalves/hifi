@@ -102,8 +102,6 @@ public:
                          bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const;
 
-    virtual void debugDump() const;
-
     static const xColor DEFAULT_KEYLIGHT_COLOR;
     static const float DEFAULT_KEYLIGHT_INTENSITY;
     static const float DEFAULT_KEYLIGHT_AMBIENT_INTENSITY;
@@ -112,6 +110,9 @@ public:
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
     
 protected:
+
+    virtual void debugDump() const;
+
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;
     float _keyLightIntensity;

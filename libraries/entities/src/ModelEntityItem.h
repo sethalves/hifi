@@ -46,7 +46,6 @@ public:
 
     virtual void update(const quint64& now);
     virtual bool needsToCallUpdate() const;
-    virtual void debugDump() const;
 
     void updateShapeType(ShapeType type);
     virtual ShapeType getShapeType() const;
@@ -124,6 +123,7 @@ public:
     
 protected:
 
+    virtual void debugDump() const;
     bool isAnimatingSomething() const;
 
     rgbColor _color;

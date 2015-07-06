@@ -203,11 +203,9 @@ public:
     void simulate(const quint64& now);
     void simulateKinematicMotion(float timeElapsed, bool setFlags=true);
 
+    virtual bool needsToCallUpdate() const { assertUnlocked(); return false; }
+
 /////
-
-    virtual bool needsToCallUpdate() const { return false; }
-
-    virtual void debugDump() const;
 
     virtual bool supportsDetailedRayIntersection() const { return false; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
@@ -415,6 +413,7 @@ protected:
     void setActionDataInternal(QByteArray actionData);
     EntityItemID getEntityItemIDInternal() const;
     void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
+    virtual void debugDump() const;
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

@@ -47,8 +47,6 @@ class PolyVoxEntityItem : public EntityItem {
                          bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const { return false; }
 
-    virtual void debugDump() const;
-
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
     virtual const glm::vec3& getVoxelVolumeSize() const { return _voxelVolumeSize; }
 
@@ -88,6 +86,8 @@ class PolyVoxEntityItem : public EntityItem {
     static QByteArray makeEmptyVoxelData(quint16 voxelXSize = 16, quint16 voxelYSize = 16, quint16 voxelZSize = 16);
 
  protected:
+
+    virtual void debugDump() const;
     virtual void updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
         _voxelSurfaceStyle = voxelSurfaceStyle;
     }

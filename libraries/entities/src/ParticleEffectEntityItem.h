@@ -59,8 +59,6 @@ public:
     void updateShapeType(ShapeType type);
     virtual ShapeType getShapeType() const { return _shapeType; }
 
-    virtual void debugDump() const;
-
     static const float DEFAULT_ANIMATION_FRAME_INDEX;
     void setAnimationFrameIndex(float value);
     void setAnimationSettings(const QString& value);
@@ -130,6 +128,7 @@ public:
 
 protected:
 
+    virtual void debugDump() const;
     bool isAnimatingSomething() const;
     void stepSimulation(float deltaTime);
     void extendBounds(const glm::vec3& point);

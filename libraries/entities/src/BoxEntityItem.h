@@ -53,9 +53,10 @@ public:
     
     virtual ShapeType getShapeType() const { return SHAPE_TYPE_BOX; }
 
+protected:
+
     virtual void debugDump() const;
 
-protected:
     rgbColor _color;
 };
 

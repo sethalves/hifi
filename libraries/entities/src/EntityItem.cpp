@@ -719,6 +719,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 }
 
 void EntityItem::debugDump() const {
+    assertLocked();
     auto position = getPosition();
     qCDebug(entities) << "EntityItem id:" << getEntityItemID();
     qCDebug(entities, " edited ago:%f", (double)getEditedAgo());

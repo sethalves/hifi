@@ -67,11 +67,13 @@ class LineEntityItem : public EntityItem {
                          bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
                          void** intersectedObject, bool precisionPicking) const { return false; }
 
-    virtual void debugDump() const;
     static const float DEFAULT_LINE_WIDTH;
     static const int MAX_POINTS_PER_LINE;
 
  protected:
+
+    virtual void debugDump() const;
+
     rgbColor _color;
     float _lineWidth;
     bool _pointsChanged;
