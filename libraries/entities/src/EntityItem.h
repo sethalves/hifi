@@ -199,11 +199,11 @@ public:
     quint64 getLastUpdated() const;
     quint64 getLastUpdatedInternal() const;
 
-/////
-
     // perform linear extrapolation for SimpleEntitySimulation
     void simulate(const quint64& now);
     void simulateKinematicMotion(float timeElapsed, bool setFlags=true);
+
+/////
 
     virtual bool needsToCallUpdate() const { return false; }
 
@@ -414,6 +414,7 @@ protected:
     const QByteArray getActionDataInternal() const;
     void setActionDataInternal(QByteArray actionData);
     EntityItemID getEntityItemIDInternal() const;
+    void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

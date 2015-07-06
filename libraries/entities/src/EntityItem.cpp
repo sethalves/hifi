@@ -695,7 +695,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
             #endif
             // we want to extrapolate the motion forward to compensate for packet travel time, but
             // we don't want the side effect of flag setting.
-            simulateKinematicMotion(skipTimeForward, false);
+            simulateKinematicMotionInternal(skipTimeForward, false);
         }
     }
 
@@ -807,6 +807,8 @@ void EntityItem::setMass(float mass) {
 }
 
 void EntityItem::simulate(const quint64& now) {
+    assertUnlocked();
+    lockForWrite();
     if (_lastSimulated == 0) {
         _lastSimulated = now;
     }
@@ -852,11 +854,19 @@ void EntityItem::simulate(const quint64& now) {
         qCDebug(entities) << "     ********** EntityItem::simulate() .... SETTING _lastSimulated=" << _lastSimulated;
     #endif
 
-    simulateKinematicMotion(timeElapsed);
+    simulateKinematicMotionInternal(timeElapsed);
     _lastSimulated = now;
+    unlock();
 }
 
 void EntityItem::simulateKinematicMotion(float timeElapsed, bool setFlags) {
+    assertUnlocked();
+    lockForWrite();
+    simulateKinematicMotionInternal(timeElapsed, setFlags);
+    unlock();
+}
+
+void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlags) {
     if (hasActions()) {
         return;
     }
