@@ -171,10 +171,10 @@ public:
     void getEntities(const AACube& box, QVector<EntityItemPointer>& foundEntities);
 
     EntityItemPointer getEntityWithID(uint32_t id) const;
-    EntityItemPointer getEntityWithEntityItemID(const EntityItemID& id) const;
+    EntityItemPointer getEntityWithEntityItemID(const EntityItemID& id, bool doEntityLocking = true) const;
     void getEntitiesInside(const AACube& box, QVector<EntityItemPointer>& foundEntities);
 
-    EntityItemPointer getEntityWithEntityItemID(const EntityItemID& id);
+    EntityItemPointer getEntityWithEntityItemID(const EntityItemID& id, bool doEntityLocking = true);
 
     void cleanupEntities(); /// called by EntityTree on cleanup this will free all entities
     bool removeEntityWithEntityItemID(const EntityItemID& id);

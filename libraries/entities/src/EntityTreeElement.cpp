@@ -616,11 +616,11 @@ void EntityTreeElement::getEntities(const AACube& box, QVector<EntityItemPointer
     }
 }
 
-EntityItemPointer EntityTreeElement::getEntityWithEntityItemID(const EntityItemID& id) const {
+EntityItemPointer EntityTreeElement::getEntityWithEntityItemID(const EntityItemID& id, bool doEntityLocking) const {
     EntityItemPointer foundEntity = NULL;
     uint16_t numberOfEntities = _entityItems->size();
     for (uint16_t i = 0; i < numberOfEntities; i++) {
-        if ((*_entityItems)[i]->getEntityItemID() == id) {
+        if ((*_entityItems)[i]->getEntityItemID(doEntityLocking) == id) {
             foundEntity = (*_entityItems)[i];
             break;
         }
@@ -628,11 +628,11 @@ EntityItemPointer EntityTreeElement::getEntityWithEntityItemID(const EntityItemI
     return foundEntity;
 }
    
-EntityItemPointer EntityTreeElement::getEntityWithEntityItemID(const EntityItemID& id) {
+EntityItemPointer EntityTreeElement::getEntityWithEntityItemID(const EntityItemID& id, bool doEntityLocking) {
     EntityItemPointer foundEntity = NULL;
     uint16_t numberOfEntities = _entityItems->size();
     for (uint16_t i = 0; i < numberOfEntities; i++) {
-        if ((*_entityItems)[i]->getEntityItemID() == id) {
+        if ((*_entityItems)[i]->getEntityItemID(doEntityLocking) == id) {
             foundEntity = (*_entityItems)[i];
             break;
         }

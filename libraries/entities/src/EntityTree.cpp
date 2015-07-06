@@ -558,16 +558,17 @@ void EntityTree::findEntities(const AABox& box, QVector<EntityItemPointer>& foun
     foundEntities.swap(args._foundEntities);
 }
 
-EntityItemPointer EntityTree::findEntityByID(const QUuid& id) {
+EntityItemPointer EntityTree::findEntityByID(const QUuid& id, bool doEntityLocking) {
     EntityItemID entityID(id);
-    return findEntityByEntityItemID(entityID);
+    return findEntityByEntityItemID(entityID, doEntityLocking);
 }
 
-EntityItemPointer EntityTree::findEntityByEntityItemID(const EntityItemID& entityID) /*const*/ {
+EntityItemPointer EntityTree::findEntityByEntityItemID(const EntityItemID& entityID,
+                                                       bool doEntityLocking) {
     EntityItemPointer foundEntity = NULL;
     EntityTreeElement* containingElement = getContainingElement(entityID);
     if (containingElement) {
-        foundEntity = containingElement->getEntityWithEntityItemID(entityID);
+        foundEntity = containingElement->getEntityWithEntityItemID(entityID, doEntityLocking);
     }
     return foundEntity;
 }

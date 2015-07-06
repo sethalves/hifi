@@ -129,7 +129,7 @@ public:
     // ID and EntityItemID related methods
     const QUuid getID() const { assertUnlocked(); lockForRead(); auto result = getIDInternal(); unlock(); return result; }
     void setID(const QUuid& id) { assertUnlocked(); lockForWrite(); setIDInternal(id); unlock(); }
-    EntityItemID getEntityItemID() const;
+    EntityItemID getEntityItemID(bool doEntityLocking = true) const;
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties() const;

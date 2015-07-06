@@ -103,11 +103,15 @@ EntityItem::~EntityItem() {
     assert(!_physicsInfo);
 }
 
-EntityItemID EntityItem::getEntityItemID() const {
-    assertUnlocked();
-    lockForRead();
+EntityItemID EntityItem::getEntityItemID(bool doEntityLocking) const {
+    if (doEntityLocking) {
+        assertUnlocked();
+        lockForRead();
+    }
     auto result = getEntityItemIDInternal();
-    unlock();
+    if (doEntityLocking) {
+        unlock();
+    }
     return result;
 }
 
@@ -1647,7 +1651,7 @@ bool EntityItem::deserializeActions(QByteArray allActionsData, EntitySimulation*
             } else {
                 auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
                 if (simulation) {
-                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(_id);
+                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(_id, false);
                     EntityActionPointer action = actionFactory->factoryBA(simulation, entity, serializedAction);
                     if (action) {
                         entity->addActionInternal(simulation, action);

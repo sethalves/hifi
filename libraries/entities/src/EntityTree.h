@@ -99,8 +99,8 @@ public:
     /// \param position point of query in world-frame (meters)
     /// \param targetRadius radius of query (meters)
     EntityItemPointer findClosestEntity(glm::vec3 position, float targetRadius);
-    EntityItemPointer findEntityByID(const QUuid& id);
-    EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID);
+    EntityItemPointer findEntityByID(const QUuid& id, bool doEntityLocking = true);
+    EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID, bool doEntityLocking = true);
 
     EntityItemID assignEntityID(const EntityItemID& entityItemID); /// Assigns a known ID for a creator token ID
 
