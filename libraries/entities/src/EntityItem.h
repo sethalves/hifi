@@ -429,7 +429,6 @@ protected:
     void updateLifetime(float value);
     void updateCreated(uint64_t value);
     virtual void updateShapeType(ShapeType type) { /* do nothing */ }
-    void updateSimulatorID(const QUuid& value);
 
     static bool _sendPhysicsUpdates;
     EntityTypes::EntityType _type;
