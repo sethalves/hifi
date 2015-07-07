@@ -93,12 +93,6 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
 /// one directly, instead you must only construct one of it's derived classes with additional features.
 class EntityItem : public std::enable_shared_from_this<EntityItem> {
-    // These two classes manage lists of EntityItem pointers and must be able to cleanup pointers when an EntityItem is deleted.
-    // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by
-    // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
-    // do cleanup.
-    friend class EntityTreeElement;
-    // friend class EntitySimulation;
 public:
     enum EntityDirtyFlags {
         DIRTY_POSITION = 0x0001,
@@ -370,6 +364,7 @@ public:
     void* getPhysicsInfo() const;
     void setPhysicsInfo(void* data);
 
+    void setElement(EntityTreeElement* element);
     EntityTreeElement* getElement() const;
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
@@ -400,8 +395,10 @@ public:
     QVariantMap getActionArguments(const QUuid& actionID) const;
     void deserializeActions();
 
-protected:
     virtual void debugDump() const;
+
+protected:
+    virtual void debugDumpInternal() const;
 
     const QUuid& getIDInternal() const { assertLocked(); return _id; }
     void setIDInternal(const QUuid& id) { assertWriteLocked(); _id = id; }
@@ -580,7 +577,6 @@ protected:
     // DirtyFlags are set whenever a property changes that the EntitySimulation needs to know about.
     uint32_t _dirtyFlags;   // things that have changed from EXTERNAL changes (via script or packet) but NOT from simulation
 
-    // these backpointers are only ever set/cleared by friends:
     EntityTreeElement* _element = nullptr; // set by EntityTreeElement
     void* _physicsInfo = nullptr; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation

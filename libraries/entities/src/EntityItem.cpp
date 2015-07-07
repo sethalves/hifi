@@ -434,7 +434,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         qCDebug(entities) << "------------------------------------------";
         qCDebug(entities) << "Loading entity " << getEntityItemID() << " from buffer...";
         qCDebug(entities) << "------------------------------------------";
-        debugDump();
+        debugDumpInternal();
         qCDebug(entities) << "------------------------------------------";
         qCDebug(entities) << "    _created =" << _created;
         qCDebug(entities) << "    age=" << getAge() << "seconds - " << ageAsString;
@@ -494,12 +494,12 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         overwriteLocalData = false;
         #ifdef WANT_DEBUG
             qCDebug(entities) << "IGNORING old data from server!!! ****************";
-            debugDump();
+            debugDumpInternal();
         #endif
     } else {
         #ifdef WANT_DEBUG
             qCDebug(entities) << "USING NEW data from server!!! ****************";
-            debugDump();
+            debugDumpInternal();
         #endif
 
         // don't allow _lastEdited to be in the future
@@ -714,6 +714,13 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 }
 
 void EntityItem::debugDump() const {
+    assertUnlocked();
+    lockForRead();
+    debugDumpInternal();
+    unlock();
+}
+
+void EntityItem::debugDumpInternal() const {
     assertLocked();
     auto position = getPositionInternal();
     qCDebug(entities) << "EntityItem id:" << getEntityItemID();
@@ -1088,6 +1095,13 @@ void EntityItem::setPhysicsInfo(void* data) {
 void EntityItem::setPhysicsInfoInternal(void* data) {
     assertWriteLocked();
     _physicsInfo = data;
+}
+
+void EntityItem::setElement(EntityTreeElement* element) {
+    assertUnlocked();
+    lockForWrite();
+    _element = element;
+    unlock();
 }
 
 EntityTreeElement* EntityItem::getElement() const {

@@ -644,8 +644,8 @@ void EntityTreeElement::cleanupEntities() {
     uint16_t numberOfEntities = _entityItems->size();
     for (uint16_t i = 0; i < numberOfEntities; i++) {
         EntityItemPointer entity = (*_entityItems)[i];
-        entity->_element = NULL;
-        
+        entity->setElement(nullptr);
+
         // NOTE: We explicitly don't delete the EntityItem here because since we only
         // access it by smart pointers, when we remove it from the _entityItems
         // we know that it will be deleted.
@@ -660,7 +660,7 @@ bool EntityTreeElement::removeEntityWithEntityItemID(const EntityItemID& id) {
     for (uint16_t i = 0; i < numberOfEntities; i++) {
         if ((*_entityItems)[i]->getEntityItemID() == id) {
             foundEntity = true;
-            (*_entityItems)[i]->_element = NULL;
+            (*_entityItems)[i]->setElement(nullptr);
             _entityItems->removeAt(i);
             break;
         }
@@ -671,8 +671,8 @@ bool EntityTreeElement::removeEntityWithEntityItemID(const EntityItemID& id) {
 bool EntityTreeElement::removeEntityItem(EntityItemPointer entity) {
     int numEntries = _entityItems->removeAll(entity);
     if (numEntries > 0) {
-        assert(entity->_element == this);
-        entity->_element = NULL;
+        assert(entity->getElement() == this);
+        entity->setElement(nullptr);
         return true;
     }
     return false;
@@ -787,9 +787,9 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
 
 void EntityTreeElement::addEntityItem(EntityItemPointer entity) {
     assert(entity);
-    assert(entity->_element == NULL);
+    assert(entity->getElement() == nullptr);
     _entityItems->push_back(entity);
-    entity->_element = this;
+    entity->setElement(this);
 }
 
 // will average a "common reduced LOD view" from the the child elements...
