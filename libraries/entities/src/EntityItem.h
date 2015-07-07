@@ -230,11 +230,11 @@ public:
     glm::quat getRotation() const;
     void setRotation(const glm::quat& rotation);
 
-///////
-
     // Hyperlink related getters and setters
-    QString getHref() const { return _href; }
-    void setHref(QString value) { _href = value; }
+    QString getHref() const;
+    void setHref(QString value);
+
+///////
 
     QString getDescription() const { return _description; }
     void setDescription(QString value) { _description = value; }
@@ -420,6 +420,8 @@ protected:
     void setPositionInternal(const glm::vec3& value);
     glm::quat getRotationInternal() const;
     void setRotationInternal(const glm::quat& rotation);
+    QString getHrefInternal() const;
+    void setHrefInternal(QString value);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

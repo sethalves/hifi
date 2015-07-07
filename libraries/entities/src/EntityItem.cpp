@@ -292,7 +292,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, getMarketplaceID());
         APPEND_ENTITY_PROPERTY(PROP_NAME, getName());
         APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURL());
-        APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
+        APPEND_ENTITY_PROPERTY(PROP_HREF, getHrefInternal());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionDataInternal());
 
@@ -660,7 +660,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     READ_ENTITY_PROPERTY(PROP_NAME, QString, setName);
     READ_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
-    READ_ENTITY_PROPERTY(PROP_HREF, QString, setHref);
+    READ_ENTITY_PROPERTY(PROP_HREF, QString, setHrefInternal);
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescription);
 
     READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionDataInternal);
@@ -1038,7 +1038,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(userData, getUserData);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getName);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHref);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHrefInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionDataInternal);
 
@@ -1106,7 +1106,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(userData, setUserData);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(marketplaceID, setMarketplaceID);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setName);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHref);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHrefInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionDataInternal);
 
@@ -1339,6 +1339,31 @@ void EntityItem::setRotation(const glm::quat& rotation) {
 void EntityItem::setRotationInternal(const glm::quat& rotation) {
     assertWriteLocked();
     _transform.setRotation(rotation);
+}
+
+QString EntityItem::getHref() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getHrefInternal();
+    unlock();
+    return result;
+}
+
+QString EntityItem::getHrefInternal() const {
+    assertLocked();
+    return _href;
+}
+
+void EntityItem::setHref(QString value) {
+    assertUnlocked();
+    lockForWrite();
+    setHrefInternal(value);
+    unlock();
+}
+
+void EntityItem::setHrefInternal(QString value) {
+    assertWriteLocked();
+    _href = value;
 }
 
 void EntityItem::setDimensions(const glm::vec3& value) {
