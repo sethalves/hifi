@@ -27,7 +27,7 @@ EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
-    glm::vec3 oldPosition = getPositionInternal(), oldDimensions = getDimensions();
+    glm::vec3 oldPosition = getPositionInternal(), oldDimensions = getDimensionsInternal();
     glm::quat oldRotation = getRotationInternal();
     
     setNewProperties();
@@ -43,7 +43,7 @@ void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     }
     if (oldPosition != getPositionInternal() ||
         oldRotation != getRotationInternal() ||
-        oldDimensions != getDimensions()) {
+        oldDimensions != getDimensionsInternal()) {
         _needsInitialSimulation = true;
     }
 }

@@ -273,7 +273,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getAngularVelocity());
         APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, getAcceleration());
 
-        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getDimensions()); // NOTE: PROP_RADIUS obsolete
+        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getDimensionsInternal()); // NOTE: PROP_RADIUS obsolete
         APPEND_ENTITY_PROPERTY(PROP_DENSITY, getDensity());
         APPEND_ENTITY_PROPERTY(PROP_GRAVITY, getGravity());
         APPEND_ENTITY_PROPERTY(PROP_DAMPING, getDamping());
@@ -724,7 +724,7 @@ void EntityItem::debugDump() const {
     qCDebug(entities) << "EntityItem id:" << getEntityItemID();
     qCDebug(entities, " edited ago:%f", (double)getEditedAgo());
     qCDebug(entities, " position:%f,%f,%f", (double)position.x, (double)position.y, (double)position.z);
-    qCDebug(entities) << " dimensions:" << getDimensions();
+    qCDebug(entities) << " dimensions:" << getDimensionsInternal();
 }
 
 // adjust any internal timestamps to fix clock skew for this server
@@ -768,7 +768,12 @@ quint64 EntityItem::getLastUpdatedInternal() const {
 }
 
 float EntityItem::computeMass() const {
-    return _density * _volumeMultiplier * getDimensions().x * getDimensions().y * getDimensions().z;
+    assertUnlocked();
+    lockForRead();
+    auto result = _density * _volumeMultiplier *
+        getDimensionsInternal().x * getDimensionsInternal().y * getDimensionsInternal().z;
+    unlock();
+    return result;
 }
 
 void EntityItem::setDensity(float density) {
@@ -791,11 +796,13 @@ void EntityItem::updateDensity(float density) {
 }
 
 void EntityItem::setMass(float mass) {
+    assertUnlocked();
+    lockForWrite();
     // Setting the mass actually changes the _density (at fixed volume), however
     // we must protect the density range to help maintain stability of physics simulation
     // therefore this method might not accept the mass that is supplied.
 
-    float volume = _volumeMultiplier * getDimensions().x * getDimensions().y * getDimensions().z;
+    float volume = _volumeMultiplier * getDimensionsInternal().x * getDimensionsInternal().y * getDimensionsInternal().z;
 
     // compute new density
     const float MIN_VOLUME = 1.0e-6f; // 0.001mm^3
@@ -805,6 +812,7 @@ void EntityItem::setMass(float mass) {
     } else {
         _density = glm::max(glm::min(mass / volume, ENTITY_ITEM_MAX_DENSITY), ENTITY_ITEM_MIN_DENSITY);
     }
+    unlock();
 }
 
 void EntityItem::simulate(const quint64& now) {
@@ -930,7 +938,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         #ifdef WANT_DEBUG
             qCDebug(entities) << "  EntityItem::simulate()....";
             qCDebug(entities) << "    timeElapsed:" << timeElapsed;
-            qCDebug(entities) << "    old AACube:" << getMaximumAACube();
+            qCDebug(entities) << "    old AACube:" << getMaximumAACubeInternal();
             qCDebug(entities) << "    old position:" << position;
             qCDebug(entities) << "    old velocity:" << velocity;
             qCDebug(entities) << "    old getAABox:" << getAABoxInternal();
@@ -960,7 +968,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         #ifdef WANT_DEBUG
             qCDebug(entities) << "    new position:" << position;
             qCDebug(entities) << "    new velocity:" << velocity;
-            qCDebug(entities) << "    new AACube:" << getMaximumAACube();
+            qCDebug(entities) << "    new AACube:" << getMaximumAACubeInternal();
             qCDebug(entities) << "    old getAABox:" << getAABoxInternal();
         #endif
     }
@@ -975,7 +983,7 @@ glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     lockForRead();
     glm::mat4 translation = glm::translate(getPositionInternal());
     glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
-    glm::mat4 scale = glm::scale(getDimensions());
+    glm::mat4 scale = glm::scale(getDimensionsInternal());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
     unlock();
     return translation * rotation * scale * registration;
@@ -1012,7 +1020,7 @@ EntityItemProperties EntityItem::getProperties() const {
     properties._type = getTypeInternal();
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwner);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getPositionInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensions); // NOTE: radius is obsolete
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensionsInternal); // NOTE: radius is obsolete
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(rotation, getRotationInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(density, getDensity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(velocity, getVelocity);
@@ -1417,9 +1425,28 @@ void EntityItem::setGlowLevelInternal(float glowLevel) {
     _glowLevel = glowLevel;
 }
 
+glm::vec3 EntityItem::getDimensions() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getDimensionsInternal();
+    unlock();
+    return result;
+}
 
+glm::vec3 EntityItem::getDimensionsInternal() const {
+    assertLocked();
+    return _transform.getScale();
+}
 
 void EntityItem::setDimensions(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setDimensionsInternal(value);
+    unlock();
+}
+
+void EntityItem::setDimensionsInternal(const glm::vec3& value) {
+    assertWriteLocked();
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
     }
@@ -1428,16 +1455,24 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 
 /// The maximum bounding cube for the entity, independent of it's rotation.
 /// This accounts for the registration point (upon which rotation occurs around).
-///
 AACube EntityItem::getMaximumAACube() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getMaximumAACubeInternal();
+    unlock();
+    return result;
+}
+
+AACube EntityItem::getMaximumAACubeInternal() const {
+    assertLocked();
     // * we know that the position is the center of rotation
-    glm::vec3 centerOfRotation = getPosition(); // also where _registration point is
+    glm::vec3 centerOfRotation = getPositionInternal(); // also where _registration point is
 
     // * we know that the registration point is the center of rotation
     // * we can calculate the length of the furthest extent from the registration point
     //   as the dimensions * max (registrationPoint, (1.0,1.0,1.0) - registrationPoint)
-    glm::vec3 registrationPoint = (getDimensions() * getRegistrationPoint());
-    glm::vec3 registrationRemainder = (getDimensions() * (glm::vec3(1.0f, 1.0f, 1.0f) - getRegistrationPoint()));
+    glm::vec3 registrationPoint = (getDimensionsInternal() * getRegistrationPoint());
+    glm::vec3 registrationRemainder = (getDimensionsInternal() * (glm::vec3(1.0f, 1.0f, 1.0f) - getRegistrationPoint()));
     glm::vec3 furthestExtentFromRegistration = glm::max(registrationPoint, registrationRemainder);
 
     // * we know that if you rotate in any direction you would create a sphere
@@ -1454,18 +1489,27 @@ AACube EntityItem::getMaximumAACube() const {
 
 /// The minimum bounding cube for the entity accounting for it's rotation.
 /// This accounts for the registration point (upon which rotation occurs around).
-///
 AACube EntityItem::getMinimumAACube() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getMinimumAACubeInternal();
+    unlock();
+    return result;
+}
+
+AACube EntityItem::getMinimumAACubeInternal() const {
+    assertLocked();
     // _position represents the position of the registration point.
     glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
-    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * getRegistrationPoint());
-    glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
+    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensionsInternal() * getRegistrationPoint());
+    glm::vec3 unrotatedMaxRelativeToEntity = getDimensionsInternal() * registrationRemainder;
     Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-    Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+    Extents rotatedExtentsRelativeToRegistrationPoint =
+        unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotationInternal());
 
     // shift the extents to be relative to the position/registration point
-    rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+    rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPositionInternal());
 
     // the cube that best encompasses extents is...
     AABox box(rotatedExtentsRelativeToRegistrationPoint);
@@ -1473,7 +1517,6 @@ AACube EntityItem::getMinimumAACube() const {
     float longestSide = box.getLargestDimension();
     float halfLongestSide = longestSide / 2.0f;
     glm::vec3 cornerOfCube = centerOfBox - glm::vec3(halfLongestSide, halfLongestSide, halfLongestSide);
-
 
     // old implementation... not correct!!!
     return AACube(cornerOfCube, longestSide);
@@ -1492,8 +1535,8 @@ AABox EntityItem::getAABoxInternal() const {
     // _position represents the position of the registration point.
     glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
-    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * _registrationPoint);
-    glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
+    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensionsInternal() * _registrationPoint);
+    glm::vec3 unrotatedMaxRelativeToEntity = getDimensionsInternal() * registrationRemainder;
     Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
     Extents rotatedExtentsRelativeToRegistrationPoint =
         unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotationInternal());
@@ -1559,9 +1602,9 @@ void EntityItem::updatePosition(const glm::vec3& value) {
 
 void EntityItem::updateDimensions(const glm::vec3& value) {
     assertWriteLocked();
-    auto delta = glm::distance(getDimensions(), value);
+    auto delta = glm::distance(getDimensionsInternal(), value);
     if (delta > IGNORE_DIMENSIONS_DELTA) {
-        setDimensions(value);
+        setDimensionsInternal(value);
         if (delta > ACTIVATION_DIMENSIONS_DELTA) {
             // rebuilding the shape will always activate
             _dirtyFlags |= (EntityItem::DIRTY_SHAPE | EntityItem::DIRTY_MASS);
@@ -1590,7 +1633,7 @@ void EntityItem::updateMass(float mass) {
     // we must protect the density range to help maintain stability of physics simulation
     // therefore this method might not accept the mass that is supplied.
 
-    float volume = _volumeMultiplier * getDimensions().x * getDimensions().y * getDimensions().z;
+    float volume = _volumeMultiplier * getDimensionsInternal().x * getDimensionsInternal().y * getDimensionsInternal().z;
 
     // compute new density
     float newDensity = _density;

@@ -240,11 +240,11 @@ public:
     float getGlowLevel() const;
     void setGlowLevel(float glowLevel);
 
-///////
-
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3& getDimensions() const { return _transform.getScale(); }
+    glm::vec3 getDimensions() const;
     virtual void setDimensions(const glm::vec3& value);
+
+///////
 
     float getLocalRenderAlpha() const { return _localRenderAlpha; }
     void setLocalRenderAlpha(float localRenderAlpha) { _localRenderAlpha = localRenderAlpha; }
@@ -427,6 +427,10 @@ protected:
     float getGlowLevelInternal() const;
     void setGlowLevelInternal(float glowLevel);
     AABox getAABoxInternal() const;
+    AACube getMaximumAACubeInternal() const;
+    AACube getMinimumAACubeInternal() const;
+    glm::vec3 getDimensionsInternal() const;
+    void setDimensionsInternal(const glm::vec3& value);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
