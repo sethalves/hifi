@@ -244,53 +244,51 @@ public:
     glm::vec3 getDimensions() const;
     virtual void setDimensions(const glm::vec3& value);
 
-///////
+    float getLocalRenderAlpha() const;
+    void setLocalRenderAlpha(float localRenderAlpha);
 
-    float getLocalRenderAlpha() const { return _localRenderAlpha; }
-    void setLocalRenderAlpha(float localRenderAlpha) { _localRenderAlpha = localRenderAlpha; }
-
-    void setDensity(float density);
     float computeMass() const;
     void setMass(float mass);
 
-    float getDensity() const { return _density; }
+    void setDensity(float density);
+    float getDensity() const;
 
-    const glm::vec3& getVelocity() const { return _velocity; } /// get velocity in meters
-    void setVelocity(const glm::vec3& value) { _velocity = value; } /// velocity in meters
-    bool hasVelocity() const { return _velocity != ENTITY_ITEM_ZERO_VEC3; }
+    glm::vec3 getVelocity() const; // meters per second
+    void setVelocity(const glm::vec3& value); // meters per second
+    bool hasVelocity() const;
 
-    const glm::vec3& getGravity() const { return _gravity; } /// get gravity in meters
-    void setGravity(const glm::vec3& value) { _gravity = value; } /// gravity in meters
-    bool hasGravity() const { return _gravity != ENTITY_ITEM_ZERO_VEC3; }
+    glm::vec3 getGravity() const; // meters per second per second
+    void setGravity(const glm::vec3& value); // meters per second per second
+    bool hasGravity() const;
 
-    const glm::vec3& getAcceleration() const { return _acceleration; } /// get acceleration in meters/second/second
-    void setAcceleration(const glm::vec3& value) { _acceleration = value; } /// acceleration in meters/second/second
-    bool hasAcceleration() const { return _acceleration != ENTITY_ITEM_ZERO_VEC3; }
+    glm::vec3 getAcceleration() const;
+    void setAcceleration(const glm::vec3& value);
+    bool hasAcceleration() const;
 
-    float getDamping() const { return _damping; }
-    void setDamping(float value) { _damping = value; }
+    float getDamping() const;
+    void setDamping(float value);
 
-    float getRestitution() const { return _restitution; }
+    float getRestitution() const;
     void setRestitution(float value);
 
-    float getFriction() const { return _friction; }
+    float getFriction() const;
     void setFriction(float value);
 
     // lifetime related properties.
-    float getLifetime() const { return _lifetime; } /// get the lifetime in seconds for the entity
-    void setLifetime(float value) { _lifetime = value; } /// set the lifetime in seconds for the entity
+    float getLifetime() const; /// get the lifetime in seconds for the entity
+    void setLifetime(float value); /// set the lifetime in seconds for the entity
 
-    quint64 getCreated() const { return _created; } /// get the created-time in useconds for the entity
-    void setCreated(quint64 value) { _created = value; } /// set the created-time in useconds for the entity
+    quint64 getCreated() const; /// get the created-time in useconds for the entity
+    void setCreated(quint64 value); /// set the created-time in useconds for the entity
 
     /// is this entity immortal, in that it has no lifetime set, and will exist until manually deleted
-    bool isImmortal() const { return _lifetime == ENTITY_ITEM_IMMORTAL_LIFETIME; }
+    bool isImmortal() const;
 
     /// is this entity mortal, in that it has a lifetime set, and will automatically be deleted when that lifetime expires
-    bool isMortal() const { return _lifetime != ENTITY_ITEM_IMMORTAL_LIFETIME; }
+    bool isMortal() const;
 
     /// age of this entity in seconds
-    float getAge() const { return (float)(usecTimestampNow() - _created) / (float)USECS_PER_SECOND; }
+    float getAge() const;
     bool lifetimeHasExpired() const;
     quint64 getExpiry() const;
 
@@ -299,14 +297,16 @@ public:
     AACube getMinimumAACube() const;
     AABox getAABox() const; /// axis aligned bounding box in world-frame (meters)
 
-    const QString& getScript() const { return _script; }
-    void setScript(const QString& value) { _script = value; }
+    QString getScript() const;
+    void setScript(const QString& value);
 
-    quint64 getScriptTimestamp() const { return _scriptTimestamp; }
-    void setScriptTimestamp(const quint64 value) { _scriptTimestamp = value; }
+    quint64 getScriptTimestamp() const;
+    void setScriptTimestamp(const quint64 value);
 
-    const QString& getCollisionSoundURL() const { return _collisionSoundURL; }
-    void setCollisionSoundURL(const QString& value) { _collisionSoundURL = value; }
+    QString getCollisionSoundURL() const;
+    void setCollisionSoundURL(const QString& value);
+
+///////
 
     const glm::vec3& getRegistrationPoint() const { return _registrationPoint; } /// registration point as ratio of entity
 
@@ -429,8 +429,41 @@ protected:
     AABox getAABoxInternal() const;
     AACube getMaximumAACubeInternal() const;
     AACube getMinimumAACubeInternal() const;
+    float getLocalRenderAlphaInternal() const;
+    void setLocalRenderAlphaInternal(float localRenderAlpha);
     glm::vec3 getDimensionsInternal() const;
     void setDimensionsInternal(const glm::vec3& value);
+    void setDensityInternal(float density);
+    float getDensityInternal() const;
+    glm::vec3 getVelocityInternal() const;
+    void setVelocityInternal(const glm::vec3& value);
+    bool hasVelocityInternal() const;
+    glm::vec3 getGravityInternal() const;
+    void setGravityInternal(const glm::vec3& value);
+    bool hasGravityInternal() const;
+    glm::vec3 getAccelerationInternal() const;
+    void setAccelerationInternal(const glm::vec3& value);
+    bool hasAccelerationInternal() const;
+    float getDampingInternal() const;
+    void setDampingInternal(float value);
+    float getRestitutionInternal() const;
+    void setRestitutionInternal(float value);
+    float getFrictionInternal() const;
+    void setFrictionInternal(float value);
+    float getLifetimeInternal() const;
+    void setLifetimeInternal(float value);
+    quint64 getCreatedInternal() const;
+    void setCreatedInternal(quint64 value);
+    float getAgeInternal() const;
+    QString getScriptInternal() const;
+    void setScriptInternal(const QString& value);
+    quint64 getScriptTimestampInternal() const;
+    void setScriptTimestampInternal(const quint64 value);
+    QString getCollisionSoundURLInternal() const;
+    void setCollisionSoundURLInternal(const QString& value);
+    bool isImmortalInternal() const;
+    bool isMortalInternal() const;
+
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
