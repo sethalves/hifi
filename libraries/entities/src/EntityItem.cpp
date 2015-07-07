@@ -180,7 +180,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     QByteArray encodedID = getIDInternal().toRfc4122();
 
     // encode our type as a byte count coded byte stream
-    ByteCountCoded<quint32> typeCoder = getType();
+    ByteCountCoded<quint32> typeCoder = getTypeInternal();
     QByteArray encodedType = typeCoder;
 
     // last updated (animations, non-physics changes)
@@ -1005,7 +1005,7 @@ EntityItemProperties EntityItem::getProperties() const {
     properties._idSet = true;
     properties._created = _created;
 
-    properties._type = getType();
+    properties._type = getTypeInternal();
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwner);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getPosition);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensions); // NOTE: radius is obsolete
@@ -1225,6 +1225,19 @@ quint64 EntityItem::getLastChangedOnServer() const {
     auto result = _changedOnServer;
     unlock();
     return result;
+}
+
+EntityTypes::EntityType EntityItem::getType() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getTypeInternal();
+    unlock();
+    return result;
+}
+
+EntityTypes::EntityType EntityItem::getTypeInternal() const {
+    assertLocked();
+    return _type;
 }
 
 void EntityItem::setCenterPosition(const glm::vec3& position) {

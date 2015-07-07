@@ -205,15 +205,15 @@ public:
 
     virtual bool needsToCallUpdate() const { assertUnlocked(); return false; }
 
-/////
-
     virtual bool supportsDetailedRayIntersection() const { return false; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
                          bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const { return true; }
 
+///////
+
     // attributes applicable to all entity types
-    EntityTypes::EntityType getType() const { return _type; }
+    EntityTypes::EntityType getType() const;
 
     inline glm::vec3 getCenterPosition() const { return getTransformToCenter().getTranslation(); }
     void setCenterPosition(const glm::vec3& position);
@@ -414,6 +414,7 @@ protected:
     EntityItemID getEntityItemIDInternal() const;
     void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
     virtual void debugDump() const;
+    EntityTypes::EntityType getTypeInternal() const;
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
