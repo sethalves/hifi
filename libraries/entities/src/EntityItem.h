@@ -234,17 +234,17 @@ public:
     QString getHref() const;
     void setHref(QString value);
 
-///////
+    QString getDescription() const;
+    void setDescription(QString value);
 
-    QString getDescription() const { return _description; }
-    void setDescription(QString value) { _description = value; }
+    float getGlowLevel() const;
+    void setGlowLevel(float glowLevel);
+
+///////
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
     inline const glm::vec3& getDimensions() const { return _transform.getScale(); }
     virtual void setDimensions(const glm::vec3& value);
-
-    float getGlowLevel() const { return _glowLevel; }
-    void setGlowLevel(float glowLevel) { _glowLevel = glowLevel; }
 
     float getLocalRenderAlpha() const { return _localRenderAlpha; }
     void setLocalRenderAlpha(float localRenderAlpha) { _localRenderAlpha = localRenderAlpha; }
@@ -404,6 +404,7 @@ public:
     void deserializeActions();
 
 protected:
+    virtual void debugDump() const;
 
     const QUuid& getIDInternal() const { assertLocked(); return _id; }
     void setIDInternal(const QUuid& id) { assertWriteLocked(); _id = id; }
@@ -414,7 +415,6 @@ protected:
     void setActionDataInternal(QByteArray actionData);
     EntityItemID getEntityItemIDInternal() const;
     void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
-    virtual void debugDump() const;
     EntityTypes::EntityType getTypeInternal() const;
     glm::vec3 getPositionInternal() const;
     void setPositionInternal(const glm::vec3& value);
@@ -422,6 +422,11 @@ protected:
     void setRotationInternal(const glm::quat& rotation);
     QString getHrefInternal() const;
     void setHrefInternal(QString value);
+    QString getDescriptionInternal() const;
+    void setDescriptionInternal(QString value);
+    float getGlowLevelInternal() const;
+    void setGlowLevelInternal(float glowLevel);
+    AABox getAABoxInternal() const;
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

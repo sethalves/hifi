@@ -293,7 +293,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_NAME, getName());
         APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURL());
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHrefInternal());
-        APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
+        APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescriptionInternal());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionDataInternal());
 
 
@@ -661,7 +661,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_NAME, QString, setName);
     READ_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
     READ_ENTITY_PROPERTY(PROP_HREF, QString, setHrefInternal);
-    READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescription);
+    READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescriptionInternal);
 
     READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionDataInternal);
 
@@ -933,7 +933,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
             qCDebug(entities) << "    old AACube:" << getMaximumAACube();
             qCDebug(entities) << "    old position:" << position;
             qCDebug(entities) << "    old velocity:" << velocity;
-            qCDebug(entities) << "    old getAABox:" << getAABox();
+            qCDebug(entities) << "    old getAABox:" << getAABoxInternal();
             qCDebug(entities) << "    newPosition:" << newPosition;
             qCDebug(entities) << "    glm::distance(newPosition, position):" << glm::distance(newPosition, position);
         #endif
@@ -961,7 +961,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
             qCDebug(entities) << "    new position:" << position;
             qCDebug(entities) << "    new velocity:" << velocity;
             qCDebug(entities) << "    new AACube:" << getMaximumAACube();
-            qCDebug(entities) << "    old getAABox:" << getAABox();
+            qCDebug(entities) << "    old getAABox:" << getAABoxInternal();
         #endif
     }
 }
@@ -1029,7 +1029,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(registrationPoint, getRegistrationPoint);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularVelocity, getAngularVelocity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularDamping, getAngularDamping);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevel);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localRenderAlpha, getLocalRenderAlpha);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(visible, getVisible);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(ignoreForCollisions, getIgnoreForCollisions);
@@ -1039,7 +1039,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getName);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHrefInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescriptionInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionDataInternal);
 
     properties._defaultSettings = false;
@@ -1099,7 +1099,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(script, setScript);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(scriptTimestamp, setScriptTimestamp);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(collisionSoundURL, setCollisionSoundURL);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(glowLevel, setGlowLevel);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(glowLevel, setGlowLevelInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(localRenderAlpha, setLocalRenderAlpha);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(visible, setVisible);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, setLocked);
@@ -1107,7 +1107,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(marketplaceID, setMarketplaceID);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setName);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHrefInternal);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescriptionInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionDataInternal);
 
     if (somethingChanged) {
@@ -1366,6 +1366,59 @@ void EntityItem::setHrefInternal(QString value) {
     _href = value;
 }
 
+QString EntityItem::getDescription() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getDescriptionInternal();
+    unlock();
+    return result;
+}
+
+QString EntityItem::getDescriptionInternal() const {
+    assertLocked();
+    return _description;
+}
+
+void EntityItem::setDescription(QString value) {
+    assertUnlocked();
+    lockForWrite();
+    setDescriptionInternal(value);
+    unlock();
+}
+
+void EntityItem::setDescriptionInternal(QString value) {
+    assertWriteLocked();
+    _description = value;
+}
+
+
+float EntityItem::getGlowLevel() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getGlowLevelInternal();
+    unlock();
+    return result;
+}
+
+float EntityItem::getGlowLevelInternal() const {
+    assertLocked();
+    return _glowLevel;
+}
+
+void EntityItem::setGlowLevel(float glowLevel) {
+    assertUnlocked();
+    lockForWrite();
+    setGlowLevelInternal(glowLevel);
+    unlock();
+}
+
+void EntityItem::setGlowLevelInternal(float glowLevel) {
+    assertWriteLocked();
+    _glowLevel = glowLevel;
+}
+
+
+
 void EntityItem::setDimensions(const glm::vec3& value) {
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
@@ -1427,16 +1480,26 @@ AACube EntityItem::getMinimumAACube() const {
 }
 
 AABox EntityItem::getAABox() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAABoxInternal();
+    unlock();
+    return result;
+}
+
+AABox EntityItem::getAABoxInternal() const {
+    assertLocked();
     // _position represents the position of the registration point.
     glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
     glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * _registrationPoint);
     glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
     Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-    Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+    Extents rotatedExtentsRelativeToRegistrationPoint =
+        unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotationInternal());
 
     // shift the extents to be relative to the position/registration point
-    rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+    rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPositionInternal());
 
     return AABox(rotatedExtentsRelativeToRegistrationPoint);
 }
