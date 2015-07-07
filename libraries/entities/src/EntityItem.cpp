@@ -1241,12 +1241,14 @@ EntityTypes::EntityType EntityItem::getTypeInternal() const {
 }
 
 void EntityItem::setCenterPosition(const glm::vec3& position) {
+    assertUnlocked();
     Transform transformToCenter = getTransformToCenter();
     transformToCenter.setTranslation(position);
     setTranformToCenter(transformToCenter);
 }
 
 const Transform EntityItem::getTransformToCenter() const {
+    assertUnlocked();
     Transform result = getTransform();
     if (getRegistrationPoint() != ENTITY_ITEM_HALF_VEC3) { // If it is not already centered, translate to center
         result.postTranslate(ENTITY_ITEM_HALF_VEC3 - getRegistrationPoint()); // Position to center
@@ -1255,6 +1257,7 @@ const Transform EntityItem::getTransformToCenter() const {
 }
 
 void EntityItem::setTranformToCenter(const Transform& transform) {
+    assertUnlocked();
     if (getRegistrationPoint() == ENTITY_ITEM_HALF_VEC3) {
         // If it is already centered, just call setTransform
         setTransform(transform);
@@ -1264,6 +1267,21 @@ void EntityItem::setTranformToCenter(const Transform& transform) {
     Transform copy = transform;
     copy.postTranslate(getRegistrationPoint() - ENTITY_ITEM_HALF_VEC3); // Center to position
     setTransform(copy);
+}
+
+const Transform EntityItem::getTransform() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _transform;
+    unlock();
+    return result;
+}
+
+void EntityItem::setTransform(const Transform& transform) {
+    assertUnlocked();
+    lockForWrite();
+    _transform = transform;
+    unlock();
 }
 
 void EntityItem::setDimensions(const glm::vec3& value) {

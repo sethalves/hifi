@@ -210,19 +210,20 @@ public:
                          bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const { return true; }
 
-///////
-
     // attributes applicable to all entity types
     EntityTypes::EntityType getType() const;
 
-    inline glm::vec3 getCenterPosition() const { return getTransformToCenter().getTranslation(); }
+
+    inline glm::vec3 getCenterPosition() const { assertUnlocked(); return getTransformToCenter().getTranslation(); }
     void setCenterPosition(const glm::vec3& position);
 
     const Transform getTransformToCenter() const;
     void setTranformToCenter(const Transform& transform);
 
-    inline const Transform& getTransform() const { return _transform; }
-    inline void setTransform(const Transform& transform) { _transform = transform; }
+    const Transform getTransform() const;
+    void setTransform(const Transform& transform);
+
+///////
 
     /// Position in meters (0.0 - TREE_SCALE)
     inline const glm::vec3& getPosition() const { return _transform.getTranslation(); }
