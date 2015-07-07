@@ -270,7 +270,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_POSITION, getPositionInternal());
         APPEND_ENTITY_PROPERTY(PROP_ROTATION, getRotationInternal());
         APPEND_ENTITY_PROPERTY(PROP_VELOCITY, getVelocityInternal());
-        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getAngularVelocity());
+        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getAngularVelocityInternal());
         APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, getAccelerationInternal());
 
         APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getDimensionsInternal()); // NOTE: PROP_RADIUS obsolete
@@ -282,15 +282,15 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_LIFETIME, getLifetimeInternal());
         APPEND_ENTITY_PROPERTY(PROP_SCRIPT, getScriptInternal());
         APPEND_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, getScriptTimestampInternal());
-        APPEND_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, getRegistrationPoint());
-        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_DAMPING, getAngularDamping());
-        APPEND_ENTITY_PROPERTY(PROP_VISIBLE, getVisible());
-        APPEND_ENTITY_PROPERTY(PROP_IGNORE_FOR_COLLISIONS, getIgnoreForCollisions());
-        APPEND_ENTITY_PROPERTY(PROP_COLLISIONS_WILL_MOVE, getCollisionsWillMove());
-        APPEND_ENTITY_PROPERTY(PROP_LOCKED, getLocked());
-        APPEND_ENTITY_PROPERTY(PROP_USER_DATA, getUserData());
+        APPEND_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, getRegistrationPointInternal());
+        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_DAMPING, getAngularDampingInternal());
+        APPEND_ENTITY_PROPERTY(PROP_VISIBLE, getVisibleInternal());
+        APPEND_ENTITY_PROPERTY(PROP_IGNORE_FOR_COLLISIONS, getIgnoreForCollisionsInternal());
+        APPEND_ENTITY_PROPERTY(PROP_COLLISIONS_WILL_MOVE, getCollisionsWillMoveInternal());
+        APPEND_ENTITY_PROPERTY(PROP_LOCKED, getLockedInternal());
+        APPEND_ENTITY_PROPERTY(PROP_USER_DATA, getUserDataInternal());
         APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, getMarketplaceID());
-        APPEND_ENTITY_PROPERTY(PROP_NAME, getName());
+        APPEND_ENTITY_PROPERTY(PROP_NAME, getNameInternal());
         APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURLInternal());
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHrefInternal());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescriptionInternal());
@@ -610,7 +610,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_LIFETIME, float, updateLifetime);
         READ_ENTITY_PROPERTY(PROP_SCRIPT, QString, setScriptInternal);
         READ_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, quint64, setScriptTimestampInternal);
-        READ_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPoint);
+        READ_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPointInternal);
     } else {
         // legacy order of packing here
         READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
@@ -626,17 +626,17 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_FRICTION, float, updateFriction);
         READ_ENTITY_PROPERTY(PROP_LIFETIME, float, updateLifetime);
         READ_ENTITY_PROPERTY(PROP_SCRIPT, QString, setScriptInternal);
-        READ_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, quint64, setScriptTimestamp);
-        READ_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPoint);
+        READ_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, quint64, setScriptTimestampInternal);
+        READ_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPointInternal);
         READ_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, glm::vec3, updateAngularVelocity);
     }
 
     READ_ENTITY_PROPERTY(PROP_ANGULAR_DAMPING, float, updateAngularDamping);
-    READ_ENTITY_PROPERTY(PROP_VISIBLE, bool, setVisible);
+    READ_ENTITY_PROPERTY(PROP_VISIBLE, bool, setVisibleInternal);
     READ_ENTITY_PROPERTY(PROP_IGNORE_FOR_COLLISIONS, bool, updateIgnoreForCollisions);
     READ_ENTITY_PROPERTY(PROP_COLLISIONS_WILL_MOVE, bool, updateCollisionsWillMove);
-    READ_ENTITY_PROPERTY(PROP_LOCKED, bool, setLocked);
-    READ_ENTITY_PROPERTY(PROP_USER_DATA, QString, setUserData);
+    READ_ENTITY_PROPERTY(PROP_LOCKED, bool, setLockedInternal);
+    READ_ENTITY_PROPERTY(PROP_USER_DATA, QString, setUserDataInternal);
 
     if (args.bitstreamVersion < VERSION_ENTITIES_HAVE_SIMULATION_OWNER_AND_ACTIONS_OVER_WIRE) {
         // this code for when there is only simulatorID and no simulation priority
@@ -653,7 +653,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
     }
 
-    READ_ENTITY_PROPERTY(PROP_NAME, QString, setName);
+    READ_ENTITY_PROPERTY(PROP_NAME, QString, setNameInternal);
     READ_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURLInternal);
     READ_ENTITY_PROPERTY(PROP_HREF, QString, setHrefInternal);
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescriptionInternal);
@@ -936,7 +936,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         return;
     }
 
-    if (hasAngularVelocity()) {
+    if (hasAngularVelocityInternal()) {
         // angular damping
         if (_angularDamping > 0.0f) {
             _angularVelocity *= powf(1.0f - _angularDamping, timeElapsed);
@@ -1004,8 +1004,8 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         position = newPosition;
 
         // apply effective acceleration, which will be the same as gravity if the Entity isn't at rest.
-        if (hasAcceleration()) {
-            velocity += getAcceleration() * timeElapsed;
+        if (hasAccelerationInternal()) {
+            velocity += getAccelerationInternal() * timeElapsed;
         }
 
         float speed = glm::length(velocity);
@@ -1017,7 +1017,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
             }
         } else {
             setPositionInternal(position);
-            setVelocity(velocity);
+            setVelocityInternal(velocity);
         }
 
         #ifdef WANT_DEBUG
@@ -1039,7 +1039,7 @@ glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     glm::mat4 translation = glm::translate(getPositionInternal());
     glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
     glm::mat4 scale = glm::scale(getDimensionsInternal());
-    glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
+    glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPointInternal());
     unlock();
     return translation * rotation * scale * registration;
 }
@@ -1156,6 +1156,279 @@ void EntityItem::setCollisionSoundURLInternal(const QString& value) {
     _collisionSoundURL = value;
 }
 
+glm::vec3 EntityItem::getRegistrationPoint() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getRegistrationPointInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 EntityItem::getRegistrationPointInternal() const {
+    assertLocked();
+    return _registrationPoint;
+}
+
+void EntityItem::setRegistrationPoint(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setRegistrationPointInternal(value);
+    unlock();
+}
+
+void EntityItem::setRegistrationPointInternal(const glm::vec3& value) {
+    assertWriteLocked();
+    _registrationPoint = glm::clamp(value, 0.0f, 1.0f);
+}
+
+glm::vec3 EntityItem::getAngularVelocity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAngularVelocityInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 EntityItem::getAngularVelocityInternal() const {
+    assertLocked();
+    return _angularVelocity;
+}
+
+void EntityItem::setAngularVelocity(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setAngularVelocityInternal(value);
+    unlock();
+}
+
+void EntityItem::setAngularVelocityInternal(const glm::vec3& value) {
+    assertWriteLocked();
+    _angularVelocity = value;
+}
+
+bool EntityItem::hasAngularVelocity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = hasAngularVelocityInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::hasAngularVelocityInternal() const {
+    assertLocked();
+    return _angularVelocity != ENTITY_ITEM_ZERO_VEC3;
+}
+
+
+float EntityItem::getAngularDamping() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAngularDampingInternal();
+    unlock();
+    return result;
+}
+
+float EntityItem::getAngularDampingInternal() const {
+    assertLocked();
+    return _angularDamping;
+}
+
+void EntityItem::setAngularDamping(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setAngularDampingInternal(value);
+    unlock();
+}
+
+void EntityItem::setAngularDampingInternal(float value) {
+    assertWriteLocked();
+    _angularDamping = value;
+}
+
+QString EntityItem::getName() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getNameInternal();
+    unlock();
+    return result;
+}
+
+QString EntityItem::getNameInternal() const {
+    assertLocked();
+    return _name;
+}
+
+void EntityItem::setName(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setNameInternal(value);
+    unlock();
+}
+
+void EntityItem::setNameInternal(const QString& value) {
+    assertWriteLocked();
+    _name = value;
+}
+
+
+bool EntityItem::getVisible() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getVisibleInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::getVisibleInternal() const {
+    assertLocked();
+    return _visible;
+}
+
+void EntityItem::setVisible(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setVisibleInternal(value);
+    unlock();
+}
+
+void EntityItem::setVisibleInternal(bool value) {
+    assertWriteLocked();
+    _visible = value;
+}
+
+bool EntityItem::isVisible() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = isVisibleInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::isVisibleInternal() const {
+    assertLocked();
+    return _visible;
+}
+
+bool EntityItem::isInvisible() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = isInvisibleInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::isInvisibleInternal() const {
+    assertLocked();
+    return !_visible;
+}
+
+bool EntityItem::getIgnoreForCollisions() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getIgnoreForCollisionsInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::getIgnoreForCollisionsInternal() const {
+    assertLocked();
+    return _ignoreForCollisions;
+}
+
+void EntityItem::setIgnoreForCollisions(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setIgnoreForCollisionsInternal(value);
+    unlock();
+}
+
+void EntityItem::setIgnoreForCollisionsInternal(bool value) {
+    assertWriteLocked();
+    _ignoreForCollisions = value;
+}
+
+bool EntityItem::getCollisionsWillMove() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getCollisionsWillMoveInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::getCollisionsWillMoveInternal() const {
+    assertLocked();
+    return _collisionsWillMove;
+}
+
+void EntityItem::setCollisionsWillMove(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setCollisionsWillMoveInternal(value);
+    unlock();
+}
+
+void EntityItem::setCollisionsWillMoveInternal(bool value) {
+    assertWriteLocked();
+    _collisionsWillMove = value;
+}
+
+bool EntityItem::shouldBePhysical() const {
+    assertUnlocked();
+    lockForRead();
+    auto result =  !_ignoreForCollisions;
+    unlock();
+    return result;
+}
+
+bool EntityItem::getLocked() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLockedInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::getLockedInternal() const {
+    assertLocked();
+    return _locked;
+}
+
+void EntityItem::setLocked(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setLockedInternal(value);
+    unlock();
+}
+
+void EntityItem::setLockedInternal(bool value) {
+    assertWriteLocked();
+    _locked = value;
+}
+
+QString EntityItem::getUserData() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getUserDataInternal();
+    unlock();
+    return result;
+}
+
+QString EntityItem::getUserDataInternal() const {
+    assertLocked();
+    return _userData;
+}
+
+void EntityItem::setUserData(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setUserDataInternal(value);
+    unlock();
+}
+
+void EntityItem::setUserDataInternal(const QString& value) {
+    assertWriteLocked();
+    _userData = value;
+}
 
 
 EntityItemProperties EntityItem::getProperties() const {
@@ -1183,18 +1456,18 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(script, getScriptInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(scriptTimestamp, getScriptTimestampInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(collisionSoundURL, getCollisionSoundURLInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(registrationPoint, getRegistrationPoint);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularVelocity, getAngularVelocity);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularDamping, getAngularDamping);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(registrationPoint, getRegistrationPointInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularVelocity, getAngularVelocityInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(angularDamping, getAngularDampingInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localRenderAlpha, getLocalRenderAlphaInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(visible, getVisible);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(ignoreForCollisions, getIgnoreForCollisions);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(collisionsWillMove, getCollisionsWillMove);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(locked, getLocked);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(userData, getUserData);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(visible, getVisibleInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(ignoreForCollisions, getIgnoreForCollisionsInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(collisionsWillMove, getCollisionsWillMoveInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(locked, getLockedInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(userData, getUserDataInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceID);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getName);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getNameInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHrefInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescriptionInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionDataInternal);
@@ -1238,7 +1511,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
 
     // these (along with "position" above) affect tree structure
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(dimensions, updateDimensions);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(registrationPoint, setRegistrationPoint);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(registrationPoint, setRegistrationPointInternal);
 
     // these (along with all properties above) affect the simulation
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(density, updateDensity);
@@ -1258,11 +1531,11 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(collisionSoundURL, setCollisionSoundURLInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(glowLevel, setGlowLevelInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(localRenderAlpha, setLocalRenderAlphaInternal);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(visible, setVisible);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, setLocked);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(userData, setUserData);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(visible, setVisibleInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, setLockedInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(userData, setUserDataInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(marketplaceID, setMarketplaceID);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setName);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setNameInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHrefInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescriptionInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionDataInternal);
@@ -1620,8 +1893,9 @@ AACube EntityItem::getMaximumAACubeInternal() const {
     // * we know that the registration point is the center of rotation
     // * we can calculate the length of the furthest extent from the registration point
     //   as the dimensions * max (registrationPoint, (1.0,1.0,1.0) - registrationPoint)
-    glm::vec3 registrationPoint = (getDimensionsInternal() * getRegistrationPoint());
-    glm::vec3 registrationRemainder = (getDimensionsInternal() * (glm::vec3(1.0f, 1.0f, 1.0f) - getRegistrationPoint()));
+    glm::vec3 registrationPoint = (getDimensionsInternal() * getRegistrationPointInternal());
+    glm::vec3 registrationRemainder =
+        (getDimensionsInternal() * (glm::vec3(1.0f, 1.0f, 1.0f) - getRegistrationPointInternal()));
     glm::vec3 furthestExtentFromRegistration = glm::max(registrationPoint, registrationRemainder);
 
     // * we know that if you rotate in any direction you would create a sphere
@@ -1651,7 +1925,7 @@ AACube EntityItem::getMinimumAACubeInternal() const {
     // _position represents the position of the registration point.
     glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
-    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensionsInternal() * getRegistrationPoint());
+    glm::vec3 unrotatedMinRelativeToEntity = - (getDimensionsInternal() * getRegistrationPointInternal());
     glm::vec3 unrotatedMaxRelativeToEntity = getDimensionsInternal() * registrationRemainder;
     Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
     Extents rotatedExtentsRelativeToRegistrationPoint =

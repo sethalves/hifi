@@ -306,44 +306,41 @@ public:
     QString getCollisionSoundURL() const;
     void setCollisionSoundURL(const QString& value);
 
+    glm::vec3 getRegistrationPoint() const; /// registration point as ratio of entity
+    void setRegistrationPoint(const glm::vec3& value); /// registration point as ratio of entity
+
+    glm::vec3 getAngularVelocity() const;
+    void setAngularVelocity(const glm::vec3& value);
+    bool hasAngularVelocity() const;
+
+    float getAngularDamping() const;
+    void setAngularDamping(float value);
+
+    QString getName() const;
+    void setName(const QString& value);
+
+    bool getVisible() const;
+    void setVisible(bool value);
+    bool isVisible() const;
+    bool isInvisible() const;
+
+    bool getIgnoreForCollisions() const;
+    void setIgnoreForCollisions(bool value);
+
+    bool getCollisionsWillMove() const;
+    void setCollisionsWillMove(bool value);
+
+    virtual bool shouldBePhysical() const;
+
+    bool getLocked() const;
+    void setLocked(bool value);
+
+    QString getUserData() const;
+    void setUserData(const QString& value);
+
 ///////
 
-    const glm::vec3& getRegistrationPoint() const { return _registrationPoint; } /// registration point as ratio of entity
-
-    /// registration point as ratio of entity
-    void setRegistrationPoint(const glm::vec3& value)
-            { _registrationPoint = glm::clamp(value, 0.0f, 1.0f); }
-
-    const glm::vec3& getAngularVelocity() const { return _angularVelocity; }
-    void setAngularVelocity(const glm::vec3& value) { _angularVelocity = value; }
-    bool hasAngularVelocity() const { return _angularVelocity != ENTITY_ITEM_ZERO_VEC3; }
-
-    float getAngularDamping() const { return _angularDamping; }
-    void setAngularDamping(float value) { _angularDamping = value; }
-
-    QString getName() const { return _name; }
-    void setName(const QString& value) { _name = value; }
-
-    bool getVisible() const { return _visible; }
-    void setVisible(bool value) { _visible = value; }
-    bool isVisible() const { return _visible; }
-    bool isInvisible() const { return !_visible; }
-
-    bool getIgnoreForCollisions() const { return _ignoreForCollisions; }
-    void setIgnoreForCollisions(bool value) { _ignoreForCollisions = value; }
-
-    bool getCollisionsWillMove() const { return _collisionsWillMove; }
-    void setCollisionsWillMove(bool value) { _collisionsWillMove = value; }
-
-    virtual bool shouldBePhysical() const { return !_ignoreForCollisions; }
-
-    bool getLocked() const { return _locked; }
-    void setLocked(bool value) { _locked = value; }
-
-    const QString& getUserData() const { return _userData; }
-    void setUserData(const QString& value) { _userData = value; }
-
-    const SimulationOwner& getSimulationOwner() const { return _simulationOwner; }
+    SimulationOwner getSimulationOwner() const { return _simulationOwner; }
     void setSimulationOwner(const QUuid& id, quint8 priority);
     void setSimulationOwner(const SimulationOwner& owner);
     void promoteSimulationPriority(quint8 priority);
@@ -463,7 +460,27 @@ protected:
     void setCollisionSoundURLInternal(const QString& value);
     bool isImmortalInternal() const;
     bool isMortalInternal() const;
-
+    glm::vec3 getRegistrationPointInternal() const;
+    void setRegistrationPointInternal(const glm::vec3& value);
+    glm::vec3 getAngularVelocityInternal() const;
+    void setAngularVelocityInternal(const glm::vec3& value);
+    bool hasAngularVelocityInternal() const;
+    float getAngularDampingInternal() const;
+    void setAngularDampingInternal(float value);
+    QString getNameInternal() const;
+    void setNameInternal(const QString& value);
+    bool getVisibleInternal() const;
+    void setVisibleInternal(bool value);
+    bool isVisibleInternal() const;
+    bool isInvisibleInternal() const;
+    bool getIgnoreForCollisionsInternal() const;
+    void setIgnoreForCollisionsInternal(bool value);
+    bool getCollisionsWillMoveInternal() const;
+    void setCollisionsWillMoveInternal(bool value);
+    bool getLockedInternal() const;
+    void setLockedInternal(bool value);
+    QString getUserDataInternal() const;
+    void setUserDataInternal(const QString& value);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
