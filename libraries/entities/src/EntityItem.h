@@ -338,23 +338,22 @@ public:
     QString getUserData() const;
     void setUserData(const QString& value);
 
-///////
-
-    SimulationOwner getSimulationOwner() const { return _simulationOwner; }
+    SimulationOwner getSimulationOwner() const;
     void setSimulationOwner(const QUuid& id, quint8 priority);
     void setSimulationOwner(const SimulationOwner& owner);
-    void promoteSimulationPriority(quint8 priority);
+    // void promoteSimulationPriority(quint8 priority);
 
-    quint8 getSimulationPriority() const { return _simulationOwner.getPriority(); }
-    QUuid getSimulatorID() const { return _simulationOwner.getID(); }
-    void updateSimulatorID(const QUuid& value);
+    quint8 getSimulationPriority() const;
+    QUuid getSimulatorID() const;
     void clearSimulationOwnership();
 
-    const QString& getMarketplaceID() const { return _marketplaceID; }
-    void setMarketplaceID(const QString& value) { _marketplaceID = value; }
+    QString getMarketplaceID() const;
+    void setMarketplaceID(const QString& value);
 
     // TODO: get rid of users of getRadius()...
     float getRadius() const;
+
+///////
 
     virtual bool contains(const glm::vec3& point) const;
 
@@ -481,6 +480,14 @@ protected:
     void setLockedInternal(bool value);
     QString getUserDataInternal() const;
     void setUserDataInternal(const QString& value);
+    SimulationOwner getSimulationOwnerInternal() const;
+    void setSimulationOwnerInternal(const QUuid& id, quint8 priority);
+    void setSimulationOwnerInternal(const SimulationOwner& owner);
+    quint8 getSimulationPriorityInternal() const;
+    QUuid getSimulatorIDInternal() const;
+    QString getMarketplaceIDInternal() const;
+    void setMarketplaceIDInternal(const QString& value);
+
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);
@@ -500,6 +507,7 @@ protected:
     void updateLifetime(float value);
     void updateCreated(uint64_t value);
     virtual void updateShapeType(ShapeType type) { /* do nothing */ }
+    void updateSimulatorID(const QUuid& value);
 
     static bool _sendPhysicsUpdates;
     EntityTypes::EntityType _type;

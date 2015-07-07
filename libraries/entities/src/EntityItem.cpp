@@ -289,7 +289,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_COLLISIONS_WILL_MOVE, getCollisionsWillMoveInternal());
         APPEND_ENTITY_PROPERTY(PROP_LOCKED, getLockedInternal());
         APPEND_ENTITY_PROPERTY(PROP_USER_DATA, getUserDataInternal());
-        APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, getMarketplaceID());
+        APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, getMarketplaceIDInternal());
         APPEND_ENTITY_PROPERTY(PROP_NAME, getNameInternal());
         APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURLInternal());
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHrefInternal());
@@ -650,7 +650,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     }
 
     if (args.bitstreamVersion >= VERSION_ENTITIES_HAS_MARKETPLACE_ID) {
-        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
+        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceIDInternal);
     }
 
     READ_ENTITY_PROPERTY(PROP_NAME, QString, setNameInternal);
@@ -671,7 +671,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     //
     // TODO: Remove this conde once we've sufficiently migrated content past this damaged version
     if (args.bitstreamVersion == VERSION_ENTITIES_HAS_MARKETPLACE_ID_DAMAGED) {
-        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
+        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceIDInternal);
     }
 
     if (overwriteLocalData && (getDirtyFlags() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES))) {
@@ -1440,7 +1440,7 @@ EntityItemProperties EntityItem::getProperties() const {
     properties._created = _created;
 
     properties._type = getTypeInternal();
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwner);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwnerInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getPositionInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensionsInternal); // NOTE: radius is obsolete
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(rotation, getRotationInternal);
@@ -1466,7 +1466,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(collisionsWillMove, getCollisionsWillMoveInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(locked, getLockedInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(userData, getUserDataInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceID);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceIDInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getNameInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHrefInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescriptionInternal);
@@ -1502,7 +1502,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     bool somethingChanged = false;
 
     // these affect TerseUpdate properties
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(simulationOwner, setSimulationOwner);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(simulationOwner, setSimulationOwnerInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(position, updatePosition);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(rotation, updateRotation);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(velocity, updateVelocity);
@@ -1534,7 +1534,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(visible, setVisibleInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, setLockedInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(userData, setUserDataInternal);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(marketplaceID, setMarketplaceID);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(marketplaceID, setMarketplaceIDInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(name, setNameInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHrefInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescriptionInternal);
@@ -2449,13 +2449,67 @@ bool EntityItem::isMortalInternal() const {
     return _lifetime != ENTITY_ITEM_IMMORTAL_LIFETIME;
 }
 
+SimulationOwner EntityItem::getSimulationOwner() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getSimulationOwnerInternal();
+    unlock();
+    return result;
+}
+
+SimulationOwner EntityItem::getSimulationOwnerInternal() const {
+    assertLocked();
+    return _simulationOwner;
+}
 
 void EntityItem::setSimulationOwner(const QUuid& id, quint8 priority) {
+    assertUnlocked();
+    lockForWrite();
+    setSimulationOwnerInternal(id, priority);
+    unlock();
+}
+
+void EntityItem::setSimulationOwnerInternal(const QUuid& id, quint8 priority) {
+    assertWriteLocked();
     _simulationOwner.set(id, priority);
 }
 
 void EntityItem::setSimulationOwner(const SimulationOwner& owner) {
+    assertUnlocked();
+    lockForWrite();
+    setSimulationOwnerInternal(owner);
+    unlock();
+}
+
+void EntityItem::setSimulationOwnerInternal(const SimulationOwner& owner) {
+    assertWriteLocked();
     _simulationOwner.set(owner);
+}
+
+quint8 EntityItem::getSimulationPriority() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getSimulationPriorityInternal();
+    unlock();
+    return result;
+}
+
+quint8 EntityItem::getSimulationPriorityInternal() const {
+    assertLocked();
+    return _simulationOwner.getPriority();
+}
+
+QUuid EntityItem::getSimulatorID() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getSimulatorIDInternal();
+    unlock();
+    return result;
+}
+
+QUuid EntityItem::getSimulatorIDInternal() const {
+    assertLocked();
+    return _simulationOwner.getID();
 }
 
 void EntityItem::updateSimulatorID(const QUuid& value) {
@@ -2472,6 +2526,33 @@ void EntityItem::clearSimulationOwnership() {
     //_dirtyFlags |= EntityItem::DIRTY_SIMULATOR_ID;
 
 }
+
+QString EntityItem::getMarketplaceID() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getMarketplaceIDInternal();
+    unlock();
+    return result;
+}
+
+QString EntityItem::getMarketplaceIDInternal() const {
+    assertLocked();
+    return _marketplaceID;
+}
+
+void EntityItem::setMarketplaceID(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setMarketplaceIDInternal(value);
+    unlock();
+}
+
+void EntityItem::setMarketplaceIDInternal(const QString& value) {
+    assertWriteLocked();
+    _marketplaceID = value;
+}
+
+
 
 bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
     lockForWrite();
