@@ -267,8 +267,8 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         //      PROP_CUSTOM_PROPERTIES_INCLUDED,
 
         APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, _simulationOwner.toByteArray());
-        APPEND_ENTITY_PROPERTY(PROP_POSITION, getPosition());
-        APPEND_ENTITY_PROPERTY(PROP_ROTATION, getRotation());
+        APPEND_ENTITY_PROPERTY(PROP_POSITION, getPositionInternal());
+        APPEND_ENTITY_PROPERTY(PROP_ROTATION, getRotationInternal());
         APPEND_ENTITY_PROPERTY(PROP_VELOCITY, getVelocity());
         APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getAngularVelocity());
         APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, getAcceleration());
@@ -720,7 +720,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
 void EntityItem::debugDump() const {
     assertLocked();
-    auto position = getPosition();
+    auto position = getPositionInternal();
     qCDebug(entities) << "EntityItem id:" << getEntityItemID();
     qCDebug(entities, " edited ago:%f", (double)getEditedAgo());
     qCDebug(entities, " position:%f,%f,%f", (double)position.x, (double)position.y, (double)position.z);
@@ -868,6 +868,7 @@ void EntityItem::simulateKinematicMotion(float timeElapsed, bool setFlags) {
 }
 
 void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlags) {
+    assertLocked();
     if (hasActions()) {
         return;
     }
@@ -893,7 +894,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         } else {
             // for improved agreement with the way Bullet integrates rotations we use an approximation
             // and break the integration into bullet-sized substeps
-            glm::quat rotation = getRotation();
+            glm::quat rotation = getRotationInternal();
             float dt = timeElapsed;
             while (dt > PHYSICS_ENGINE_FIXED_SUBSTEP) {
                 glm::quat  dQ = computeBulletRotationStep(_angularVelocity, PHYSICS_ENGINE_FIXED_SUBSTEP);
@@ -906,7 +907,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
             glm::quat  dQ = computeBulletRotationStep(_angularVelocity, dt);
             rotation = glm::normalize(dQ * rotation);
 
-            setRotation(rotation);
+            setRotationInternal(rotation);
         }
     }
 
@@ -923,7 +924,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         }
 
         // integrate position forward
-        glm::vec3 position = getPosition();
+        glm::vec3 position = getPositionInternal();
         glm::vec3 newPosition = position + (velocity * timeElapsed);
 
         #ifdef WANT_DEBUG
@@ -952,7 +953,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
                 _dirtyFlags |= EntityItem::DIRTY_MOTION_TYPE;
             }
         } else {
-            setPosition(position);
+            setPositionInternal(position);
             setVelocity(velocity);
         }
 
@@ -970,10 +971,13 @@ bool EntityItem::isMoving() const {
 }
 
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
-    glm::mat4 translation = glm::translate(getPosition());
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
+    assertUnlocked();
+    lockForRead();
+    glm::mat4 translation = glm::translate(getPositionInternal());
+    glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
     glm::mat4 scale = glm::scale(getDimensions());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
+    unlock();
     return translation * rotation * scale * registration;
 }
 
@@ -1007,9 +1011,9 @@ EntityItemProperties EntityItem::getProperties() const {
 
     properties._type = getTypeInternal();
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwner);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getPosition);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getPositionInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensions); // NOTE: radius is obsolete
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(rotation, getRotation);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(rotation, getRotationInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(density, getDensity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(velocity, getVelocity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(gravity, getGravity);
@@ -1045,10 +1049,12 @@ EntityItemProperties EntityItem::getProperties() const {
 }
 
 void EntityItem::getAllTerseUpdateProperties(EntityItemProperties& properties) const {
+    assertUnlocked();
+    lockForRead();
     // a TerseUpdate includes the transform and its derivatives
-    properties._position = getPosition();
+    properties._position = getPositionInternal();
     properties._velocity = _velocity;
-    properties._rotation = getRotation();
+    properties._rotation = getRotationInternal();
     properties._angularVelocity = _angularVelocity;
     properties._acceleration = _acceleration;
 
@@ -1057,6 +1063,7 @@ void EntityItem::getAllTerseUpdateProperties(EntityItemProperties& properties) c
     properties._rotationChanged = true;
     properties._angularVelocityChanged = true;
     properties._accelerationChanged = true;
+    unlock();
 }
 
 bool EntityItem::setProperties(const EntityItemProperties& properties) {
@@ -1284,6 +1291,56 @@ void EntityItem::setTransform(const Transform& transform) {
     unlock();
 }
 
+glm::vec3 EntityItem::getPosition() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getPositionInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 EntityItem::getPositionInternal() const {
+    assertLocked();
+    return _transform.getTranslation();
+}
+
+void EntityItem::setPosition(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setPositionInternal(value);
+    unlock();
+}
+
+void EntityItem::setPositionInternal(const glm::vec3& value) {
+    assertWriteLocked();
+    _transform.setTranslation(value);
+}
+
+glm::quat EntityItem::getRotation() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getRotationInternal();
+    unlock();
+    return result;
+}
+
+glm::quat EntityItem::getRotationInternal() const {
+    assertLocked();
+    return _transform.getRotation();
+}
+
+void EntityItem::setRotation(const glm::quat& rotation) {
+    assertUnlocked();
+    lockForWrite();
+    setRotationInternal(rotation);
+    unlock();
+}
+
+void EntityItem::setRotationInternal(const glm::quat& rotation) {
+    assertWriteLocked();
+    _transform.setRotation(rotation);
+}
+
 void EntityItem::setDimensions(const glm::vec3& value) {
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
@@ -1402,10 +1459,10 @@ void EntityItem::computeShapeInfo(ShapeInfo& info) {
 
 void EntityItem::updatePosition(const glm::vec3& value) {
     assertWriteLocked();
-    auto delta = glm::distance(getPosition(), value);
+    auto delta = glm::distance(getPositionInternal(), value);
     if (delta > IGNORE_POSITION_DELTA) {
         _dirtyFlags |= EntityItem::DIRTY_POSITION;
-        setPosition(value);
+        setPositionInternal(value);
         if (delta > ACTIVATION_POSITION_DELTA) {
             _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
         }
@@ -1426,10 +1483,10 @@ void EntityItem::updateDimensions(const glm::vec3& value) {
 
 void EntityItem::updateRotation(const glm::quat& rotation) {
     assertWriteLocked();
-    if (getRotation() != rotation) {
-        setRotation(rotation);
+    if (getRotationInternal() != rotation) {
+        setRotationInternal(rotation);
 
-        auto alignmentDot = glm::abs(glm::dot(getRotation(), rotation));
+        auto alignmentDot = glm::abs(glm::dot(getRotationInternal(), rotation));
         if (alignmentDot < IGNORE_ALIGNMENT_DOT) {
             _dirtyFlags |= EntityItem::DIRTY_ROTATION;
         }

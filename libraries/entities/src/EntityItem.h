@@ -223,14 +223,14 @@ public:
     const Transform getTransform() const;
     void setTransform(const Transform& transform);
 
-///////
-
     /// Position in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3& getPosition() const { return _transform.getTranslation(); }
-    inline void setPosition(const glm::vec3& value) { _transform.setTranslation(value); }
+    glm::vec3 getPosition() const;
+    void setPosition(const glm::vec3& value);
 
-    inline const glm::quat& getRotation() const { return _transform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _transform.setRotation(rotation); }
+    glm::quat getRotation() const;
+    void setRotation(const glm::quat& rotation);
+
+///////
 
     // Hyperlink related getters and setters
     QString getHref() const { return _href; }
@@ -416,6 +416,10 @@ protected:
     void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
     virtual void debugDump() const;
     EntityTypes::EntityType getTypeInternal() const;
+    glm::vec3 getPositionInternal() const;
+    void setPositionInternal(const glm::vec3& value);
+    glm::quat getRotationInternal() const;
+    void setRotationInternal(const glm::quat& rotation);
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

@@ -27,8 +27,8 @@ EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
-    glm::vec3 oldPosition = getPosition(), oldDimensions = getDimensions();
-    glm::quat oldRotation = getRotation();
+    glm::vec3 oldPosition = getPositionInternal(), oldDimensions = getDimensions();
+    glm::quat oldRotation = getRotationInternal();
     
     setNewProperties();
     
@@ -41,8 +41,8 @@ void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
         _needsInitialSimulation = true;
         _model->setURL(getCompoundShapeURL(), QUrl(), true, true);
     }
-    if (oldPosition != getPosition() ||
-        oldRotation != getRotation() ||
+    if (oldPosition != getPositionInternal() ||
+        oldRotation != getRotationInternal() ||
         oldDimensions != getDimensions()) {
         _needsInitialSimulation = true;
     }
@@ -77,8 +77,8 @@ Model* RenderableZoneEntityItem::getModel() {
 void RenderableZoneEntityItem::initialSimulation() {
     _model->setScaleToFit(true, getDimensions());
     _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
-    _model->setRotation(getRotation());
-    _model->setTranslation(getPosition());
+    _model->setRotation(getRotationInternal());
+    _model->setTranslation(getPositionInternal());
     _model->simulate(0.0f);
     _needsInitialSimulation = false;
 }
