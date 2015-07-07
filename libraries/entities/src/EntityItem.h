@@ -98,7 +98,7 @@ class EntityItem : public std::enable_shared_from_this<EntityItem> {
     // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
     // do cleanup.
     friend class EntityTreeElement;
-    friend class EntitySimulation;
+    // friend class EntitySimulation;
 public:
     enum EntityDirtyFlags {
         DIRTY_POSITION = 0x0001,
@@ -385,6 +385,9 @@ public:
     void getAllTerseUpdateProperties(EntityItemProperties& properties) const;
 
     void flagForOwnership();
+
+    void setSimulated(bool value);
+    bool getSimulated() const;
 
     bool addAction(EntitySimulation* simulation, EntityActionPointer action);
     bool updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments);

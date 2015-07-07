@@ -2642,6 +2642,20 @@ quint64 EntityItem::getLastEditedFromRemote() {
     return result;
 }
 
+void EntityItem::setSimulated(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    _simulated = value;
+    unlock();
+}
+
+bool EntityItem::getSimulated() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _simulated;
+    unlock();
+    return result;
+}
 
 bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
     lockForWrite();
