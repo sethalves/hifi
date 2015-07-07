@@ -353,26 +353,24 @@ public:
     // TODO: get rid of users of getRadius()...
     float getRadius() const;
 
-///////
-
     virtual bool contains(const glm::vec3& point) const;
 
-    virtual bool isReadyToComputeShape() { return true; }
+    virtual bool isReadyToComputeShape() { assertUnlocked(); return true; }
     virtual void computeShapeInfo(ShapeInfo& info);
-    virtual float getVolumeEstimate() const { return getDimensions().x * getDimensions().y * getDimensions().z; }
+    virtual float getVolumeEstimate() const;
 
     /// return preferred shape type (actual physical shape may differ)
     virtual ShapeType getShapeType() const { return SHAPE_TYPE_NONE; }
 
-    uint32_t getDirtyFlags() const { return _dirtyFlags; }
-    void clearDirtyFlags(uint32_t mask = 0xffffffff) { _dirtyFlags &= ~mask; }
+    uint32_t getDirtyFlags() const;
+    void clearDirtyFlags(uint32_t mask = 0xffffffff);
 
     bool isMoving() const;
 
-    void* getPhysicsInfo() const { return _physicsInfo; }
+    void* getPhysicsInfo() const;
+    void setPhysicsInfo(void* data);
 
-    void setPhysicsInfo(void* data) { _physicsInfo = data; }
-    EntityTreeElement* getElement() const { return _element; }
+    EntityTreeElement* getElement() const;
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
     static bool getSendPhysicsUpdates() { return _sendPhysicsUpdates; }
@@ -382,11 +380,11 @@ public:
     glm::vec3 worldToEntity(const glm::vec3& point) const;
     glm::vec3 entityToWorld(const glm::vec3& point) const;
 
-    quint64 getLastEditedFromRemote() { return _lastEditedFromRemote; }
+    quint64 getLastEditedFromRemote();
 
     void getAllTerseUpdateProperties(EntityItemProperties& properties) const;
 
-    void flagForOwnership() { _dirtyFlags |= DIRTY_SIMULATOR_OWNERSHIP; }
+    void flagForOwnership();
 
     bool addAction(EntitySimulation* simulation, EntityActionPointer action);
     bool updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments);
@@ -487,6 +485,11 @@ protected:
     QUuid getSimulatorIDInternal() const;
     QString getMarketplaceIDInternal() const;
     void setMarketplaceIDInternal(const QString& value);
+    uint32_t getDirtyFlagsInternal() const;
+    void clearDirtyFlagsInternal(uint32_t mask);
+    void* getPhysicsInfoInternal() const;
+    void setPhysicsInfoInternal(void* data);
+
 
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags

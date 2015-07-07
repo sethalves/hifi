@@ -674,7 +674,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceIDInternal);
     }
 
-    if (overwriteLocalData && (getDirtyFlags() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES))) {
+    if (overwriteLocalData && (getDirtyFlagsInternal() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES))) {
         // NOTE: This code is attempting to "repair" the old data we just got from the server to make it more
         // closely match where the entities should be if they'd stepped forward in time to "now". The server
         // is sending us data with a known "last simulated" time. That time is likely in the past, and therefore
@@ -1029,9 +1029,78 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
     }
 }
 
+uint32_t EntityItem::getDirtyFlags() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getDirtyFlagsInternal();
+    unlock();
+    return result;
+}
+
+uint32_t EntityItem::getDirtyFlagsInternal() const {
+    assertLocked();
+    return _dirtyFlags;
+}
+
+void EntityItem::clearDirtyFlags(uint32_t mask) {
+    assertUnlocked();
+    lockForWrite();
+    clearDirtyFlagsInternal(mask);
+    unlock();
+}
+
+void EntityItem::clearDirtyFlagsInternal(uint32_t mask) {
+    assertWriteLocked();
+    _dirtyFlags &= ~mask;
+}
+
+void EntityItem::flagForOwnership() {
+    assertUnlocked();
+    lockForWrite();
+    _dirtyFlags |= DIRTY_SIMULATOR_OWNERSHIP;
+    unlock();
+}
+
 bool EntityItem::isMoving() const {
     return hasVelocity() || hasAngularVelocity();
 }
+
+void* EntityItem::getPhysicsInfo() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getPhysicsInfoInternal();
+    unlock();
+    return result;
+}
+
+void* EntityItem::getPhysicsInfoInternal() const {
+    assertLocked();
+    return _physicsInfo;
+}
+
+void EntityItem::setPhysicsInfo(void* data) {
+    assertUnlocked();
+    lockForWrite();
+    setPhysicsInfoInternal(data);
+    unlock();
+}
+
+void EntityItem::setPhysicsInfoInternal(void* data) {
+    assertWriteLocked();
+    _physicsInfo = data;
+}
+
+EntityTreeElement* EntityItem::getElement() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _element;
+    unlock();
+    return result;
+}
+
+
+
+
 
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     assertUnlocked();
@@ -1549,7 +1618,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         #endif
         setLastEditedInternal(now);
         somethingChangedNotification(); // notify derived classes that something has changed
-        if (getDirtyFlags() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES)) {
+        if (getDirtyFlagsInternal() & (EntityItem::DIRTY_TRANSFORM | EntityItem::DIRTY_VELOCITIES)) {
             // anything that sets the transform or velocity must update _lastSimulated which is used
             // for kinematic extrapolation (e.g. we want to extrapolate forward from this moment
             // when position and/or velocity was changed).
@@ -2122,10 +2191,12 @@ void EntityItem::setRadius(float value) {
 //    ... cornerToCornerLength = sqrt(3 x maxDimension ^ 2)
 //    ... radius = sqrt(3 x maxDimension ^ 2) / 2.0f;
 float EntityItem::getRadius() const {
+    assertUnlocked();
     return 0.5f * glm::length(getDimensions());
 }
 
 bool EntityItem::contains(const glm::vec3& point) const {
+    assertUnlocked();
     if (getShapeType() == SHAPE_TYPE_COMPOUND) {
         return getAABox().contains(point);
     } else {
@@ -2136,7 +2207,17 @@ bool EntityItem::contains(const glm::vec3& point) const {
 }
 
 void EntityItem::computeShapeInfo(ShapeInfo& info) {
+    assertUnlocked();
     info.setParams(getShapeType(), 0.5f * getDimensions());
+}
+
+
+float EntityItem::getVolumeEstimate() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getDimensionsInternal().x * getDimensionsInternal().y * getDimensionsInternal().z;
+    unlock();
+    return result;
 }
 
 void EntityItem::updatePosition(const glm::vec3& value) {
@@ -2552,6 +2633,14 @@ void EntityItem::setMarketplaceIDInternal(const QString& value) {
     _marketplaceID = value;
 }
 
+
+quint64 EntityItem::getLastEditedFromRemote() {
+    assertUnlocked();
+    lockForRead();
+    auto result = _lastEditedFromRemote;
+    unlock();
+    return result;
+}
 
 
 bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
