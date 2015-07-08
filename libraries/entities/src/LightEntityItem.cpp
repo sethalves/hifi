@@ -39,7 +39,7 @@ LightEntityItem::LightEntityItem(const EntityItemID& entityItemID, const EntityI
     _exponent = 0.0f;
     _cutoff = PI;
 
-    setProperties(properties, false);
+    setProperties(properties);
 }
 
 void LightEntityItem::setDimensions(const glm::vec3& value) {
@@ -73,11 +73,11 @@ EntityItemProperties LightEntityItem::getProperties(bool doLocking) const {
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(isSpotlight, getIsSpotlight);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(intensity, getIntensity);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(exponent, getExponent);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(cutoff, getCutoff);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(isSpotlight, getIsSpotlightInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColorInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(intensity, getIntensityInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(exponent, getExponentInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(cutoff, getCutoffInternal);
 
     if (doLocking) {
         unlock();
@@ -265,12 +265,12 @@ void LightEntityItem::setIsSpotlightInternal(bool value) {
         _isSpotlight = value;
 
         if (_isSpotlight) {
-            const float length = getDimensions().z;
+            const float length = getDimensionsInternal().z;
             const float width = length * glm::sin(glm::radians(_cutoff));
-            setDimensions(glm::vec3(width, width, length));
+            setDimensionsInternal(glm::vec3(width, width, length));
         } else {
-            float maxDimension = glm::max(getDimensions().x, getDimensions().y, getDimensions().z);
-            setDimensions(glm::vec3(maxDimension, maxDimension, maxDimension));
+            float maxDimension = glm::max(getDimensionsInternal().x, getDimensionsInternal().y, getDimensionsInternal().z);
+            setDimensionsInternal(glm::vec3(maxDimension, maxDimension, maxDimension));
         }
     }
 }
@@ -352,8 +352,8 @@ void LightEntityItem::setCutoffInternal(float value) {
     if (_isSpotlight) {
         // If we are a spotlight, adjusting the cutoff will affect the area we encapsulate,
         // so update the dimensions to reflect this.
-        const float length = getDimensions().z;
+        const float length = getDimensionsInternal().z;
         const float width = length * glm::sin(glm::radians(_cutoff));
-        setDimensions(glm::vec3(width, width, length));
+        setDimensionsInternal(glm::vec3(width, width, length));
     }
 }
