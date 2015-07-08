@@ -101,10 +101,10 @@ EntityPropertyFlags SkyboxPropertyGroup::getEntityProperties(EncodeBitstreamPara
 
     requestedProperties += PROP_SKYBOX_COLOR;
     requestedProperties += PROP_SKYBOX_URL;
-    
+
     return requestedProperties;
 }
-    
+
 void SkyboxPropertyGroup::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
                                 EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
                                 EntityPropertyFlags& requestedProperties,

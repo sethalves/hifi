@@ -27,7 +27,7 @@ public:
     _needsInitialSimulation(true)
     { }
     
-    virtual bool setProperties(const EntityItemProperties& properties);
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
     virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                  ReadBitstreamToTreeParams& args,
                                                  EntityPropertyFlags& propertyFlags, bool overwriteLocalData);

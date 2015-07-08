@@ -279,7 +279,7 @@ bool UpdateEntityOperator::preRecursion(OctreeElement* element) {
                 if (_wantDebug) {
                     qCDebug(entities) << "    *** This is the same OLD ELEMENT ***";
                 }
-            
+
                 // set the entity properties and mark our element as changed.
                 _existingEntity->setProperties(_properties);
                 if (_wantDebug) {

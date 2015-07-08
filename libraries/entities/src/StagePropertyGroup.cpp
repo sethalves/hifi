@@ -184,7 +184,7 @@ EntityPropertyFlags StagePropertyGroup::getEntityProperties(EncodeBitstreamParam
 
     return requestedProperties;
 }
-    
+
 void StagePropertyGroup::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
                                 EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
                                 EntityPropertyFlags& requestedProperties,

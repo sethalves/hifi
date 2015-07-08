@@ -126,10 +126,10 @@ public:
     EntityItemID getEntityItemID() const;
 
     // methods for getting/setting all properties of an entity
-    virtual EntityItemProperties getProperties() const;
+    virtual EntityItemProperties getProperties(bool doLocking = true) const;
 
     /// returns true if something changed
-    virtual bool setProperties(const EntityItemProperties& properties);
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
 
     /// Override this in your derived class if you'd like to be informed when something about the state of the entity
     /// has changed. This will be called with properties change or when new data is loaded from a stream
@@ -155,7 +155,7 @@ public:
     quint64 getLastChangedOnServer() const;
 
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
     virtual OctreeElement::AppendState appendEntityData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                                 EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData) const;
@@ -189,7 +189,7 @@ public:
     static void adjustEditPacketForClockSkew(unsigned char* codeColorBuffer, size_t length, int clockSkew);
 
     // perform update
-    virtual void update(const quint64& now);
+    virtual void update(const quint64& now, bool doLocking = true);
     quint64 getLastUpdated() const;
     quint64 getLastUpdatedInternal() const;
 

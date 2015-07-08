@@ -26,28 +26,41 @@ EntityItemPointer BoxEntityItem::factory(const EntityItemID& entityID, const Ent
 }
 
 BoxEntityItem::BoxEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-        EntityItem(entityItemID) 
+        EntityItem(entityItemID)
 {
     _type = EntityTypes::Box;
     _created = properties.getCreated();
     setProperties(properties);
 }
 
-EntityItemProperties BoxEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties BoxEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     properties._color = getXColor();
     properties._colorChanged = false;
 
-    properties._glowLevel = getGlowLevel();
+    properties._glowLevel = getGlowLevelInternal();
     properties._glowLevelChanged = false;
+
+    if (doLocking) {
+        unlock();
+    }
 
     return properties;
 }
 
-bool BoxEntityItem::setProperties(const EntityItemProperties& properties) {
+bool BoxEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
     bool somethingChanged = false;
-    somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+    somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
 
@@ -59,15 +72,16 @@ bool BoxEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "BoxEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties._lastEdited);
+        setLastEditedInternal(properties._lastEdited);
     }
+    unlock();
     return somethingChanged;
 }
 
-int BoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
-                                                ReadBitstreamToTreeParams& args,
-                                                EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+int BoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
+                                                    ReadBitstreamToTreeParams& args,
+                                                    EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
@@ -78,8 +92,8 @@ int BoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, i
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags BoxEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags BoxEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_COLOR;
     return requestedProperties;
 }
@@ -91,7 +105,7 @@ void BoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitst
                                     EntityPropertyFlags& propertiesDidntFit,
                                     int& propertyCount, 
                                     OctreeElement::AppendState& appendState) const { 
-
+    assertLocked();
     bool successPropertyFits = true;
 
     APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
@@ -105,4 +119,3 @@ void BoxEntityItem::debugDump() const {
     qCDebug(entities) << "          dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
 }
-

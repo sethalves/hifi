@@ -73,7 +73,7 @@ public:
     // EntityItem related helpers
     // methods for getting/setting all properties of an entity
     virtual void getProperties(EntityItemProperties& propertiesOut) const = 0;
-    
+
     /// returns true if something changed
     virtual bool setProperties(const EntityItemProperties& properties) = 0;
 
@@ -83,7 +83,7 @@ public:
 
 
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const = 0;
-        
+
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
                                     EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,

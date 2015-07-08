@@ -19,15 +19,15 @@ class LineEntityItem : public EntityItem {
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
 
     LineEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
-    
+
     ALLOW_INSTANTIATION // This class can be instantiated
-    
-        // methods for getting/setting all properties of an entity
-        virtual EntityItemProperties getProperties() const;
-    virtual bool setProperties(const EntityItemProperties& properties);
+
+    // methods for getting/setting all properties of an entity
+    virtual EntityItemProperties getProperties(bool doLocking = true) const;
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
 
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,

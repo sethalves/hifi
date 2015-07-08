@@ -25,26 +25,28 @@ public:
     ALLOW_INSTANTIATION // This class can be instantiated
 
     // methods for getting/setting all properties of an entity
-    virtual EntityItemProperties getProperties() const;
-    virtual bool setProperties(const EntityItemProperties& properties);
+    virtual EntityItemProperties getProperties(bool doLocking = true) const;
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
 
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
-    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
+                                    int& propertyCount,
                                     OctreeElement::AppendState& appendState) const;
 
 
-    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-    virtual void update(const quint64& now);
+///////
+
+    virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
 
     void updateShapeType(ShapeType type);

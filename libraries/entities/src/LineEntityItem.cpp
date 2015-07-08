@@ -40,34 +40,44 @@ LineEntityItem::LineEntityItem(const EntityItemID& entityItemID, const EntityIte
     _type = EntityTypes::Line;
     _created = properties.getCreated();
     setProperties(properties);
-    
-    
 }
 
-EntityItemProperties LineEntityItem::getProperties() const {
-    
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties LineEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
 
-    
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
+
+
     properties._color = getXColor();
     properties._colorChanged = false;
-    
-    
+
+
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(lineWidth, getLineWidth);
-    
+
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(linePoints, getLinePoints);
 
 
     properties._glowLevel = getGlowLevel();
     properties._glowLevelChanged = false;
 
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
-bool LineEntityItem::setProperties(const EntityItemProperties& properties) {
+bool LineEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
     bool somethingChanged = false;
-    somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
-    
+    somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
+
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lineWidth, setLineWidth);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(linePoints, setLinePoints);
@@ -81,8 +91,9 @@ bool LineEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "LineEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                 "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties._lastEdited);
+        setLastEditedInternal(properties._lastEdited);
     }
+    unlock();
     return somethingChanged;
 }
 
@@ -136,8 +147,8 @@ int LineEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags LineEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags LineEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_COLOR;
     requestedProperties += PROP_LINE_WIDTH;
     requestedProperties += PROP_LINE_POINTS;

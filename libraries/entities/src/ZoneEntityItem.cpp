@@ -34,7 +34,7 @@ EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const En
 }
 
 ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-        EntityItem(entityItemID) 
+    EntityItem(entityItemID)
 {
     _type = EntityTypes::Zone;
     _created = properties.getCreated();
@@ -50,7 +50,7 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
     _compoundShapeURL = DEFAULT_COMPOUND_SHAPE_URL;
 
     _backgroundMode = BACKGROUND_MODE_INHERIT;
-    
+
     setProperties(properties);
 }
 
@@ -70,12 +70,18 @@ EnvironmentData ZoneEntityItem::getEnvironmentData() const {
     // keyLight details from the scene interface
     //result.setSunLocation(1000, 900, 1000));
     //result.setSunBrightness(20.0f);
-    
+
     return result;
 }
 
-EntityItemProperties ZoneEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties ZoneEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightColor, getKeyLightColor);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightIntensity, getKeyLightIntensity);
@@ -91,12 +97,18 @@ EntityItemProperties ZoneEntityItem::getProperties() const {
     _atmosphereProperties.getProperties(properties);
     _skyboxProperties.getProperties(properties);
 
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
-bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
+bool ZoneEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
     bool somethingChanged = false;
-    somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+    somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightColor, setKeyLightColor);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightIntensity, setKeyLightIntensity);
@@ -122,9 +134,10 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "ZoneEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties._lastEdited);
+        setLastEditedInternal(properties._lastEdited);
     }
 
+    unlock();
     return somethingChanged;
 }
 
@@ -165,8 +178,8 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
     requestedProperties += PROP_KEYLIGHT_COLOR;
     requestedProperties += PROP_KEYLIGHT_INTENSITY;

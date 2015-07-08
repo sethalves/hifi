@@ -26,10 +26,10 @@ public:
     virtual void setDimensions(const glm::vec3& value);
     
     // methods for getting/setting all properties of an entity
-    virtual EntityItemProperties getProperties() const;
-    virtual bool setProperties(const EntityItemProperties& properties);
+    virtual EntityItemProperties getProperties(bool doLocking = true) const;
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
 
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,

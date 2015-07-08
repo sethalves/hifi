@@ -39,7 +39,7 @@ LightEntityItem::LightEntityItem(const EntityItemID& entityItemID, const EntityI
     _exponent = 0.0f;
     _cutoff = PI;
 
-    setProperties(properties);
+    setProperties(properties, false);
 }
 
 void LightEntityItem::setDimensions(const glm::vec3& value) {
@@ -56,14 +56,24 @@ void LightEntityItem::setDimensions(const glm::vec3& value) {
 }
 
 
-EntityItemProperties LightEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties LightEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(isSpotlight, getIsSpotlight);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(intensity, getIntensity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(exponent, getExponent);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(cutoff, getCutoff);
+
+    if (doLocking) {
+        unlock();
+    }
 
     return properties;
 }
@@ -95,8 +105,10 @@ void LightEntityItem::setCutoff(float value) {
     }
 }
 
-bool LightEntityItem::setProperties(const EntityItemProperties& properties) {
-    bool somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+bool LightEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
+    bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(isSpotlight, setIsSpotlight);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
@@ -112,8 +124,9 @@ bool LightEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "LightEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties.getLastEdited());
+        setLastEditedInternal(properties.getLastEdited());
     }
+    unlock();
     return somethingChanged;
 }
 
@@ -158,8 +171,8 @@ int LightEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags LightEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags LightEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_IS_SPOTLIGHT;
     requestedProperties += PROP_COLOR;
     requestedProperties += PROP_INTENSITY;

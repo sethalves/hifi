@@ -42,8 +42,14 @@ ModelEntityItem::ModelEntityItem(const EntityItemID& entityItemID, const EntityI
     _color[0] = _color[1] = _color[2] = 0;
 }
 
-EntityItemProperties ModelEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties ModelEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(modelURL, getModelURL);
@@ -52,16 +58,23 @@ EntityItemProperties ModelEntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlaying);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndex);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPS);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevel);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTextures);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettings);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeType);
+
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
-bool ModelEntityItem::setProperties(const EntityItemProperties& properties) {
+bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
     bool somethingChanged = false;
-    somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+    somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(modelURL, setModelURL);
@@ -82,16 +95,17 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "ModelEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties._lastEdited);
+        setLastEditedInternal(properties._lastEdited);
     }
 
+    unlock();
     return somethingChanged;
 }
 
 int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
-                                                ReadBitstreamToTreeParams& args,
-                                                EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+                                                      ReadBitstreamToTreeParams& args,
+                                                      EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
@@ -136,8 +150,8 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
 }
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
     requestedProperties += PROP_MODEL_URL;
     requestedProperties += PROP_COMPOUND_SHAPE_URL;
@@ -159,7 +173,7 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
                                 EntityPropertyFlags& propertyFlags,
                                 EntityPropertyFlags& propertiesDidntFit,
                                 int& propertyCount, OctreeElement::AppendState& appendState) const {
-
+    assertLocked();
     bool successPropertyFits = true;
 
     APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
@@ -175,7 +189,8 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
 }
 
 
-QMap<QString, AnimationPointer> ModelEntityItem::_loadedAnimations; // TODO: improve cleanup by leveraging the AnimationPointer(s)
+// TODO: improve cleanup by leveraging the AnimationPointer(s)
+QMap<QString, AnimationPointer> ModelEntityItem::_loadedAnimations;
 
 void ModelEntityItem::cleanupLoadedAnimations() {
     foreach(AnimationPointer animation, _loadedAnimations) {
@@ -254,7 +269,14 @@ bool ModelEntityItem::needsToCallUpdate() const {
     return isAnimatingSomething() ?  true : EntityItem::needsToCallUpdate();
 }
 
-void ModelEntityItem::update(const quint64& now) {
+void ModelEntityItem::update(const quint64& now, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+
     // only advance the frame index if we're playing
     if (getAnimationIsPlaying()) {
         float deltaTime = (float)(now - _lastAnimated) / (float)USECS_PER_SECOND;
@@ -263,7 +285,12 @@ void ModelEntityItem::update(const quint64& now) {
     } else {
         _lastAnimated = now;
     }
-    EntityItem::update(now); // let our base class handle it's updates...
+
+    EntityItem::update(now, false); // let our base class handle it's updates...
+
+    if (doLocking) {
+        unlock();
+    }
 }
 
 void ModelEntityItem::debugDump() const {
@@ -447,3 +474,5 @@ QString ModelEntityItem::getAnimationSettings() const {
 bool ModelEntityItem::shouldBePhysical() const {
     return EntityItem::shouldBePhysical() && getShapeType() != SHAPE_TYPE_NONE;
 }
+
+

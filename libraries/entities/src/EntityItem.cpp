@@ -115,14 +115,7 @@ EntityItemID EntityItem::getEntityItemIDInternal() const {
     return EntityItemID(_id);
 }
 
-EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    if (doLocking) {
-        assertUnlocked();
-        lockForRead();
-    } else {
-        assertLocked();
-    }
-
+EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties;
 
     requestedProperties += PROP_SIMULATION_OWNER;
@@ -154,10 +147,6 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
-
-    if (doLocking) {
-        unlock();
-    }
 
     return requestedProperties;
 }
@@ -196,7 +185,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
 
     EntityPropertyFlags propertyFlags(PROP_LAST_ITEM);
-    EntityPropertyFlags requestedProperties = getEntityProperties(params, false);
+    EntityPropertyFlags requestedProperties = getEntityProperties(params);
     EntityPropertyFlags propertiesDidntFit = requestedProperties;
 
     // If we are being called for a subsequent pass at appendEntityData() that failed to completely encode this item,
@@ -750,11 +739,19 @@ void EntityItem::adjustEditPacketForClockSkew(unsigned char* editPacketBuffer, s
     //assert(lastEditedInLocalTime > (quint64)0);
 }
 
-void EntityItem::update(const quint64& now) {
-    assertUnlocked();
-    lockForWrite();
+void EntityItem::update(const quint64& now, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+
     _lastUpdated = now;
-    unlock();
+
+    if (doLocking) {
+        unlock();
+    }
 }
 
 quint64 EntityItem::getLastUpdated() const {
@@ -1514,9 +1511,13 @@ void EntityItem::setUserDataInternal(const QString& value) {
 }
 
 
-EntityItemProperties EntityItem::getProperties() const {
-    assertUnlocked();
-    lockForRead();
+EntityItemProperties EntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
     EntityItemProperties properties;
     properties._id = getIDInternal();
     properties._idSet = true;
@@ -1557,7 +1558,10 @@ EntityItemProperties EntityItem::getProperties() const {
 
     properties._defaultSettings = false;
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
@@ -1579,9 +1583,14 @@ void EntityItem::getAllTerseUpdateProperties(EntityItemProperties& properties) c
     unlock();
 }
 
-bool EntityItem::setProperties(const EntityItemProperties& properties) {
-    assertUnlocked();
-    lockForWrite();
+bool EntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
 
     // these affect TerseUpdate properties
@@ -1650,7 +1659,9 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         _created = timestamp;
     }
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

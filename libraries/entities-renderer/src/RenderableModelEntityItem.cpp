@@ -37,11 +37,22 @@ RenderableModelEntityItem::~RenderableModelEntityItem() {
     }
 }
 
-bool RenderableModelEntityItem::setProperties(const EntityItemProperties& properties) {
+bool RenderableModelEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     QString oldModelURL = getModelURL();
-    bool somethingChanged = ModelEntityItem::setProperties(properties);
+    bool somethingChanged = ModelEntityItem::setProperties(properties, false);
     if (somethingChanged && oldModelURL != getModelURL()) {
         _needsModelReload = true;
+    }
+
+    if (doLocking) {
+        unlock();
     }
     return somethingChanged;
 }
@@ -346,11 +357,23 @@ bool RenderableModelEntityItem::needsToCallUpdate() const {
     return _needsInitialSimulation || ModelEntityItem::needsToCallUpdate();
 }
 
-EntityItemProperties RenderableModelEntityItem::getProperties() const {
-    EntityItemProperties properties = ModelEntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties RenderableModelEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+
+    EntityItemProperties properties = ModelEntityItem::getProperties(false); // get the properties from our base class
     if (_originalTexturesRead) {
         properties.setTextureNames(_originalTextures);
     }
+
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 

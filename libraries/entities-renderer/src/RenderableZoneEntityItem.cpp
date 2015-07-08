@@ -26,6 +26,7 @@ EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID
 
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
+    assertWriteLocked();
     QString oldShapeURL = getCompoundShapeURL();
     glm::vec3 oldPosition = getPositionInternal(), oldDimensions = getDimensionsInternal();
     glm::quat oldRotation = getRotationInternal();
@@ -48,11 +49,23 @@ void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     }
 }
 
-bool RenderableZoneEntityItem::setProperties(const EntityItemProperties& properties) {
+bool RenderableZoneEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
     changeProperties([&]() {
-        somethingChanged = this->ZoneEntityItem::setProperties(properties);
+        somethingChanged = this->ZoneEntityItem::setProperties(properties, false);
     });
+
+    if (doLocking) {
+        unlock();
+    }
+
     return somethingChanged;
 }
 

@@ -25,10 +25,10 @@ public:
     ALLOW_INSTANTIATION // This class can be instantiated
 
     // methods for getting/setting all properties of this entity
-    virtual EntityItemProperties getProperties() const;
-    virtual bool setProperties(const EntityItemProperties& properties);
+    virtual EntityItemProperties getProperties(bool doLocking = true) const;
+    virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
 
-    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params, bool doLocking = true) const;
+    virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
@@ -42,7 +42,7 @@ public:
                                                  ReadBitstreamToTreeParams& args,
                                                  EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-    virtual void update(const quint64& now);
+    virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
 
     const rgbColor& getColor() const { return _color; }

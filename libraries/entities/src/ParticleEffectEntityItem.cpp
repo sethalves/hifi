@@ -92,8 +92,14 @@ ParticleEffectEntityItem::ParticleEffectEntityItem(const EntityItemID& entityIte
 ParticleEffectEntityItem::~ParticleEffectEntityItem() {
 }
 
-EntityItemProperties ParticleEffectEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties ParticleEffectEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlaying);
@@ -111,11 +117,17 @@ EntityItemProperties ParticleEffectEntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(particleRadius, getParticleRadius);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTextures);
 
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
-bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& properties) {
-    bool somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
+    bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlaying);
@@ -141,8 +153,10 @@ bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& propert
             qCDebug(entities) << "ParticleEffectEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                 "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties.getLastEdited());
+        setLastEditedInternal(properties.getLastEdited());
     }
+
+    unlock();
     return somethingChanged;
 }
 
@@ -193,8 +207,8 @@ int ParticleEffectEntityItem::readEntitySubclassDataFromBuffer(const unsigned ch
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags ParticleEffectEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags ParticleEffectEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
     requestedProperties += PROP_COLOR;
     requestedProperties += PROP_ANIMATION_FPS;
@@ -248,7 +262,13 @@ bool ParticleEffectEntityItem::needsToCallUpdate() const {
     return isAnimatingSomething() ? true : EntityItem::needsToCallUpdate();
 }
 
-void ParticleEffectEntityItem::update(const quint64& now) {
+void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
 
     float deltaTime = (float)(now - _lastAnimated) / (float)USECS_PER_SECOND;
      _lastAnimated = now;
@@ -269,7 +289,11 @@ void ParticleEffectEntityItem::update(const quint64& now) {
         setDimensions(dims);
     }
 
-    EntityItem::update(now); // let our base class handle it's updates...
+    EntityItem::update(now, false); // let our base class handle it's updates...
+
+    if (doLocking) {
+        unlock();
+    }
 }
 
 void ParticleEffectEntityItem::debugDump() const {

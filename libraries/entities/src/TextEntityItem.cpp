@@ -48,20 +48,33 @@ void TextEntityItem::setDimensions(const glm::vec3& value) {
     EntityItem::setDimensions(glm::vec3(value.x, value.y, TEXT_ENTITY_ITEM_FIXED_DEPTH));
 }
 
-EntityItemProperties TextEntityItem::getProperties() const {
-    EntityItemProperties properties = EntityItem::getProperties(); // get the properties from our base class
+EntityItemProperties TextEntityItem::getProperties(bool doLocking) const {
+    if (doLocking) {
+        assertUnlocked();
+        lockForRead();
+    } else {
+        assertLocked();
+    }
+    EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(text, getText);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(lineHeight, getLineHeight);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(textColor, getTextColorX);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundColor, getBackgroundColorX);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(faceCamera, getFaceCamera);
+
+    if (doLocking) {
+        unlock();
+    }
+
     return properties;
 }
 
-bool TextEntityItem::setProperties(const EntityItemProperties& properties) {
+bool TextEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
+    assertUnlocked();
+    lockForWrite();
     bool somethingChanged = false;
-    somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
+    somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(text, setText);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lineHeight, setLineHeight);
@@ -77,9 +90,10 @@ bool TextEntityItem::setProperties(const EntityItemProperties& properties) {
             qCDebug(entities) << "TextEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
-        setLastEdited(properties._lastEdited);
+        setLastEditedInternal(properties._lastEdited);
     }
-    
+
+    unlock();
     return somethingChanged;
 }
 
@@ -101,8 +115,8 @@ int TextEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
-EntityPropertyFlags TextEntityItem::getEntityProperties(EncodeBitstreamParams& params, bool doLocking) const {
-    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params, doLocking);
+EntityPropertyFlags TextEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
+    EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_TEXT;
     requestedProperties += PROP_LINE_HEIGHT;
     requestedProperties += PROP_TEXT_COLOR;

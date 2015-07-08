@@ -88,7 +88,7 @@ void EntityTreeElement::initializeExtraEncodeData(EncodeBitstreamParams& params)
             EntityItemPointer entity = (*_entityItems)[i];
             entityTreeElementExtraEncodeData->entities.insert(entity->getEntityItemID(), entity->getEntityProperties(params));
         }
-        
+
         // TODO: some of these inserts might be redundant!!!
         extraEncodeData->insert(this, entityTreeElementExtraEncodeData);
     }
@@ -258,7 +258,8 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                 if (child->hasEntities()) {
                     entityTreeElementExtraEncodeData->childCompleted[i] = false;
                 } else {
-                    entityTreeElementExtraEncodeData->childCompleted[i] = true; // if the child doesn't have enities, it is completed
+                    // if the child doesn't have enities, it is completed
+                    entityTreeElementExtraEncodeData->childCompleted[i] = true;
                 }
             }
         }
