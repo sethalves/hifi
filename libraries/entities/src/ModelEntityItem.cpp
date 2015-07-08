@@ -55,12 +55,12 @@ EntityItemProperties ModelEntityItem::getProperties(bool doLocking) const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(modelURL, getModelURLInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURLInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationURL, getAnimationURLInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlaying);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndex);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPS);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlayingInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndexInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPSInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTextures);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettings);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTexturesInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettingsInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeTypeInternal);
 
     if (doLocking) {
@@ -83,7 +83,7 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlayingInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFrameIndex, setAnimationFrameIndexInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFPS, setAnimationFPSInternal);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textures, setTextures);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textures, setTexturesInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationSettings, setAnimationSettingsInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(shapeType, updateShapeType);
 
@@ -91,9 +91,9 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "ModelEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
@@ -123,15 +123,15 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     // Because we're using AnimationLoop which will reset the frame index if you change it's running state
     // we want to read these values in the order they appear in the buffer, but call our setters in an
     // order that allows AnimationLoop to preserve the correct frame rate.
-    float animationFPS = getAnimationFPS();
-    float animationFrameIndex = getAnimationFrameIndex();
-    bool animationIsPlaying = getAnimationIsPlaying();
+    float animationFPS = getAnimationFPSInternal();
+    float animationFrameIndex = getAnimationFrameIndexInternal();
+    bool animationIsPlaying = getAnimationIsPlayingInternal();
     READ_ENTITY_PROPERTY(PROP_ANIMATION_FPS, float, setAnimationFPSInternal);
     READ_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, float, setAnimationFrameIndexInternal);
     READ_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, bool, setAnimationIsPlayingInternal);
 
     if (propertyFlags.getHasProperty(PROP_ANIMATION_PLAYING)) {
-        if (animationIsPlaying != getAnimationIsPlaying()) {
+        if (animationIsPlaying != getAnimationIsPlayingInternal()) {
             setAnimationIsPlayingInternal(animationIsPlaying);
         }
     }
@@ -142,7 +142,7 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
         setAnimationFrameIndexInternal(animationFrameIndex);
     }
 
-    READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTextures);
+    READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTexturesInternal);
     READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettingsInternal);
     READ_ENTITY_PROPERTY(PROP_SHAPE_TYPE, ShapeType, updateShapeType);
 
@@ -180,11 +180,11 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
     APPEND_ENTITY_PROPERTY(PROP_MODEL_URL, getModelURLInternal());
     APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURLInternal());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_URL, getAnimationURLInternal());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPS());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndex());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlaying());
-    APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTextures());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettings());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPSInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndexInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlayingInternal());
+    APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTexturesInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettingsInternal());
     APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeTypeInternal());
 }
 
@@ -213,8 +213,11 @@ Animation* ModelEntityItem::getAnimation(const QString& url) {
 }
 
 void ModelEntityItem::mapJoints(const QStringList& modelJointNames) {
+    assertUnlocked();
+    lockForWrite();
     // if we don't have animation, or we're already joint mapped then bail early
     if (!hasAnimation() || _jointMappingCompleted) {
+        unlock();
         return;
     }
 
@@ -231,9 +234,12 @@ void ModelEntityItem::mapJoints(const QStringList& modelJointNames) {
             _jointMappingCompleted = true;
         }
     }
+    unlock();
 }
 
 QVector<glm::quat> ModelEntityItem::getAnimationFrame() {
+    assertUnlocked();
+    lockForRead();
     QVector<glm::quat> frameData;
     if (hasAnimation() && _jointMappingCompleted) {
         Animation* myAnimation = getAnimation(_animationURL);
@@ -256,7 +262,55 @@ QVector<glm::quat> ModelEntityItem::getAnimationFrame() {
             }
         }
     }
+    unlock();
     return frameData;
+}
+
+bool ModelEntityItem::jointsMapped() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _jointMappingCompleted;
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::getAnimationIsPlaying() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationIsPlayingInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::getAnimationIsPlayingInternal() const {
+    assertLocked();
+    return _animationLoop.isRunning();
+}
+
+float ModelEntityItem::getAnimationFrameIndex() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFrameIndexInternal();
+    unlock();
+    return result;
+}
+
+float ModelEntityItem::getAnimationFrameIndexInternal() const {
+    assertLocked();
+    return _animationLoop.getFrameIndex();
+}
+
+float ModelEntityItem::getAnimationFPS() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFPSInternal();
+    unlock();
+    return result;
+}
+
+float ModelEntityItem::getAnimationFPSInternal() const {
+    assertLocked();
+    return _animationLoop.getFPS();
 }
 
 bool ModelEntityItem::isAnimatingSomething() const {
@@ -278,7 +332,7 @@ void ModelEntityItem::update(const quint64& now, bool doLocking) {
     }
 
     // only advance the frame index if we're playing
-    if (getAnimationIsPlaying()) {
+    if (getAnimationIsPlayingInternal()) {
         float deltaTime = (float)(now - _lastAnimated) / (float)USECS_PER_SECOND;
         _lastAnimated = now;
         _animationLoop.simulate(deltaTime);
@@ -552,7 +606,7 @@ void ModelEntityItem::setAnimationSettingsInternal(const QString& value) {
 
     if (settingsMap.contains("running")) {
         bool running = settingsMap["running"].toBool();
-        if (running != getAnimationIsPlaying()) {
+        if (running != getAnimationIsPlayingInternal()) {
             setAnimationIsPlayingInternal(running);
         }
     }
@@ -739,6 +793,15 @@ float ModelEntityItem::getAnimationLastFrameInternal() const {
 }
 
 QString ModelEntityItem::getAnimationSettings() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationSettingsInternal();
+    unlock();
+    return result;
+}
+
+QString ModelEntityItem::getAnimationSettingsInternal() const {
+    assertLocked();
     // the animations setting is a JSON string that may contain various animation settings.
     // if it includes fps, frameIndex, or running, those values will be parsed out and
     // will over ride the regular animation settings
@@ -748,13 +811,13 @@ QString ModelEntityItem::getAnimationSettings() const {
     QJsonObject settingsAsJsonObject = settingsAsJson.object();
     QVariantMap settingsMap = settingsAsJsonObject.toVariantMap();
 
-    QVariant fpsValue(getAnimationFPS());
+    QVariant fpsValue(getAnimationFPSInternal());
     settingsMap["fps"] = fpsValue;
 
-    QVariant frameIndexValue(getAnimationFrameIndex());
+    QVariant frameIndexValue(getAnimationFrameIndexInternal());
     settingsMap["frameIndex"] = frameIndexValue;
 
-    QVariant runningValue(getAnimationIsPlaying());
+    QVariant runningValue(getAnimationIsPlayingInternal());
     settingsMap["running"] = runningValue;
 
     QVariant firstFrameValue(getAnimationFirstFrameInternal());
@@ -777,6 +840,31 @@ QString ModelEntityItem::getAnimationSettings() const {
     QByteArray jsonByteArray = newDocument.toJson(QJsonDocument::Compact);
     QString jsonByteString(jsonByteArray);
     return jsonByteString;
+}
+
+QString ModelEntityItem::getTextures() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getTexturesInternal();
+    unlock();
+    return result;
+}
+
+QString ModelEntityItem::getTexturesInternal() const {
+    assertLocked();
+    return _textures;
+}
+
+void ModelEntityItem::setTextures(const QString& textures) {
+    assertUnlocked();
+    lockForWrite();
+    setTexturesInternal(textures);
+    unlock();
+}
+
+void ModelEntityItem::setTexturesInternal(const QString& textures) {
+    assertWriteLocked();
+    _textures = textures;
 }
 
 // virtual

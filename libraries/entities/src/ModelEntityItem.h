@@ -127,20 +127,24 @@ public:
     float getAnimationLastFrame() const;
     float getAnimationLastFrameInternal() const;
 
-///////
-
     void mapJoints(const QStringList& modelJointNames);
     QVector<glm::quat> getAnimationFrame();
-    bool jointsMapped() const { return _jointMappingCompleted; }
+    bool jointsMapped() const;
 
-    bool getAnimationIsPlaying() const { return _animationLoop.isRunning(); }
-    float getAnimationFrameIndex() const { return _animationLoop.getFrameIndex(); }
-    float getAnimationFPS() const { return _animationLoop.getFPS(); }
+    bool getAnimationIsPlaying() const;
+    bool getAnimationIsPlayingInternal() const;
+    float getAnimationFrameIndex() const;
+    float getAnimationFrameIndexInternal() const;
+    float getAnimationFPS() const;
+    float getAnimationFPSInternal() const;
     QString getAnimationSettings() const;
+    QString getAnimationSettingsInternal() const;
 
     static const QString DEFAULT_TEXTURES;
-    const QString& getTextures() const { return _textures; }
-    void setTextures(const QString& textures) { _textures = textures; }
+    QString getTextures() const;
+    QString getTexturesInternal() const;
+    void setTextures(const QString& textures);
+    void setTexturesInternal(const QString& textures);
 
     virtual bool shouldBePhysical() const;
 
