@@ -12,7 +12,7 @@
 #ifndef hifi_LineEntityItem_h
 #define hifi_LineEntityItem_h
 
-#include "EntityItem.h" 
+#include "EntityItem.h"
 
 class LineEntityItem : public EntityItem {
  public:
@@ -29,48 +29,50 @@ class LineEntityItem : public EntityItem {
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
-    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
+                                    int& propertyCount,
                                     OctreeElement::AppendState& appendState) const;
 
-    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                  ReadBitstreamToTreeParams& args,
                                                  EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-    const rgbColor& getColor() const { return _color; }
-    xColor getXColor() const { xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color; }
+    const rgbColor& getColor() const;
+    xColor getXColor() const;
+    void setColor(const rgbColor& value);
+    void setColor(const xColor& value);
 
-    void setColor(const rgbColor& value) { memcpy(_color, value, sizeof(_color)); }
-    void setColor(const xColor& value) {
-        _color[RED_INDEX] = value.red;
-        _color[GREEN_INDEX] = value.green;
-        _color[BLUE_INDEX] = value.blue;
-    }
-
-    void setLineWidth(float lineWidth){ _lineWidth = lineWidth; }
-    float getLineWidth() const{ return _lineWidth; }
+    void setLineWidth(float lineWidth);
+    float getLineWidth() const;
 
     bool setLinePoints(const QVector<glm::vec3>& points);
     bool appendPoint(const glm::vec3& point);
 
-    const QVector<glm::vec3>& getLinePoints() const{ return _points; }
-
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_LINE; }
+    QVector<glm::vec3> getLinePoints() const;
 
     // never have a ray intersection pick a LineEntityItem.
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
-                         void** intersectedObject, bool precisionPicking) const { return false; }
+                                             bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
+                                             void** intersectedObject, bool precisionPicking) const { return false; }
 
     static const float DEFAULT_LINE_WIDTH;
     static const int MAX_POINTS_PER_LINE;
 
  protected:
+    const rgbColor& getColorInternal() const;
+    xColor getXColorInternal() const;
+    void setColorInternal(const rgbColor& value);
+    void setColorInternal(const xColor& value);
+    void setLineWidthInternal(float lineWidth);
+    float getLineWidthInternal() const;
+    QVector<glm::vec3> getLinePointsInternal() const;
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_LINE; }
+    bool setLinePointsInternal(const QVector<glm::vec3>& points);
 
     virtual void debugDump() const;
 
