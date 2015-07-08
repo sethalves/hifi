@@ -44,13 +44,13 @@ public:
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-///////
-
     virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
 
     void updateShapeType(ShapeType type);
-    virtual ShapeType getShapeType() const;
+    virtual ShapeType getShapeTypeInternal() const;
+
+///////
 
     // TODO: Move these to subclasses, or other appropriate abstraction
     // getters/setters applicable to models and particles

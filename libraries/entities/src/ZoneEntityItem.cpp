@@ -90,7 +90,7 @@ EntityItemProperties ZoneEntityItem::getProperties(bool doLocking) const {
 
     _stageProperties.getProperties(properties);
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeType);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeTypeInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURL);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundMode, getBackgroundMode);
 
@@ -191,17 +191,17 @@ EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& p
     requestedProperties += _stageProperties.getEntityProperties(params);
     requestedProperties += _atmosphereProperties.getEntityProperties(params);
     requestedProperties += _skyboxProperties.getEntityProperties(params);
-    
+
     return requestedProperties;
 }
 
-void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
 
     bool successPropertyFits = true;
 
@@ -214,10 +214,10 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
                                     propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
 
-    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeType());
+    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeTypeInternal());
     APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURL());
     APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, (uint32_t)getBackgroundMode()); // could this be a uint16??
-    
+
     _atmosphereProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
                                     propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
@@ -229,7 +229,8 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
 void ZoneEntityItem::debugDump() const {
     quint64 now = usecTimestampNow();
     qCDebug(entities) << "   ZoneEntityItem id:" << getEntityItemID() << "---------------------------------------------";
-    qCDebug(entities) << "             keyLightColor:" << _keyLightColor[0] << "," << _keyLightColor[1] << "," << _keyLightColor[2];
+    qCDebug(entities) << "             keyLightColor:"
+                      << _keyLightColor[0] << "," << _keyLightColor[1] << "," << _keyLightColor[2];
     qCDebug(entities) << "                  position:" << debugTreeVector(getPosition());
     qCDebug(entities) << "                dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "             getLastEdited:" << debugTime(getLastEdited(), now);
@@ -243,7 +244,8 @@ void ZoneEntityItem::debugDump() const {
     _skyboxProperties.debugDump();
 }
 
-ShapeType ZoneEntityItem::getShapeType() const {
+ShapeType ZoneEntityItem::getShapeTypeInternal() const {
+    assertLocked();
     // Zones are not allowed to have a SHAPE_TYPE_NONE... they are always at least a SHAPE_TYPE_BOX
     if (_shapeType == SHAPE_TYPE_COMPOUND) {
         return hasCompoundShapeURL() ? SHAPE_TYPE_COMPOUND : DEFAULT_SHAPE_TYPE;

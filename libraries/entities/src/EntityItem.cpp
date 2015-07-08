@@ -2236,11 +2236,18 @@ void EntityItem::computeShapeInfo(ShapeInfo& info) {
     info.setParams(getShapeType(), 0.5f * getDimensions());
 }
 
-
 float EntityItem::getVolumeEstimate() const {
     assertUnlocked();
     lockForRead();
     auto result = getDimensionsInternal().x * getDimensionsInternal().y * getDimensionsInternal().z;
+    unlock();
+    return result;
+}
+
+ShapeType EntityItem::getShapeType() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getShapeTypeInternal();
     unlock();
     return result;
 }

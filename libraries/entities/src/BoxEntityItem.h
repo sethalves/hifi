@@ -50,8 +50,8 @@ public:
         _color[GREEN_INDEX] = value.green;
         _color[BLUE_INDEX] = value.blue;
     }
-    
-    virtual ShapeType getShapeType() const { return SHAPE_TYPE_BOX; }
+
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
 
 protected:
 

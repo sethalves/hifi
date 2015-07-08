@@ -61,7 +61,7 @@ EntityItemProperties ModelEntityItem::getProperties(bool doLocking) const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTextures);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettings);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeType);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeTypeInternal);
 
     if (doLocking) {
         unlock();
@@ -185,7 +185,7 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlaying());
     APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTextures());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettings());
-    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeType());
+    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeTypeInternal());
 }
 
 
@@ -303,6 +303,7 @@ void ModelEntityItem::debugDump() const {
 }
 
 void ModelEntityItem::updateShapeType(ShapeType type) {
+    assertWriteLocked();
     // BEGIN_TEMPORARY_WORKAROUND
     // we have allowed inconsistent ShapeType's to be stored in SVO files in the past (this was a bug)
     // but we are now enforcing the entity properties to be consistent.  To make the possible we're
@@ -320,11 +321,13 @@ void ModelEntityItem::updateShapeType(ShapeType type) {
 }
 
 // virtual
-ShapeType ModelEntityItem::getShapeType() const {
+ShapeType ModelEntityItem::getShapeTypeInternal() const {
+    assertLocked();
     if (_shapeType == SHAPE_TYPE_COMPOUND) {
         return hasCompoundShapeURL() ? SHAPE_TYPE_COMPOUND : SHAPE_TYPE_NONE;
     } else {
-        return _shapeType;
+        auto result = _shapeType;
+        return result;
     }
 }
 

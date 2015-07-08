@@ -57,7 +57,7 @@ public:
     }
 
     void updateShapeType(ShapeType type);
-    virtual ShapeType getShapeType() const { return _shapeType; }
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return _shapeType; }
 
     static const float DEFAULT_ANIMATION_FRAME_INDEX;
     void setAnimationFrameIndex(float value);

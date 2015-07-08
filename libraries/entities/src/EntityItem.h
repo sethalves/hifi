@@ -354,7 +354,8 @@ public:
     virtual float getVolumeEstimate() const;
 
     /// return preferred shape type (actual physical shape may differ)
-    virtual ShapeType getShapeType() const { return SHAPE_TYPE_NONE; }
+    ShapeType getShapeType() const;
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_NONE; }
 
     uint32_t getDirtyFlags() const;
     void clearDirtyFlags(uint32_t mask = 0xffffffff);

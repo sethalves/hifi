@@ -50,16 +50,16 @@ class LineEntityItem : public EntityItem {
         _color[GREEN_INDEX] = value.green;
         _color[BLUE_INDEX] = value.blue;
     }
-    
+
     void setLineWidth(float lineWidth){ _lineWidth = lineWidth; }
     float getLineWidth() const{ return _lineWidth; }
-    
+
     bool setLinePoints(const QVector<glm::vec3>& points);
     bool appendPoint(const glm::vec3& point);
-    
+
     const QVector<glm::vec3>& getLinePoints() const{ return _points; }
-    
-    virtual ShapeType getShapeType() const { return SHAPE_TYPE_LINE; }
+
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_LINE; }
 
     // never have a ray intersection pick a LineEntityItem.
     virtual bool supportsDetailedRayIntersection() const { return true; }
