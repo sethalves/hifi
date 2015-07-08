@@ -73,8 +73,13 @@ EntityItemProperties LineEntityItem::getProperties(bool doLocking) const {
 }
 
 bool LineEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
@@ -93,7 +98,10 @@ bool LineEntityItem::setProperties(const EntityItemProperties& properties, bool 
         }
         setLastEditedInternal(properties._lastEdited);
     }
-    unlock();
+
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

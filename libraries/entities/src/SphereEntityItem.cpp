@@ -55,8 +55,13 @@ EntityItemProperties SphereEntityItem::getProperties(bool doLocking) const {
 }
 
 bool SphereEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
@@ -72,7 +77,9 @@ bool SphereEntityItem::setProperties(const EntityItemProperties& properties, boo
         setLastEditedInternal(properties.getLastEdited());
     }
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

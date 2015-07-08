@@ -115,8 +115,13 @@ EntityItemProperties PolyVoxEntityItem::getProperties(bool doLocking) const {
 }
 
 bool PolyVoxEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelVolumeSize, setVoxelVolumeSize);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelData, setVoxelData);
@@ -132,7 +137,10 @@ bool PolyVoxEntityItem::setProperties(const EntityItemProperties& properties, bo
         }
         setLastEditedInternal(properties._lastEdited);
     }
-    unlock();
+
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

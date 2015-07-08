@@ -45,9 +45,9 @@ bool RenderableModelEntityItem::setProperties(const EntityItemProperties& proper
         assertWriteLocked();
     }
 
-    QString oldModelURL = getModelURL();
+    QString oldModelURL = getModelURLInternal();
     bool somethingChanged = ModelEntityItem::setProperties(properties, false);
-    if (somethingChanged && oldModelURL != getModelURL()) {
+    if (somethingChanged && oldModelURL != getModelURLInternal()) {
         _needsModelReload = true;
     }
 

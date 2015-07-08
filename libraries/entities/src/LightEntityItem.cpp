@@ -32,7 +32,7 @@ LightEntityItem::LightEntityItem(const EntityItemID& entityItemID, const EntityI
         EntityItem(entityItemID, properties) 
 {
     _type = EntityTypes::Light;
-    
+
     // default property values
     _color[RED_INDEX] = _color[GREEN_INDEX] = _color[BLUE_INDEX] = 0;
     _intensity = 1.0f;
@@ -43,15 +43,23 @@ LightEntityItem::LightEntityItem(const EntityItemID& entityItemID, const EntityI
 }
 
 void LightEntityItem::setDimensions(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setDimensionsInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setDimensionsInternal(const glm::vec3& value) {
+    assertWriteLocked();
     if (_isSpotlight) {
         // If we are a spotlight, treat the z value as our radius or length, and
         // recalculate the x/y dimensions to properly encapsulate the spotlight.
         const float length = value.z;
         const float width = length * glm::sin(glm::radians(_cutoff));
-        EntityItem::setDimensions(glm::vec3(width, width, length));
+        EntityItem::setDimensionsInternal(glm::vec3(width, width, length));
     } else {
         float maxDimension = glm::max(value.x, value.y, value.z);
-        EntityItem::setDimensions(glm::vec3(maxDimension, maxDimension, maxDimension));
+        EntityItem::setDimensionsInternal(glm::vec3(maxDimension, maxDimension, maxDimension));
     }
 }
 
@@ -78,70 +86,51 @@ EntityItemProperties LightEntityItem::getProperties(bool doLocking) const {
     return properties;
 }
 
-void LightEntityItem::setIsSpotlight(bool value) {
-    if (value != _isSpotlight) {
-        _isSpotlight = value;
-
-        if (_isSpotlight) {
-            const float length = getDimensions().z;
-            const float width = length * glm::sin(glm::radians(_cutoff));
-            setDimensions(glm::vec3(width, width, length));
-        } else {
-            float maxDimension = glm::max(getDimensions().x, getDimensions().y, getDimensions().z);
-            setDimensions(glm::vec3(maxDimension, maxDimension, maxDimension));
-        }
-    }
-}
-
-void LightEntityItem::setCutoff(float value) {
-    _cutoff = glm::clamp(value, 0.0f, 90.0f);
-
-    if (_isSpotlight) {
-        // If we are a spotlight, adjusting the cutoff will affect the area we encapsulate,
-        // so update the dimensions to reflect this.
-        const float length = getDimensions().z;
-        const float width = length * glm::sin(glm::radians(_cutoff));
-        setDimensions(glm::vec3(width, width, length));
-    }
-}
-
 bool LightEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(isSpotlight, setIsSpotlight);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(intensity, setIntensity);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(exponent, setExponent);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(cutoff, setCutoff);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(isSpotlight, setIsSpotlightInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(intensity, setIntensityInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(exponent, setExponentInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(cutoff, setCutoffInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "LightEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties.getLastEdited());
     }
-    unlock();
+
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 
-int LightEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+int LightEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
     if (args.bitstreamVersion < VERSION_ENTITIES_LIGHT_HAS_INTENSITY_AND_COLOR_PROPERTIES) {
-        READ_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, bool, setIsSpotlight);
+        READ_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, bool, setIsSpotlightInternal);
 
         // _diffuseColor has been renamed to _color
-        READ_ENTITY_PROPERTY(PROP_DIFFUSE_COLOR, rgbColor, setColor);
+        READ_ENTITY_PROPERTY(PROP_DIFFUSE_COLOR, rgbColor, setColorInternal);
 
         // Ambient and specular color are from an older format and are no longer supported.
         // Their values will be ignored.
@@ -149,21 +138,21 @@ int LightEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
         READ_ENTITY_PROPERTY(PROP_SPECULAR_COLOR_UNUSED, rgbColor, setIgnoredColor);
 
         // _constantAttenuation has been renamed to _intensity
-        READ_ENTITY_PROPERTY(PROP_INTENSITY, float, setIntensity);
+        READ_ENTITY_PROPERTY(PROP_INTENSITY, float, setIntensityInternal);
 
         // Linear and quadratic attenuation are from an older format and are no longer supported.
         // Their values will be ignored.
         READ_ENTITY_PROPERTY(PROP_LINEAR_ATTENUATION_UNUSED, float, setIgnoredAttenuation);
         READ_ENTITY_PROPERTY(PROP_QUADRATIC_ATTENUATION_UNUSED, float, setIgnoredAttenuation);
 
-        READ_ENTITY_PROPERTY(PROP_EXPONENT, float, setExponent);
-        READ_ENTITY_PROPERTY(PROP_CUTOFF, float, setCutoff);
+        READ_ENTITY_PROPERTY(PROP_EXPONENT, float, setExponentInternal);
+        READ_ENTITY_PROPERTY(PROP_CUTOFF, float, setCutoffInternal);
     } else {
-        READ_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, bool, setIsSpotlight);
-        READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
-        READ_ENTITY_PROPERTY(PROP_INTENSITY, float, setIntensity);
-        READ_ENTITY_PROPERTY(PROP_EXPONENT, float, setExponent);
-        READ_ENTITY_PROPERTY(PROP_CUTOFF, float, setCutoff);
+        READ_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, bool, setIsSpotlightInternal);
+        READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColorInternal);
+        READ_ENTITY_PROPERTY(PROP_INTENSITY, float, setIntensityInternal);
+        READ_ENTITY_PROPERTY(PROP_EXPONENT, float, setExponentInternal);
+        READ_ENTITY_PROPERTY(PROP_CUTOFF, float, setCutoffInternal);
     }
 
     return bytesRead;
@@ -181,18 +170,190 @@ EntityPropertyFlags LightEntityItem::getEntityProperties(EncodeBitstreamParams& 
     return requestedProperties;
 }
 
-void LightEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void LightEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
-
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
+    assertLocked();
     bool successPropertyFits = true;
-    APPEND_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, getIsSpotlight());
-    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
-    APPEND_ENTITY_PROPERTY(PROP_INTENSITY, getIntensity());
-    APPEND_ENTITY_PROPERTY(PROP_EXPONENT, getExponent());
-    APPEND_ENTITY_PROPERTY(PROP_CUTOFF, getCutoff());
+    APPEND_ENTITY_PROPERTY(PROP_IS_SPOTLIGHT, getIsSpotlightInternal());
+    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColorInternal());
+    APPEND_ENTITY_PROPERTY(PROP_INTENSITY, getIntensityInternal());
+    APPEND_ENTITY_PROPERTY(PROP_EXPONENT, getExponentInternal());
+    APPEND_ENTITY_PROPERTY(PROP_CUTOFF, getCutoffInternal());
+}
+
+const rgbColor& LightEntityItem::getColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& LightEntityItem::getColorInternal() const {
+    assertLocked();
+    return _color;
+}
+
+xColor LightEntityItem::getXColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getXColorInternal();
+    unlock();
+    return result;
+}
+
+xColor LightEntityItem::getXColorInternal() const {
+    assertLocked();
+    xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] };
+    return color;
+}
+
+void LightEntityItem::setColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_color, value, sizeof(_color));
+}
+
+void LightEntityItem::setColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _color[RED_INDEX] = value.red;
+    _color[GREEN_INDEX] = value.green;
+    _color[BLUE_INDEX] = value.blue;
+}
+
+bool LightEntityItem::getIsSpotlight() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getIsSpotlightInternal();
+    unlock();
+    return result;
+}
+
+bool LightEntityItem::getIsSpotlightInternal() const {
+    assertLocked();
+    return _isSpotlight;
+}
+
+void LightEntityItem::setIsSpotlight(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setIsSpotlightInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setIsSpotlightInternal(bool value) {
+    assertWriteLocked();
+    if (value != _isSpotlight) {
+        _isSpotlight = value;
+
+        if (_isSpotlight) {
+            const float length = getDimensions().z;
+            const float width = length * glm::sin(glm::radians(_cutoff));
+            setDimensions(glm::vec3(width, width, length));
+        } else {
+            float maxDimension = glm::max(getDimensions().x, getDimensions().y, getDimensions().z);
+            setDimensions(glm::vec3(maxDimension, maxDimension, maxDimension));
+        }
+    }
+}
+
+float LightEntityItem::getIntensity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getIntensityInternal();
+    unlock();
+    return result;
+}
+
+float LightEntityItem::getIntensityInternal() const {
+    assertLocked();
+    return _intensity;
+}
+
+void LightEntityItem::setIntensity(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setIntensityInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setIntensityInternal(float value) {
+    assertWriteLocked();
+    _intensity = value;
+}
+
+float LightEntityItem::getExponent() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getExponentInternal();
+    unlock();
+    return result;
+}
+
+float LightEntityItem::getExponentInternal() const {
+    assertLocked();
+    return _exponent;
+}
+
+void LightEntityItem::setExponent(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setExponentInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setExponentInternal(float value) {
+    assertWriteLocked();
+    _exponent = value;
+}
+
+float LightEntityItem::getCutoff() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getCutoffInternal();
+    unlock();
+    return result;
+}
+
+float LightEntityItem::getCutoffInternal() const {
+    assertLocked();
+    return _cutoff;
+}
+
+void LightEntityItem::setCutoff(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setCutoffInternal(value);
+    unlock();
+}
+
+void LightEntityItem::setCutoffInternal(float value) {
+    assertWriteLocked();
+    _cutoff = glm::clamp(value, 0.0f, 90.0f);
+
+    if (_isSpotlight) {
+        // If we are a spotlight, adjusting the cutoff will affect the area we encapsulate,
+        // so update the dimensions to reflect this.
+        const float length = getDimensions().z;
+        const float width = length * glm::sin(glm::radians(_cutoff));
+        setDimensions(glm::vec3(width, width, length));
+    }
 }

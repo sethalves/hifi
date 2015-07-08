@@ -59,8 +59,13 @@ EntityItemProperties WebEntityItem::getProperties(bool doLocking) const {
 }
 
 bool WebEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
@@ -77,7 +82,9 @@ bool WebEntityItem::setProperties(const EntityItemProperties& properties, bool d
         setLastEditedInternal(properties._lastEdited);
     }
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

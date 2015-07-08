@@ -125,8 +125,13 @@ EntityItemProperties ParticleEffectEntityItem::getProperties(bool doLocking) con
 }
 
 bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
@@ -156,7 +161,9 @@ bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& propert
         setLastEditedInternal(properties.getLastEdited());
     }
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 

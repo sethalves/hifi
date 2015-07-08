@@ -71,8 +71,13 @@ EntityItemProperties ModelEntityItem::getProperties(bool doLocking) const {
 }
 
 bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
@@ -98,7 +103,9 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool
         setLastEditedInternal(properties._lastEdited);
     }
 
-    unlock();
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 
@@ -348,12 +355,13 @@ void ModelEntityItem::update(const quint64& now, bool doLocking) {
 }
 
 void ModelEntityItem::debugDump() const {
-    qCDebug(entities) << "ModelEntityItem id:" << getEntityItemID();
+    assertLocked();
+    qCDebug(entities) << "ModelEntityItem id:" << getEntityItemIDInternal();
     qCDebug(entities) << "    edited ago:" << getEditedAgo();
-    qCDebug(entities) << "    position:" << getPosition();
-    qCDebug(entities) << "    dimensions:" << getDimensions();
-    qCDebug(entities) << "    model URL:" << getModelURL();
-    qCDebug(entities) << "    compound shape URL:" << getCompoundShapeURL();
+    qCDebug(entities) << "    position:" << getPositionInternal();
+    qCDebug(entities) << "    dimensions:" << getDimensionsInternal();
+    qCDebug(entities) << "    model URL:" << getModelURLInternal();
+    qCDebug(entities) << "    compound shape URL:" << getCompoundShapeURLInternal();
 }
 
 void ModelEntityItem::updateShapeType(ShapeType type) {

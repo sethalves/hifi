@@ -1015,7 +1015,7 @@ void EntityItem::simulateKinematicMotionInternal(float timeElapsed, bool setFlag
         float speed = glm::length(velocity);
         const float EPSILON_LINEAR_VELOCITY_LENGTH = 0.001f; // 1mm/sec
         if (speed < EPSILON_LINEAR_VELOCITY_LENGTH) {
-            setVelocity(ENTITY_ITEM_ZERO_VEC3);
+            setVelocityInternal(ENTITY_ITEM_ZERO_VEC3);
             if (setFlags && speed > 0.0f) {
                 _dirtyFlags |= EntityItem::DIRTY_MOTION_TYPE;
             }
@@ -3000,7 +3000,7 @@ bool EntityItem::isUnlocked() const {
     // this can't be sure -- this may get unlucky and hit locks from other threads.  what we're actually trying
     // to discover is if *this* thread hasn't locked the EntityItem.  Try repeatedly to take both kinds of lock.
     bool readSuccess = false;
-    for (int i=0; i<30; i++) {
+    for (int i=0; i<60; i++) {
         readSuccess = tryLockForRead();
         if (readSuccess) {
             unlock();
@@ -3011,7 +3011,7 @@ bool EntityItem::isUnlocked() const {
 
     bool writeSuccess = false;
     if (readSuccess) {
-        for (int i=0; i<30; i++) {
+        for (int i=0; i<60; i++) {
             writeSuccess = tryLockForWrite();
             if (writeSuccess) {
                 unlock();
