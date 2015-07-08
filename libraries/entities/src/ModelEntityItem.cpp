@@ -78,13 +78,13 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(modelURL, setModelURLInternal);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURL);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationURL, setAnimationURL);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlaying);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFrameIndex, setAnimationFrameIndex);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFPS, setAnimationFPS);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURLInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationURL, setAnimationURLInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlayingInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFrameIndex, setAnimationFrameIndexInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFPS, setAnimationFPSInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(textures, setTextures);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationSettings, setAnimationSettings);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationSettings, setAnimationSettingsInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(shapeType, updateShapeType);
 
     if (somethingChanged) {
@@ -112,13 +112,13 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
     READ_ENTITY_PROPERTY(PROP_MODEL_URL, QString, setModelURLInternal);
     if (args.bitstreamVersion < VERSION_ENTITIES_HAS_COLLISION_MODEL) {
-        setCompoundShapeURL("");
+        setCompoundShapeURLInternal("");
     } else if (args.bitstreamVersion == VERSION_ENTITIES_HAS_COLLISION_MODEL) {
-        READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
+        READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURLInternal);
     } else {
-        READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
+        READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURLInternal);
     }
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_URL, QString, setAnimationURL);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_URL, QString, setAnimationURLInternal);
 
     // Because we're using AnimationLoop which will reset the frame index if you change it's running state
     // we want to read these values in the order they appear in the buffer, but call our setters in an
@@ -126,24 +126,24 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     float animationFPS = getAnimationFPS();
     float animationFrameIndex = getAnimationFrameIndex();
     bool animationIsPlaying = getAnimationIsPlaying();
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_FPS, float, setAnimationFPS);
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, float, setAnimationFrameIndex);
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, bool, setAnimationIsPlaying);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_FPS, float, setAnimationFPSInternal);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, float, setAnimationFrameIndexInternal);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, bool, setAnimationIsPlayingInternal);
 
     if (propertyFlags.getHasProperty(PROP_ANIMATION_PLAYING)) {
         if (animationIsPlaying != getAnimationIsPlaying()) {
-            setAnimationIsPlaying(animationIsPlaying);
+            setAnimationIsPlayingInternal(animationIsPlaying);
         }
     }
     if (propertyFlags.getHasProperty(PROP_ANIMATION_FPS)) {
-        setAnimationFPS(animationFPS);
+        setAnimationFPSInternal(animationFPS);
     }
     if (propertyFlags.getHasProperty(PROP_ANIMATION_FRAME_INDEX)) {
-        setAnimationFrameIndex(animationFrameIndex);
+        setAnimationFrameIndexInternal(animationFrameIndex);
     }
 
     READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTextures);
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettings);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettingsInternal);
     READ_ENTITY_PROPERTY(PROP_SHAPE_TYPE, ShapeType, updateShapeType);
 
     return bytesRead;
@@ -464,6 +464,14 @@ void ModelEntityItem::setModelURLInternal(const QString& url) {
 }
 
 void ModelEntityItem::setCompoundShapeURL(const QString& url) {
+    assertUnlocked();
+    lockForWrite();
+    setCompoundShapeURLInternal(url);
+    unlock();
+}
+
+void ModelEntityItem::setCompoundShapeURLInternal(const QString& url) {
+    assertWriteLocked();
     if (_compoundShapeURL != url) {
         _compoundShapeURL = url;
         _dirtyFlags |= EntityItem::DIRTY_SHAPE | EntityItem::DIRTY_MASS;
@@ -472,11 +480,27 @@ void ModelEntityItem::setCompoundShapeURL(const QString& url) {
 }
 
 void ModelEntityItem::setAnimationURL(const QString& url) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationURLInternal(url);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationURLInternal(const QString& url) {
+    assertWriteLocked();
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
     _animationURL = url;
 }
 
 void ModelEntityItem::setAnimationFrameIndex(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFrameIndexInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationFrameIndexInternal(float value) {
+    assertWriteLocked();
 #ifdef WANT_DEBUG
     if (isAnimatingSomething()) {
         qCDebug(entities) << "ModelEntityItem::setAnimationFrameIndex()";
@@ -490,6 +514,14 @@ void ModelEntityItem::setAnimationFrameIndex(float value) {
 }
 
 void ModelEntityItem::setAnimationSettings(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationSettingsInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationSettingsInternal(const QString& value) {
+    assertWriteLocked();
     // the animations setting is a JSON string that may contain various animation settings.
     // if it includes fps, frameIndex, or running, those values will be parsed out and
     // will over ride the regular animation settings
@@ -499,7 +531,7 @@ void ModelEntityItem::setAnimationSettings(const QString& value) {
     QVariantMap settingsMap = settingsAsJsonObject.toVariantMap();
     if (settingsMap.contains("fps")) {
         float fps = settingsMap["fps"].toFloat();
-        setAnimationFPS(fps);
+        setAnimationFPSInternal(fps);
     }
 
     if (settingsMap.contains("frameIndex")) {
@@ -507,47 +539,47 @@ void ModelEntityItem::setAnimationSettings(const QString& value) {
 #ifdef WANT_DEBUG
         if (isAnimatingSomething()) {
             qCDebug(entities) << "ModelEntityItem::setAnimationSettings() calling setAnimationFrameIndex()...";
-            qCDebug(entities) << "    model URL:" << getModelURL();
-            qCDebug(entities) << "    animation URL:" << getAnimationURL();
+            qCDebug(entities) << "    model URL:" << getModelURLInternal();
+            qCDebug(entities) << "    animation URL:" << getAnimationURLInternal();
             qCDebug(entities) << "    settings:" << value;
             qCDebug(entities) << "    settingsMap[frameIndex]:" << settingsMap["frameIndex"];
             qCDebug(entities"    frameIndex: %20.5f", frameIndex);
         }
 #endif
 
-        setAnimationFrameIndex(frameIndex);
+        setAnimationFrameIndexInternal(frameIndex);
     }
 
     if (settingsMap.contains("running")) {
         bool running = settingsMap["running"].toBool();
         if (running != getAnimationIsPlaying()) {
-            setAnimationIsPlaying(running);
+            setAnimationIsPlayingInternal(running);
         }
     }
 
     if (settingsMap.contains("firstFrame")) {
         float firstFrame = settingsMap["firstFrame"].toFloat();
-        setAnimationFirstFrame(firstFrame);
+        setAnimationFirstFrameInternal(firstFrame);
     }
 
     if (settingsMap.contains("lastFrame")) {
         float lastFrame = settingsMap["lastFrame"].toFloat();
-        setAnimationLastFrame(lastFrame);
+        setAnimationLastFrameInternal(lastFrame);
     }
 
     if (settingsMap.contains("loop")) {
         bool loop = settingsMap["loop"].toBool();
-        setAnimationLoop(loop);
+        setAnimationLoopInternal(loop);
     }
 
     if (settingsMap.contains("hold")) {
         bool hold = settingsMap["hold"].toBool();
-        setAnimationHold(hold);
+        setAnimationHoldInternal(hold);
     }
 
     if (settingsMap.contains("startAutomatically")) {
         bool startAutomatically = settingsMap["startAutomatically"].toBool();
-        setAnimationStartAutomatically(startAutomatically);
+        setAnimationStartAutomaticallyInternal(startAutomatically);
     }
 
     _animationSettings = value;
@@ -555,13 +587,155 @@ void ModelEntityItem::setAnimationSettings(const QString& value) {
 }
 
 void ModelEntityItem::setAnimationIsPlaying(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationIsPlayingInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationIsPlayingInternal(bool value) {
+    assertWriteLocked();
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
     _animationLoop.setRunning(value);
 }
 
 void ModelEntityItem::setAnimationFPS(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFPSInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationFPSInternal(float value) {
+    assertWriteLocked();
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
     _animationLoop.setFPS(value);
+}
+
+void ModelEntityItem::setAnimationLoop(bool loop) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationLoopInternal(loop);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationLoopInternal(bool loop) {
+    assertWriteLocked();
+    _animationLoop.setLoop(loop);
+}
+
+bool ModelEntityItem::getAnimationLoop() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationLoopInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::getAnimationLoopInternal() const {
+    assertLocked();
+    return _animationLoop.getLoop();
+}
+
+void ModelEntityItem::setAnimationHold(bool hold) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationHoldInternal(hold);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationHoldInternal(bool hold) {
+    assertWriteLocked();
+    _animationLoop.setHold(hold);
+}
+
+bool ModelEntityItem::getAnimationHold() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationHoldInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::getAnimationHoldInternal() const {
+    assertLocked();
+    return _animationLoop.getHold();
+}
+
+
+void ModelEntityItem::setAnimationStartAutomatically(bool startAutomatically) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationStartAutomaticallyInternal(startAutomatically);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationStartAutomaticallyInternal(bool startAutomatically) {
+    assertWriteLocked();
+    _animationLoop.setStartAutomatically(startAutomatically);
+}
+
+bool ModelEntityItem::getAnimationStartAutomatically() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationStartAutomaticallyInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::getAnimationStartAutomaticallyInternal() const {
+    assertLocked();
+    return _animationLoop.getStartAutomatically();
+}
+
+void ModelEntityItem::setAnimationFirstFrame(float firstFrame) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFirstFrameInternal(firstFrame);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationFirstFrameInternal(float firstFrame) {
+    assertWriteLocked();
+    _animationLoop.setFirstFrame(firstFrame);
+}
+
+float ModelEntityItem::getAnimationFirstFrame() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFirstFrameInternal();
+    unlock();
+    return result;
+}
+
+float ModelEntityItem::getAnimationFirstFrameInternal() const {
+    assertLocked();
+    return _animationLoop.getFirstFrame();
+}
+
+void ModelEntityItem::setAnimationLastFrame(float lastFrame) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationLastFrameInternal(lastFrame);
+    unlock();
+}
+
+void ModelEntityItem::setAnimationLastFrameInternal(float lastFrame) {
+    assertWriteLocked();
+    _animationLoop.setLastFrame(lastFrame);
+}
+
+float ModelEntityItem::getAnimationLastFrame() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationLastFrameInternal();
+    unlock();
+    return result;
+}
+
+float ModelEntityItem::getAnimationLastFrameInternal() const {
+    assertLocked();
+    return _animationLoop.getLastFrame();
 }
 
 QString ModelEntityItem::getAnimationSettings() const {
@@ -583,19 +757,19 @@ QString ModelEntityItem::getAnimationSettings() const {
     QVariant runningValue(getAnimationIsPlaying());
     settingsMap["running"] = runningValue;
 
-    QVariant firstFrameValue(getAnimationFirstFrame());
+    QVariant firstFrameValue(getAnimationFirstFrameInternal());
     settingsMap["firstFrame"] = firstFrameValue;
 
-    QVariant lastFrameValue(getAnimationLastFrame());
+    QVariant lastFrameValue(getAnimationLastFrameInternal());
     settingsMap["lastFrame"] = lastFrameValue;
 
-    QVariant loopValue(getAnimationLoop());
+    QVariant loopValue(getAnimationLoopInternal());
     settingsMap["loop"] = loopValue;
 
-    QVariant holdValue(getAnimationHold());
+    QVariant holdValue(getAnimationHoldInternal());
     settingsMap["hold"] = holdValue;
 
-    QVariant startAutomaticallyValue(getAnimationStartAutomatically());
+    QVariant startAutomaticallyValue(getAnimationStartAutomaticallyInternal());
     settingsMap["startAutomatically"] = startAutomaticallyValue;
 
     settingsAsJsonObject = QJsonObject::fromVariantMap(settingsMap);
@@ -609,5 +783,3 @@ QString ModelEntityItem::getAnimationSettings() const {
 bool ModelEntityItem::shouldBePhysical() const {
     return EntityItem::shouldBePhysical() && getShapeType() != SHAPE_TYPE_NONE;
 }
-
-

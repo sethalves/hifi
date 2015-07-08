@@ -229,7 +229,7 @@ void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, std::sha
 void RenderableModelEntityItem::render(RenderArgs* args) {
     PerformanceTimer perfTimer("RMEIrender");
     assert(getType() == EntityTypes::Model);
-    
+
     glm::vec3 position = getPosition();
     glm::vec3 dimensions = getDimensions();
 
@@ -390,7 +390,7 @@ bool RenderableModelEntityItem::findDetailedRayIntersection(const glm::vec3& ori
 }
 
 void RenderableModelEntityItem::setCompoundShapeURL(const QString& url) {
-    ModelEntityItem::setCompoundShapeURL(url);
+    ModelEntityItem::setCompoundShapeURLInternal(url);
     if (_model) {
         _model->setCollisionModelURL(QUrl(url));
     }

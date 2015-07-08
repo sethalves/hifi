@@ -84,39 +84,55 @@ public:
     void setModelURL(const QString& url);
     void setModelURLInternal(const QString& url);
 
-///////
-
     virtual void setCompoundShapeURL(const QString& url);
+    virtual void setCompoundShapeURLInternal(const QString& url);
     void setAnimationURL(const QString& url);
+    void setAnimationURLInternal(const QString& url);
     static const float DEFAULT_ANIMATION_FRAME_INDEX;
     void setAnimationFrameIndex(float value);
+    void setAnimationFrameIndexInternal(float value);
     void setAnimationSettings(const QString& value);
+    void setAnimationSettingsInternal(const QString& value);
 
     static const bool DEFAULT_ANIMATION_IS_PLAYING;
     void setAnimationIsPlaying(bool value);
+    void setAnimationIsPlayingInternal(bool value);
 
     static const float DEFAULT_ANIMATION_FPS;
     void setAnimationFPS(float value);
+    void setAnimationFPSInternal(float value);
 
-    void setAnimationLoop(bool loop) { _animationLoop.setLoop(loop); }
-    bool getAnimationLoop() const { return _animationLoop.getLoop(); }
-    
-    void setAnimationHold(bool hold) { _animationLoop.setHold(hold); }
-    bool getAnimationHold() const { return _animationLoop.getHold(); }
-    
-    void setAnimationStartAutomatically(bool startAutomatically) { _animationLoop.setStartAutomatically(startAutomatically); }
-    bool getAnimationStartAutomatically() const { return _animationLoop.getStartAutomatically(); }
-    
-    void setAnimationFirstFrame(float firstFrame) { _animationLoop.setFirstFrame(firstFrame); }
-    float getAnimationFirstFrame() const { return _animationLoop.getFirstFrame(); }
-    
-    void setAnimationLastFrame(float lastFrame) { _animationLoop.setLastFrame(lastFrame); }
-    float getAnimationLastFrame() const { return _animationLoop.getLastFrame(); }
-    
+    void setAnimationLoop(bool loop);
+    void setAnimationLoopInternal(bool loop);
+    bool getAnimationLoop() const;
+    bool getAnimationLoopInternal() const;
+
+    void setAnimationHold(bool hold);
+    void setAnimationHoldInternal(bool hold);
+    bool getAnimationHold() const;
+    bool getAnimationHoldInternal() const;
+
+    void setAnimationStartAutomatically(bool startAutomatically);
+    void setAnimationStartAutomaticallyInternal(bool startAutomatically);
+    bool getAnimationStartAutomatically() const;
+    bool getAnimationStartAutomaticallyInternal() const;
+
+    void setAnimationFirstFrame(float firstFrame);
+    void setAnimationFirstFrameInternal(float firstFrame);
+    float getAnimationFirstFrame() const;
+    float getAnimationFirstFrameInternal() const;
+
+    void setAnimationLastFrame(float lastFrame);
+    void setAnimationLastFrameInternal(float lastFrame);
+    float getAnimationLastFrame() const;
+    float getAnimationLastFrameInternal() const;
+
+///////
+
     void mapJoints(const QStringList& modelJointNames);
     QVector<glm::quat> getAnimationFrame();
     bool jointsMapped() const { return _jointMappingCompleted; }
-    
+
     bool getAnimationIsPlaying() const { return _animationLoop.isRunning(); }
     float getAnimationFrameIndex() const { return _animationLoop.getFrameIndex(); }
     float getAnimationFPS() const { return _animationLoop.getFPS(); }
@@ -127,9 +143,9 @@ public:
     void setTextures(const QString& textures) { _textures = textures; }
 
     virtual bool shouldBePhysical() const;
-    
+
     static void cleanupLoadedAnimations();
-    
+
 protected:
 
     virtual void debugDump() const;
