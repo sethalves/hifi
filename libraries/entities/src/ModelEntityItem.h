@@ -50,35 +50,42 @@ public:
     void updateShapeType(ShapeType type);
     virtual ShapeType getShapeTypeInternal() const;
 
-///////
-
     // TODO: Move these to subclasses, or other appropriate abstraction
     // getters/setters applicable to models and particles
 
     const rgbColor& getColor() const { return _color; }
-    xColor getXColor() const { xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color; }
-    bool hasModel() const { return !_modelURL.isEmpty(); }
-    virtual bool hasCompoundShapeURL() const { return !_compoundShapeURL.isEmpty(); }
+    xColor getXColor() const;
+    xColor getXColorInternal() const;
+    bool hasModel() const;
+    bool hasModelInternal() const;
+    virtual bool hasCompoundShapeURL() const;
+    virtual bool hasCompoundShapeURLInternal() const;
 
     static const QString DEFAULT_MODEL_URL;
-    const QString& getModelURL() const { return _modelURL; }
+    QString getModelURL() const;
+    QString getModelURLInternal() const;
 
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
-    const QString& getCompoundShapeURL() const { return _compoundShapeURL; }
+    QString getCompoundShapeURL() const;
+    QString getCompoundShapeURLInternal() const;
 
-    bool hasAnimation() const { return !_animationURL.isEmpty(); }
+    bool hasAnimation() const;
+    bool hasAnimationInternal() const;
     static const QString DEFAULT_ANIMATION_URL;
-    const QString& getAnimationURL() const { return _animationURL; }
+    QString getAnimationURL() const;
+    QString getAnimationURLInternal() const;
 
-    void setColor(const rgbColor& value) { memcpy(_color, value, sizeof(_color)); }
-    void setColor(const xColor& value) {
-            _color[RED_INDEX] = value.red;
-            _color[GREEN_INDEX] = value.green;
-            _color[BLUE_INDEX] = value.blue;
-    }
-    
+    void setColor(const rgbColor& value);
+    void setColorInternal(const rgbColor& value);
+    void setColor(const xColor& value);
+    void setColorInternal(const xColor& value);
+
     // model related properties
-    void setModelURL(const QString& url) { _modelURL = url; }
+    void setModelURL(const QString& url);
+    void setModelURLInternal(const QString& url);
+
+///////
+
     virtual void setCompoundShapeURL(const QString& url);
     void setAnimationURL(const QString& url);
     static const float DEFAULT_ANIMATION_FRAME_INDEX;

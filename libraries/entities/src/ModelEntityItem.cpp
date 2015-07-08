@@ -51,10 +51,10 @@ EntityItemProperties ModelEntityItem::getProperties(bool doLocking) const {
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(modelURL, getModelURL);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURL);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationURL, getAnimationURL);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColorInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(modelURL, getModelURLInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURLInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationURL, getAnimationURLInternal);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlaying);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndex);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPS);
@@ -76,8 +76,8 @@ bool ModelEntityItem::setProperties(const EntityItemProperties& properties, bool
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(modelURL, setModelURL);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(modelURL, setModelURLInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationURL, setAnimationURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlaying);
@@ -110,7 +110,7 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     const unsigned char* dataAt = data;
 
     READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
-    READ_ENTITY_PROPERTY(PROP_MODEL_URL, QString, setModelURL);
+    READ_ENTITY_PROPERTY(PROP_MODEL_URL, QString, setModelURLInternal);
     if (args.bitstreamVersion < VERSION_ENTITIES_HAS_COLLISION_MODEL) {
         setCompoundShapeURL("");
     } else if (args.bitstreamVersion == VERSION_ENTITIES_HAS_COLLISION_MODEL) {
@@ -177,9 +177,9 @@ void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBit
     bool successPropertyFits = true;
 
     APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
-    APPEND_ENTITY_PROPERTY(PROP_MODEL_URL, getModelURL());
-    APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURL());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_URL, getAnimationURL());
+    APPEND_ENTITY_PROPERTY(PROP_MODEL_URL, getModelURLInternal());
+    APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURLInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_URL, getAnimationURLInternal());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPS());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndex());
     APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlaying());
@@ -309,7 +309,7 @@ void ModelEntityItem::updateShapeType(ShapeType type) {
     // but we are now enforcing the entity properties to be consistent.  To make the possible we're
     // introducing a temporary workaround: we will ignore ShapeType updates that conflict with the
     // _compoundShapeURL.
-    if (hasCompoundShapeURL()) {
+    if (hasCompoundShapeURLInternal()) {
         type = SHAPE_TYPE_COMPOUND;
     }
     // END_TEMPORARY_WORKAROUND
@@ -324,11 +324,143 @@ void ModelEntityItem::updateShapeType(ShapeType type) {
 ShapeType ModelEntityItem::getShapeTypeInternal() const {
     assertLocked();
     if (_shapeType == SHAPE_TYPE_COMPOUND) {
-        return hasCompoundShapeURL() ? SHAPE_TYPE_COMPOUND : SHAPE_TYPE_NONE;
+        return hasCompoundShapeURLInternal() ? SHAPE_TYPE_COMPOUND : SHAPE_TYPE_NONE;
     } else {
         auto result = _shapeType;
         return result;
     }
+}
+
+
+xColor ModelEntityItem::getXColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getXColorInternal();
+    unlock();
+    return result;
+}
+
+xColor ModelEntityItem::getXColorInternal() const {
+    assertLocked();
+    xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] };
+    return color;
+}
+
+bool ModelEntityItem::hasModel() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = hasModelInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::hasModelInternal() const {
+    assertLocked();
+    return !_modelURL.isEmpty();
+}
+
+
+bool ModelEntityItem::hasCompoundShapeURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = hasCompoundShapeURLInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::hasCompoundShapeURLInternal() const {
+    assertLocked();
+    return !_compoundShapeURL.isEmpty();
+}
+
+QString ModelEntityItem::getModelURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getModelURLInternal();
+    unlock();
+    return result;
+}
+
+QString ModelEntityItem::getModelURLInternal() const {
+    assertLocked();
+    return _modelURL;
+}
+
+QString ModelEntityItem::getCompoundShapeURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getCompoundShapeURLInternal();
+    unlock();
+    return result;
+}
+
+QString ModelEntityItem::getCompoundShapeURLInternal() const {
+    assertLocked();
+    return _compoundShapeURL;
+}
+
+bool ModelEntityItem::hasAnimation() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = hasAnimationInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::hasAnimationInternal() const {
+    assertLocked();
+    return !_animationURL.isEmpty();
+}
+
+QString ModelEntityItem::getAnimationURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationURLInternal();
+    unlock();
+    return result;
+}
+
+QString ModelEntityItem::getAnimationURLInternal() const {
+    assertLocked();
+    return _animationURL;
+}
+
+void ModelEntityItem::setColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_color, value, sizeof(_color));
+}
+
+void ModelEntityItem::setColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void ModelEntityItem::setColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _color[RED_INDEX] = value.red;
+    _color[GREEN_INDEX] = value.green;
+    _color[BLUE_INDEX] = value.blue;
+}
+
+void ModelEntityItem::setModelURL(const QString& url) {
+    assertUnlocked();
+    lockForWrite();
+    setModelURLInternal(url);
+    unlock();
+}
+
+void ModelEntityItem::setModelURLInternal(const QString& url) {
+    assertWriteLocked();
+    _modelURL = url;
 }
 
 void ModelEntityItem::setCompoundShapeURL(const QString& url) {
