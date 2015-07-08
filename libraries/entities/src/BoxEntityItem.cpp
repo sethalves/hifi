@@ -43,7 +43,7 @@ EntityItemProperties BoxEntityItem::getProperties(bool doLocking) const {
 
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    properties._color = getXColor();
+    properties._color = getXColorInternal();
     properties._colorChanged = false;
 
     properties._glowLevel = getGlowLevelInternal();
@@ -57,24 +57,32 @@ EntityItemProperties BoxEntityItem::getProperties(bool doLocking) const {
 }
 
 bool BoxEntityItem::setProperties(const EntityItemProperties& properties, bool doLocking) {
-    assertUnlocked();
-    lockForWrite();
+    if (doLocking) {
+        assertUnlocked();
+        lockForWrite();
+    } else {
+        assertWriteLocked();
+    }
+
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "BoxEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
-    unlock();
+
+    if (doLocking) {
+        unlock();
+    }
     return somethingChanged;
 }
 
@@ -85,7 +93,7 @@ int BoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, i
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
+    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColorInternal);
 
     return bytesRead;
 }
@@ -98,17 +106,17 @@ EntityPropertyFlags BoxEntityItem::getEntityProperties(EncodeBitstreamParams& pa
     return requestedProperties;
 }
 
-void BoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void BoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
     assertLocked();
     bool successPropertyFits = true;
 
-    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
+    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColorInternal());
 }
 
 void BoxEntityItem::debugDump() const {
@@ -118,4 +126,57 @@ void BoxEntityItem::debugDump() const {
     qCDebug(entities) << "            position:" << debugTreeVector(getPosition());
     qCDebug(entities) << "          dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
+}
+
+const rgbColor& BoxEntityItem::getColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& BoxEntityItem::getColorInternal() const {
+    assertLocked();
+    return _color;
+}
+
+xColor BoxEntityItem::getXColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getXColorInternal();
+    unlock();
+    return result;
+}
+
+xColor BoxEntityItem::getXColorInternal() const {
+    assertLocked();
+    xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] };
+    return color;
+}
+
+void BoxEntityItem::setColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void BoxEntityItem::setColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_color, value, sizeof(_color));
+}
+
+void BoxEntityItem::setColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void BoxEntityItem::setColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _color[RED_INDEX] = value.red;
+    _color[GREEN_INDEX] = value.green;
+    _color[BLUE_INDEX] = value.blue;
 }
