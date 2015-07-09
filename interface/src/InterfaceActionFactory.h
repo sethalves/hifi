@@ -19,7 +19,7 @@ public:
     InterfaceActionFactory() : EntityActionFactoryInterface() { }
     virtual ~InterfaceActionFactory() { }
     virtual EntityActionPointer factory(EntityActionType type,
-                                        QUuid id,
+                                        const QUuid& id,
                                         EntityItemPointer ownerEntity,
                                         QVariantMap arguments);
     virtual EntityActionPointer factoryBA(EntityItemPointer ownerEntity,
