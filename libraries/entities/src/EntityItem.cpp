@@ -2279,8 +2279,6 @@ void EntityItem::updateDimensions(const glm::vec3& value) {
 void EntityItem::updateRotation(const glm::quat& rotation) {
     assertWriteLocked();
     if (getRotationInternal() != rotation) {
-        setRotationInternal(rotation);
-
         auto alignmentDot = glm::abs(glm::dot(getRotationInternal(), rotation));
         if (alignmentDot < IGNORE_ALIGNMENT_DOT) {
             _dirtyFlags |= EntityItem::DIRTY_ROTATION;
@@ -2288,6 +2286,7 @@ void EntityItem::updateRotation(const glm::quat& rotation) {
         if (alignmentDot < ACTIVATION_ALIGNMENT_DOT) {
             _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
         }
+        setRotationInternal(rotation);
     }
 }
 
