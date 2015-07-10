@@ -68,8 +68,6 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
-#define DEBUG 1
-
 #if DEBUG
   #define assertLocked() assert(isLocked())
 #else
@@ -87,7 +85,6 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #else
   #define assertUnlocked()
 #endif
-
 
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
@@ -395,6 +392,7 @@ public:
     QList<QUuid> getActionIDs() { return _objectActions.keys(); }
     QVariantMap getActionArguments(const QUuid& actionID) const;
     void deserializeActions();
+    void setActionDataDirty(bool value) const { _actionDataDirty = value; }
 
     virtual void debugDump() const;
 
@@ -513,6 +511,9 @@ protected:
     virtual void updateShapeType(ShapeType type) { /* do nothing */ }
     void updateSimulatorID(const QUuid& value);
 
+    const QByteArray getActionDataInternal() const;
+    void setActionDataInternal(QByteArray actionData);
+
     static bool _sendPhysicsUpdates;
     EntityTypes::EntityType _type;
     QUuid _id;
@@ -595,6 +596,7 @@ protected:
     // are used to keep track of and work around this situation.
     void checkWaitingToRemove(EntitySimulation* simulation = nullptr);
     mutable QSet<QUuid> _actionsToRemove;
+    mutable bool _actionDataDirty = false;
 
     mutable QReadWriteLock _lock;
     void lockForRead() const;
