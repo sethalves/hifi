@@ -45,16 +45,16 @@ public:
     virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
 
-    const rgbColor& getColor() const { return _color; }
-    xColor getXColor() const { xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color; }
+    const rgbColor& getColor() const;
+    const rgbColor& getColorInternal() const;
+    xColor getXColor() const;
+    xColor getXColorInternal() const;
 
     static const xColor DEFAULT_COLOR;
-    void setColor(const rgbColor& value) { memcpy(_color, value, sizeof(_color)); }
-    void setColor(const xColor& value) {
-        _color[RED_INDEX] = value.red;
-        _color[GREEN_INDEX] = value.green;
-        _color[BLUE_INDEX] = value.blue;
-    }
+    void setColor(const rgbColor& value);
+    void setColorInternal(const rgbColor& value);
+    void setColor(const xColor& value);
+    void setColorInternal(const xColor& value);
 
     void updateShapeType(ShapeType type);
     virtual ShapeType getShapeTypeInternal() const { assertLocked(); return _shapeType; }
@@ -69,64 +69,97 @@ public:
     static const float DEFAULT_ANIMATION_FPS;
     void setAnimationFPS(float value);
 
-    void setAnimationLoop(bool loop) { _animationLoop.setLoop(loop); }
-    bool getAnimationLoop() const { return _animationLoop.getLoop(); }
+    void setAnimationLoop(bool loop);
+    void setAnimationLoopInternal(bool loop);
+    bool getAnimationLoop() const;
+    bool getAnimationLoopInternal() const;
 
-    void setAnimationHold(bool hold) { _animationLoop.setHold(hold); }
-    bool getAnimationHold() const { return _animationLoop.getHold(); }
+    void setAnimationHold(bool hold);
+    void setAnimationHoldInternal(bool hold);
+    bool getAnimationHold() const;
+    bool getAnimationHoldInternal() const;
 
-    void setAnimationStartAutomatically(bool startAutomatically) { _animationLoop.setStartAutomatically(startAutomatically); }
-    bool getAnimationStartAutomatically() const { return _animationLoop.getStartAutomatically(); }
+    void setAnimationStartAutomatically(bool startAutomatically);
+    void setAnimationStartAutomaticallyInternal(bool startAutomatically);
+    bool getAnimationStartAutomatically() const;
+    bool getAnimationStartAutomaticallyInternal() const;
 
-    void setAnimationFirstFrame(float firstFrame) { _animationLoop.setFirstFrame(firstFrame); }
-    float getAnimationFirstFrame() const { return _animationLoop.getFirstFrame(); }
+    void setAnimationFirstFrame(float firstFrame);
+    void setAnimationFirstFrameInternal(float firstFrame);
+    float getAnimationFirstFrame() const;
+    float getAnimationFirstFrameInternal() const;
 
-    void setAnimationLastFrame(float lastFrame) { _animationLoop.setLastFrame(lastFrame); }
-    float getAnimationLastFrame() const { return _animationLoop.getLastFrame(); }
+    void setAnimationLastFrame(float lastFrame);
+    void setAnimationLastFrameInternal(float lastFrame);
+    float getAnimationLastFrame() const;
+    float getAnimationLastFrameInternal() const;
 
     static const quint32 DEFAULT_MAX_PARTICLES;
     void setMaxParticles(quint32 maxParticles);
-    quint32 getMaxParticles() const { return _maxParticles; }
+    quint32 getMaxParticles() const;
+    quint32 getMaxParticlesInternal() const;
 
     static const float DEFAULT_LIFESPAN;
-    void setLifespan(float lifespan) { _lifespan = lifespan; }
-    float getLifespan() const { return _lifespan; }
+    void setLifespan(float lifespan);
+    void setLifespanInternal(float lifespan);
+    float getLifespan() const;
+    float getLifespanInternal() const;
 
     static const float DEFAULT_EMIT_RATE;
-    void setEmitRate(float emitRate) { _emitRate = emitRate; }
-    float getEmitRate() const { return _emitRate; }
+    void setEmitRate(float emitRate);
+    void setEmitRateInternal(float emitRate);
+    float getEmitRate() const;
+    float getEmitRateInternal() const;
 
     static const glm::vec3 DEFAULT_EMIT_DIRECTION;
-    void setEmitDirection(glm::vec3 emitDirection) { _emitDirection = glm::normalize(emitDirection); }
-    const glm::vec3& getEmitDirection() const { return _emitDirection; }
+    void setEmitDirection(glm::vec3 emitDirection);
+    void setEmitDirectionInternal(glm::vec3 emitDirection);
+    glm::vec3 getEmitDirection() const;
+    glm::vec3 getEmitDirectionInternal() const;
 
     static const float DEFAULT_EMIT_STRENGTH;
-    void setEmitStrength(float emitStrength) { _emitStrength = emitStrength; }
-    float getEmitStrength() const { return _emitStrength; }
+    void setEmitStrength(float emitStrength);
+    void setEmitStrengthInternal(float emitStrength);
+    float getEmitStrength() const;
+    float getEmitStrengthInternal() const;
 
     static const float DEFAULT_LOCAL_GRAVITY;
-    void setLocalGravity(float localGravity) { _localGravity = localGravity; }
-    float getLocalGravity() const { return _localGravity; }
+    void setLocalGravity(float localGravity);
+    void setLocalGravityInternal(float localGravity);
+    float getLocalGravity() const;
+    float getLocalGravityInternal() const;
 
     static const float DEFAULT_PARTICLE_RADIUS;
-    void setParticleRadius(float particleRadius) { _particleRadius = particleRadius; }
-    float getParticleRadius() const { return _particleRadius; }
+    void setParticleRadius(float particleRadius);
+    void setParticleRadiusInternal(float particleRadius);
+    float getParticleRadius() const;
+    float getParticleRadiusInternal() const;
 
-    bool getAnimationIsPlaying() const { return _animationLoop.isRunning(); }
-    float getAnimationFrameIndex() const { return _animationLoop.getFrameIndex(); }
-    float getAnimationFPS() const { return _animationLoop.getFPS(); }
+    bool getAnimationIsPlaying() const;
+    bool getAnimationIsPlayingInternal() const;
+    float getAnimationFrameIndex() const;
+    float getAnimationFrameIndexInternal() const;
+    float getAnimationFPS() const;
+    float getAnimationFPSInternal() const;
     QString getAnimationSettings() const;
 
     static const QString DEFAULT_TEXTURES;
-    const QString& getTextures() const { return _textures; }
-    void setTextures(const QString& textures) {
-        if (_textures != textures) {
-            _textures = textures;
-            _texturesChangedFlag = true;
-        }
-    }
+    QString getTextures() const;
+    QString getTexturesInternal() const;
+    void setTextures(const QString& textures);
+    void setTexturesInternal(const QString& textures);
 
 protected:
+    void setAnimationSettingsInternal(const QString& value);
+    quint32 getLivingParticleCountInternal() const;
+    void setMaxParticlesInternal(quint32 maxParticles);
+    void extendBoundsInternal(const vec3& point);
+    QString getAnimationSettingsInternal() const;
+    void setAnimationFPSInternal(float value);
+    void setAnimationIsPlayingInternal(bool value);
+    bool isAnimatingSomethingInternal() const;
+    void setAnimationFrameIndexInternal(float value);
+    virtual bool needsToCallUpdateInternal() const;
 
     virtual void debugDump() const;
     bool isAnimatingSomething() const;

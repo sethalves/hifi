@@ -488,8 +488,7 @@ protected:
     void clearDirtyFlagsInternal(uint32_t mask);
     void* getPhysicsInfoInternal() const;
     void setPhysicsInfoInternal(void* data);
-
-
+    virtual bool needsToCallUpdateInternal() const { assertLocked(); return false; }
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

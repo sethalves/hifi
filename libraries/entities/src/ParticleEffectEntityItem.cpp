@@ -101,21 +101,21 @@ EntityItemProperties ParticleEffectEntityItem::getProperties(bool doLocking) con
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColor);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlaying);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndex);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPS);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevel);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettings);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeType);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(maxParticles, getMaxParticles);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lifespan, getLifespan);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitRate, getEmitRate);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitDirection, getEmitDirection);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitStrength, getEmitStrength);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(localGravity, getLocalGravity);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(particleRadius, getParticleRadius);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTextures);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(color, getXColorInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationIsPlaying, getAnimationIsPlayingInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFrameIndex, getAnimationFrameIndexInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationFPS, getAnimationFPSInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(glowLevel, getGlowLevelInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(animationSettings, getAnimationSettingsInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeTypeInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(maxParticles, getMaxParticlesInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lifespan, getLifespanInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitRate, getEmitRateInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitDirection, getEmitDirectionInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(emitStrength, getEmitStrengthInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(localGravity, getLocalGravityInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(particleRadius, getParticleRadiusInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textures, getTexturesInternal);
 
     if (doLocking) {
         unlock();
@@ -134,29 +134,29 @@ bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& propert
 
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlaying);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFrameIndex, setAnimationFrameIndex);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFPS, setAnimationFPS);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(glowLevel, setGlowLevel);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationSettings, setAnimationSettings);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationIsPlaying, setAnimationIsPlayingInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFrameIndex, setAnimationFrameIndexInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationFPS, setAnimationFPSInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(glowLevel, setGlowLevelInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(animationSettings, setAnimationSettingsInternal);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(shapeType, updateShapeType);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(maxParticles, setMaxParticles);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lifespan, setLifespan);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitRate, setEmitRate);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitDirection, setEmitDirection);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitStrength, setEmitStrength);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(localGravity, setLocalGravity);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(particleRadius, setParticleRadius);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textures, setTextures);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(maxParticles, setMaxParticlesInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lifespan, setLifespanInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitRate, setEmitRateInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitDirection, setEmitDirectionInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(emitStrength, setEmitStrengthInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(localGravity, setLocalGravityInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(particleRadius, setParticleRadiusInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textures, setTexturesInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "ParticleEffectEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                "now=" << now << " getLastEdited()=" << getLastEdited();
+                "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties.getLastEdited());
     }
@@ -170,45 +170,46 @@ bool ParticleEffectEntityItem::setProperties(const EntityItemProperties& propert
 int ParticleEffectEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                                ReadBitstreamToTreeParams& args,
                                                                EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
+    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColorInternal);
 
     // Because we're using AnimationLoop which will reset the frame index if you change it's running state
     // we want to read these values in the order they appear in the buffer, but call our setters in an
     // order that allows AnimationLoop to preserve the correct frame rate.
-    float animationFPS = getAnimationFPS();
-    float animationFrameIndex = getAnimationFrameIndex();
-    bool animationIsPlaying = getAnimationIsPlaying();
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_FPS, float, setAnimationFPS);
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, float, setAnimationFrameIndex);
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, bool, setAnimationIsPlaying);
+    float animationFPS = getAnimationFPSInternal();
+    float animationFrameIndex = getAnimationFrameIndexInternal();
+    bool animationIsPlaying = getAnimationIsPlayingInternal();
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_FPS, float, setAnimationFPSInternal);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, float, setAnimationFrameIndexInternal);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, bool, setAnimationIsPlayingInternal);
 
     if (propertyFlags.getHasProperty(PROP_ANIMATION_PLAYING)) {
-        if (animationIsPlaying != getAnimationIsPlaying()) {
-            setAnimationIsPlaying(animationIsPlaying);
+        if (animationIsPlaying != getAnimationIsPlayingInternal()) {
+            setAnimationIsPlayingInternal(animationIsPlaying);
         }
     }
     if (propertyFlags.getHasProperty(PROP_ANIMATION_FPS)) {
-        setAnimationFPS(animationFPS);
+        setAnimationFPSInternal(animationFPS);
     }
     if (propertyFlags.getHasProperty(PROP_ANIMATION_FRAME_INDEX)) {
-        setAnimationFrameIndex(animationFrameIndex);
+        setAnimationFrameIndexInternal(animationFrameIndex);
     }
 
-    READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettings);
+    READ_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, QString, setAnimationSettingsInternal);
     READ_ENTITY_PROPERTY(PROP_SHAPE_TYPE, ShapeType, updateShapeType);
-    READ_ENTITY_PROPERTY(PROP_MAX_PARTICLES, quint32, setMaxParticles);
-    READ_ENTITY_PROPERTY(PROP_LIFESPAN, float, setLifespan);
-    READ_ENTITY_PROPERTY(PROP_EMIT_RATE, float, setEmitRate);
-    READ_ENTITY_PROPERTY(PROP_EMIT_DIRECTION, glm::vec3, setEmitDirection);
-    READ_ENTITY_PROPERTY(PROP_EMIT_STRENGTH, float, setEmitStrength);
-    READ_ENTITY_PROPERTY(PROP_LOCAL_GRAVITY, float, setLocalGravity);
-    READ_ENTITY_PROPERTY(PROP_PARTICLE_RADIUS, float, setParticleRadius);
-    READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTextures);
+    READ_ENTITY_PROPERTY(PROP_MAX_PARTICLES, quint32, setMaxParticlesInternal);
+    READ_ENTITY_PROPERTY(PROP_LIFESPAN, float, setLifespanInternal);
+    READ_ENTITY_PROPERTY(PROP_EMIT_RATE, float, setEmitRateInternal);
+    READ_ENTITY_PROPERTY(PROP_EMIT_DIRECTION, glm::vec3, setEmitDirectionInternal);
+    READ_ENTITY_PROPERTY(PROP_EMIT_STRENGTH, float, setEmitStrengthInternal);
+    READ_ENTITY_PROPERTY(PROP_LOCAL_GRAVITY, float, setLocalGravityInternal);
+    READ_ENTITY_PROPERTY(PROP_PARTICLE_RADIUS, float, setParticleRadiusInternal);
+    READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTexturesInternal);
 
+    unlock();
     return bytesRead;
 }
 
@@ -242,31 +243,49 @@ void ParticleEffectEntityItem::appendSubclassData(OctreePacketData* packetData, 
                                                   EntityPropertyFlags& propertiesDidntFit,
                                                   int& propertyCount,
                                                   OctreeElement::AppendState& appendState) const {
-
+    assertLocked();
     bool successPropertyFits = true;
-    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPS());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndex());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlaying());
-    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettings());
-    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeType());
-    APPEND_ENTITY_PROPERTY(PROP_MAX_PARTICLES, getMaxParticles());
-    APPEND_ENTITY_PROPERTY(PROP_LIFESPAN, getLifespan());
-    APPEND_ENTITY_PROPERTY(PROP_EMIT_RATE, getEmitRate());
-    APPEND_ENTITY_PROPERTY(PROP_EMIT_DIRECTION, getEmitDirection());
-    APPEND_ENTITY_PROPERTY(PROP_EMIT_STRENGTH, getEmitStrength());
-    APPEND_ENTITY_PROPERTY(PROP_LOCAL_GRAVITY, getLocalGravity());
-    APPEND_ENTITY_PROPERTY(PROP_PARTICLE_RADIUS, getParticleRadius());
-    APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTextures());
+    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColorInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FPS, getAnimationFPSInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_FRAME_INDEX, getAnimationFrameIndexInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_PLAYING, getAnimationIsPlayingInternal());
+    APPEND_ENTITY_PROPERTY(PROP_ANIMATION_SETTINGS, getAnimationSettingsInternal());
+    APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeTypeInternal());
+    APPEND_ENTITY_PROPERTY(PROP_MAX_PARTICLES, getMaxParticlesInternal());
+    APPEND_ENTITY_PROPERTY(PROP_LIFESPAN, getLifespanInternal());
+    APPEND_ENTITY_PROPERTY(PROP_EMIT_RATE, getEmitRateInternal());
+    APPEND_ENTITY_PROPERTY(PROP_EMIT_DIRECTION, getEmitDirectionInternal());
+    APPEND_ENTITY_PROPERTY(PROP_EMIT_STRENGTH, getEmitStrengthInternal());
+    APPEND_ENTITY_PROPERTY(PROP_LOCAL_GRAVITY, getLocalGravityInternal());
+    APPEND_ENTITY_PROPERTY(PROP_PARTICLE_RADIUS, getParticleRadiusInternal());
+    APPEND_ENTITY_PROPERTY(PROP_TEXTURES, getTexturesInternal());
 }
 
 bool ParticleEffectEntityItem::isAnimatingSomething() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = isAnimatingSomethingInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::isAnimatingSomethingInternal() const {
+    assertLocked();
     // keep animating if there are particles still alive.
-    return (getAnimationIsPlaying() || getLivingParticleCount() > 0) && getAnimationFPS() != 0.0f;
+    return (getAnimationIsPlayingInternal() || getLivingParticleCountInternal() > 0) && getAnimationFPSInternal() != 0.0f;
 }
 
 bool ParticleEffectEntityItem::needsToCallUpdate() const {
-    return isAnimatingSomething() ? true : EntityItem::needsToCallUpdate();
+    assertUnlocked();
+    lockForRead();
+    auto result = needsToCallUpdateInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::needsToCallUpdateInternal() const {
+    assertLocked();
+    return isAnimatingSomethingInternal() ? true : EntityItem::needsToCallUpdateInternal();
 }
 
 void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
@@ -281,11 +300,11 @@ void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
      _lastAnimated = now;
 
     // only advance the frame index if we're playing
-    if (getAnimationIsPlaying()) {
+    if (getAnimationIsPlayingInternal()) {
         _animationLoop.simulate(deltaTime);
     }
 
-    if (isAnimatingSomething()) {
+    if (isAnimatingSomethingInternal()) {
         stepSimulation(deltaTime);
 
         // update the dimensions
@@ -293,7 +312,7 @@ void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
         dims.x = glm::max(glm::abs(_particleMinBound.x), glm::abs(_particleMaxBound.x)) * 2.0f;
         dims.y = glm::max(glm::abs(_particleMinBound.y), glm::abs(_particleMaxBound.y)) * 2.0f;
         dims.z = glm::max(glm::abs(_particleMinBound.z), glm::abs(_particleMaxBound.z)) * 2.0f;
-        setDimensions(dims);
+        setDimensionsInternal(dims);
     }
 
     EntityItem::update(now, false); // let our base class handle it's updates...
@@ -304,6 +323,7 @@ void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
 }
 
 void ParticleEffectEntityItem::debugDump() const {
+    assertLocked();
     quint64 now = usecTimestampNow();
     qCDebug(entities) << "PA EFFECT EntityItem id:" << getEntityItemID() << "---------------------------------------------";
     qCDebug(entities) << "                  color:" << _color[0] << "," << _color[1] << "," << _color[2];
@@ -313,6 +333,7 @@ void ParticleEffectEntityItem::debugDump() const {
 }
 
 void ParticleEffectEntityItem::updateShapeType(ShapeType type) {
+    assertWriteLocked();
     if (type != _shapeType) {
         _shapeType = type;
         _dirtyFlags |= EntityItem::DIRTY_SHAPE | EntityItem::DIRTY_MASS;
@@ -320,6 +341,14 @@ void ParticleEffectEntityItem::updateShapeType(ShapeType type) {
 }
 
 void ParticleEffectEntityItem::setAnimationFrameIndex(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFrameIndexInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationFrameIndexInternal(float value) {
+    assertWriteLocked();
 #ifdef WANT_DEBUG
     if (isAnimatingSomething()) {
         qCDebug(entities) << "ParticleEffectEntityItem::setAnimationFrameIndex()";
@@ -331,6 +360,14 @@ void ParticleEffectEntityItem::setAnimationFrameIndex(float value) {
 }
 
 void ParticleEffectEntityItem::setAnimationSettings(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationSettingsInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationSettingsInternal(const QString& value) {
+    assertWriteLocked();
     // the animations setting is a JSON string that may contain various animation settings.
     // if it includes fps, frameIndex, or running, those values will be parsed out and
     // will over ride the regular animation settings
@@ -340,7 +377,7 @@ void ParticleEffectEntityItem::setAnimationSettings(const QString& value) {
     QVariantMap settingsMap = settingsAsJsonObject.toVariantMap();
     if (settingsMap.contains("fps")) {
         float fps = settingsMap["fps"].toFloat();
-        setAnimationFPS(fps);
+        setAnimationFPSInternal(fps);
     }
 
     if (settingsMap.contains("frameIndex")) {
@@ -354,56 +391,82 @@ void ParticleEffectEntityItem::setAnimationSettings(const QString& value) {
         }
 #endif
 
-        setAnimationFrameIndex(frameIndex);
+        setAnimationFrameIndexInternal(frameIndex);
     }
 
     if (settingsMap.contains("running")) {
         bool running = settingsMap["running"].toBool();
-        if (running != getAnimationIsPlaying()) {
-            setAnimationIsPlaying(running);
+        if (running != getAnimationIsPlayingInternal()) {
+            setAnimationIsPlayingInternal(running);
         }
     }
 
     if (settingsMap.contains("firstFrame")) {
         float firstFrame = settingsMap["firstFrame"].toFloat();
-        setAnimationFirstFrame(firstFrame);
+        setAnimationFirstFrameInternal(firstFrame);
     }
 
     if (settingsMap.contains("lastFrame")) {
         float lastFrame = settingsMap["lastFrame"].toFloat();
-        setAnimationLastFrame(lastFrame);
+        setAnimationLastFrameInternal(lastFrame);
     }
 
     if (settingsMap.contains("loop")) {
         bool loop = settingsMap["loop"].toBool();
-        setAnimationLoop(loop);
+        setAnimationLoopInternal(loop);
     }
 
     if (settingsMap.contains("hold")) {
         bool hold = settingsMap["hold"].toBool();
-        setAnimationHold(hold);
+        setAnimationHoldInternal(hold);
     }
 
     if (settingsMap.contains("startAutomatically")) {
         bool startAutomatically = settingsMap["startAutomatically"].toBool();
-        setAnimationStartAutomatically(startAutomatically);
+        setAnimationStartAutomaticallyInternal(startAutomatically);
     }
 
     _animationSettings = value;
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
+    unlock();
 }
 
 void ParticleEffectEntityItem::setAnimationIsPlaying(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationIsPlayingInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationIsPlayingInternal(bool value) {
+    assertWriteLocked();
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
     _animationLoop.setRunning(value);
 }
 
 void ParticleEffectEntityItem::setAnimationFPS(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFPSInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationFPSInternal(float value) {
+    assertWriteLocked();
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
     _animationLoop.setFPS(value);
 }
 
 QString ParticleEffectEntityItem::getAnimationSettings() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationSettingsInternal();
+    unlock();
+    return result;
+}
+
+QString ParticleEffectEntityItem::getAnimationSettingsInternal() const {
+    assertLocked();
     // the animations setting is a JSON string that may contain various animation settings.
     // if it includes fps, frameIndex, or running, those values will be parsed out and
     // will over ride the regular animation settings
@@ -413,28 +476,28 @@ QString ParticleEffectEntityItem::getAnimationSettings() const {
     QJsonObject settingsAsJsonObject = settingsAsJson.object();
     QVariantMap settingsMap = settingsAsJsonObject.toVariantMap();
 
-    QVariant fpsValue(getAnimationFPS());
+    QVariant fpsValue(getAnimationFPSInternal());
     settingsMap["fps"] = fpsValue;
 
-    QVariant frameIndexValue(getAnimationFrameIndex());
+    QVariant frameIndexValue(getAnimationFrameIndexInternal());
     settingsMap["frameIndex"] = frameIndexValue;
 
-    QVariant runningValue(getAnimationIsPlaying());
+    QVariant runningValue(getAnimationIsPlayingInternal());
     settingsMap["running"] = runningValue;
 
-    QVariant firstFrameValue(getAnimationFirstFrame());
+    QVariant firstFrameValue(getAnimationFirstFrameInternal());
     settingsMap["firstFrame"] = firstFrameValue;
 
-    QVariant lastFrameValue(getAnimationLastFrame());
+    QVariant lastFrameValue(getAnimationLastFrameInternal());
     settingsMap["lastFrame"] = lastFrameValue;
 
-    QVariant loopValue(getAnimationLoop());
+    QVariant loopValue(getAnimationLoopInternal());
     settingsMap["loop"] = loopValue;
 
-    QVariant holdValue(getAnimationHold());
+    QVariant holdValue(getAnimationHoldInternal());
     settingsMap["hold"] = holdValue;
 
-    QVariant startAutomaticallyValue(getAnimationStartAutomatically());
+    QVariant startAutomaticallyValue(getAnimationStartAutomaticallyInternal());
     settingsMap["startAutomatically"] = startAutomaticallyValue;
 
     settingsAsJsonObject = QJsonObject::fromVariantMap(settingsMap);
@@ -445,6 +508,14 @@ QString ParticleEffectEntityItem::getAnimationSettings() const {
 }
 
 void ParticleEffectEntityItem::extendBounds(const glm::vec3& point) {
+    assertUnlocked();
+    lockForWrite();
+    extendBoundsInternal(point);
+    unlock();
+}
+
+void ParticleEffectEntityItem::extendBoundsInternal(const glm::vec3& point) {
+    assertWriteLocked();
     _particleMinBound.x = glm::min(_particleMinBound.x, point.x);
     _particleMinBound.y = glm::min(_particleMinBound.y, point.y);
     _particleMinBound.z = glm::min(_particleMinBound.z, point.z);
@@ -454,6 +525,7 @@ void ParticleEffectEntityItem::extendBounds(const glm::vec3& point) {
 }
 
 void ParticleEffectEntityItem::integrateParticle(quint32 index, float deltaTime) {
+    assertWriteLocked();
     glm::vec3 atSquared(0.0f, 0.5f * _localGravity * deltaTime * deltaTime, 0.0f);
     glm::vec3 at(0.0f, _localGravity * deltaTime, 0.0f);
     _particlePositions[index] += _particleVelocities[index] * deltaTime + atSquared;
@@ -461,7 +533,7 @@ void ParticleEffectEntityItem::integrateParticle(quint32 index, float deltaTime)
 }
 
 void ParticleEffectEntityItem::stepSimulation(float deltaTime) {
-
+    assertWriteLocked();
     _particleMinBound = glm::vec3(-1.0f, -1.0f, -1.0f);
     _particleMaxBound = glm::vec3(1.0f, 1.0f, 1.0f);
 
@@ -476,12 +548,12 @@ void ParticleEffectEntityItem::stepSimulation(float deltaTime) {
         }
         else {
             integrateParticle(i, deltaTime);
-            extendBounds(_particlePositions[i]);
+            extendBoundsInternal(_particlePositions[i]);
         }
     }
 
     // emit new particles, but only if animaiton is playing
-    if (getAnimationIsPlaying()) {
+    if (getAnimationIsPlayingInternal()) {
 
         float timeLeftInFrame = deltaTime;
         while (_timeUntilNextEmit < timeLeftInFrame) {
@@ -504,7 +576,7 @@ void ParticleEffectEntityItem::stepSimulation(float deltaTime) {
             _particleVelocities[i] = _emitDirection * _emitStrength + randOffset;
 
             integrateParticle(i, timeLeftInFrame);
-            extendBounds(_particlePositions[i]);
+            extendBoundsInternal(_particlePositions[i]);
 
             _particleTailIndex = (_particleTailIndex + 1) % _maxParticles;
 
@@ -521,6 +593,14 @@ void ParticleEffectEntityItem::stepSimulation(float deltaTime) {
 }
 
 void ParticleEffectEntityItem::setMaxParticles(quint32 maxParticles) {
+    assertUnlocked();
+    lockForWrite();
+    setMaxParticlesInternal(maxParticles);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setMaxParticlesInternal(quint32 maxParticles) {
+    assertWriteLocked();
     if (_maxParticles != maxParticles) {
         _maxParticles = maxParticles;
 
@@ -538,11 +618,430 @@ void ParticleEffectEntityItem::setMaxParticles(quint32 maxParticles) {
     }
 }
 
+
+
+quint32 ParticleEffectEntityItem::getMaxParticles() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getMaxParticlesInternal();
+    unlock();
+    return result;
+}
+
+quint32 ParticleEffectEntityItem::getMaxParticlesInternal() const {
+    assertLocked();
+    return _maxParticles;
+}
+
 // because particles are in a ring buffer, this isn't trivial
 quint32 ParticleEffectEntityItem::getLivingParticleCount() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLivingParticleCountInternal();
+    unlock();
+    return result;
+}
+
+quint32 ParticleEffectEntityItem::getLivingParticleCountInternal() const {
     if (_particleTailIndex >= _particleHeadIndex) {
         return _particleTailIndex - _particleHeadIndex;
     } else {
         return (_maxParticles - _particleHeadIndex) + _particleTailIndex;
+    }
+}
+
+const rgbColor& ParticleEffectEntityItem::getColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& ParticleEffectEntityItem::getColorInternal() const {
+    assertLocked();
+    return _color;
+}
+
+xColor ParticleEffectEntityItem::getXColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getXColorInternal();
+    unlock();
+    return result;
+}
+
+xColor ParticleEffectEntityItem::getXColorInternal() const {
+    assertLocked();
+    xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] };
+    return color;
+}
+
+void ParticleEffectEntityItem::setColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_color, value, sizeof(_color));
+}
+
+
+void ParticleEffectEntityItem::setColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _color[RED_INDEX] = value.red;
+    _color[GREEN_INDEX] = value.green;
+    _color[BLUE_INDEX] = value.blue;
+}
+
+void ParticleEffectEntityItem::setAnimationLoop(bool loop) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationLoopInternal(loop);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationLoopInternal(bool loop) {
+    assertWriteLocked();
+    _animationLoop.setLoop(loop);
+}
+
+bool ParticleEffectEntityItem::getAnimationLoop() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationLoopInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::getAnimationLoopInternal() const {
+    assertLocked();
+    return _animationLoop.getLoop();
+}
+
+void ParticleEffectEntityItem::setAnimationHold(bool hold) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationHoldInternal(hold);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationHoldInternal(bool hold) {
+    assertWriteLocked();
+    _animationLoop.setHold(hold);
+}
+
+bool ParticleEffectEntityItem::getAnimationHold() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationHoldInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::getAnimationHoldInternal() const {
+    assertLocked();
+    return _animationLoop.getHold();
+}
+
+void ParticleEffectEntityItem::setAnimationStartAutomatically(bool startAutomatically) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationStartAutomaticallyInternal(startAutomatically);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationStartAutomaticallyInternal(bool startAutomatically) {
+    assertWriteLocked();
+    _animationLoop.setStartAutomatically(startAutomatically);
+}
+
+bool ParticleEffectEntityItem::getAnimationStartAutomatically() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationStartAutomaticallyInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::getAnimationStartAutomaticallyInternal() const {
+    assertLocked();
+    return _animationLoop.getStartAutomatically();
+}
+
+void ParticleEffectEntityItem::setAnimationFirstFrame(float firstFrame) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationFirstFrameInternal(firstFrame);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationFirstFrameInternal(float firstFrame) {
+    assertWriteLocked();
+    _animationLoop.setFirstFrame(firstFrame);
+}
+
+float ParticleEffectEntityItem::getAnimationFirstFrame() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFirstFrameInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getAnimationFirstFrameInternal() const {
+    assertLocked();
+    return _animationLoop.getFirstFrame();
+}
+
+void ParticleEffectEntityItem::setAnimationLastFrame(float lastFrame) {
+    assertUnlocked();
+    lockForWrite();
+    setAnimationLastFrameInternal(lastFrame);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setAnimationLastFrameInternal(float lastFrame) {
+    assertWriteLocked();
+    _animationLoop.setLastFrame(lastFrame);
+}
+
+float ParticleEffectEntityItem::getAnimationLastFrame() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationLastFrameInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getAnimationLastFrameInternal() const {
+    assertLocked();
+    return _animationLoop.getLastFrame();
+}
+
+void ParticleEffectEntityItem::setLifespan(float lifespan) {
+    assertUnlocked();
+    lockForWrite();
+    setLifespanInternal(lifespan);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setLifespanInternal(float lifespan) {
+    assertWriteLocked();
+    _lifespan = lifespan;
+}
+
+float ParticleEffectEntityItem::getLifespan() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLifespanInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getLifespanInternal() const {
+    assertLocked();
+    return _lifespan;
+}
+
+void ParticleEffectEntityItem::setEmitRate(float emitRate) {
+    assertUnlocked();
+    lockForWrite();
+    setEmitRateInternal(emitRate);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setEmitRateInternal(float emitRate) {
+    assertWriteLocked();
+    _emitRate = emitRate;
+}
+
+float ParticleEffectEntityItem::getEmitRate() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getEmitRateInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getEmitRateInternal() const {
+    assertLocked();
+    return _emitRate;
+}
+
+void ParticleEffectEntityItem::setEmitDirection(glm::vec3 emitDirection) {
+    assertUnlocked();
+    lockForWrite();
+    setEmitDirectionInternal(emitDirection);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setEmitDirectionInternal(glm::vec3 emitDirection) {
+    assertWriteLocked();
+    _emitDirection = glm::normalize(emitDirection);
+}
+
+glm::vec3 ParticleEffectEntityItem::getEmitDirection() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getEmitDirectionInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 ParticleEffectEntityItem::getEmitDirectionInternal() const {
+    assertLocked();
+    return _emitDirection;
+}
+
+void ParticleEffectEntityItem::setEmitStrength(float emitStrength) {
+    assertUnlocked();
+    lockForWrite();
+    setEmitStrengthInternal(emitStrength);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setEmitStrengthInternal(float emitStrength) {
+    assertWriteLocked();
+    _emitStrength = emitStrength;
+}
+
+float ParticleEffectEntityItem::getEmitStrength() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getEmitStrengthInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getEmitStrengthInternal() const {
+    assertLocked();
+    return _emitStrength;
+}
+
+void ParticleEffectEntityItem::setLocalGravity(float localGravity) {
+    assertUnlocked();
+    lockForWrite();
+    setLocalGravityInternal(localGravity);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setLocalGravityInternal(float localGravity) {
+    assertWriteLocked();
+    _localGravity = localGravity;
+}
+
+float ParticleEffectEntityItem::getLocalGravity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLocalGravityInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getLocalGravityInternal() const {
+    assertLocked();
+    return _localGravity;
+}
+
+void ParticleEffectEntityItem::setParticleRadius(float particleRadius) {
+    assertUnlocked();
+    lockForWrite();
+    setParticleRadiusInternal(particleRadius);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setParticleRadiusInternal(float particleRadius) {
+    assertWriteLocked();
+    _particleRadius = particleRadius;
+}
+
+float ParticleEffectEntityItem::getParticleRadius() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getParticleRadiusInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getParticleRadiusInternal() const {
+    assertLocked();
+    return _particleRadius;
+}
+
+bool ParticleEffectEntityItem::getAnimationIsPlaying() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationIsPlayingInternal();
+    unlock();
+    return result;
+}
+
+bool ParticleEffectEntityItem::getAnimationIsPlayingInternal() const {
+    assertLocked();
+    return _animationLoop.isRunning();
+}
+
+float ParticleEffectEntityItem::getAnimationFrameIndex() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFrameIndexInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getAnimationFrameIndexInternal() const {
+    assertLocked();
+    return _animationLoop.getFrameIndex();
+}
+
+float ParticleEffectEntityItem::getAnimationFPS() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAnimationFPSInternal();
+    unlock();
+    return result;
+}
+
+float ParticleEffectEntityItem::getAnimationFPSInternal() const {
+    assertLocked();
+    return _animationLoop.getFPS();
+}
+
+QString ParticleEffectEntityItem::getTextures() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getTexturesInternal();
+    unlock();
+    return result;
+}
+
+QString ParticleEffectEntityItem::getTexturesInternal() const {
+    assertLocked();
+    return _textures;
+}
+
+void ParticleEffectEntityItem::setTextures(const QString& textures) {
+    assertUnlocked();
+    lockForWrite();
+    setTexturesInternal(textures);
+    unlock();
+}
+
+void ParticleEffectEntityItem::setTexturesInternal(const QString& textures) {
+    assertWriteLocked();
+    if (_textures != textures) {
+        _textures = textures;
+        _texturesChangedFlag = true;
     }
 }
