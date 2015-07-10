@@ -511,9 +511,6 @@ protected:
     virtual void updateShapeType(ShapeType type) { /* do nothing */ }
     void updateSimulatorID(const QUuid& value);
 
-    const QByteArray getActionDataInternal() const;
-    void setActionDataInternal(QByteArray actionData);
-
     static bool _sendPhysicsUpdates;
     EntityTypes::EntityType _type;
     QUuid _id;
