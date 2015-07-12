@@ -27,7 +27,7 @@ EntityItemPointer WebEntityItem::factory(const EntityItemID& entityID, const Ent
 }
 
 WebEntityItem::WebEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-        EntityItem(entityItemID) 
+        EntityItem(entityItemID)
 {
     _type = EntityTypes::Web;
     _created = properties.getCreated();
@@ -49,7 +49,7 @@ EntityItemProperties WebEntityItem::getProperties(bool doLocking) const {
         assertLocked();
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(sourceUrl, getSourceUrl);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(sourceUrl, getSourceUrlInternal);
 
     if (doLocking) {
         unlock();
@@ -69,15 +69,15 @@ bool WebEntityItem::setProperties(const EntityItemProperties& properties, bool d
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(sourceUrl, setSourceUrl);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(sourceUrl, setSourceUrlInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "WebEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
@@ -91,11 +91,11 @@ bool WebEntityItem::setProperties(const EntityItemProperties& properties, bool d
 int WebEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_SOURCE_URL, QString, setSourceUrl);
+    READ_ENTITY_PROPERTY(PROP_SOURCE_URL, QString, setSourceUrlInternal);
 
     return bytesRead;
 }
@@ -113,18 +113,20 @@ void WebEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitst
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
-
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
+    assertLocked();
     bool successPropertyFits = true;
     APPEND_ENTITY_PROPERTY(PROP_SOURCE_URL, _sourceUrl);
 }
 
 
 bool WebEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
+                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                      void** intersectedObject, bool precisionPicking) const {
-                     
+    assertUnlocked();
+    lockForRead();
+
     RayIntersectionInfo rayInfo;
     rayInfo._rayStart = origin;
     rayInfo._rayDirection = direction;
@@ -133,9 +135,9 @@ bool WebEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const g
     PlaneShape plane;
 
     const glm::vec3 UNROTATED_NORMAL(0.0f, 0.0f, -1.0f);
-    glm::vec3 normal = getRotation() * UNROTATED_NORMAL;
+    glm::vec3 normal = getRotationInternal() * UNROTATED_NORMAL;
     plane.setNormal(normal);
-    plane.setPoint(getPosition()); // the position is definitely a point on our plane
+    plane.setPoint(getPositionInternal()); // the position is definitely a point on our plane
 
     bool intersects = plane.findRayIntersection(rayInfo);
 
@@ -143,31 +145,51 @@ bool WebEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const g
         glm::vec3 hitAt = origin + (direction * rayInfo._hitDistance);
         // now we know the point the ray hit our plane
 
-        glm::mat4 rotation = glm::mat4_cast(getRotation());
-        glm::mat4 translation = glm::translate(getPosition());
+        glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
+        glm::mat4 translation = glm::translate(getPositionInternal());
         glm::mat4 entityToWorldMatrix = translation * rotation;
         glm::mat4 worldToEntityMatrix = glm::inverse(entityToWorldMatrix);
 
-        glm::vec3 dimensions = getDimensions();
-        glm::vec3 registrationPoint = getRegistrationPoint();
+        glm::vec3 dimensions = getDimensionsInternal();
+        glm::vec3 registrationPoint = getRegistrationPointInternal();
         glm::vec3 corner = -(dimensions * registrationPoint);
         AABox entityFrameBox(corner, dimensions);
 
         glm::vec3 entityFrameHitAt = glm::vec3(worldToEntityMatrix * glm::vec4(hitAt, 1.0f));
-        
+
         intersects = entityFrameBox.contains(entityFrameHitAt);
     }
 
     if (intersects) {
         distance = rayInfo._hitDistance;
     }
+    unlock();
     return intersects;
 }
 
-void WebEntityItem::setSourceUrl(const QString& value) { 
+void WebEntityItem::setSourceUrl(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setSourceUrlInternal(value);
+    unlock();
+}
+
+void WebEntityItem::setSourceUrlInternal(const QString& value) {
+    assertWriteLocked();
     if (_sourceUrl != value) {
         _sourceUrl = value;
     }
 }
 
-const QString& WebEntityItem::getSourceUrl() const { return _sourceUrl; }
+QString WebEntityItem::getSourceUrl() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getSourceUrlInternal();
+    unlock();
+    return result;
+}
+
+QString WebEntityItem::getSourceUrlInternal() const {
+    assertLocked();
+    return _sourceUrl;
+}
