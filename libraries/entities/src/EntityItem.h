@@ -68,6 +68,8 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+#define DEBUG 1
+
 #if DEBUG
   #define assertLocked() assert(isLocked())
 #else
@@ -204,15 +206,15 @@ public:
     // attributes applicable to all entity types
     EntityTypes::EntityType getType() const;
 
-
-    inline glm::vec3 getCenterPosition() const { assertUnlocked(); return getTransformToCenter().getTranslation(); }
+    glm::vec3 getCenterPosition() const;
+    glm::vec3 getCenterPositionInternal() const;
     void setCenterPosition(const glm::vec3& position);
-
-    const Transform getTransformToCenter() const;
+    Transform getTransformToCenter() const;
     void setTranformToCenter(const Transform& transform);
-
-    const Transform getTransform() const;
+    Transform getTransform() const;
+    Transform getTransformInternal() const;
     void setTransform(const Transform& transform);
+    void setTransformInternal(const Transform& transform);
 
     /// Position in meters (0.0 - TREE_SCALE)
     glm::vec3 getPosition() const;
@@ -409,6 +411,9 @@ protected:
     EntityItemID getEntityItemIDInternal() const;
     void simulateKinematicMotionInternal(float timeElapsed, bool setFlags=true);
     EntityTypes::EntityType getTypeInternal() const;
+    void setCenterPositionInternal(const glm::vec3& position);
+    void setTranformToCenterInternal(const Transform& transform);
+    Transform getTransformToCenterInternal() const;
     glm::vec3 getPositionInternal() const;
     void setPositionInternal(const glm::vec3& value);
     glm::quat getRotationInternal() const;

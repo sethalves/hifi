@@ -41,17 +41,19 @@ class PolyVoxEntityItem : public EntityItem {
                                                  ReadBitstreamToTreeParams& args,
                                                  EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-    // never have a ray intersection pick a PolyVoxEntityItem.
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
-                         void** intersectedObject, bool precisionPicking) const { return false; }
+                                             bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
+                                             void** intersectedObject, bool precisionPicking) const { return false; }
 
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
-    virtual const glm::vec3& getVoxelVolumeSize() const { return _voxelVolumeSize; }
+    virtual glm::vec3 getVoxelVolumeSize() const;
+    virtual glm::vec3 getVoxelVolumeSizeInternal() const;
 
-    virtual void setVoxelData(QByteArray voxelData) { _voxelData = voxelData; }
-    virtual const QByteArray& getVoxelData() const { return _voxelData; }
+    virtual void setVoxelData(QByteArray voxelData);
+    virtual void setVoxelDataInternal(QByteArray voxelData);
+    virtual QByteArray getVoxelData() const;
+    virtual QByteArray getVoxelDataInternal() const;
 
     enum PolyVoxSurfaceStyle {
         SURFACE_MARCHING_CUBES,
@@ -61,8 +63,8 @@ class PolyVoxEntityItem : public EntityItem {
 
     void setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle);
     // this other version of setVoxelSurfaceStyle is needed for SET_ENTITY_PROPERTY_FROM_PROPERTIES
-    void setVoxelSurfaceStyle(uint16_t voxelSurfaceStyle) { setVoxelSurfaceStyle((PolyVoxSurfaceStyle) voxelSurfaceStyle); }
-    virtual PolyVoxSurfaceStyle getVoxelSurfaceStyle() const { return _voxelSurfaceStyle; }
+    void setVoxelSurfaceStyle(uint16_t voxelSurfaceStyle);
+    virtual PolyVoxSurfaceStyle getVoxelSurfaceStyle() const;
 
     static const glm::vec3 DEFAULT_VOXEL_VOLUME_SIZE;
     static const float MAX_VOXEL_DIMENSION;
@@ -71,26 +73,32 @@ class PolyVoxEntityItem : public EntityItem {
     static const PolyVoxSurfaceStyle DEFAULT_VOXEL_SURFACE_STYLE;
 
     // coords are in voxel-volume space
-    virtual void setSphereInVolume(glm::vec3 center, float radius, uint8_t toValue) {}
+    virtual void setSphereInVolume(glm::vec3 center, float radius, uint8_t toValue);
 
     // coords are in world-space
-    virtual void setSphere(glm::vec3 center, float radius, uint8_t toValue) {}
+    virtual void setSphere(glm::vec3 center, float radius, uint8_t toValue);
 
-    virtual void setAll(uint8_t toValue) {}
-
-    virtual void setVoxelInVolume(glm::vec3 position, uint8_t toValue) {}
-
-    virtual uint8_t getVoxel(int x, int y, int z) { return 0; }
-    virtual void setVoxel(int x, int y, int z, uint8_t toValue) {}
+    virtual void setAll(uint8_t toValue);
+    virtual void setVoxelInVolume(glm::vec3 position, uint8_t toValue);
+    virtual uint8_t getVoxel(int x, int y, int z);
+    virtual void setVoxel(int x, int y, int z, uint8_t toValue);
 
     static QByteArray makeEmptyVoxelData(quint16 voxelXSize = 16, quint16 voxelYSize = 16, quint16 voxelZSize = 16);
 
  protected:
+    virtual void setVoxelVolumeSizeInternal(vec3 voxelVolumeSize);
+    virtual void setVoxelSurfaceStyleInternal(PolyVoxSurfaceStyle voxelSurfaceStyle);
+    virtual void setVoxelSurfaceStyleInternal(uint16_t voxelSurfaceStyle);
+    virtual PolyVoxSurfaceStyle getVoxelSurfaceStyleInternal() const;
+    virtual void setSphereInVolumeInternal(glm::vec3 center, float radius, uint8_t toValue) {assertWriteLocked();}
+    virtual void setSphereInternal(glm::vec3 center, float radius, uint8_t toValue) {assertWriteLocked();}
+    virtual void setAllInternal(uint8_t toValue) {assertWriteLocked();}
+    virtual void setVoxelInVolumeInternal(glm::vec3 position, uint8_t toValue) {assertWriteLocked();}
+    virtual uint8_t getVoxelInternal(int x, int y, int z) { assertLocked(); return 0; }
+    virtual void setVoxelInternal(int x, int y, int z, uint8_t toValue) { assertWriteLocked(); }
 
     virtual void debugDump() const;
-    virtual void updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
-        _voxelSurfaceStyle = voxelSurfaceStyle;
-    }
+    virtual void updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) { _voxelSurfaceStyle = voxelSurfaceStyle; }
 
     glm::vec3 _voxelVolumeSize; // this is always 3 bytes
     QByteArray _voxelData;

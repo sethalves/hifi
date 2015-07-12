@@ -31,9 +31,6 @@ EntityItemPointer PolyVoxEntityItem::factory(const EntityItemID& entityID, const
     return EntityItemPointer(new PolyVoxEntityItem(entityID, properties));
 }
 
-
-
-
 QByteArray PolyVoxEntityItem::makeEmptyVoxelData(quint16 voxelXSize, quint16 voxelYSize, quint16 voxelZSize) {
     int rawSize = voxelXSize * voxelYSize * voxelZSize;
 
@@ -48,8 +45,6 @@ QByteArray PolyVoxEntityItem::makeEmptyVoxelData(quint16 voxelXSize, quint16 vox
     return newVoxelData;
 }
 
-
-
 PolyVoxEntityItem::PolyVoxEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
     EntityItem(entityItemID),
     _voxelVolumeSize(PolyVoxEntityItem::DEFAULT_VOXEL_VOLUME_SIZE),
@@ -62,6 +57,14 @@ PolyVoxEntityItem::PolyVoxEntityItem(const EntityItemID& entityItemID, const Ent
 }
 
 void PolyVoxEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolumeSize) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelVolumeSizeInternal(voxelVolumeSize);
+    unlock();
+}
+
+void PolyVoxEntityItem::setVoxelVolumeSizeInternal(glm::vec3 voxelVolumeSize) {
+    assertWriteLocked();
     assert((int)_voxelVolumeSize.x == _voxelVolumeSize.x);
     assert((int)_voxelVolumeSize.y == _voxelVolumeSize.y);
     assert((int)_voxelVolumeSize.z == _voxelVolumeSize.z);
@@ -95,6 +98,47 @@ void PolyVoxEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolumeSize) {
     }
 }
 
+
+glm::vec3 PolyVoxEntityItem::getVoxelVolumeSize() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getVoxelVolumeSizeInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 PolyVoxEntityItem::getVoxelVolumeSizeInternal() const {
+    assertLocked();
+    return _voxelVolumeSize;
+}
+
+void PolyVoxEntityItem::setVoxelData(QByteArray voxelData) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelDataInternal(voxelData);
+    unlock();
+}
+
+void PolyVoxEntityItem::setVoxelDataInternal(QByteArray voxelData) {
+    assertWriteLocked();
+    _voxelData = voxelData;
+}
+
+
+QByteArray PolyVoxEntityItem::getVoxelData() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getVoxelDataInternal();
+    unlock();
+    return result;
+}
+
+QByteArray PolyVoxEntityItem::getVoxelDataInternal() const {
+    assertLocked();
+    return _voxelData;
+}
+
+
 EntityItemProperties PolyVoxEntityItem::getProperties(bool doLocking) const {
     if (doLocking) {
         assertUnlocked();
@@ -103,9 +147,9 @@ EntityItemProperties PolyVoxEntityItem::getProperties(bool doLocking) const {
         assertLocked();
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelVolumeSize, getVoxelVolumeSize);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelData, getVoxelData);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelSurfaceStyle, getVoxelSurfaceStyle);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelVolumeSize, getVoxelVolumeSizeInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelData, getVoxelDataInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelSurfaceStyle, getVoxelSurfaceStyleInternal);
 
     if (doLocking) {
         unlock();
@@ -123,17 +167,17 @@ bool PolyVoxEntityItem::setProperties(const EntityItemProperties& properties, bo
     }
 
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelVolumeSize, setVoxelVolumeSize);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelData, setVoxelData);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelSurfaceStyle, setVoxelSurfaceStyle);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelVolumeSize, setVoxelVolumeSizeInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelData, setVoxelDataInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelSurfaceStyle, setVoxelSurfaceStyleInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "PolyVoxEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                "now=" << now << " getLastEdited()=" << getLastEdited();
+                "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
@@ -147,13 +191,13 @@ bool PolyVoxEntityItem::setProperties(const EntityItemProperties& properties, bo
 int PolyVoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
                                                         ReadBitstreamToTreeParams& args,
                                                         EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, glm::vec3, setVoxelVolumeSize);
-    READ_ENTITY_PROPERTY(PROP_VOXEL_DATA, QByteArray, setVoxelData);
-    READ_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, uint16_t, setVoxelSurfaceStyle);
+    READ_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, glm::vec3, setVoxelVolumeSizeInternal);
+    READ_ENTITY_PROPERTY(PROP_VOXEL_DATA, QByteArray, setVoxelDataInternal);
+    READ_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, uint16_t, setVoxelSurfaceStyleInternal);
 
     return bytesRead;
 }
@@ -168,21 +212,23 @@ EntityPropertyFlags PolyVoxEntityItem::getEntityProperties(EncodeBitstreamParams
     return requestedProperties;
 }
 
-void PolyVoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void PolyVoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                            EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                            EntityPropertyFlags& requestedProperties,
                                            EntityPropertyFlags& propertyFlags,
                                            EntityPropertyFlags& propertiesDidntFit,
-                                           int& propertyCount, 
-                                           OctreeElement::AppendState& appendState) const { 
+                                           int& propertyCount,
+                                           OctreeElement::AppendState& appendState) const {
+    assertLocked();
     bool successPropertyFits = true;
 
-    APPEND_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, getVoxelVolumeSize());
-    APPEND_ENTITY_PROPERTY(PROP_VOXEL_DATA, getVoxelData());
-    APPEND_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, (uint16_t) getVoxelSurfaceStyle());
+    APPEND_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, getVoxelVolumeSizeInternal());
+    APPEND_ENTITY_PROPERTY(PROP_VOXEL_DATA, getVoxelDataInternal());
+    APPEND_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, (uint16_t) getVoxelSurfaceStyleInternal());
 }
 
 void PolyVoxEntityItem::debugDump() const {
+    assertLocked();
     quint64 now = usecTimestampNow();
     qCDebug(entities) << "   POLYVOX EntityItem id:" << getEntityItemID() << "---------------------------------------------";
     qCDebug(entities) << "            position:" << debugTreeVector(getPosition());
@@ -191,8 +237,84 @@ void PolyVoxEntityItem::debugDump() const {
 }
 
 void PolyVoxEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelSurfaceStyleInternal(voxelSurfaceStyle);
+    unlock();
+}
+
+void PolyVoxEntityItem::setVoxelSurfaceStyleInternal(PolyVoxSurfaceStyle voxelSurfaceStyle) {
+    assertWriteLocked();
     if (voxelSurfaceStyle == _voxelSurfaceStyle) {
         return;
     }
     updateVoxelSurfaceStyle(voxelSurfaceStyle);
+}
+
+void PolyVoxEntityItem::setVoxelSurfaceStyle(uint16_t voxelSurfaceStyle) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelSurfaceStyleInternal(voxelSurfaceStyle);
+    unlock();
+}
+
+void PolyVoxEntityItem::setVoxelSurfaceStyleInternal(uint16_t voxelSurfaceStyle) {
+    assertWriteLocked();
+    setVoxelSurfaceStyleInternal((PolyVoxSurfaceStyle) voxelSurfaceStyle);
+}
+
+PolyVoxEntityItem::PolyVoxSurfaceStyle PolyVoxEntityItem::getVoxelSurfaceStyle() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getVoxelSurfaceStyleInternal();
+    unlock();
+    return result;
+}
+
+PolyVoxEntityItem::PolyVoxSurfaceStyle PolyVoxEntityItem::getVoxelSurfaceStyleInternal() const {
+    assertLocked();
+    return _voxelSurfaceStyle;
+}
+
+void PolyVoxEntityItem::setSphereInVolume(glm::vec3 center, float radius, uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
+    setSphereInVolumeInternal(center, radius, toValue);
+    unlock();
+}
+
+void PolyVoxEntityItem::setSphere(glm::vec3 center, float radius, uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
+    setSphereInternal(center, radius, toValue);
+    unlock();
+}
+
+void PolyVoxEntityItem::setAll(uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
+    setAllInternal(toValue);
+    unlock();
+}
+
+void PolyVoxEntityItem::setVoxelInVolume(glm::vec3 position, uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelInVolumeInternal(position, toValue);
+    unlock();
+}
+
+uint8_t PolyVoxEntityItem::getVoxel(int x, int y, int z) {
+    assertUnlocked();
+    lockForRead();
+    auto result = getVoxelInternal(x, y, z);
+    unlock();
+    return result;
+}
+
+void PolyVoxEntityItem::setVoxel(int x, int y, int z, uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
+    setVoxelInternal(x, y, z, toValue);
+    unlock();
 }

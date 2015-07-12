@@ -34,55 +34,54 @@ public:
         // _needsModelReload = true;
     }
 
-    virtual uint8_t getVoxel(int x, int y, int z);
+    virtual uint8_t getVoxelInternal(int x, int y, int z);
     virtual void setVoxel(int x, int y, int z, uint8_t toValue);
+    virtual void setVoxelInternal(int x, int y, int z, uint8_t toValue);
 
     void updateOnCount(int x, int y, int z, uint8_t new_value);
 
     void render(RenderArgs* args);
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
-                         void** intersectedObject, bool precisionPicking) const;
+                                             bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
+                                             void** intersectedObject, bool precisionPicking) const;
 
     void getModel();
 
-    virtual void setVoxelData(QByteArray voxelData);
+    virtual void setVoxelDataInternal(QByteArray voxelData);
 
-    virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
-    glm::vec3 getSurfacePositionAdjustment() const;
-    glm::mat4 voxelToWorldMatrix() const;
-    glm::mat4 voxelToLocalMatrix() const;
-    glm::mat4 worldToVoxelMatrix() const;
+    virtual void setVoxelVolumeSizeInternal(glm::vec3 voxelVolumeSize);
 
-    virtual ShapeType getShapeType() const;
+    virtual ShapeType getShapeTypeInternal() const;
     virtual bool isReadyToComputeShape();
     virtual void computeShapeInfo(ShapeInfo& info);
 
 
     // coords are in voxel-volume space
-    virtual void setSphereInVolume(glm::vec3 center, float radius, uint8_t toValue);
+    virtual void setSphereInVolumeInternal(glm::vec3 center, float radius, uint8_t toValue);
 
     // coords are in world-space
-    virtual void setSphere(glm::vec3 center, float radius, uint8_t toValue);
+    virtual void setSphereInternal(glm::vec3 center, float radius, uint8_t toValue);
 
-    virtual void setAll(uint8_t toValue);
+    virtual void setAllInternal(uint8_t toValue);
 
-    virtual void setVoxelInVolume(glm::vec3 position, uint8_t toValue);
+    virtual void setVoxelInVolumeInternal(glm::vec3 position, uint8_t toValue);
 
     SIMPLE_RENDERABLE();
 
 protected:
     virtual void updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle);
+    glm::vec3 getSurfacePositionAdjustment() const;
+    glm::mat4 voxelToWorldMatrix() const;
+    glm::mat4 voxelToLocalMatrix() const;
+    glm::mat4 worldToVoxelMatrix() const;
 
 private:
     // The PolyVoxEntityItem class has _voxelData which contains dimensions and compressed voxel data.  The dimensions
     // may not match _voxelVolumeSize.
 
-    void setVoxelInternal(int x, int y, int z, uint8_t toValue);
     void compressVolumeData();
     void decompressVolumeData();
-
 
     PolyVox::SimpleVolume<uint8_t>* _volData = nullptr;
     model::Geometry _modelGeometry;

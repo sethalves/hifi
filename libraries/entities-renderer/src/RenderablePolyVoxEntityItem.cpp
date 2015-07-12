@@ -90,7 +90,8 @@ bool inBounds(const PolyVox::SimpleVolume<uint8_t>* vol, int x, int y, int z) {
 }
 
 
-void RenderablePolyVoxEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolumeSize) {
+void RenderablePolyVoxEntityItem::setVoxelVolumeSizeInternal(glm::vec3 voxelVolumeSize) {
+    assertWriteLocked();
     if (_volData && voxelVolumeSize == _voxelVolumeSize) {
         return;
     }
@@ -99,7 +100,7 @@ void RenderablePolyVoxEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolumeSize) 
     qDebug() << "resetting voxel-space size" << voxelVolumeSize.x << voxelVolumeSize.y << voxelVolumeSize.z;
     #endif
 
-    PolyVoxEntityItem::setVoxelVolumeSize(voxelVolumeSize);
+    PolyVoxEntityItem::setVoxelVolumeSizeInternal(voxelVolumeSize);
 
     if (_volData) {
         delete _volData;
@@ -158,23 +159,23 @@ void RenderablePolyVoxEntityItem::updateVoxelSurfaceStyle(PolyVoxSurfaceStyle vo
         }
         _volData = nullptr;
         _voxelSurfaceStyle = voxelSurfaceStyle;
-        setVoxelVolumeSize(_voxelVolumeSize);
+        setVoxelVolumeSizeInternal(_voxelVolumeSize);
     } else {
         _voxelSurfaceStyle = voxelSurfaceStyle;
     }
     _needsModelReload = true;
 }
 
-void RenderablePolyVoxEntityItem::setVoxelData(QByteArray voxelData) {
+void RenderablePolyVoxEntityItem::setVoxelDataInternal(QByteArray voxelData) {
     if (voxelData == _voxelData) {
         return;
     }
-    PolyVoxEntityItem::setVoxelData(voxelData);
+    PolyVoxEntityItem::setVoxelDataInternal(voxelData);
     decompressVolumeData();
 }
 
 glm::vec3 RenderablePolyVoxEntityItem::getSurfacePositionAdjustment() const {
-    glm::vec3 scale = getDimensions() / _voxelVolumeSize; // meters / voxel-units
+    glm::vec3 scale = getDimensionsInternal() / _voxelVolumeSize; // meters / voxel-units
     switch (_voxelSurfaceStyle) {
         case PolyVoxEntityItem::SURFACE_MARCHING_CUBES:
             return scale / 2.0f;
@@ -187,28 +188,31 @@ glm::vec3 RenderablePolyVoxEntityItem::getSurfacePositionAdjustment() const {
 }
 
 glm::mat4 RenderablePolyVoxEntityItem::voxelToLocalMatrix() const {
-    glm::vec3 scale = getDimensions() / _voxelVolumeSize; // meters / voxel-units
-    glm::vec3 center = getCenterPosition();
-    glm::vec3 position = getPosition();
+    assertLocked();
+    glm::vec3 scale = getDimensionsInternal() / _voxelVolumeSize; // meters / voxel-units
+    glm::vec3 center = getCenterPositionInternal();
+    glm::vec3 position = getPositionInternal();
     glm::vec3 positionToCenter = center - position;
-    positionToCenter -= getDimensions() * glm::vec3(0.5f, 0.5f, 0.5f) - getSurfacePositionAdjustment();
+    positionToCenter -= getDimensionsInternal() * glm::vec3(0.5f, 0.5f, 0.5f) - getSurfacePositionAdjustment();
     glm::mat4 centerToCorner = glm::translate(glm::mat4(), positionToCenter);
     glm::mat4 scaled = glm::scale(centerToCorner, scale);
     return scaled;
 }
 
 glm::mat4 RenderablePolyVoxEntityItem::voxelToWorldMatrix() const {
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
-    glm::mat4 translation = glm::translate(getPosition());
+    assertLocked();
+    glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
+    glm::mat4 translation = glm::translate(getPositionInternal());
     return translation * rotation * voxelToLocalMatrix();
 }
 
 glm::mat4 RenderablePolyVoxEntityItem::worldToVoxelMatrix() const {
+    assertLocked();
     glm::mat4 worldToModelMatrix = glm::inverse(voxelToWorldMatrix());
     return worldToModelMatrix;
 }
 
-uint8_t RenderablePolyVoxEntityItem::getVoxel(int x, int y, int z) {
+uint8_t RenderablePolyVoxEntityItem::getVoxelInternal(int x, int y, int z) {
     assert(_volData);
     if (!inUserBounds(_volData, _voxelSurfaceStyle, x, y, z)) {
         return 0;
@@ -242,11 +246,15 @@ void RenderablePolyVoxEntityItem::setVoxelInternal(int x, int y, int z, uint8_t 
 
 
 void RenderablePolyVoxEntityItem::setVoxel(int x, int y, int z, uint8_t toValue) {
+    assertUnlocked();
+    lockForWrite();
     if (_locked) {
+        unlock();
         return;
     }
     setVoxelInternal(x, y, z, toValue);
     compressVolumeData();
+    unlock();
 }
 
 void RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toValue) {
@@ -255,7 +263,7 @@ void RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toV
         return;
     }
 
-    uint8_t uVoxelValue = getVoxel(x, y, z);
+    uint8_t uVoxelValue = getVoxelInternal(x, y, z);
     if (toValue != 0) {
         if (uVoxelValue == 0) {
             _onCount++;
@@ -269,7 +277,7 @@ void RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toV
     }
 }
 
-void RenderablePolyVoxEntityItem::setAll(uint8_t toValue) {
+void RenderablePolyVoxEntityItem::setAllInternal(uint8_t toValue) {
     if (_locked) {
         return;
     }
@@ -285,7 +293,7 @@ void RenderablePolyVoxEntityItem::setAll(uint8_t toValue) {
     compressVolumeData();
 }
 
-void RenderablePolyVoxEntityItem::setVoxelInVolume(glm::vec3 position, uint8_t toValue) {
+void RenderablePolyVoxEntityItem::setVoxelInVolumeInternal(glm::vec3 position, uint8_t toValue) {
     if (_locked) {
         return;
     }
@@ -294,7 +302,7 @@ void RenderablePolyVoxEntityItem::setVoxelInVolume(glm::vec3 position, uint8_t t
     setVoxel((int)position.x, (int)position.y, (int)position.z, toValue);
 }
 
-void RenderablePolyVoxEntityItem::setSphereInVolume(glm::vec3 center, float radius, uint8_t toValue) {
+void RenderablePolyVoxEntityItem::setSphereInVolumeInternal(glm::vec3 center, float radius, uint8_t toValue) {
     if (_locked) {
         return;
     }
@@ -318,13 +326,15 @@ void RenderablePolyVoxEntityItem::setSphereInVolume(glm::vec3 center, float radi
     compressVolumeData();
 }
 
-void RenderablePolyVoxEntityItem::setSphere(glm::vec3 centerWorldCoords, float radiusWorldCoords, uint8_t toValue) {
+void RenderablePolyVoxEntityItem::setSphereInternal(glm::vec3 centerWorldCoords,
+                                                            float radiusWorldCoords,
+                                                            uint8_t toValue) {
     // glm::vec3 centerVoxelCoords = worldToVoxelCoordinates(centerWorldCoords);
     glm::vec4 centerVoxelCoords = worldToVoxelMatrix() * glm::vec4(centerWorldCoords, 1.0f);
-    glm::vec3 scale = getDimensions() / _voxelVolumeSize; // meters / voxel-units
+    glm::vec3 scale = getDimensionsInternal() / _voxelVolumeSize; // meters / voxel-units
     float scaleY = scale.y;
     float radiusVoxelCoords = radiusWorldCoords / scaleY;
-    setSphereInVolume(glm::vec3(centerVoxelCoords), radiusVoxelCoords, toValue);
+    setSphereInVolumeInternal(glm::vec3(centerVoxelCoords), radiusVoxelCoords, toValue);
 }
 
 void RenderablePolyVoxEntityItem::getModel() {
@@ -400,8 +410,10 @@ void RenderablePolyVoxEntityItem::getModel() {
 }
 
 void RenderablePolyVoxEntityItem::render(RenderArgs* args) {
+    assertUnlocked();
+    lockForRead();
     PerformanceTimer perfTimer("RenderablePolyVoxEntityItem::render");
-    assert(getType() == EntityTypes::PolyVox);
+    assert(getTypeInternal() == EntityTypes::PolyVox);
 
     if (_needsModelReload) {
         getModel();
@@ -424,6 +436,7 @@ void RenderablePolyVoxEntityItem::render(RenderArgs* args) {
     batch.drawIndexed(gpu::TRIANGLES, mesh->getNumIndices(), 0);
 
     RenderableDebugableEntityItem::render(this, args);
+    unlock();
 }
 
 class RaycastFunctor
@@ -462,8 +475,11 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
                                                               void** intersectedObject,
                                                               bool precisionPicking) const
 {
+    assertUnlocked();
+    lockForRead();
     if (_needsModelReload || !precisionPicking) {
         // just intersect with bounding box
+        unlock();
         return true;
     }
 
@@ -473,8 +489,8 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
 
     // the PolyVox ray intersection code requires a near and far point.
     // set ray cast length to long enough to cover all of the voxel space
-    float distanceToEntity = glm::distance(origin, getPosition());
-    float largestDimension = glm::max(getDimensions().x, getDimensions().y, getDimensions().z) * 2.0f;
+    float distanceToEntity = glm::distance(origin, getPositionInternal());
+    float largestDimension = glm::max(getDimensionsInternal().x, getDimensionsInternal().y, getDimensionsInternal().z) * 2.0f;
     glm::vec3 farPoint = origin + normDirection * (distanceToEntity + largestDimension);
     glm::vec4 originInVoxel = wtvMatrix * glm::vec4(origin, 1.0f);
     glm::vec4 farInVoxel = wtvMatrix * glm::vec4(farPoint, 1.0f);
@@ -488,6 +504,7 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
 
     if (raycastResult == PolyVox::RaycastResults::Completed) {
         // the ray completed its path -- nothing was hit.
+        unlock();
         return false;
     }
 
@@ -509,6 +526,7 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
 
     face = BoxFace::MIN_X_FACE; // XXX
 
+    unlock();
     return true;
 }
 
@@ -516,6 +534,7 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
 // compress the data in _volData and save the results.  The compressed form is used during
 // saves to disk and for transmission over the wire
 void RenderablePolyVoxEntityItem::compressVolumeData() {
+    assertLocked();
     quint16 voxelXSize = _voxelVolumeSize.x;
     quint16 voxelYSize = _voxelVolumeSize.y;
     quint16 voxelZSize = _voxelVolumeSize.z;
@@ -526,7 +545,7 @@ void RenderablePolyVoxEntityItem::compressVolumeData() {
     for (int z = 0; z < voxelZSize; z++) {
         for (int y = 0; y < voxelYSize; y++) {
             for (int x = 0; x < voxelXSize; x++) {
-                uint8_t uVoxelValue = getVoxel(x, y, z);
+                uint8_t uVoxelValue = getVoxelInternal(x, y, z);
                 int uncompressedIndex =
                     z * voxelYSize * voxelXSize +
                     y * voxelXSize +
@@ -618,7 +637,7 @@ void RenderablePolyVoxEntityItem::decompressVolumeData() {
 }
 
 // virtual
-ShapeType RenderablePolyVoxEntityItem::getShapeType() const {
+ShapeType RenderablePolyVoxEntityItem::getShapeTypeInternal() const {
     if (_onCount > 0) {
         return SHAPE_TYPE_COMPOUND;
     }
@@ -638,11 +657,14 @@ bool RenderablePolyVoxEntityItem::isReadyToComputeShape() {
 }
 
 void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
+    assertUnlocked();
+    lockForWrite();
     #ifdef WANT_DEBUG
     qDebug() << "RenderablePolyVoxEntityItem::computeShapeInfo";
     #endif
-    ShapeType type = getShapeType();
+    ShapeType type = getShapeTypeInternal();
     if (type != SHAPE_TYPE_COMPOUND) {
+        unlock();
         EntityItem::computeShapeInfo(info);
         return;
     }
@@ -657,7 +679,7 @@ void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
     for (int z = 0; z < _voxelVolumeSize.z; z++) {
         for (int y = 0; y < _voxelVolumeSize.y; y++) {
             for (int x = 0; x < _voxelVolumeSize.x; x++) {
-                if (getVoxel(x, y, z) > 0) {
+                if (getVoxelInternal(x, y, z) > 0) {
                     QVector<glm::vec3> pointsInPart;
 
                     float offL = -0.5f;
@@ -701,6 +723,7 @@ void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
     }
 
     if (_points.isEmpty()) {
+        unlock();
         EntityItem::computeShapeInfo(info);
         return;
     }
@@ -709,4 +732,5 @@ void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
     QByteArray b64 = _voxelData.toBase64();
     info.setParams(type, collisionModelDimensions, QString(b64));
     info.setConvexHulls(_points);
+    unlock();
 }
