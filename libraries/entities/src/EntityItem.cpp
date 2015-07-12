@@ -2810,7 +2810,7 @@ bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer act
 
     bool result = addActionInternal(simulation, action);
     if (!result) {
-        removeAction(simulation, action->getID());
+        removeActionInternal(action->getID());
     }
 
     unlock();
@@ -2834,6 +2834,7 @@ bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPoi
     QByteArray newDataCache = serializeActions(success);
     if (success) {
         _allActionsDataCache = newDataCache;
+        _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
     }
     return success;
 }
@@ -2851,6 +2852,7 @@ bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionI
     bool success = action->updateArguments(arguments);
     if (success) {
         _allActionsDataCache = serializeActions(success);
+        _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
     } else {
         qDebug() << "EntityItem::updateAction failed";
     }
@@ -2886,6 +2888,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
 
         bool success = true;
         _allActionsDataCache = serializeActions(success);
+        _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
         return success;
     }
     return false;
@@ -2904,6 +2907,7 @@ bool EntityItem::clearActions(EntitySimulation* simulation) {
     // empty _serializedActions means no actions for the EntityItem
     _actionsToRemove.clear();
     _allActionsDataCache.clear();
+    _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
     unlock();
     return true;
 }
