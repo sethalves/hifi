@@ -1179,23 +1179,34 @@ EntityTreeElement* EntityItem::getElement() const {
     return result;
 }
 
-
-
-
-
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     assertUnlocked();
     lockForRead();
+    auto result = getEntityToWorldMatrixInternal();
+    unlock();
+    return result;
+}
+
+glm::mat4 EntityItem::getEntityToWorldMatrixInternal() const {
+    assertLocked();
     glm::mat4 translation = glm::translate(getPositionInternal());
     glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
     glm::mat4 scale = glm::scale(getDimensionsInternal());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPointInternal());
-    unlock();
     return translation * rotation * scale * registration;
 }
 
 glm::mat4 EntityItem::getWorldToEntityMatrix() const {
-    return glm::inverse(getEntityToWorldMatrix());
+    assertUnlocked();
+    lockForRead();
+    auto result = getWorldToEntityMatrixInternal();
+    unlock();
+    return result;
+}
+
+glm::mat4 EntityItem::getWorldToEntityMatrixInternal() const {
+    assertLocked();
+    return glm::inverse(getEntityToWorldMatrixInternal());
 }
 
 glm::vec3 EntityItem::entityToWorld(const glm::vec3& point) const {

@@ -45,7 +45,7 @@ EntityItemProperties SphereEntityItem::getProperties(bool doLocking) const {
         assertLocked();
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
-    properties.setColor(getXColor());
+    properties.setColor(getXColorInternal());
 
     if (doLocking) {
         unlock();
@@ -64,13 +64,13 @@ bool SphereEntityItem::setProperties(const EntityItemProperties& properties, boo
 
     bool somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColor);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(color, setColorInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "SphereEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
                     "now=" << now << " getLastEdited()=" << getLastEdited();
         }
@@ -83,18 +83,71 @@ bool SphereEntityItem::setProperties(const EntityItemProperties& properties, boo
     return somethingChanged;
 }
 
-int SphereEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+int SphereEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
-
+    assertWriteLocked();
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColor);
+    READ_ENTITY_PROPERTY(PROP_COLOR, rgbColor, setColorInternal);
 
     return bytesRead;
 }
 
+
+const rgbColor& SphereEntityItem::getColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& SphereEntityItem::getColorInternal() const {
+    assertLocked();
+    return _color;
+}
+
+xColor SphereEntityItem::getXColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getXColorInternal();
+    unlock();
+    return result;
+}
+
+xColor SphereEntityItem::getXColorInternal() const {
+    assertLocked();
+    xColor color = { _color[RED_INDEX], _color[GREEN_INDEX], _color[BLUE_INDEX] }; return color;
+}
+
+void SphereEntityItem::setColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void SphereEntityItem::setColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_color, value, sizeof(_color));
+}
+
+void SphereEntityItem::setColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setColorInternal(value);
+    unlock();
+}
+
+void SphereEntityItem::setColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _color[RED_INDEX] = value.red;
+    _color[GREEN_INDEX] = value.green;
+    _color[BLUE_INDEX] = value.blue;
+
+}
 
 // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
 EntityPropertyFlags SphereEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
@@ -103,23 +156,25 @@ EntityPropertyFlags SphereEntityItem::getEntityProperties(EncodeBitstreamParams&
     return requestedProperties;
 }
 
-void SphereEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void SphereEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
-
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
+    assertLocked();
     bool successPropertyFits = true;
-    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColor());
+    APPEND_ENTITY_PROPERTY(PROP_COLOR, getColorInternal());
 }
 
 bool SphereEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
+                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                      void** intersectedObject, bool precisionPicking) const {
+    assertUnlocked();
+    lockForRead();
     // determine the ray in the frame of the entity transformed from a unit sphere
-    glm::mat4 entityToWorldMatrix = getEntityToWorldMatrix();
+    glm::mat4 entityToWorldMatrix = getEntityToWorldMatrixInternal();
     glm::mat4 worldToEntityMatrix = glm::inverse(entityToWorldMatrix);
     glm::vec3 entityFrameOrigin = glm::vec3(worldToEntityMatrix * glm::vec4(origin, 1.0f));
     glm::vec3 entityFrameDirection = glm::normalize(glm::vec3(worldToEntityMatrix * glm::vec4(direction, 0.0f)));
@@ -132,8 +187,10 @@ bool SphereEntityItem::findDetailedRayIntersection(const glm::vec3& origin, cons
         // then translate back to work coordinates
         glm::vec3 hitAt = glm::vec3(entityToWorldMatrix * glm::vec4(entityFrameHitAt, 1.0f));
         distance = glm::distance(origin, hitAt);
+        unlock();
         return true;
     }
+    unlock();
     return false;
 }
 
@@ -146,4 +203,3 @@ void SphereEntityItem::debugDump() const {
     qCDebug(entities) << "          dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
 }
-

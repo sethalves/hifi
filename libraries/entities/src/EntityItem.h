@@ -406,6 +406,8 @@ protected:
     quint64 getLastSimulatedInternal() const;
     quint64 getLastEditedInternal() const;
     void setLastEditedInternal(quint64 lastEdited);
+    glm::mat4 getEntityToWorldMatrixInternal() const;
+    glm::mat4 getWorldToEntityMatrixInternal() const;
     const QByteArray getActionDataInternal() const;
     void setActionDataInternal(QByteArray actionData);
     EntityItemID getEntityItemIDInternal() const;
