@@ -12,14 +12,14 @@
 #ifndef hifi_TextEntityItem_h
 #define hifi_TextEntityItem_h
 
-#include "EntityItem.h" 
+#include "EntityItem.h"
 
 class TextEntityItem : public EntityItem {
 public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
 
     TextEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
-    
+
     ALLOW_INSTANTIATION // This class can be instantiated
 
     /// set dimensions in domain scale units (0.0 - 1.0) this will also reset radius appropriately
@@ -33,56 +33,62 @@ public:
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
-    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
+                                    int& propertyCount,
                                     OctreeElement::AppendState& appendState) const;
 
-    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
+                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const;
 
     static const QString DEFAULT_TEXT;
-    void setText(const QString& value) { _text = value; }
-    const QString& getText() const { return _text; }
+    void setText(const QString& value);
+    void setTextInternal(const QString& value);
+    QString getText() const;
+    QString getTextInternal() const;
 
     static const float DEFAULT_LINE_HEIGHT;
-    void setLineHeight(float value) { _lineHeight = value; }
-    float getLineHeight() const { return _lineHeight; }
+    void setLineHeight(float value);
+    void setLineHeightInternal(float value);
+    float getLineHeight() const;
+    float getLineHeightInternal() const;
 
     static const xColor DEFAULT_TEXT_COLOR;
-    const rgbColor& getTextColor() const { return _textColor; }
-    xColor getTextColorX() const { xColor color = { _textColor[RED_INDEX], _textColor[GREEN_INDEX], _textColor[BLUE_INDEX] }; return color; }
+    const rgbColor& getTextColor() const;
+    const rgbColor& getTextColorInternal() const;
+    xColor getTextColorX() const;
+    xColor getTextColorXInternal() const;
 
-    void setTextColor(const rgbColor& value) { memcpy(_textColor, value, sizeof(_textColor)); }
-    void setTextColor(const xColor& value) {
-            _textColor[RED_INDEX] = value.red;
-            _textColor[GREEN_INDEX] = value.green;
-            _textColor[BLUE_INDEX] = value.blue;
-    }
+    void setTextColor(const rgbColor& value);
+    void setTextColorInternal(const rgbColor& value);
+    void setTextColor(const xColor& value);
+    void setTextColorInternal(const xColor& value);
 
     static const xColor DEFAULT_BACKGROUND_COLOR;
-    const rgbColor& getBackgroundColor() const { return _backgroundColor; }
-    xColor getBackgroundColorX() const { xColor color = { _backgroundColor[RED_INDEX], _backgroundColor[GREEN_INDEX], _backgroundColor[BLUE_INDEX] }; return color; }
+    const rgbColor& getBackgroundColor() const;
+    const rgbColor& getBackgroundColorInternal() const;
+    xColor getBackgroundColorX() const;
+    xColor getBackgroundColorXInternal() const;
 
-    void setBackgroundColor(const rgbColor& value) { memcpy(_backgroundColor, value, sizeof(_backgroundColor)); }
-    void setBackgroundColor(const xColor& value) {
-            _backgroundColor[RED_INDEX] = value.red;
-            _backgroundColor[GREEN_INDEX] = value.green;
-            _backgroundColor[BLUE_INDEX] = value.blue;
-    }
-    
+    void setBackgroundColor(const rgbColor& value);
+    void setBackgroundColorInternal(const rgbColor& value);
+    void setBackgroundColor(const xColor& value);
+    void setBackgroundColorInternal(const xColor& value);
+
     static const bool DEFAULT_FACE_CAMERA;
-    bool getFaceCamera() const { return _faceCamera; }
-    void setFaceCamera(bool value) { _faceCamera = value; }
+    bool getFaceCamera() const;
+    bool getFaceCameraInternal() const;
+    void setFaceCamera(bool value);
+    void setFaceCameraInternal(bool value);
 
 protected:
     QString _text;

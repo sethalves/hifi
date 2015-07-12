@@ -34,7 +34,7 @@ EntityItemPointer TextEntityItem::factory(const EntityItemID& entityID, const En
 }
 
 TextEntityItem::TextEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-        EntityItem(entityItemID) 
+        EntityItem(entityItemID)
 {
     _type = EntityTypes::Text;
     _created = properties.getCreated();
@@ -57,11 +57,11 @@ EntityItemProperties TextEntityItem::getProperties(bool doLocking) const {
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(text, getText);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lineHeight, getLineHeight);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textColor, getTextColorX);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundColor, getBackgroundColorX);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(faceCamera, getFaceCamera);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(text, getTextInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lineHeight, getLineHeightInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(textColor, getTextColorXInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundColor, getBackgroundColorXInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(faceCamera, getFaceCameraInternal);
 
     if (doLocking) {
         unlock();
@@ -81,19 +81,19 @@ bool TextEntityItem::setProperties(const EntityItemProperties& properties, bool 
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(text, setText);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lineHeight, setLineHeight);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textColor, setTextColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(backgroundColor, setBackgroundColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(faceCamera, setFaceCamera);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(text, setTextInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lineHeight, setLineHeightInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(textColor, setTextColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(backgroundColor, setBackgroundColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(faceCamera, setFaceCameraInternal);
 
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "TextEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
@@ -104,19 +104,19 @@ bool TextEntityItem::setProperties(const EntityItemProperties& properties, bool 
     return somethingChanged;
 }
 
-int TextEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+int TextEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
 
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_TEXT, QString, setText);
-    READ_ENTITY_PROPERTY(PROP_LINE_HEIGHT, float, setLineHeight);
-    READ_ENTITY_PROPERTY(PROP_TEXT_COLOR, rgbColor, setTextColor);
-    READ_ENTITY_PROPERTY(PROP_BACKGROUND_COLOR, rgbColor, setBackgroundColor);
-    READ_ENTITY_PROPERTY(PROP_FACE_CAMERA, bool, setFaceCamera);
-    
+    READ_ENTITY_PROPERTY(PROP_TEXT, QString, setTextInternal);
+    READ_ENTITY_PROPERTY(PROP_LINE_HEIGHT, float, setLineHeightInternal);
+    READ_ENTITY_PROPERTY(PROP_TEXT_COLOR, rgbColor, setTextColorInternal);
+    READ_ENTITY_PROPERTY(PROP_BACKGROUND_COLOR, rgbColor, setBackgroundColorInternal);
+    READ_ENTITY_PROPERTY(PROP_FACE_CAMERA, bool, setFaceCameraInternal);
+
     return bytesRead;
 }
 
@@ -132,29 +132,31 @@ EntityPropertyFlags TextEntityItem::getEntityProperties(EncodeBitstreamParams& p
     return requestedProperties;
 }
 
-void TextEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+void TextEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
-                                    OctreeElement::AppendState& appendState) const { 
+                                    int& propertyCount,
+                                    OctreeElement::AppendState& appendState) const {
 
     bool successPropertyFits = true;
 
-    APPEND_ENTITY_PROPERTY(PROP_TEXT, getText());
-    APPEND_ENTITY_PROPERTY(PROP_LINE_HEIGHT, getLineHeight());
-    APPEND_ENTITY_PROPERTY(PROP_TEXT_COLOR, getTextColor());
-    APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_COLOR, getBackgroundColor());
-    APPEND_ENTITY_PROPERTY(PROP_FACE_CAMERA, getFaceCamera());
-    
+    APPEND_ENTITY_PROPERTY(PROP_TEXT, getTextInternal());
+    APPEND_ENTITY_PROPERTY(PROP_LINE_HEIGHT, getLineHeightInternal());
+    APPEND_ENTITY_PROPERTY(PROP_TEXT_COLOR, getTextColorInternal());
+    APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_COLOR, getBackgroundColorInternal());
+    APPEND_ENTITY_PROPERTY(PROP_FACE_CAMERA, getFaceCameraInternal());
+
 }
 
 
 bool TextEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
+                     bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                      void** intersectedObject, bool precisionPicking) const {
-                     
+    assertUnlocked();
+    lockForRead();
+
     RayIntersectionInfo rayInfo;
     rayInfo._rayStart = origin;
     rayInfo._rayDirection = direction;
@@ -163,9 +165,9 @@ bool TextEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const 
     PlaneShape plane;
 
     const glm::vec3 UNROTATED_NORMAL(0.0f, 0.0f, -1.0f);
-    glm::vec3 normal = getRotation() * UNROTATED_NORMAL;
+    glm::vec3 normal = getRotationInternal() * UNROTATED_NORMAL;
     plane.setNormal(normal);
-    plane.setPoint(getPosition()); // the position is definitely a point on our plane
+    plane.setPoint(getPositionInternal()); // the position is definitely a point on our plane
 
     bool intersects = plane.findRayIntersection(rayInfo);
 
@@ -173,23 +175,206 @@ bool TextEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const 
         glm::vec3 hitAt = origin + (direction * rayInfo._hitDistance);
         // now we know the point the ray hit our plane
 
-        glm::mat4 rotation = glm::mat4_cast(getRotation());
-        glm::mat4 translation = glm::translate(getPosition());
+        glm::mat4 rotation = glm::mat4_cast(getRotationInternal());
+        glm::mat4 translation = glm::translate(getPositionInternal());
         glm::mat4 entityToWorldMatrix = translation * rotation;
         glm::mat4 worldToEntityMatrix = glm::inverse(entityToWorldMatrix);
 
-        glm::vec3 dimensions = getDimensions();
-        glm::vec3 registrationPoint = getRegistrationPoint();
+        glm::vec3 dimensions = getDimensionsInternal();
+        glm::vec3 registrationPoint = getRegistrationPointInternal();
         glm::vec3 corner = -(dimensions * registrationPoint);
         AABox entityFrameBox(corner, dimensions);
 
         glm::vec3 entityFrameHitAt = glm::vec3(worldToEntityMatrix * glm::vec4(hitAt, 1.0f));
-        
+
         intersects = entityFrameBox.contains(entityFrameHitAt);
     }
 
     if (intersects) {
         distance = rayInfo._hitDistance;
     }
+    unlock();
     return intersects;
+}
+
+void TextEntityItem::setText(const QString& value) {
+    assertUnlocked();
+    lockForWrite();
+    setTextInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setTextInternal(const QString& value) {
+    assertWriteLocked();
+    _text = value;
+}
+
+void TextEntityItem::setLineHeight(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setLineHeightInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setLineHeightInternal(float value) {
+    assertWriteLocked();
+    _lineHeight = value;
+}
+
+float TextEntityItem::getLineHeight() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getLineHeightInternal();
+    unlock();
+    return result;
+}
+
+float TextEntityItem::getLineHeightInternal() const {
+    assertLocked();
+    return _lineHeight;
+}
+
+const rgbColor& TextEntityItem::getTextColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getTextColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& TextEntityItem::getTextColorInternal() const {
+    assertLocked();
+    return _textColor;
+}
+
+xColor TextEntityItem::getTextColorX() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getTextColorXInternal();
+    unlock();
+    return result;
+}
+
+xColor TextEntityItem::getTextColorXInternal() const {
+    assertLocked();
+    xColor color = { _textColor[RED_INDEX], _textColor[GREEN_INDEX], _textColor[BLUE_INDEX] };
+    return color;
+}
+
+void TextEntityItem::setTextColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setTextColorInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setTextColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_textColor, value, sizeof(_textColor));
+}
+
+void TextEntityItem::setTextColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setTextColorInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setTextColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _textColor[RED_INDEX] = value.red;
+    _textColor[GREEN_INDEX] = value.green;
+    _textColor[BLUE_INDEX] = value.blue;
+
+}
+
+const rgbColor& TextEntityItem::getBackgroundColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto& result = getBackgroundColorInternal();
+    unlock();
+    return result;
+}
+
+const rgbColor& TextEntityItem::getBackgroundColorInternal() const {
+    assertLocked();
+    return _backgroundColor;
+}
+
+void TextEntityItem::setBackgroundColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setBackgroundColorInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setBackgroundColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    memcpy(_backgroundColor, value, sizeof(_backgroundColor));
+}
+
+void TextEntityItem::setBackgroundColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setBackgroundColorInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setBackgroundColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _backgroundColor[RED_INDEX] = value.red;
+    _backgroundColor[GREEN_INDEX] = value.green;
+    _backgroundColor[BLUE_INDEX] = value.blue;
+
+}
+
+xColor TextEntityItem::getBackgroundColorX() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getBackgroundColorXInternal();
+    unlock();
+    return result;
+}
+
+xColor TextEntityItem::getBackgroundColorXInternal() const {
+    assertLocked();
+    xColor color = { _backgroundColor[RED_INDEX], _backgroundColor[GREEN_INDEX], _backgroundColor[BLUE_INDEX] }; return color;
+}
+
+bool TextEntityItem::getFaceCamera() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getFaceCameraInternal();
+    unlock();
+    return result;
+}
+
+bool TextEntityItem::getFaceCameraInternal() const {
+    assertLocked();
+    return _faceCamera;
+}
+
+void TextEntityItem::setFaceCamera(bool value) {
+    assertUnlocked();
+    lockForWrite();
+    setFaceCameraInternal(value);
+    unlock();
+}
+
+void TextEntityItem::setFaceCameraInternal(bool value) {
+    assertWriteLocked();
+    _faceCamera = value;
+}
+
+QString TextEntityItem::getText() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getTextInternal();
+    unlock();
+    return result;
+}
+
+QString TextEntityItem::getTextInternal() const {
+    assertLocked();
+    return _text;
 }
