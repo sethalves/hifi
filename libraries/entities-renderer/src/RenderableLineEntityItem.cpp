@@ -25,35 +25,40 @@ EntityItemPointer RenderableLineEntityItem::factory(const EntityItemID& entityID
 }
 
 void RenderableLineEntityItem::updateGeometry() {
+    assertWriteLocked();
     auto geometryCache = DependencyManager::get<GeometryCache>();
     if (_lineVerticesID == GeometryCache::UNKNOWN_ID) {
         _lineVerticesID = geometryCache ->allocateID();
     }
     if (_pointsChanged) {
-        glm::vec4 lineColor(toGlm(getXColor()), getLocalRenderAlpha());
-        geometryCache->updateVertices(_lineVerticesID, getLinePoints(), lineColor);
+        glm::vec4 lineColor(toGlm(getXColorInternal()), getLocalRenderAlphaInternal());
+        geometryCache->updateVertices(_lineVerticesID, getLinePointsInternal(), lineColor);
         _pointsChanged = false;
     }
 }
 
 void RenderableLineEntityItem::render(RenderArgs* args) {
+    assertUnlocked();
+    lockForWrite();
+
     PerformanceTimer perfTimer("RenderableLineEntityItem::render");
-    Q_ASSERT(getType() == EntityTypes::Line);
+    Q_ASSERT(getTypeInternal() == EntityTypes::Line);
     updateGeometry();
-    
+
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
     Transform transform = Transform();
-    transform.setTranslation(getPosition());
-    transform.setRotation(getRotation());
+    transform.setTranslation(getPositionInternal());
+    transform.setRotation(getRotationInternal());
     batch.setModelTransform(transform);
-    
-    batch._glLineWidth(getLineWidth());
-    if (getLinePoints().size() > 1) {
+
+    batch._glLineWidth(getLineWidthInternal());
+    if (getLinePointsInternal().size() > 1) {
         DependencyManager::get<DeferredLightingEffect>()->bindSimpleProgram(batch);
         DependencyManager::get<GeometryCache>()->renderVertices(batch, gpu::LINE_STRIP, _lineVerticesID);
     }
     batch._glLineWidth(1.0f);
-    
+
     RenderableDebugableEntityItem::render(this, args);
-};
+    unlock();
+}
