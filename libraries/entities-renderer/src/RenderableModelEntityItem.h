@@ -37,41 +37,43 @@ public:
 
     virtual EntityItemProperties getProperties(bool doLocking = true) const;
     virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
-    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
-                                                
-    virtual void somethingChangedNotification() { 
-        // FIX ME: this is overly aggressive. We only really need to simulate() if something about
-        // the world space transform has changed and/or if some animation is occurring.
-        _needsInitialSimulation = true;  
-    }
+
+    virtual void somethingChangedNotification();
 
     virtual bool readyToAddToScene(RenderArgs* renderArgs = nullptr);
-    virtual bool addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges);
-    virtual void removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges);
+    virtual bool addToScene(EntityItemPointer self,
+                            std::shared_ptr<render::Scene> scene,
+                            render::PendingChanges& pendingChanges);
+    virtual void removeFromScene(EntityItemPointer self,
+                                 std::shared_ptr<render::Scene> scene,
+                                 render::PendingChanges& pendingChanges);
 
 
     virtual void render(RenderArgs* args);
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
-                         void** intersectedObject, bool precisionPicking) const;
+                                             bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
+                                             void** intersectedObject, bool precisionPicking) const;
 
     Model* getModel(EntityTreeRenderer* renderer);
+    Model* getModelInternal(EntityTreeRenderer* renderer);
 
     bool needsToCallUpdate() const;
 
     virtual void setCompoundShapeURL(const QString& url);
+    virtual void setCompoundShapeURLInternal(const QString& url);
 
     bool isReadyToComputeShape();
     void computeShapeInfo(ShapeInfo& info);
-    
+
     virtual bool contains(const glm::vec3& point) const;
 
 private:
     void remapTextures();
-    
+
     Model* _model;
     bool _needsInitialSimulation;
     bool _needsModelReload;
@@ -80,7 +82,7 @@ private:
     QStringList _originalTextures;
     bool _originalTexturesRead;
     QVector<QVector<glm::vec3>> _points;
-    
+
     render::ItemID _myMetaItem;
 };
 

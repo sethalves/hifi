@@ -321,13 +321,22 @@ float ModelEntityItem::getAnimationFPSInternal() const {
 }
 
 bool ModelEntityItem::isAnimatingSomething() const {
-    return getAnimationIsPlaying() &&
-            getAnimationFPS() != 0.0f &&
-            !getAnimationURL().isEmpty();
+    assertLocked();
+    return getAnimationIsPlayingInternal() &&
+            getAnimationFPSInternal() != 0.0f &&
+            !getAnimationURLInternal().isEmpty();
 }
 
 bool ModelEntityItem::needsToCallUpdate() const {
-    return isAnimatingSomething() ?  true : EntityItem::needsToCallUpdate();
+    assertUnlocked();
+    lockForRead();
+    auto result = needsToCallUpdateInternal();
+    unlock();
+    return result;
+}
+
+bool ModelEntityItem::needsToCallUpdateInternal() const {
+    return isAnimatingSomething() ?  true : EntityItem::needsToCallUpdateInternal();
 }
 
 void ModelEntityItem::update(const quint64& now, bool doLocking) {

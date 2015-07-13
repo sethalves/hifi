@@ -360,6 +360,7 @@ public:
     void clearDirtyFlags(uint32_t mask = 0xffffffff);
 
     bool isMoving() const;
+    bool isMovingInternal() const;
 
     void* getPhysicsInfo() const;
     void setPhysicsInfo(void* data);

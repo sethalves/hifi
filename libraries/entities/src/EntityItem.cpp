@@ -1136,7 +1136,16 @@ void EntityItem::flagForOwnership() {
 }
 
 bool EntityItem::isMoving() const {
-    return hasVelocity() || hasAngularVelocity();
+    assertUnlocked();
+    lockForRead();
+    auto result = isMovingInternal();
+    unlock();
+    return result;
+}
+
+bool EntityItem::isMovingInternal() const {
+    assertLocked();
+    return hasVelocityInternal() || hasAngularVelocityInternal();
 }
 
 void* EntityItem::getPhysicsInfo() const {
@@ -3081,6 +3090,7 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
 
 
 #define ENABLE_LOCKING 1
+// #define ENABLE_UNLOCKED_CHECKING 1
 
 #ifdef ENABLE_LOCKING
 void EntityItem::lockForRead() const {
@@ -3134,6 +3144,7 @@ bool EntityItem::isWriteLocked() const {
 }
 
 
+#ifdef ENABLE_UNLOCKED_CHECKING
 bool EntityItem::isUnlocked() const {
     // this can't be sure -- this may get unlucky and hit locks from other threads.  what we're actually trying
     // to discover is if *this* thread hasn't locked the EntityItem.  Try repeatedly to take both kinds of lock.
@@ -3164,6 +3175,9 @@ bool EntityItem::isUnlocked() const {
     }
     return false;
 }
+#else // ENABLE_UNLOCKED_CHECKING
+#endif // ENABLE_UNLOCKED_CHECKING
+bool EntityItem::isUnlocked() const { return true; }
 #else
 void EntityItem::lockForRead() const { }
 bool EntityItem::tryLockForRead() const { return true; }

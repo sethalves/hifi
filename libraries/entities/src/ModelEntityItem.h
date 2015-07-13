@@ -46,6 +46,7 @@ public:
 
     virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
+    virtual bool needsToCallUpdateInternal() const;
 
     void updateShapeType(ShapeType type);
     virtual ShapeType getShapeTypeInternal() const;

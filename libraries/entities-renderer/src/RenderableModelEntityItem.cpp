@@ -57,11 +57,12 @@ bool RenderableModelEntityItem::setProperties(const EntityItemProperties& proper
     return somethingChanged;
 }
 
-int RenderableModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+int RenderableModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
+    assertWriteLocked();
     QString oldModelURL = getModelURLInternal();
-    int bytesRead = ModelEntityItem::readEntitySubclassDataFromBuffer(data, bytesLeftToRead, 
+    int bytesRead = ModelEntityItem::readEntitySubclassDataFromBuffer(data, bytesLeftToRead,
                                                                         args, propertyFlags, overwriteLocalData);
     if (oldModelURL != getModelURLInternal()) {
         _needsModelReload = true;
@@ -70,14 +71,15 @@ int RenderableModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned c
 }
 
 void RenderableModelEntityItem::remapTextures() {
+    assertWriteLocked();
     if (!_model) {
         return; // nothing to do if we don't have a model
     }
-    
+
     if (!_model->isLoadedWithTextures()) {
         return; // nothing to do if the model has not yet loaded its default textures
     }
-    
+
     if (!_originalTexturesRead && _model->isLoadedWithTextures()) {
         const QSharedPointer<NetworkGeometry>& networkGeometry = _model->getGeometry();
         if (networkGeometry) {
@@ -85,11 +87,11 @@ void RenderableModelEntityItem::remapTextures() {
             _originalTexturesRead = true;
         }
     }
-    
+
     if (_currentTextures == _textures) {
         return; // nothing to do if our recently mapped textures match our desired textures
     }
-    
+
     // since we're changing here, we need to run through our current texture map
     // and any textures in the recently mapped texture, that is not in our desired
     // textures, we need to "unset"
@@ -117,25 +119,34 @@ void RenderableModelEntityItem::remapTextures() {
         qCDebug(entitiesrenderer) << "Updating texture named" << key << "to texture at URL" << newTextureURL;
         _model->setTextureWithNameToURL(key, newTextureURL);
     }
-    
+
     _currentTextures = _textures;
+}
+
+void RenderableModelEntityItem::somethingChangedNotification() {
+    // FIX ME: this is overly aggressive. We only really need to simulate() if something about
+    // the world space transform has changed and/or if some animation is occurring.
+    assertWriteLocked();
+    _needsInitialSimulation = true;
 }
 
 // TODO: we need a solution for changes to the postion/rotation/etc of a model...
 // this current code path only addresses that in this setup case... not the changing/moving case
 bool RenderableModelEntityItem::readyToAddToScene(RenderArgs* renderArgs) {
+    assertUnlocked();
+    lockForWrite();
     if (!_model && renderArgs) {
         // TODO: this getModel() appears to be about 3% of model render time. We should optimize
         PerformanceTimer perfTimer("getModel");
         EntityTreeRenderer* renderer = static_cast<EntityTreeRenderer*>(renderArgs->_renderer);
-        getModel(renderer);
+        getModelInternal(renderer);
     }
     if (renderArgs && _model && _needsInitialSimulation && _model->isActive() && _model->isLoadedWithTextures()) {
-        _model->setScaleToFit(true, getDimensions());
-        _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
-        _model->setRotation(getRotation());
-        _model->setTranslation(getPosition());
-    
+        _model->setScaleToFit(true, getDimensionsInternal());
+        _model->setSnapModelToRegistrationPoint(true, getRegistrationPointInternal());
+        _model->setRotation(getRotationInternal());
+        _model->setTranslation(getPositionInternal());
+
         // make sure to simulate so everything gets set up correctly for rendering
         {
             PerformanceTimer perfTimer("_model->simulate");
@@ -146,7 +157,8 @@ bool RenderableModelEntityItem::readyToAddToScene(RenderArgs* renderArgs) {
         _model->renderSetup(renderArgs);
     }
     bool ready = !_needsInitialSimulation && _model && _model->readyToAddToScene(renderArgs);
-    return ready; 
+    unlock();
+    return ready;
 }
 
 class RenderableModelEntityItemMeta {
@@ -154,16 +166,16 @@ public:
     RenderableModelEntityItemMeta(EntityItemPointer entity) : entity(entity){ }
     typedef render::Payload<RenderableModelEntityItemMeta> Payload;
     typedef Payload::DataPointer Pointer;
-   
+
     EntityItemPointer entity;
 };
 
 namespace render {
-    template <> const ItemKey payloadGetKey(const RenderableModelEntityItemMeta::Pointer& payload) { 
+    template <> const ItemKey payloadGetKey(const RenderableModelEntityItemMeta::Pointer& payload) {
         return ItemKey::Builder::opaqueShape();
     }
-    
-    template <> const Item::Bound payloadGetBound(const RenderableModelEntityItemMeta::Pointer& payload) { 
+
+    template <> const Item::Bound payloadGetBound(const RenderableModelEntityItemMeta::Pointer& payload) {
         if (payload && payload->entity) {
             return payload->entity->getAABox();
         }
@@ -186,7 +198,9 @@ void makeEntityItemStatusGetters(RenderableModelEntityItem* entity, render::Item
         float normalizedDelta = delta * WAIT_THRESHOLD_INV;
         // Status icon will scale from 1.0f down to 0.0f after WAIT_THRESHOLD
         // Color is red if last update is after WAIT_THRESHOLD, green otherwise (120 deg is green)
-        return render::Item::Status::Value(1.0f - normalizedDelta, (normalizedDelta > 1.0f ? render::Item::Status::Value::GREEN : render::Item::Status::Value::RED));
+        return render::Item::Status::Value(1.0f - normalizedDelta, (normalizedDelta > 1.0f ?
+                                                                    render::Item::Status::Value::GREEN :
+                                                                    render::Item::Status::Value::RED));
     });
     statusGetters.push_back([entity] () -> render::Item::Status::Value {
         quint64 delta = usecTimestampNow() - entity->getLastBroadcast();
@@ -194,30 +208,38 @@ void makeEntityItemStatusGetters(RenderableModelEntityItem* entity, render::Item
         float normalizedDelta = delta * WAIT_THRESHOLD_INV;
         // Status icon will scale from 1.0f down to 0.0f after WAIT_THRESHOLD
         // Color is Magenta if last update is after WAIT_THRESHOLD, cyan otherwise (180 deg is green)
-        return render::Item::Status::Value(1.0f - normalizedDelta, (normalizedDelta > 1.0f ? render::Item::Status::Value::MAGENTA : render::Item::Status::Value::CYAN));
+        return render::Item::Status::Value(1.0f - normalizedDelta, (normalizedDelta > 1.0f ?
+                                                                    render::Item::Status::Value::MAGENTA :
+                                                                    render::Item::Status::Value::CYAN));
     });
 }
 
-bool RenderableModelEntityItem::addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, 
+bool RenderableModelEntityItem::addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                             render::PendingChanges& pendingChanges) {
+    assertUnlocked();
+    lockForWrite();
     _myMetaItem = scene->allocateID();
-    
+
     auto renderData = RenderableModelEntityItemMeta::Pointer(new RenderableModelEntityItemMeta(self));
     auto renderPayload = render::PayloadPointer(new RenderableModelEntityItemMeta::Payload(renderData));
-    
+
     pendingChanges.resetItem(_myMetaItem, renderPayload);
-    
+
     if (_model) {
         render::Item::Status::Getters statusGetters;
         makeEntityItemStatusGetters(this, statusGetters);
-        return _model->addToScene(scene, pendingChanges, statusGetters);
+        auto result = _model->addToScene(scene, pendingChanges, statusGetters);
+        unlock();
+        return result;
     }
 
+    unlock();
     return true;
 }
-    
-void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, 
+
+void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                                 render::PendingChanges& pendingChanges) {
+    assertWriteLocked();
     pendingChanges.removeItem(_myMetaItem);
     if (_model) {
         _model->removeFromScene(scene, pendingChanges);
@@ -228,17 +250,20 @@ void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, std::sha
 // NOTE: this only renders the "meta" portion of the Model, namely it renders debugging items, and it handles
 // the per frame simulation/update that might be required if the models properties changed.
 void RenderableModelEntityItem::render(RenderArgs* args) {
+    assertUnlocked();
+    lockForWrite();
+
     PerformanceTimer perfTimer("RMEIrender");
-    assert(getType() == EntityTypes::Model);
+    assert(getTypeInternal() == EntityTypes::Model);
 
-    glm::vec3 position = getPosition();
-    glm::vec3 dimensions = getDimensions();
+    glm::vec3 position = getPositionInternal();
+    glm::vec3 dimensions = getDimensionsInternal();
 
-    if (hasModel()) {
+    if (hasModelInternal()) {
         if (_model) {
-            if (QUrl(getModelURL()) != _model->getURL()) {
-                qDebug() << "Updating model URL: " << getModelURL();
-                _model->setURL(getModelURL());
+            if (QUrl(getModelURLInternal()) != _model->getURL()) {
+                qDebug() << "Updating model URL: " << getModelURLInternal();
+                _model->setURL(getModelURLInternal());
             }
 
             // check to see if when we added our models to the scene they were ready, if they were not ready, then
@@ -254,24 +279,22 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
             }
             scene->enqueuePendingChanges(pendingChanges);
 
-            _model->setVisibleInScene(getVisible(), scene);
+            _model->setVisibleInScene(getVisibleInternal(), scene);
         }
 
 
         remapTextures();
         {
-            // float alpha = getLocalRenderAlpha();
-
             if (!_model || _needsModelReload) {
                 // TODO: this getModel() appears to be about 3% of model render time. We should optimize
                 PerformanceTimer perfTimer("getModel");
                 EntityTreeRenderer* renderer = static_cast<EntityTreeRenderer*>(args->_renderer);
-                getModel(renderer);
+                getModelInternal(renderer);
             }
-            
+
             if (_model) {
                 // handle animations..
-                if (hasAnimation()) {
+                if (hasAnimationInternal()) {
                     if (!jointsMapped()) {
                         QStringList modelJointNames = _model->getJointNames();
                         mapJoints(modelJointNames);
@@ -285,14 +308,14 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
                     }
                 }
 
-                glm::quat rotation = getRotation();
-                bool movingOrAnimating = isMoving() || isAnimatingSomething();
+                glm::quat rotation = getRotationInternal();
+                bool movingOrAnimating = isMovingInternal() || isAnimatingSomething();
                 if ((movingOrAnimating || _needsInitialSimulation) && _model->isActive()) {
                     _model->setScaleToFit(true, dimensions);
-                    _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
+                    _model->setSnapModelToRegistrationPoint(true, getRegistrationPointInternal());
                     _model->setRotation(rotation);
                     _model->setTranslation(position);
-                    
+
                     // make sure to simulate so everything gets set up correctly for rendering
                     {
                         PerformanceTimer perfTimer("_model->simulate");
@@ -308,11 +331,21 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
     }
 
     RenderableDebugableEntityItem::render(this, args);
+    unlock();
 }
 
 Model* RenderableModelEntityItem::getModel(EntityTreeRenderer* renderer) {
+    assertUnlocked();
+    lockForWrite();
+    auto result = getModelInternal(renderer);
+    unlock();
+    return result;
+}
+
+Model* RenderableModelEntityItem::getModelInternal(EntityTreeRenderer* renderer) {
+    assertWriteLocked();
     Model* result = NULL;
-    
+
     if (!renderer) {
         return result;
     }
@@ -322,23 +355,23 @@ Model* RenderableModelEntityItem::getModel(EntityTreeRenderer* renderer) {
         _myRenderer = renderer;
     }
     assert(_myRenderer == renderer); // you should only ever render on one renderer
-    
+
     if (!_myRenderer || QThread::currentThread() != _myRenderer->thread()) {
         return _model;
     }
-    
+
     _needsModelReload = false; // this is the reload
 
     // if we have a URL, then we will want to end up returning a model...
-    if (!getModelURL().isEmpty()) {
-    
+    if (!getModelURLInternal().isEmpty()) {
+
         // if we have a previously allocated model, but its URL doesn't match
         // then we need to let our renderer update our model for us.
-        if (_model && QUrl(getModelURL()) != _model->getURL()) {
-            result = _model = _myRenderer->updateModel(_model, getModelURL(), getCompoundShapeURL());
+        if (_model && QUrl(getModelURLInternal()) != _model->getURL()) {
+            result = _model = _myRenderer->updateModel(_model, getModelURLInternal(), getCompoundShapeURLInternal());
             _needsInitialSimulation = true;
         } else if (!_model) { // if we don't yet have a model, then we want our renderer to allocate one
-            result = _model = _myRenderer->allocateModel(getModelURL(), getCompoundShapeURL());
+            result = _model = _myRenderer->allocateModel(getModelURLInternal(), getCompoundShapeURLInternal());
             _needsInitialSimulation = true;
         } else { // we already have the model we want...
             result = _model;
@@ -350,12 +383,16 @@ Model* RenderableModelEntityItem::getModel(EntityTreeRenderer* renderer) {
             _needsInitialSimulation = true;
         }
     }
-    
+
     return result;
 }
 
 bool RenderableModelEntityItem::needsToCallUpdate() const {
-    return _needsInitialSimulation || ModelEntityItem::needsToCallUpdate();
+    assertUnlocked();
+    lockForRead();
+    auto result = _needsInitialSimulation || ModelEntityItem::needsToCallUpdateInternal();
+    unlock();
+    return result;
 }
 
 EntityItemProperties RenderableModelEntityItem::getProperties(bool doLocking) const {
@@ -379,18 +416,30 @@ EntityItemProperties RenderableModelEntityItem::getProperties(bool doLocking) co
 }
 
 bool RenderableModelEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face, 
+                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking) const {
+    assertUnlocked();
+    lockForRead();
     if (!_model) {
+        unlock();
         return true;
     }
-    //qCDebug(entitiesrenderer) << "RenderableModelEntityItem::findDetailedRayIntersection() precisionPicking:" << precisionPicking;
-    
+
     QString extraInfo;
-    return _model->findRayIntersectionAgainstSubMeshes(origin, direction, distance, face, extraInfo, precisionPicking);
+    auto result = _model->findRayIntersectionAgainstSubMeshes(origin, direction, distance, face, extraInfo, precisionPicking);
+    unlock();
+    return result;
 }
 
 void RenderableModelEntityItem::setCompoundShapeURL(const QString& url) {
+    assertUnlocked();
+    lockForWrite();
+    setCompoundShapeURLInternal(url);
+    unlock();
+}
+
+void RenderableModelEntityItem::setCompoundShapeURLInternal(const QString& url) {
+    assertWriteLocked();
     ModelEntityItem::setCompoundShapeURLInternal(url);
     if (_model) {
         _model->setCollisionModelURL(QUrl(url));
@@ -398,45 +447,57 @@ void RenderableModelEntityItem::setCompoundShapeURL(const QString& url) {
 }
 
 bool RenderableModelEntityItem::isReadyToComputeShape() {
-    ShapeType type = getShapeType();
+    assertUnlocked();
+    lockForRead();
+    ShapeType type = getShapeTypeInternal();
     if (type == SHAPE_TYPE_COMPOUND) {
 
         if (!_model) {
+            unlock();
             return false; // hmm...
         }
 
         if (_needsInitialSimulation) {
             // the _model's offset will be wrong until _needsInitialSimulation is false
+            unlock();
             return false;
         }
 
         assert(!_model->getCollisionURL().isEmpty());
-    
+
         if (_model->getURL().isEmpty()) {
             // we need a render geometry with a scale to proceed, so give up.
+            unlock();
             return false;
         }
-    
+
         const QSharedPointer<NetworkGeometry> collisionNetworkGeometry = _model->getCollisionGeometry();
         const QSharedPointer<NetworkGeometry> renderNetworkGeometry = _model->getGeometry();
-    
+
         if ((! collisionNetworkGeometry.isNull() && collisionNetworkGeometry->isLoadedWithTextures()) &&
             (! renderNetworkGeometry.isNull() && renderNetworkGeometry->isLoadedWithTextures())) {
             // we have both URLs AND both geometries AND they are both fully loaded.
+            unlock();
             return true;
         }
 
         // the model is still being downloaded.
+        unlock();
         return false;
     }
+    unlock();
     return true;
 }
 
 void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& info) {
-    ShapeType type = getShapeType();
+    assertUnlocked();
+    lockForRead();
+    ShapeType type = getShapeTypeInternal();
     if (type != SHAPE_TYPE_COMPOUND) {
+        unlock();
         ModelEntityItem::computeShapeInfo(info);
         info.setParams(type, 0.5f * getDimensions());
+        return;
     } else {
         const QSharedPointer<NetworkGeometry> collisionNetworkGeometry = _model->getCollisionGeometry();
 
@@ -523,7 +584,7 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& info) {
         // to the visual model and apply them to the collision model (without regard for the
         // collision model's extents).
 
-        glm::vec3 scale = getDimensions() / renderGeometry.getUnscaledMeshExtents().size();
+        glm::vec3 scale = getDimensionsInternal() / renderGeometry.getUnscaledMeshExtents().size();
         // multiply each point by scale before handing the point-set off to the physics engine.
         // also determine the extents of the collision model.
         AABox box;
@@ -541,14 +602,16 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& info) {
         info.setParams(type, collisionModelDimensions, _compoundShapeURL);
         info.setConvexHulls(_points);
     }
+    unlock();
 }
 
 bool RenderableModelEntityItem::contains(const glm::vec3& point) const {
+    assertUnlocked();
     if (EntityItem::contains(point) && _model && _model->getCollisionGeometry()) {
         const QSharedPointer<NetworkGeometry> collisionNetworkGeometry = _model->getCollisionGeometry();
         const FBXGeometry& collisionGeometry = collisionNetworkGeometry->getFBXGeometry();
         return collisionGeometry.convexHullContains(worldToEntity(point));
     }
-    
+
     return false;
 }
