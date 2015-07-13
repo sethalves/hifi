@@ -32,7 +32,7 @@ public:
 
 protected:
     void updateGeometry();
-    
+
     int _lineVerticesID;
 };
 
