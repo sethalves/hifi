@@ -27,20 +27,20 @@ EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     assertWriteLocked();
-    QString oldShapeURL = getCompoundShapeURL();
+    QString oldShapeURL = getCompoundShapeURLInternal();
     glm::vec3 oldPosition = getPositionInternal(), oldDimensions = getDimensionsInternal();
     glm::quat oldRotation = getRotationInternal();
-    
+
     setNewProperties();
-    
-    if (oldShapeURL != getCompoundShapeURL()) {
+
+    if (oldShapeURL != getCompoundShapeURLInternal()) {
         if (_model) {
             delete _model;
         }
-        
+
         _model = getModel();
         _needsInitialSimulation = true;
-        _model->setURL(getCompoundShapeURL(), QUrl(), true, true);
+        _model->setURL(getCompoundShapeURLInternal(), QUrl(), true, true);
     }
     if (oldPosition != getPositionInternal() ||
         oldRotation != getRotationInternal() ||
@@ -108,7 +108,7 @@ void RenderableZoneEntityItem::updateGeometry() {
 
 void RenderableZoneEntityItem::render(RenderArgs* args) {
     Q_ASSERT(getType() == EntityTypes::Zone);
-    
+
     if (_drawZoneBoundaries) {
         switch (getShapeType()) {
             case SHAPE_TYPE_COMPOUND: {
@@ -121,9 +121,9 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
                     render::PendingChanges pendingChanges;
                     _model->removeFromScene(scene, pendingChanges);
                     _model->addToScene(scene, pendingChanges);
-                    
+
                     scene->enqueuePendingChanges(pendingChanges);
-                    
+
                     _model->setVisibleInScene(getVisible(), scene);
                 }
                 break;
@@ -132,13 +132,13 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
             case SHAPE_TYPE_SPHERE: {
                 PerformanceTimer perfTimer("zone->renderPrimitive");
                 glm::vec4 DEFAULT_COLOR(1.0f, 1.0f, 1.0f, 1.0f);
-                
+
                 Q_ASSERT(args->_batch);
                 gpu::Batch& batch = *args->_batch;
                 batch.setModelTransform(getTransformToCenter());
-                
+
                 auto deferredLightingEffect = DependencyManager::get<DeferredLightingEffect>();
-                
+
                 if (getShapeType() == SHAPE_TYPE_SPHERE) {
                     const int SLICES = 15, STACKS = 15;
                     deferredLightingEffect->renderWireSphere(batch, 0.5f, SLICES, STACKS, DEFAULT_COLOR);
@@ -152,7 +152,7 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
                 break;
         }
     }
-    
+
     if ((!_drawZoneBoundaries || getShapeType() != SHAPE_TYPE_COMPOUND) &&
         _model && !_model->needsFixupInScene()) {
         // If the model is in the scene but doesn't need to be, remove it.
@@ -168,11 +168,11 @@ bool RenderableZoneEntityItem::contains(const glm::vec3& point) const {
         return EntityItem::contains(point);
     }
     const_cast<RenderableZoneEntityItem*>(this)->updateGeometry();
-    
+
     if (_model && _model->isActive() && EntityItem::contains(point)) {
         return _model->convexHullContains(point);
     }
-    
+
     return false;
 }
 
@@ -181,7 +181,7 @@ public:
     RenderableZoneEntityItemMeta(EntityItemPointer entity) : entity(entity){ }
     typedef render::Payload<RenderableZoneEntityItemMeta> Payload;
     typedef Payload::DataPointer Pointer;
-    
+
     EntityItemPointer entity;
 };
 
@@ -189,7 +189,7 @@ namespace render {
     template <> const ItemKey payloadGetKey(const RenderableZoneEntityItemMeta::Pointer& payload) {
         return ItemKey::Builder::opaqueShape();
     }
-    
+
     template <> const Item::Bound payloadGetBound(const RenderableZoneEntityItemMeta::Pointer& payload) {
         if (payload && payload->entity) {
             return payload->entity->getAABox();
@@ -208,10 +208,10 @@ namespace render {
 bool RenderableZoneEntityItem::addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                            render::PendingChanges& pendingChanges) {
     _myMetaItem = scene->allocateID();
-    
+
     auto renderData = RenderableZoneEntityItemMeta::Pointer(new RenderableZoneEntityItemMeta(self));
     auto renderPayload = render::PayloadPointer(new RenderableZoneEntityItemMeta::Payload(renderData));
-    
+
     pendingChanges.resetItem(_myMetaItem, renderPayload);
     return true;
 }

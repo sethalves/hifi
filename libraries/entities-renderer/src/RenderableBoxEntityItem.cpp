@@ -27,14 +27,19 @@ EntityItemPointer RenderableBoxEntityItem::factory(const EntityItemID& entityID,
 }
 
 void RenderableBoxEntityItem::render(RenderArgs* args) {
+    assertUnlocked();
+    lockForRead();
+
     PerformanceTimer perfTimer("RenderableBoxEntityItem::render");
     Q_ASSERT(getType() == EntityTypes::Box);
-    glm::vec4 cubeColor(toGlm(getXColor()), getLocalRenderAlpha());
-    
+    glm::vec4 cubeColor(toGlm(getXColorInternal()), getLocalRenderAlphaInternal());
+
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
-    batch.setModelTransform(getTransformToCenter()); // we want to include the scale as well
+    batch.setModelTransform(getTransformToCenterInternal()); // we want to include the scale as well
     DependencyManager::get<DeferredLightingEffect>()->renderSolidCube(batch, 1.0f, cubeColor);
 
     RenderableDebugableEntityItem::render(this, args);
+
+    unlock();
 };
