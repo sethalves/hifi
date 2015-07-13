@@ -21,11 +21,11 @@ public:
     RenderableParticleEffectEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
     virtual void render(RenderArgs* args);
 
-    void updateQuads(RenderArgs* args, bool textured);
-
     SIMPLE_RENDERABLE();
 
 protected:
+
+    void updateQuads(RenderArgs* args, bool textured);
 
     int _cacheID;
     const int VERTS_PER_PARTICLE = 4;

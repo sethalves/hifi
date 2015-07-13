@@ -20,16 +20,21 @@
 
 #include "RenderableParticleEffectEntityItem.h"
 
-EntityItemPointer RenderableParticleEffectEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
+EntityItemPointer RenderableParticleEffectEntityItem::factory(const EntityItemID& entityID,
+                                                              const EntityItemProperties& properties) {
     return EntityItemPointer(new RenderableParticleEffectEntityItem(entityID, properties));
 }
 
-RenderableParticleEffectEntityItem::RenderableParticleEffectEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
+RenderableParticleEffectEntityItem::RenderableParticleEffectEntityItem(const EntityItemID& entityItemID,
+                                                                       const EntityItemProperties& properties) :
     ParticleEffectEntityItem(entityItemID, properties) {
     _cacheID = DependencyManager::get<GeometryCache>()->allocateID();
 }
 
 void RenderableParticleEffectEntityItem::render(RenderArgs* args) {
+    assertUnlocked();
+    lockForWrite();
+
     Q_ASSERT(getType() == EntityTypes::ParticleEffect);
     PerformanceTimer perfTimer("RenderableParticleEffectEntityItem::render");
 
@@ -46,15 +51,16 @@ void RenderableParticleEffectEntityItem::render(RenderArgs* args) {
 
     bool textured = _texture && _texture->isLoaded();
     updateQuads(args, textured);
-    
+
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
     if (textured) {
         batch.setResourceTexture(0, _texture->getGPUTexture());
     }
-    batch.setModelTransform(getTransformToCenter());
+    batch.setModelTransform(getTransformToCenterInternal());
     DependencyManager::get<DeferredLightingEffect>()->bindSimpleProgram(batch, textured);
     DependencyManager::get<GeometryCache>()->renderVertices(batch, gpu::QUADS, _cacheID);
+    unlock();
 };
 
 static glm::vec3 zSortAxis;
@@ -63,37 +69,38 @@ static bool zSort(const glm::vec3& rhs, const glm::vec3& lhs) {
 }
 
 void RenderableParticleEffectEntityItem::updateQuads(RenderArgs* args, bool textured) {
-    float particleRadius = getParticleRadius();
-    glm::vec4 particleColor(toGlm(getXColor()), getLocalRenderAlpha());
-    
+    assertLocked();
+    float particleRadius = getParticleRadiusInternal();
+    glm::vec4 particleColor(toGlm(getXColorInternal()), getLocalRenderAlphaInternal());
+
     glm::vec3 upOffset = args->_viewFrustum->getUp() * particleRadius;
     glm::vec3 rightOffset = args->_viewFrustum->getRight() * particleRadius;
-    
+
     QVector<glm::vec3> vertices;
     QVector<glm::vec3> positions;
     QVector<glm::vec2> textureCoords;
-    vertices.reserve(getLivingParticleCount() * VERTS_PER_PARTICLE);
-    
+    vertices.reserve(getLivingParticleCountInternal() * VERTS_PER_PARTICLE);
+
     if (textured) {
-        textureCoords.reserve(getLivingParticleCount() * VERTS_PER_PARTICLE);
+        textureCoords.reserve(getLivingParticleCountInternal() * VERTS_PER_PARTICLE);
     }
-    positions.reserve(getLivingParticleCount());
-   
-    
+    positions.reserve(getLivingParticleCountInternal());
+
+
     for (quint32 i = _particleHeadIndex; i != _particleTailIndex; i = (i + 1) % _maxParticles) {
         positions.append(_particlePositions[i]);
-        if (textured) {        
+        if (textured) {
             textureCoords.append(glm::vec2(0, 1));
             textureCoords.append(glm::vec2(1, 1));
             textureCoords.append(glm::vec2(1, 0));
             textureCoords.append(glm::vec2(0, 0));
         }
     }
-        
+
     // sort particles back to front
     ::zSortAxis = args->_viewFrustum->getDirection();
     qSort(positions.begin(), positions.end(), zSort);
-    
+
     for (int i = 0; i < positions.size(); i++) {
         glm::vec3 pos = (textured) ? positions[i] : _particlePositions[i];
 
@@ -102,13 +109,12 @@ void RenderableParticleEffectEntityItem::updateQuads(RenderArgs* args, bool text
         vertices.append(pos - rightOffset + upOffset);
         vertices.append(pos - rightOffset - upOffset);
         vertices.append(pos + rightOffset - upOffset);
-   
+
     }
-    
+
     if (textured) {
         DependencyManager::get<GeometryCache>()->updateVertices(_cacheID, vertices, textureCoords, particleColor);
     } else {
         DependencyManager::get<GeometryCache>()->updateVertices(_cacheID, vertices, particleColor);
     }
 }
-

@@ -209,7 +209,6 @@ int ParticleEffectEntityItem::readEntitySubclassDataFromBuffer(const unsigned ch
     READ_ENTITY_PROPERTY(PROP_PARTICLE_RADIUS, float, setParticleRadiusInternal);
     READ_ENTITY_PROPERTY(PROP_TEXTURES, QString, setTexturesInternal);
 
-    unlock();
     return bytesRead;
 }
 
@@ -291,9 +290,9 @@ bool ParticleEffectEntityItem::needsToCallUpdateInternal() const {
 void ParticleEffectEntityItem::update(const quint64& now, bool doLocking) {
     if (doLocking) {
         assertUnlocked();
-        lockForRead();
+        lockForWrite();
     } else {
-        assertLocked();
+        assertWriteLocked();
     }
 
     float deltaTime = (float)(now - _lastAnimated) / (float)USECS_PER_SECOND;
@@ -428,7 +427,6 @@ void ParticleEffectEntityItem::setAnimationSettingsInternal(const QString& value
 
     _animationSettings = value;
     _dirtyFlags |= EntityItem::DIRTY_UPDATEABLE;
-    unlock();
 }
 
 void ParticleEffectEntityItem::setAnimationIsPlaying(bool value) {
@@ -643,6 +641,7 @@ quint32 ParticleEffectEntityItem::getLivingParticleCount() const {
 }
 
 quint32 ParticleEffectEntityItem::getLivingParticleCountInternal() const {
+    assertLocked();
     if (_particleTailIndex >= _particleHeadIndex) {
         return _particleTailIndex - _particleHeadIndex;
     } else {

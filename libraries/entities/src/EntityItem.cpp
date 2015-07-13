@@ -31,7 +31,6 @@
 #include "EntitySimulation.h"
 #include "EntityActionFactoryInterface.h"
 
-
 bool EntityItem::_sendPhysicsUpdates = true;
 int EntityItem::_maxActionsDataSize = 800;
 
@@ -2869,7 +2868,9 @@ bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionI
     }
     EntityActionPointer action = _objectActions[actionID];
 
+    unlock(); // action->updateArguments will end up calling into EntityItem::getPhysicsInfo, so unlock here
     bool success = action->updateArguments(arguments);
+    lockForWrite(); // and relock
     if (success) {
         _allActionsDataCache = serializeActions(success);
         _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
@@ -3089,9 +3090,6 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
 
 
 
-#define ENABLE_LOCKING 1
-// #define ENABLE_UNLOCKED_CHECKING 1
-
 #ifdef ENABLE_LOCKING
 void EntityItem::lockForRead() const {
     _lock.lockForRead();
@@ -3176,8 +3174,8 @@ bool EntityItem::isUnlocked() const {
     return false;
 }
 #else // ENABLE_UNLOCKED_CHECKING
-#endif // ENABLE_UNLOCKED_CHECKING
 bool EntityItem::isUnlocked() const { return true; }
+#endif // ENABLE_UNLOCKED_CHECKING
 #else
 void EntityItem::lockForRead() const { }
 bool EntityItem::tryLockForRead() const { return true; }

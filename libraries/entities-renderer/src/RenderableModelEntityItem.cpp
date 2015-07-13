@@ -239,11 +239,13 @@ bool RenderableModelEntityItem::addToScene(EntityItemPointer self, std::shared_p
 
 void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                                 render::PendingChanges& pendingChanges) {
-    assertWriteLocked();
+    assertUnlocked();
+    lockForWrite();
     pendingChanges.removeItem(_myMetaItem);
     if (_model) {
         _model->removeFromScene(scene, pendingChanges);
     }
+    unlock();
 }
 
 

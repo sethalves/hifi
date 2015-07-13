@@ -68,21 +68,25 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
-#define DEBUG 1
 
-#if DEBUG
+#define DEBUG_LOCKS 1 // enable asserts and checks of expected lock states
+#define ENABLE_LOCKING 1 // if defined, EntityItem will be internally thread-safe
+// #define ENABLE_UNLOCKED_CHECKING 1 // assertUnlocked is flakey.  if this is defined, it's enabled.
+
+
+#if DEBUG_LOCKS
   #define assertLocked() assert(isLocked())
 #else
   #define assertLocked()
 #endif
 
-#if DEBUG
+#if DEBUG_LOCKS
   #define assertWriteLocked() assert(isWriteLocked())
 #else
   #define assertWriteLocked()
 #endif
 
-#if DEBUG
+#if DEBUG_LOCKS
   #define assertUnlocked() assert(isUnlocked())
 #else
   #define assertUnlocked()
