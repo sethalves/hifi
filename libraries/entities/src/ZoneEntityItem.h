@@ -15,16 +15,16 @@
 #include <EnvironmentData.h>
 
 #include "AtmospherePropertyGroup.h"
-#include "EntityItem.h" 
+#include "EntityItem.h"
 
 class ZoneEntityItem : public EntityItem {
 public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
 
     ZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
-    
+
     ALLOW_INSTANTIATION // This class can be instantiated
-    
+
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(bool doLocking = true) const;
     virtual bool setProperties(const EntityItemProperties& properties, bool doLocking = true);
@@ -32,48 +32,43 @@ public:
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const;
 
-    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
+    virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
                                     EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount, 
+                                    int& propertyCount,
                                     OctreeElement::AppendState& appendState) const;
 
-    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead, 
+    virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                 ReadBitstreamToTreeParams& args,
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
-    xColor getKeyLightColor() const { xColor color = { _keyLightColor[RED_INDEX], _keyLightColor[GREEN_INDEX], _keyLightColor[BLUE_INDEX] }; return color; }
-    void setKeyLightColor(const xColor& value) {
-        _keyLightColor[RED_INDEX] = value.red;
-        _keyLightColor[GREEN_INDEX] = value.green;
-        _keyLightColor[BLUE_INDEX] = value.blue;
-    }
+    xColor getKeyLightColor() const;
+    xColor getKeyLightColorInternal() const;
+    void setKeyLightColor(const xColor& value);
+    void setKeyLightColorInternal(const xColor& value);
 
-    void setKeyLightColor(const rgbColor& value) {
-        _keyLightColor[RED_INDEX] = value[RED_INDEX];
-        _keyLightColor[GREEN_INDEX] = value[GREEN_INDEX];
-        _keyLightColor[BLUE_INDEX] = value[BLUE_INDEX];
-    }
+    void setKeyLightColor(const rgbColor& value);
+    void setKeyLightColorInternal(const rgbColor& value);
 
-    glm::vec3 getKeyLightColorVec3() const {
-        const quint8 MAX_COLOR = 255;
-        glm::vec3 color = { (float)_keyLightColor[RED_INDEX] / (float)MAX_COLOR,
-                            (float)_keyLightColor[GREEN_INDEX] / (float)MAX_COLOR,
-                            (float)_keyLightColor[BLUE_INDEX] / (float)MAX_COLOR };
-        return color;
-    }
+    glm::vec3 getKeyLightColorVec3() const;
+    glm::vec3 getKeyLightColorVec3Internal() const;
 
-    
-    float getKeyLightIntensity() const { return _keyLightIntensity; }
-    void setKeyLightIntensity(float value) { _keyLightIntensity = value; }
+    float getKeyLightIntensity() const;
+    float getKeyLightIntensityInternal() const;
+    void setKeyLightIntensity(float value);
+    void setKeyLightIntensityInternal(float value);
 
-    float getKeyLightAmbientIntensity() const { return _keyLightAmbientIntensity; }
-    void setKeyLightAmbientIntensity(float value) { _keyLightAmbientIntensity = value; }
+    float getKeyLightAmbientIntensity() const;
+    float getKeyLightAmbientIntensityInternal() const;
+    void setKeyLightAmbientIntensity(float value);
+    void setKeyLightAmbientIntensityInternal(float value);
 
-    const glm::vec3& getKeyLightDirection() const { return _keyLightDirection; }
-    void setKeyLightDirection(const glm::vec3& value) { _keyLightDirection = value; }
+    glm::vec3 getKeyLightDirection() const;
+    glm::vec3 getKeyLightDirectionInternal() const;
+    void setKeyLightDirection(const glm::vec3& value);
+    void setKeyLightDirectionInternal(const glm::vec3& value);
 
     static bool getZonesArePickable() { return _zonesArePickable; }
     static void setZonesArePickable(bool value) { _zonesArePickable = value; }
@@ -85,17 +80,25 @@ public:
     void updateShapeType(ShapeType type) { _shapeType = type; }
     virtual ShapeType getShapeTypeInternal() const;
 
-    virtual bool hasCompoundShapeURL() const { return !_compoundShapeURL.isEmpty(); }
-    const QString getCompoundShapeURL() const { return _compoundShapeURL; }
+    virtual bool hasCompoundShapeURL() const;
+    virtual bool hasCompoundShapeURLInternal() const;
+    QString getCompoundShapeURL() const;
+    QString getCompoundShapeURLInternal() const;
     virtual void setCompoundShapeURL(const QString& url);
+    virtual void setCompoundShapeURLInternal(const QString& url);
 
-    void setBackgroundMode(BackgroundMode value) { _backgroundMode = value; }
-    BackgroundMode getBackgroundMode() const { return _backgroundMode; }
+    void setBackgroundMode(BackgroundMode value);
+    void setBackgroundModeInternal(BackgroundMode value);
+    BackgroundMode getBackgroundMode() const;
+    BackgroundMode getBackgroundModeInternal() const;
 
     EnvironmentData getEnvironmentData() const;
-    const AtmospherePropertyGroup& getAtmosphereProperties() const { return _atmosphereProperties; }
-    const SkyboxPropertyGroup& getSkyboxProperties() const { return _skyboxProperties; }
-    const StagePropertyGroup& getStageProperties() const { return _stageProperties; }
+    AtmospherePropertyGroup getAtmosphereProperties() const;
+    AtmospherePropertyGroup getAtmospherePropertiesInternal() const;
+    SkyboxPropertyGroup getSkyboxProperties() const;
+    SkyboxPropertyGroup getSkyboxPropertiesInternal() const;
+    StagePropertyGroup getStageProperties() const;
+    StagePropertyGroup getStagePropertiesInternal() const;
 
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
@@ -108,7 +111,7 @@ public:
     static const glm::vec3 DEFAULT_KEYLIGHT_DIRECTION;
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
-    
+
 protected:
 
     virtual void debugDump() const;
@@ -118,10 +121,10 @@ protected:
     float _keyLightIntensity;
     float _keyLightAmbientIntensity;
     glm::vec3 _keyLightDirection;
-    
+
     ShapeType _shapeType = DEFAULT_SHAPE_TYPE;
     QString _compoundShapeURL;
-    
+
     BackgroundMode _backgroundMode = BACKGROUND_MODE_INHERIT;
 
     StagePropertyGroup _stageProperties;

@@ -56,6 +56,8 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
 
 
 EnvironmentData ZoneEntityItem::getEnvironmentData() const {
+    assertUnlocked();
+    lockForRead();
     EnvironmentData result;
 
     result.setAtmosphereCenter(_atmosphereProperties.getCenter());
@@ -71,6 +73,7 @@ EnvironmentData ZoneEntityItem::getEnvironmentData() const {
     //result.setSunLocation(1000, 900, 1000));
     //result.setSunBrightness(20.0f);
 
+    unlock();
     return result;
 }
 
@@ -83,16 +86,16 @@ EntityItemProperties ZoneEntityItem::getProperties(bool doLocking) const {
     }
     EntityItemProperties properties = EntityItem::getProperties(false); // get the properties from our base class
 
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightColor, getKeyLightColor);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightIntensity, getKeyLightIntensity);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightAmbientIntensity, getKeyLightAmbientIntensity);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightDirection, getKeyLightDirection);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightColor, getKeyLightColorInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightIntensity, getKeyLightIntensityInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightAmbientIntensity, getKeyLightAmbientIntensityInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(keyLightDirection, getKeyLightDirectionInternal);
 
     _stageProperties.getProperties(properties);
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeTypeInternal);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURL);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundMode, getBackgroundMode);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(compoundShapeURL, getCompoundShapeURLInternal);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(backgroundMode, getBackgroundModeInternal);
 
     _atmosphereProperties.getProperties(properties);
     _skyboxProperties.getProperties(properties);
@@ -115,16 +118,16 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties, bool 
     bool somethingChanged = false;
     somethingChanged = EntityItem::setProperties(properties, false); // set the properties in our base class
 
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightColor, setKeyLightColor);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightIntensity, setKeyLightIntensity);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightAmbientIntensity, setKeyLightAmbientIntensity);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightDirection, setKeyLightDirection);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightColor, setKeyLightColorInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightIntensity, setKeyLightIntensityInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightAmbientIntensity, setKeyLightAmbientIntensityInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(keyLightDirection, setKeyLightDirectionInternal);
 
     bool somethingChangedInStage = _stageProperties.setProperties(properties);
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(shapeType, updateShapeType);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURL);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(backgroundMode, setBackgroundMode);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURLInternal);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(backgroundMode, setBackgroundModeInternal);
 
     bool somethingChangedInAtmosphere = _atmosphereProperties.setProperties(properties);
     bool somethingChangedInSkybox = _skyboxProperties.setProperties(properties);
@@ -135,9 +138,9 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties, bool 
         bool wantDebug = false;
         if (wantDebug) {
             uint64_t now = usecTimestampNow();
-            int elapsed = now - getLastEdited();
+            int elapsed = now - getLastEditedInternal();
             qCDebug(entities) << "ZoneEntityItem::setProperties() AFTER update... edited AGO=" << elapsed <<
-                    "now=" << now << " getLastEdited()=" << getLastEdited();
+                    "now=" << now << " getLastEdited()=" << getLastEditedInternal();
         }
         setLastEditedInternal(properties._lastEdited);
     }
@@ -150,25 +153,25 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties, bool 
 }
 
 int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
-                                                ReadBitstreamToTreeParams& args,
-                                                EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
+                                                     ReadBitstreamToTreeParams& args,
+                                                     EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_COLOR, rgbColor, setKeyLightColor);
-    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_INTENSITY, float, setKeyLightIntensity);
-    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, float, setKeyLightAmbientIntensity);
-    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_DIRECTION, glm::vec3, setKeyLightDirection);
+    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_COLOR, rgbColor, setKeyLightColorInternal);
+    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_INTENSITY, float, setKeyLightIntensityInternal);
+    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, float, setKeyLightAmbientIntensityInternal);
+    READ_ENTITY_PROPERTY(PROP_KEYLIGHT_DIRECTION, glm::vec3, setKeyLightDirectionInternal);
 
     int bytesFromStage = _stageProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
-                                                                               propertyFlags, overwriteLocalData);
+                                                                           propertyFlags, overwriteLocalData);
 
     bytesRead += bytesFromStage;
     dataAt += bytesFromStage;
 
     READ_ENTITY_PROPERTY(PROP_SHAPE_TYPE, ShapeType, updateShapeType);
-    READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
-    READ_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundMode);
+    READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURLInternal);
+    READ_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundModeInternal);
 
     int bytesFromAtmosphere = _atmosphereProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead),
                                                                                      args, propertyFlags, overwriteLocalData);
@@ -177,7 +180,7 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     dataAt += bytesFromAtmosphere;
 
     int bytesFromSkybox = _skyboxProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
-                                                                           propertyFlags, overwriteLocalData);
+                                                                             propertyFlags, overwriteLocalData);
     bytesRead += bytesFromSkybox;
     dataAt += bytesFromSkybox;
 
@@ -204,34 +207,32 @@ EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& p
 }
 
 void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
-                                    EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
-                                    EntityPropertyFlags& requestedProperties,
-                                    EntityPropertyFlags& propertyFlags,
-                                    EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount,
-                                    OctreeElement::AppendState& appendState) const {
+                                        EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
+                                        EntityPropertyFlags& requestedProperties,
+                                        EntityPropertyFlags& propertyFlags,
+                                        EntityPropertyFlags& propertiesDidntFit,
+                                        int& propertyCount,
+                                        OctreeElement::AppendState& appendState) const {
 
     bool successPropertyFits = true;
 
     APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_COLOR, _keyLightColor);
-    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_INTENSITY, getKeyLightIntensity());
-    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, getKeyLightAmbientIntensity());
-    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_DIRECTION, getKeyLightDirection());
+    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_INTENSITY, getKeyLightIntensityInternal());
+    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, getKeyLightAmbientIntensityInternal());
+    APPEND_ENTITY_PROPERTY(PROP_KEYLIGHT_DIRECTION, getKeyLightDirectionInternal());
 
     _stageProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
-                                    propertyFlags, propertiesDidntFit, propertyCount, appendState);
-
+                                        propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
     APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeTypeInternal());
-    APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURL());
-    APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, (uint32_t)getBackgroundMode()); // could this be a uint16??
+    APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURLInternal());
+    APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, (uint32_t)getBackgroundModeInternal()); // could this be a uint16??
 
     _atmosphereProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
-                                    propertyFlags, propertiesDidntFit, propertyCount, appendState);
+                                             propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
     _skyboxProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
-                                    propertyFlags, propertiesDidntFit, propertyCount, appendState);
-
+                                         propertyFlags, propertiesDidntFit, propertyCount, appendState);
 }
 
 void ZoneEntityItem::debugDump() const {
@@ -262,16 +263,252 @@ ShapeType ZoneEntityItem::getShapeTypeInternal() const {
     }
 }
 
+bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
+                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
+                         void** intersectedObject, bool precisionPicking) const {
+    assertUnlocked();
+    lockForRead();
+    auto result = _zonesArePickable;
+    unlock();
+    return result;
+}
+
+xColor ZoneEntityItem::getKeyLightColor() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getKeyLightColorInternal();
+    unlock();
+    return result;
+}
+
+xColor ZoneEntityItem::getKeyLightColorInternal() const {
+    assertLocked();
+    xColor color = { _keyLightColor[RED_INDEX], _keyLightColor[GREEN_INDEX], _keyLightColor[BLUE_INDEX] };
+    return color;
+}
+
+void ZoneEntityItem::setKeyLightColor(const xColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setKeyLightColorInternal(value);
+    unlock();
+}
+
+void ZoneEntityItem::setKeyLightColorInternal(const xColor& value) {
+    assertWriteLocked();
+    _keyLightColor[RED_INDEX] = value.red;
+    _keyLightColor[GREEN_INDEX] = value.green;
+    _keyLightColor[BLUE_INDEX] = value.blue;
+}
+
+void ZoneEntityItem::setKeyLightColor(const rgbColor& value) {
+    assertUnlocked();
+    lockForWrite();
+    setKeyLightColorInternal(value);
+    unlock();
+}
+
+void ZoneEntityItem::setKeyLightColorInternal(const rgbColor& value) {
+    assertWriteLocked();
+    _keyLightColor[RED_INDEX] = value[RED_INDEX];
+    _keyLightColor[GREEN_INDEX] = value[GREEN_INDEX];
+    _keyLightColor[BLUE_INDEX] = value[BLUE_INDEX];
+}
+
+glm::vec3 ZoneEntityItem::getKeyLightColorVec3() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getKeyLightColorVec3Internal();
+    unlock();
+    return result;
+}
+
+glm::vec3 ZoneEntityItem::getKeyLightColorVec3Internal() const {
+    assertLocked();
+    const quint8 MAX_COLOR = 255;
+    glm::vec3 color = { (float)_keyLightColor[RED_INDEX] / (float)MAX_COLOR,
+                        (float)_keyLightColor[GREEN_INDEX] / (float)MAX_COLOR,
+                        (float)_keyLightColor[BLUE_INDEX] / (float)MAX_COLOR };
+    return color;
+}
+
+float ZoneEntityItem::getKeyLightIntensity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getKeyLightIntensityInternal();
+    unlock();
+    return result;
+}
+
+float ZoneEntityItem::getKeyLightIntensityInternal() const {
+    assertLocked();
+    return _keyLightIntensity;
+}
+
+void ZoneEntityItem::setKeyLightIntensity(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setKeyLightIntensityInternal(value);
+    unlock();
+}
+
+void ZoneEntityItem::setKeyLightIntensityInternal(float value) {
+    assertWriteLocked();
+    _keyLightIntensity = value;
+}
+
+float ZoneEntityItem::getKeyLightAmbientIntensity() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getKeyLightAmbientIntensityInternal();
+    unlock();
+    return result;
+}
+
+float ZoneEntityItem::getKeyLightAmbientIntensityInternal() const {
+    assertLocked();
+    return _keyLightAmbientIntensity;
+}
+
+void ZoneEntityItem::setKeyLightAmbientIntensity(float value) {
+    assertUnlocked();
+    lockForWrite();
+    setKeyLightAmbientIntensityInternal(value);
+    unlock();
+}
+
+void ZoneEntityItem::setKeyLightAmbientIntensityInternal(float value) {
+    assertWriteLocked();
+    _keyLightAmbientIntensity = value;
+}
+
+glm::vec3 ZoneEntityItem::getKeyLightDirection() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getKeyLightDirectionInternal();
+    unlock();
+    return result;
+}
+
+glm::vec3 ZoneEntityItem::getKeyLightDirectionInternal() const {
+    assertLocked();
+    return _keyLightDirection;
+}
+
+
+void ZoneEntityItem::setKeyLightDirection(const glm::vec3& value) {
+    assertUnlocked();
+    lockForWrite();
+    setKeyLightDirectionInternal(value);
+    unlock();
+}
+
+void ZoneEntityItem::setKeyLightDirectionInternal(const glm::vec3& value) {
+    assertWriteLocked();
+    _keyLightDirection = value;
+}
+
+bool ZoneEntityItem::hasCompoundShapeURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = hasCompoundShapeURLInternal();
+    unlock();
+    return result;
+}
+
+bool ZoneEntityItem::hasCompoundShapeURLInternal() const {
+    assertLocked();
+    return !_compoundShapeURL.isEmpty();
+}
+
+QString ZoneEntityItem::getCompoundShapeURL() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getCompoundShapeURLInternal();
+    unlock();
+    return result;
+}
+
+QString ZoneEntityItem::getCompoundShapeURLInternal() const {
+    assertLocked();
+    return _compoundShapeURL;
+}
+
 void ZoneEntityItem::setCompoundShapeURL(const QString& url) {
+    assertUnlocked();
+    lockForWrite();
+    setCompoundShapeURLInternal(url);
+    unlock();
+}
+
+void ZoneEntityItem::setCompoundShapeURLInternal(const QString& url) {
+    assertWriteLocked();
     _compoundShapeURL = url;
     if (_compoundShapeURL.isEmpty() && _shapeType == SHAPE_TYPE_COMPOUND) {
         _shapeType = DEFAULT_SHAPE_TYPE;
     }
 }
 
-bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
-                         void** intersectedObject, bool precisionPicking) const {
+void ZoneEntityItem::setBackgroundMode(BackgroundMode value) {
+    assertUnlocked();
+    lockForWrite();
+    setBackgroundModeInternal(value);
+    unlock();
+}
 
-    return _zonesArePickable;
+void ZoneEntityItem::setBackgroundModeInternal(BackgroundMode value) {
+    assertWriteLocked();
+    _backgroundMode = value;
+}
+
+BackgroundMode ZoneEntityItem::getBackgroundMode() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getBackgroundModeInternal();
+    unlock();
+    return result;
+}
+
+BackgroundMode ZoneEntityItem::getBackgroundModeInternal() const {
+    assertLocked();
+    return _backgroundMode;
+}
+
+AtmospherePropertyGroup ZoneEntityItem::getAtmosphereProperties() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getAtmospherePropertiesInternal();
+    unlock();
+    return result;
+}
+
+AtmospherePropertyGroup ZoneEntityItem::getAtmospherePropertiesInternal() const {
+    assertLocked();
+    return _atmosphereProperties;
+}
+
+SkyboxPropertyGroup ZoneEntityItem::getSkyboxProperties() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getSkyboxPropertiesInternal();
+    unlock();
+    return result;
+}
+
+SkyboxPropertyGroup ZoneEntityItem::getSkyboxPropertiesInternal() const {
+    assertLocked();
+    return _skyboxProperties;
+}
+
+StagePropertyGroup ZoneEntityItem::getStageProperties() const {
+    assertUnlocked();
+    lockForRead();
+    auto result = getStagePropertiesInternal();
+    unlock();
+    return result;
+}
+
+StagePropertyGroup ZoneEntityItem::getStagePropertiesInternal() const {
+    assertLocked();
+    return _stageProperties;
 }
