@@ -59,12 +59,10 @@ public:
                                              void** intersectedObject, bool precisionPicking) const;
 
     Model* getModel(EntityTreeRenderer* renderer);
-    Model* getModelInternal(EntityTreeRenderer* renderer);
 
     bool needsToCallUpdate() const;
 
     virtual void setCompoundShapeURL(const QString& url);
-    virtual void setCompoundShapeURLInternal(const QString& url);
 
     bool isReadyToComputeShape();
     void computeShapeInfo(ShapeInfo& info);
@@ -73,6 +71,8 @@ public:
 
 private:
     void remapTextures();
+    Model* getModelInternal(EntityTreeRenderer* renderer);
+    virtual void setCompoundShapeURLInternal(const QString& url);
 
     Model* _model;
     bool _needsInitialSimulation;

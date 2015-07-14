@@ -69,9 +69,10 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
 
-#define DEBUG_LOCKS 1 // enable asserts and checks of expected lock states
+
 #define ENABLE_LOCKING 1 // if defined, EntityItem will be internally thread-safe
-// #define ENABLE_UNLOCKED_CHECKING 1 // assertUnlocked is flakey.  if this is defined, it's enabled.
+// #define DEBUG_LOCKS 1 // enable asserts and checks of expected lock states
+// #define ENABLE_UNLOCKED_CHECKING 1 // assertUnlocked is flakey, so it gets an additional flag (beyond DEBUG_LOCKS)
 
 
 #if DEBUG_LOCKS
@@ -194,7 +195,6 @@ public:
     // perform update
     virtual void update(const quint64& now, bool doLocking = true);
     quint64 getLastUpdated() const;
-    quint64 getLastUpdatedInternal() const;
 
     // perform linear extrapolation for SimpleEntitySimulation
     void simulate(const quint64& now);
@@ -211,14 +211,11 @@ public:
     EntityTypes::EntityType getType() const;
 
     glm::vec3 getCenterPosition() const;
-    glm::vec3 getCenterPositionInternal() const;
     void setCenterPosition(const glm::vec3& position);
     Transform getTransformToCenter() const;
     void setTranformToCenter(const Transform& transform);
     Transform getTransform() const;
-    Transform getTransformInternal() const;
     void setTransform(const Transform& transform);
-    void setTransformInternal(const Transform& transform);
 
     /// Position in meters (0.0 - TREE_SCALE)
     glm::vec3 getPosition() const;
@@ -358,13 +355,11 @@ public:
 
     /// return preferred shape type (actual physical shape may differ)
     ShapeType getShapeType() const;
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_NONE; }
 
     uint32_t getDirtyFlags() const;
     void clearDirtyFlags(uint32_t mask = 0xffffffff);
 
     bool isMoving() const;
-    bool isMovingInternal() const;
 
     void* getPhysicsInfo() const;
     void setPhysicsInfo(void* data);
@@ -411,6 +406,7 @@ protected:
     quint64 getLastSimulatedInternal() const;
     quint64 getLastEditedInternal() const;
     void setLastEditedInternal(quint64 lastEdited);
+    quint64 getLastUpdatedInternal() const;
     glm::mat4 getEntityToWorldMatrixInternal() const;
     glm::mat4 getWorldToEntityMatrixInternal() const;
     const QByteArray getActionDataInternal() const;
@@ -501,6 +497,11 @@ protected:
     void* getPhysicsInfoInternal() const;
     void setPhysicsInfoInternal(void* data);
     virtual bool needsToCallUpdateInternal() const { assertLocked(); return false; }
+    glm::vec3 getCenterPositionInternal() const;
+    Transform getTransformInternal() const;
+    void setTransformInternal(const Transform& transform);
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_NONE; }
+    bool isMovingInternal() const;
 
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     void updatePosition(const glm::vec3& value);

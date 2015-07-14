@@ -46,106 +46,72 @@ public:
 
     virtual void update(const quint64& now, bool doLocking = true);
     virtual bool needsToCallUpdate() const;
-    virtual bool needsToCallUpdateInternal() const;
 
     void updateShapeType(ShapeType type);
-    virtual ShapeType getShapeTypeInternal() const;
 
     // TODO: Move these to subclasses, or other appropriate abstraction
     // getters/setters applicable to models and particles
 
     const rgbColor& getColor() const { return _color; }
     xColor getXColor() const;
-    xColor getXColorInternal() const;
     bool hasModel() const;
-    bool hasModelInternal() const;
     virtual bool hasCompoundShapeURL() const;
-    virtual bool hasCompoundShapeURLInternal() const;
 
     static const QString DEFAULT_MODEL_URL;
     QString getModelURL() const;
-    QString getModelURLInternal() const;
 
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
     QString getCompoundShapeURL() const;
-    QString getCompoundShapeURLInternal() const;
 
     bool hasAnimation() const;
-    bool hasAnimationInternal() const;
     static const QString DEFAULT_ANIMATION_URL;
     QString getAnimationURL() const;
-    QString getAnimationURLInternal() const;
 
     void setColor(const rgbColor& value);
-    void setColorInternal(const rgbColor& value);
     void setColor(const xColor& value);
-    void setColorInternal(const xColor& value);
 
     // model related properties
     void setModelURL(const QString& url);
-    void setModelURLInternal(const QString& url);
 
     virtual void setCompoundShapeURL(const QString& url);
-    virtual void setCompoundShapeURLInternal(const QString& url);
     void setAnimationURL(const QString& url);
-    void setAnimationURLInternal(const QString& url);
     static const float DEFAULT_ANIMATION_FRAME_INDEX;
     void setAnimationFrameIndex(float value);
-    void setAnimationFrameIndexInternal(float value);
     void setAnimationSettings(const QString& value);
-    void setAnimationSettingsInternal(const QString& value);
 
     static const bool DEFAULT_ANIMATION_IS_PLAYING;
     void setAnimationIsPlaying(bool value);
-    void setAnimationIsPlayingInternal(bool value);
 
     static const float DEFAULT_ANIMATION_FPS;
     void setAnimationFPS(float value);
-    void setAnimationFPSInternal(float value);
 
     void setAnimationLoop(bool loop);
-    void setAnimationLoopInternal(bool loop);
     bool getAnimationLoop() const;
-    bool getAnimationLoopInternal() const;
 
     void setAnimationHold(bool hold);
-    void setAnimationHoldInternal(bool hold);
     bool getAnimationHold() const;
-    bool getAnimationHoldInternal() const;
 
     void setAnimationStartAutomatically(bool startAutomatically);
-    void setAnimationStartAutomaticallyInternal(bool startAutomatically);
     bool getAnimationStartAutomatically() const;
-    bool getAnimationStartAutomaticallyInternal() const;
 
     void setAnimationFirstFrame(float firstFrame);
-    void setAnimationFirstFrameInternal(float firstFrame);
     float getAnimationFirstFrame() const;
-    float getAnimationFirstFrameInternal() const;
 
     void setAnimationLastFrame(float lastFrame);
-    void setAnimationLastFrameInternal(float lastFrame);
     float getAnimationLastFrame() const;
-    float getAnimationLastFrameInternal() const;
 
     void mapJoints(const QStringList& modelJointNames);
     QVector<glm::quat> getAnimationFrame();
     bool jointsMapped() const;
 
     bool getAnimationIsPlaying() const;
-    bool getAnimationIsPlayingInternal() const;
     float getAnimationFrameIndex() const;
-    float getAnimationFrameIndexInternal() const;
     float getAnimationFPS() const;
-    float getAnimationFPSInternal() const;
     QString getAnimationSettings() const;
-    QString getAnimationSettingsInternal() const;
 
     static const QString DEFAULT_TEXTURES;
     QString getTextures() const;
-    QString getTexturesInternal() const;
     void setTextures(const QString& textures);
-    void setTexturesInternal(const QString& textures);
 
     virtual bool shouldBePhysical() const;
 
@@ -155,6 +121,40 @@ protected:
 
     virtual void debugDump() const;
     bool isAnimatingSomething() const;
+    virtual bool needsToCallUpdateInternal() const;
+    virtual ShapeType getShapeTypeInternal() const;
+    xColor getXColorInternal() const;
+    bool hasModelInternal() const;
+    virtual bool hasCompoundShapeURLInternal() const;
+    QString getModelURLInternal() const;
+    QString getCompoundShapeURLInternal() const;
+    bool hasAnimationInternal() const;
+    QString getAnimationURLInternal() const;
+    void setColorInternal(const rgbColor& value);
+    void setColorInternal(const xColor& value);
+    void setModelURLInternal(const QString& url);
+    virtual void setCompoundShapeURLInternal(const QString& url);
+    void setAnimationURLInternal(const QString& url);
+    void setAnimationFrameIndexInternal(float value);
+    void setAnimationSettingsInternal(const QString& value);
+    void setAnimationIsPlayingInternal(bool value);
+    void setAnimationFPSInternal(float value);
+    void setAnimationLoopInternal(bool loop);
+    bool getAnimationLoopInternal() const;
+    void setAnimationHoldInternal(bool hold);
+    bool getAnimationHoldInternal() const;
+    void setAnimationStartAutomaticallyInternal(bool startAutomatically);
+    bool getAnimationStartAutomaticallyInternal() const;
+    void setAnimationFirstFrameInternal(float firstFrame);
+    float getAnimationFirstFrameInternal() const;
+    void setAnimationLastFrameInternal(float lastFrame);
+    float getAnimationLastFrameInternal() const;
+    bool getAnimationIsPlayingInternal() const;
+    float getAnimationFrameIndexInternal() const;
+    float getAnimationFPSInternal() const;
+    QString getAnimationSettingsInternal() const;
+    QString getTexturesInternal() const;
+    void setTexturesInternal(const QString& textures);
 
     rgbColor _color;
     QString _modelURL;

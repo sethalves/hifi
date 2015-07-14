@@ -23,7 +23,6 @@ public:
 
     /// set dimensions in domain scale units (0.0 - 1.0) this will also reset radius appropriately
     virtual void setDimensions(const glm::vec3& value);
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(bool doLocking = true) const;
@@ -55,6 +54,8 @@ public:
 protected:
     void setSourceUrlInternal(const QString& value);
     QString getSourceUrlInternal() const;
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
+
 
     QString _sourceUrl;
 };

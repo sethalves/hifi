@@ -26,11 +26,12 @@ public:
 
     virtual void render(RenderArgs* args);
     virtual void setSourceUrl(const QString& value);
-    virtual void setSourceUrlInternal(const QString& value);
 
     SIMPLE_RENDERABLE();
 
 private:
+    virtual void setSourceUrlInternal(const QString& value);
+
     OffscreenQmlSurface* _webSurface{ nullptr };
     QMetaObject::Connection _connection;
     uint32_t _texture{ 0 };

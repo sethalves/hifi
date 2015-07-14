@@ -3147,25 +3147,25 @@ bool EntityItem::isUnlocked() const {
     // this can't be sure -- this may get unlucky and hit locks from other threads.  what we're actually trying
     // to discover is if *this* thread hasn't locked the EntityItem.  Try repeatedly to take both kinds of lock.
     bool readSuccess = false;
-    for (int i=0; i<80; i++) {
+    for (int i=0; i<10000; i++) {
         readSuccess = tryLockForRead();
         if (readSuccess) {
             unlock();
             break;
         }
-        QThread::usleep(200);
+        QThread::usleep(10);
     }
 
     bool writeSuccess = false;
     if (readSuccess) {
-        for (int i=0; i<80; i++) {
+        for (int i=0; i<10000; i++) {
             writeSuccess = tryLockForWrite();
             if (writeSuccess) {
                 unlock();
                 break;
             }
-            QThread::usleep(300);
         }
+        QThread::usleep(10);
     }
 
     if (readSuccess && writeSuccess) {

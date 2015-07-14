@@ -42,18 +42,18 @@ public:
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
     const rgbColor& getColor() const;
-    const rgbColor& getColorInternal() const;
     xColor getXColor() const;
-    xColor getXColorInternal() const;
 
     void setColor(const rgbColor& value);
-    void setColorInternal(const rgbColor& value);
     void setColor(const xColor& value);
-    void setColorInternal(const xColor& value);
-
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
 
 protected:
+
+    xColor getXColorInternal() const;
+    void setColorInternal(const rgbColor& value);
+    void setColorInternal(const xColor& value);
+    const rgbColor& getColorInternal() const;
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
 
     virtual void debugDump() const;
 

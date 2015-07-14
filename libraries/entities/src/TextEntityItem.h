@@ -24,7 +24,6 @@ public:
 
     /// set dimensions in domain scale units (0.0 - 1.0) this will also reset radius appropriately
     virtual void setDimensions(const glm::vec3& value);
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(bool doLocking = true) const;
@@ -52,45 +51,48 @@ public:
 
     static const QString DEFAULT_TEXT;
     void setText(const QString& value);
-    void setTextInternal(const QString& value);
     QString getText() const;
-    QString getTextInternal() const;
 
     static const float DEFAULT_LINE_HEIGHT;
     void setLineHeight(float value);
-    void setLineHeightInternal(float value);
     float getLineHeight() const;
-    float getLineHeightInternal() const;
 
     static const xColor DEFAULT_TEXT_COLOR;
     const rgbColor& getTextColor() const;
-    const rgbColor& getTextColorInternal() const;
     xColor getTextColorX() const;
-    xColor getTextColorXInternal() const;
 
     void setTextColor(const rgbColor& value);
-    void setTextColorInternal(const rgbColor& value);
     void setTextColor(const xColor& value);
-    void setTextColorInternal(const xColor& value);
 
     static const xColor DEFAULT_BACKGROUND_COLOR;
     const rgbColor& getBackgroundColor() const;
-    const rgbColor& getBackgroundColorInternal() const;
     xColor getBackgroundColorX() const;
-    xColor getBackgroundColorXInternal() const;
 
     void setBackgroundColor(const rgbColor& value);
-    void setBackgroundColorInternal(const rgbColor& value);
     void setBackgroundColor(const xColor& value);
-    void setBackgroundColorInternal(const xColor& value);
 
     static const bool DEFAULT_FACE_CAMERA;
     bool getFaceCamera() const;
-    bool getFaceCameraInternal() const;
     void setFaceCamera(bool value);
-    void setFaceCameraInternal(bool value);
 
 protected:
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_BOX; }
+    void setTextInternal(const QString& value);
+    QString getTextInternal() const;
+    void setLineHeightInternal(float value);
+    float getLineHeightInternal() const;
+    const rgbColor& getTextColorInternal() const;
+    xColor getTextColorXInternal() const;
+    void setTextColorInternal(const rgbColor& value);
+    void setTextColorInternal(const xColor& value);
+    const rgbColor& getBackgroundColorInternal() const;
+    xColor getBackgroundColorXInternal() const;
+    void setBackgroundColorInternal(const rgbColor& value);
+    void setBackgroundColorInternal(const xColor& value);
+    bool getFaceCameraInternal() const;
+    void setFaceCameraInternal(bool value);
+
+
     QString _text;
     float _lineHeight;
     rgbColor _textColor;

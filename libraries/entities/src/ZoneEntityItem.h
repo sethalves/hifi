@@ -45,30 +45,20 @@ public:
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
     xColor getKeyLightColor() const;
-    xColor getKeyLightColorInternal() const;
     void setKeyLightColor(const xColor& value);
-    void setKeyLightColorInternal(const xColor& value);
 
     void setKeyLightColor(const rgbColor& value);
-    void setKeyLightColorInternal(const rgbColor& value);
 
     glm::vec3 getKeyLightColorVec3() const;
-    glm::vec3 getKeyLightColorVec3Internal() const;
 
     float getKeyLightIntensity() const;
-    float getKeyLightIntensityInternal() const;
     void setKeyLightIntensity(float value);
-    void setKeyLightIntensityInternal(float value);
 
     float getKeyLightAmbientIntensity() const;
-    float getKeyLightAmbientIntensityInternal() const;
     void setKeyLightAmbientIntensity(float value);
-    void setKeyLightAmbientIntensityInternal(float value);
 
     glm::vec3 getKeyLightDirection() const;
-    glm::vec3 getKeyLightDirectionInternal() const;
     void setKeyLightDirection(const glm::vec3& value);
-    void setKeyLightDirectionInternal(const glm::vec3& value);
 
     static bool getZonesArePickable() { return _zonesArePickable; }
     static void setZonesArePickable(bool value) { _zonesArePickable = value; }
@@ -78,27 +68,18 @@ public:
 
     virtual bool isReadyToComputeShape() { return false; }
     void updateShapeType(ShapeType type) { _shapeType = type; }
-    virtual ShapeType getShapeTypeInternal() const;
 
     virtual bool hasCompoundShapeURL() const;
-    virtual bool hasCompoundShapeURLInternal() const;
     QString getCompoundShapeURL() const;
-    QString getCompoundShapeURLInternal() const;
     virtual void setCompoundShapeURL(const QString& url);
-    virtual void setCompoundShapeURLInternal(const QString& url);
 
     void setBackgroundMode(BackgroundMode value);
-    void setBackgroundModeInternal(BackgroundMode value);
     BackgroundMode getBackgroundMode() const;
-    BackgroundMode getBackgroundModeInternal() const;
 
     EnvironmentData getEnvironmentData() const;
     AtmospherePropertyGroup getAtmosphereProperties() const;
-    AtmospherePropertyGroup getAtmospherePropertiesInternal() const;
     SkyboxPropertyGroup getSkyboxProperties() const;
-    SkyboxPropertyGroup getSkyboxPropertiesInternal() const;
     StagePropertyGroup getStageProperties() const;
-    StagePropertyGroup getStagePropertiesInternal() const;
 
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
@@ -114,6 +95,27 @@ public:
 
 protected:
 
+    void setKeyLightColorInternal(const xColor& value);
+    void setKeyLightColorInternal(const rgbColor& value);
+    glm::vec3 getKeyLightColorVec3Internal() const;
+    float getKeyLightIntensityInternal() const;
+    void setKeyLightIntensityInternal(float value);
+    float getKeyLightAmbientIntensityInternal() const;
+    void setKeyLightAmbientIntensityInternal(float value);
+    glm::vec3 getKeyLightDirectionInternal() const;
+    void setKeyLightDirectionInternal(const glm::vec3& value);
+    virtual ShapeType getShapeTypeInternal() const;
+    virtual bool hasCompoundShapeURLInternal() const;
+    QString getCompoundShapeURLInternal() const;
+    virtual void setCompoundShapeURLInternal(const QString& url);
+    void setBackgroundModeInternal(BackgroundMode value);
+    BackgroundMode getBackgroundModeInternal() const;
+    AtmospherePropertyGroup getAtmospherePropertiesInternal() const;
+    SkyboxPropertyGroup getSkyboxPropertiesInternal() const;
+    StagePropertyGroup getStagePropertiesInternal() const;
+    xColor getKeyLightColorInternal() const;
+
+    
     virtual void debugDump() const;
 
     // properties of the "sun" in the zone

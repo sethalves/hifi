@@ -48,12 +48,9 @@ class PolyVoxEntityItem : public EntityItem {
 
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
     virtual glm::vec3 getVoxelVolumeSize() const;
-    virtual glm::vec3 getVoxelVolumeSizeInternal() const;
 
     virtual void setVoxelData(QByteArray voxelData);
-    virtual void setVoxelDataInternal(QByteArray voxelData);
     virtual QByteArray getVoxelData() const;
-    virtual QByteArray getVoxelDataInternal() const;
 
     enum PolyVoxSurfaceStyle {
         SURFACE_MARCHING_CUBES,
@@ -86,7 +83,6 @@ class PolyVoxEntityItem : public EntityItem {
     static QByteArray makeEmptyVoxelData(quint16 voxelXSize = 16, quint16 voxelYSize = 16, quint16 voxelZSize = 16);
 
  protected:
-    virtual void setVoxelVolumeSizeInternal(vec3 voxelVolumeSize);
     virtual void setVoxelSurfaceStyleInternal(PolyVoxSurfaceStyle voxelSurfaceStyle);
     virtual void setVoxelSurfaceStyleInternal(uint16_t voxelSurfaceStyle);
     virtual PolyVoxSurfaceStyle getVoxelSurfaceStyleInternal() const;
@@ -96,6 +92,10 @@ class PolyVoxEntityItem : public EntityItem {
     virtual void setVoxelInVolumeInternal(glm::vec3 position, uint8_t toValue) {assertWriteLocked();}
     virtual uint8_t getVoxelInternal(int x, int y, int z) { assertLocked(); return 0; }
     virtual void setVoxelInternal(int x, int y, int z, uint8_t toValue) { assertWriteLocked(); }
+    virtual glm::vec3 getVoxelVolumeSizeInternal() const;
+    virtual void setVoxelDataInternal(QByteArray voxelData);
+    virtual QByteArray getVoxelDataInternal() const;
+    virtual void setVoxelVolumeSizeInternal(vec3 voxelVolumeSize);
 
     virtual void debugDump() const;
     virtual void updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) { _voxelSurfaceStyle = voxelSurfaceStyle; }

@@ -41,16 +41,11 @@ public:
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData);
 
     const rgbColor& getColor() const;
-    const rgbColor& getColorInternal() const;
     xColor getXColor() const;
-    xColor getXColorInternal() const;
 
     void setColor(const rgbColor& value);
-    void setColorInternal(const rgbColor& value);
     void setColor(const xColor& value);
-    void setColorInternal(const xColor& value);
 
-    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_SPHERE; }
 
     virtual bool supportsDetailedRayIntersection() const { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
@@ -60,6 +55,11 @@ public:
 protected:
 
     virtual void debugDump() const;
+    xColor getXColorInternal() const;
+    void setColorInternal(const rgbColor& value);
+    void setColorInternal(const xColor& value);
+    virtual ShapeType getShapeTypeInternal() const { assertLocked(); return SHAPE_TYPE_SPHERE; }
+    const rgbColor& getColorInternal() const;
 
     rgbColor _color;
 };
