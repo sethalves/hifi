@@ -26,6 +26,7 @@ public:
 
     virtual void render(RenderArgs* args);
     virtual void setSourceUrl(const QString& value);
+    virtual void setSourceUrlInternal(const QString& value);
 
     SIMPLE_RENDERABLE();
 
