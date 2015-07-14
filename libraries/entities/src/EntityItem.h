@@ -71,7 +71,7 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 
 
 #define ENABLE_LOCKING 1 // if defined, EntityItem will be internally thread-safe
-#define DEBUG_LOCKS 1 // enable asserts and checks of expected lock states
+// #define DEBUG_LOCKS 1 // enable asserts and checks of expected lock states
 // #define ENABLE_UNLOCKED_CHECKING 1 // assertUnlocked is flakey, so it gets an additional flag (beyond DEBUG_LOCKS)
 
 
