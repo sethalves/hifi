@@ -151,6 +151,7 @@ void RenderablePolyVoxEntityItem::setVoxelVolumeSizeInternal(glm::vec3 voxelVolu
 }
 
 void RenderablePolyVoxEntityItem::updateVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
+    assertWriteLocked();
     // if we are switching to or from "edged" we need to force a resize of _volData.
     if (voxelSurfaceStyle == SURFACE_EDGED_CUBIC ||
         _voxelSurfaceStyle == SURFACE_EDGED_CUBIC) {
@@ -167,6 +168,7 @@ void RenderablePolyVoxEntityItem::updateVoxelSurfaceStyle(PolyVoxSurfaceStyle vo
 }
 
 void RenderablePolyVoxEntityItem::setVoxelDataInternal(QByteArray voxelData) {
+    assertWriteLocked();
     if (voxelData == _voxelData) {
         return;
     }
@@ -175,6 +177,7 @@ void RenderablePolyVoxEntityItem::setVoxelDataInternal(QByteArray voxelData) {
 }
 
 glm::vec3 RenderablePolyVoxEntityItem::getSurfacePositionAdjustment() const {
+    assertLocked();
     glm::vec3 scale = getDimensionsInternal() / _voxelVolumeSize; // meters / voxel-units
     switch (_voxelSurfaceStyle) {
         case PolyVoxEntityItem::SURFACE_MARCHING_CUBES:
@@ -213,6 +216,7 @@ glm::mat4 RenderablePolyVoxEntityItem::worldToVoxelMatrix() const {
 }
 
 uint8_t RenderablePolyVoxEntityItem::getVoxelInternal(int x, int y, int z) {
+    assertLocked();
     assert(_volData);
     if (!inUserBounds(_volData, _voxelSurfaceStyle, x, y, z)) {
         return 0;
@@ -230,6 +234,7 @@ uint8_t RenderablePolyVoxEntityItem::getVoxelInternal(int x, int y, int z) {
 
 void RenderablePolyVoxEntityItem::setVoxelInternal(int x, int y, int z, uint8_t toValue) {
     // set a voxel without recompressing the voxel data
+    assertWriteLocked();
     assert(_volData);
     if (!inUserBounds(_volData, _voxelSurfaceStyle, x, y, z)) {
         return;
@@ -259,6 +264,7 @@ void RenderablePolyVoxEntityItem::setVoxel(int x, int y, int z, uint8_t toValue)
 
 void RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toValue) {
     // keep _onCount up to date
+    assertWriteLocked();
     if (!inUserBounds(_volData, _voxelSurfaceStyle, x, y, z)) {
         return;
     }
@@ -278,6 +284,7 @@ void RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toV
 }
 
 void RenderablePolyVoxEntityItem::setAllInternal(uint8_t toValue) {
+    assertWriteLocked();
     if (_locked) {
         return;
     }
@@ -294,6 +301,7 @@ void RenderablePolyVoxEntityItem::setAllInternal(uint8_t toValue) {
 }
 
 void RenderablePolyVoxEntityItem::setVoxelInVolumeInternal(glm::vec3 position, uint8_t toValue) {
+    assertWriteLocked();
     if (_locked) {
         return;
     }
@@ -303,6 +311,7 @@ void RenderablePolyVoxEntityItem::setVoxelInVolumeInternal(glm::vec3 position, u
 }
 
 void RenderablePolyVoxEntityItem::setSphereInVolumeInternal(glm::vec3 center, float radius, uint8_t toValue) {
+    assertWriteLocked();
     if (_locked) {
         return;
     }
@@ -329,7 +338,7 @@ void RenderablePolyVoxEntityItem::setSphereInVolumeInternal(glm::vec3 center, fl
 void RenderablePolyVoxEntityItem::setSphereInternal(glm::vec3 centerWorldCoords,
                                                             float radiusWorldCoords,
                                                             uint8_t toValue) {
-    // glm::vec3 centerVoxelCoords = worldToVoxelCoordinates(centerWorldCoords);
+    assertWriteLocked();
     glm::vec4 centerVoxelCoords = worldToVoxelMatrix() * glm::vec4(centerWorldCoords, 1.0f);
     glm::vec3 scale = getDimensionsInternal() / _voxelVolumeSize; // meters / voxel-units
     float scaleY = scale.y;
@@ -591,6 +600,7 @@ void RenderablePolyVoxEntityItem::compressVolumeData() {
 
 // take compressed data and expand it into _volData.
 void RenderablePolyVoxEntityItem::decompressVolumeData() {
+    assertWriteLocked();
     QDataStream reader(_voxelData);
     quint16 voxelXSize, voxelYSize, voxelZSize;
     reader >> voxelXSize;
@@ -639,6 +649,7 @@ void RenderablePolyVoxEntityItem::decompressVolumeData() {
 
 // virtual
 ShapeType RenderablePolyVoxEntityItem::getShapeTypeInternal() const {
+    assertLocked();
     if (_onCount > 0) {
         return SHAPE_TYPE_COMPOUND;
     }
@@ -647,13 +658,19 @@ ShapeType RenderablePolyVoxEntityItem::getShapeTypeInternal() const {
 
 
 bool RenderablePolyVoxEntityItem::isReadyToComputeShape() {
+    assertUnlocked();
+    lockForRead();
+
     if (_needsModelReload) {
+        unlock();
         return false;
     }
 
     #ifdef WANT_DEBUG
     qDebug() << "RenderablePolyVoxEntityItem::isReadyToComputeShape" << (!_needsModelReload);
     #endif
+
+    unlock();
     return true;
 }
 
