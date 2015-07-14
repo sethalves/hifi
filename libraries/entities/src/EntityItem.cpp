@@ -624,6 +624,9 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     int bytesRead = parser.offset();
 #endif
 
+    auto nodeList = DependencyManager::get<NodeList>();
+    const QUuid& myNodeID = nodeList->getSessionUUID();
+    bool weOwnSimulation = _simulationOwner.matchesValidID(myNodeID);
 
     if (args.bitstreamVersion >= VERSION_ENTITIES_HAVE_SIMULATION_OWNER_AND_ACTIONS_OVER_WIRE) {
         // pack SimulationOwner and terse update properties near each other
@@ -646,10 +649,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         }
         {   // When we own the simulation we don't accept updates to the entity's transform/velocities
             // but since we're using macros below we have to temporarily modify overwriteLocalData.
-            auto nodeList = DependencyManager::get<NodeList>();
-            bool weOwnIt = _simulationOwner.matchesValidID(nodeList->getSessionUUID());
             bool oldOverwrite = overwriteLocalData;
-            overwriteLocalData = overwriteLocalData && !weOwnIt;
+            overwriteLocalData = overwriteLocalData && !weOwnSimulation;
             READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
             READ_ENTITY_PROPERTY(PROP_ROTATION, glm::quat, updateRotation);
             READ_ENTITY_PROPERTY(PROP_VELOCITY, glm::vec3, updateVelocity);
@@ -671,6 +672,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPointInternal);
     } else {
         // legacy order of packing here
+        // TODO: purge this logic in a few months from now (2015.07)
         READ_ENTITY_PROPERTY(PROP_POSITION, glm::vec3, updatePosition);
         READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, updateDimensions);
         READ_ENTITY_PROPERTY(PROP_ROTATION, glm::quat, updateRotation);
@@ -716,7 +718,16 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_HREF, QString, setHrefInternal);
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescriptionInternal);
 
-    READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionDataInternal);
+    {   // When we own the simulation we don't accept updates to the entity's actions
+        // but since we're using macros below we have to temporarily modify overwriteLocalData.
+        // NOTE: this prevents userB from adding an action to an object1 when UserA
+        // has simulation ownership of it.
+        // TODO: figure out how to allow multiple users to update actions simultaneously
+        bool oldOverwrite = overwriteLocalData;
+        overwriteLocalData = overwriteLocalData && !weOwnSimulation;
+        READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionDataInternal);
+        overwriteLocalData = oldOverwrite;
+    }
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
@@ -727,7 +738,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // NOTE: we had a bad version of the stream that we added stream data after the subclass. We can attempt to recover
     // by doing this parsing here... but it's not likely going to fully recover the content.
     //
-    // TODO: Remove this conde once we've sufficiently migrated content past this damaged version
+    // TODO: Remove this code once we've sufficiently migrated content past this damaged version
     if (args.bitstreamVersion == VERSION_ENTITIES_HAS_MARKETPLACE_ID_DAMAGED) {
         READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceIDInternal);
     }
@@ -752,8 +763,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         }
     }
 
-    auto nodeList = DependencyManager::get<NodeList>();
-    const QUuid& myNodeID = nodeList->getSessionUUID();
     if (overwriteLocalData) {
         if (!_simulationOwner.matchesValidID(myNodeID)) {
             _lastSimulated = now;
