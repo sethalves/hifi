@@ -46,8 +46,6 @@ public:
                                              bool& keepSearching, OctreeElement*& element, float& distance, BoxFace& face,
                                              void** intersectedObject, bool precisionPicking) const;
 
-    void getModel();
-
     virtual void setVoxelDataInternal(QByteArray voxelData);
 
     virtual void setVoxelVolumeSizeInternal(glm::vec3 voxelVolumeSize);
@@ -75,6 +73,7 @@ protected:
     glm::mat4 voxelToWorldMatrix() const;
     glm::mat4 voxelToLocalMatrix() const;
     glm::mat4 worldToVoxelMatrix() const;
+    void getModel();
 
 private:
     // The PolyVoxEntityItem class has _voxelData which contains dimensions and compressed voxel data.  The dimensions

@@ -338,6 +338,7 @@ void RenderablePolyVoxEntityItem::setSphereInternal(glm::vec3 centerWorldCoords,
 }
 
 void RenderablePolyVoxEntityItem::getModel() {
+    assertWriteLocked();
     // A mesh object to hold the result of surface extraction
     PolyVox::SurfaceMesh<PolyVox::PositionMaterialNormal> polyVoxMesh;
 
@@ -411,7 +412,7 @@ void RenderablePolyVoxEntityItem::getModel() {
 
 void RenderablePolyVoxEntityItem::render(RenderArgs* args) {
     assertUnlocked();
-    lockForRead();
+    lockForWrite();
     PerformanceTimer perfTimer("RenderablePolyVoxEntityItem::render");
     assert(getTypeInternal() == EntityTypes::PolyVox);
 
