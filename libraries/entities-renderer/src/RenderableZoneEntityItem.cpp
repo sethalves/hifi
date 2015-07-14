@@ -72,6 +72,7 @@ bool RenderableZoneEntityItem::setProperties(const EntityItemProperties& propert
 int RenderableZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                                 ReadBitstreamToTreeParams& args,
                                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData) {
+    assertWriteLocked();
     int bytesRead = 0;
     changeProperties([&]() {
         bytesRead = ZoneEntityItem::readEntitySubclassDataFromBuffer(data, bytesLeftToRead,
@@ -81,6 +82,7 @@ int RenderableZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned ch
 }
 
 Model* RenderableZoneEntityItem::getModel() {
+    assertWriteLocked();
     Model* model = new Model();
     model->setIsWireframe(true);
     model->init();
@@ -88,6 +90,7 @@ Model* RenderableZoneEntityItem::getModel() {
 }
 
 void RenderableZoneEntityItem::initialSimulation() {
+    assertWriteLocked();
     _model->setScaleToFit(true, getDimensions());
     _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
     _model->setRotation(getRotationInternal());
@@ -97,6 +100,7 @@ void RenderableZoneEntityItem::initialSimulation() {
 }
 
 void RenderableZoneEntityItem::updateGeometry() {
+    assertWriteLocked();
     if (_model && !_model->isActive() && hasCompoundShapeURL()) {
         // Since we have a delayload, we need to update the geometry if it has been downloaded
         _model->setURL(getCompoundShapeURL(), QUrl(), true);
@@ -107,10 +111,12 @@ void RenderableZoneEntityItem::updateGeometry() {
 }
 
 void RenderableZoneEntityItem::render(RenderArgs* args) {
-    Q_ASSERT(getType() == EntityTypes::Zone);
+    assertUnlocked();
+    lockForWrite();
+    Q_ASSERT(getTypeInternal() == EntityTypes::Zone);
 
     if (_drawZoneBoundaries) {
-        switch (getShapeType()) {
+        switch (getShapeTypeInternal()) {
             case SHAPE_TYPE_COMPOUND: {
                 PerformanceTimer perfTimer("zone->renderCompound");
                 updateGeometry();
@@ -135,11 +141,11 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
 
                 Q_ASSERT(args->_batch);
                 gpu::Batch& batch = *args->_batch;
-                batch.setModelTransform(getTransformToCenter());
+                batch.setModelTransform(getTransformToCenterInternal());
 
                 auto deferredLightingEffect = DependencyManager::get<DeferredLightingEffect>();
 
-                if (getShapeType() == SHAPE_TYPE_SPHERE) {
+                if (getShapeTypeInternal() == SHAPE_TYPE_SPHERE) {
                     const int SLICES = 15, STACKS = 15;
                     deferredLightingEffect->renderWireSphere(batch, 0.5f, SLICES, STACKS, DEFAULT_COLOR);
                 } else {
@@ -153,7 +159,7 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
         }
     }
 
-    if ((!_drawZoneBoundaries || getShapeType() != SHAPE_TYPE_COMPOUND) &&
+    if ((!_drawZoneBoundaries || getShapeTypeInternal() != SHAPE_TYPE_COMPOUND) &&
         _model && !_model->needsFixupInScene()) {
         // If the model is in the scene but doesn't need to be, remove it.
         render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
@@ -161,19 +167,26 @@ void RenderableZoneEntityItem::render(RenderArgs* args) {
         _model->removeFromScene(scene, pendingChanges);
         scene->enqueuePendingChanges(pendingChanges);
     }
+
+    unlock();
 }
 
 bool RenderableZoneEntityItem::contains(const glm::vec3& point) const {
+    assertUnlocked();
+    bool entityContains = EntityItem::contains(point);
     if (getShapeType() != SHAPE_TYPE_COMPOUND) {
-        return EntityItem::contains(point);
+        return entityContains;
     }
+    lockForWrite();
     const_cast<RenderableZoneEntityItem*>(this)->updateGeometry();
 
-    if (_model && _model->isActive() && EntityItem::contains(point)) {
-        return _model->convexHullContains(point);
+    bool result = false;
+    if (_model && _model->isActive() && entityContains) {
+        result = _model->convexHullContains(point);
     }
 
-    return false;
+    unlock();
+    return result;
 }
 
 class RenderableZoneEntityItemMeta {
@@ -207,19 +220,29 @@ namespace render {
 
 bool RenderableZoneEntityItem::addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                            render::PendingChanges& pendingChanges) {
+    assertUnlocked();
+    lockForWrite();
+
     _myMetaItem = scene->allocateID();
 
     auto renderData = RenderableZoneEntityItemMeta::Pointer(new RenderableZoneEntityItemMeta(self));
     auto renderPayload = render::PayloadPointer(new RenderableZoneEntityItemMeta::Payload(renderData));
 
     pendingChanges.resetItem(_myMetaItem, renderPayload);
+
+    unlock();
     return true;
 }
 
 void RenderableZoneEntityItem::removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene,
                                                 render::PendingChanges& pendingChanges) {
+    assertUnlocked();
+    lockForWrite();
+
     pendingChanges.removeItem(_myMetaItem);
     if (_model) {
         _model->removeFromScene(scene, pendingChanges);
     }
+
+    unlock();
 }

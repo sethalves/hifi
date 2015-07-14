@@ -176,7 +176,7 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
     glm::vec2 dims = glm::vec2(getDimensionsInternal());
     dims *= METERS_TO_INCHES * DPI;
     // The offscreen surface is idempotent for resizes (bails early
-    // if it's a no-op), so it's safe to just call resize every frame 
+    // if it's a no-op), so it's safe to just call resize every frame
     // without worrying about excessive overhead.
     _webSurface->resize(QSize(dims.x, dims.y));
     currentContext->makeCurrent(currentSurface);
