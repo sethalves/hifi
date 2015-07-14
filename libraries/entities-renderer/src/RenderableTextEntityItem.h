@@ -31,7 +31,7 @@ public:
     virtual void render(RenderArgs* args);
 
     SIMPLE_RENDERABLE();
-    
+
 private:
     TextRenderer3D* _textRenderer = TextRenderer3D::getInstance(SANS_FONT_FAMILY, FIXED_FONT_POINT_SIZE / 2.0f);
 };
