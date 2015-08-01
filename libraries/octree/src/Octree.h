@@ -340,6 +340,7 @@ public:
     bool readFromStream(unsigned long streamLength, QDataStream& inputStream);
     bool readSVOFromStream(unsigned long streamLength, QDataStream& inputStream);
     bool readJSONFromStream(unsigned long streamLength, QDataStream& inputStream);
+    bool readJSONFromGzippedFile(QString qFileName);
     virtual bool readFromMap(QVariantMap& entityDescription) = 0;
 
     unsigned long getOctreeElementsCount();
