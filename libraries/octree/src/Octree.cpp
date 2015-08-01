@@ -31,6 +31,7 @@
 #include <QJsonDocument>
 #include <QFileInfo>
 #include <QString>
+#include <quazip/quazip.h>
 
 #include <GeometryUtil.h>
 #include <LogHandler.h>
@@ -2036,12 +2037,14 @@ void Octree::writeToFile(const char* fileName, OctreeElement* element, QString p
         writeToSVOFile(fileName, element);
     } else if (persistAsFileType == "json") {
         writeToJSONFile(cFileName, element);
+    } else if (persistAsFileType == "json.gz") {
+        writeToJSONFile(cFileName, element, true);
     } else {
         qCDebug(octree) << "unable to write octree to file of type" << persistAsFileType;
     }
 }
 
-void Octree::writeToJSONFile(const char* fileName, OctreeElement* element) {
+void Octree::writeToJSONFile(const char* fileName, OctreeElement* element, bool doGzip) {
     QFile persistFile(fileName);
     QVariantMap entityDescription;
 

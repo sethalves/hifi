@@ -7,4 +7,9 @@ add_dependency_external_projects(glm)
 find_package(GLM REQUIRED)
 target_include_directories(${TARGET_NAME} PUBLIC ${GLM_INCLUDE_DIRS})
 
+add_dependency_external_projects(quazip)
+find_package(QuaZip REQUIRED)
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC ${QUAZIP_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} ${QUAZIP_LIBRARIES})
+
 link_hifi_libraries(shared networking)
