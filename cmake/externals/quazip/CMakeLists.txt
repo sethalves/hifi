@@ -7,11 +7,8 @@ endif ()
 include(ExternalProject)
 ExternalProject_Add(
   ${EXTERNAL_NAME}
-  URL http://headache.hungry.com/~seth/hifi/quazip-0.7.1.tar.gz
+  URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
   URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
-  # BUILD_COMMAND ${MAKE_COMMAND} tbb_os=macos
-  # CONFIGURE_COMMAND ""
-  # INSTALL_COMMAND ${PLATFORM_BUILD_COMMAND}
   CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
   BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
   LOG_DOWNLOAD 1
