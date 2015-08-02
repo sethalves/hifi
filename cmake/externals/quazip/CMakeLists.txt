@@ -28,7 +28,11 @@ ExternalProject_Add(
 set_target_properties(${EXTERNAL_NAME} PROPERTIES FOLDER "hidden/externals")
 
 if (APPLE)
-  target_link_libraries(${EXTERNAL_NAME} Qt5::${QT_MODULE})
+  set(${EXTERNAL_NAME}_DEPENDENCY_QT_MODULES ${ARGN})
+  list(APPEND ${EXTERNAL_NAME}_DEPENDENCY_QT_MODULES Core)
+  foreach(QT_MODULE ${${EXTERNAL_NAME}_DEPENDENCY_QT_MODULES})
+    target_link_libraries(${EXTERNAL_NAME} Qt5::${QT_MODULE})
+  endforeach()
 endif()
 
 ExternalProject_Get_Property(${EXTERNAL_NAME} INSTALL_DIR)
