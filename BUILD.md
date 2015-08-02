@@ -7,7 +7,6 @@
 * [QuaZIP](http://sourceforge.net/projects/quazip/files/quazip/) ~> 0.7.1
 * [VHACD](https://github.com/virneo/v-hacd)(clone this repository)(Optional)
 
-
 ####CMake External Project Dependencies
 
 * [Bullet Physics Engine](https://code.google.com/p/bullet/downloads/list) ~> 2.82

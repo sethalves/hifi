@@ -1,5 +1,12 @@
 set(EXTERNAL_NAME quazip)
 
+# we need to find qmake inside QT_DIR
+find_program(QMAKE_COMMAND NAME qmake PATHS /usr/bin ${QT_DIR}/bin $ENV{QTTOOLDIR} NO_DEFAULT_PATH)
+
+if (NOT QMAKE_COMMAND)
+  message(FATAL_ERROR "Could not find qmake. Qxmpp cannot be compiled without qmake.")
+endif ()
+
 if (ANDROID)
   set(ANDROID_CMAKE_ARGS "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}" "-DANDROID_NATIVE_API_LEVEL=19")
 endif ()
@@ -9,7 +16,8 @@ ExternalProject_Add(
   ${EXTERNAL_NAME}
   URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
   URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
-  CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+  # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
+  CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DCMAKE_MODULE_PATH=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
   BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
   LOG_DOWNLOAD 1
   LOG_CONFIGURE 1
