@@ -27,6 +27,10 @@ select_library_configurations(QUAZIP)
 
 set(QUAZIP_LIBRARIES ${QUAZIP_LIBRARY})
 
+if (APPLE)
+  set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "-lqt")
+endif()
+
 find_package_handle_standard_args(QUAZIP "Could NOT find QuaZip, try to set the path to QuaZip root folder in the system variable QUAZIP_ROOT_DIR or create a directory quazip in HIFI_LIB_DIR and paste the necessary files there"
  QUAZIP_INCLUDE_DIRS QUAZIP_LIBRARIES)
 
