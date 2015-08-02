@@ -28,7 +28,7 @@ ExternalProject_Add(
 set_target_properties(${EXTERNAL_NAME} PROPERTIES FOLDER "hidden/externals")
 
 if (APPLE)
-  set_target_properties(${EXTERNAL_NAME} PROPERTIES LINK_FLAGS "-lqt")
+  target_link_libraries(${EXTERNAL_NAME} Qt5::${QT_MODULE})
 endif()
 
 ExternalProject_Get_Property(${EXTERNAL_NAME} INSTALL_DIR)
