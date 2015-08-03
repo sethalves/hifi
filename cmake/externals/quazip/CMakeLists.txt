@@ -14,8 +14,10 @@ endif ()
 include(ExternalProject)
 ExternalProject_Add(
   ${EXTERNAL_NAME}
-  URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
-  URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
+  # URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
+  # URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
+  URL http://headache.hungrycom/~seth/hifi/quazip-0.7.1.tar.gz
+  URL_MD5 72749cd486ef758995f973fdf8062fd6
   # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
   CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
   BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
