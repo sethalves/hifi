@@ -12,19 +12,50 @@ if (ANDROID)
 endif ()
 
 include(ExternalProject)
-ExternalProject_Add(
-  ${EXTERNAL_NAME}
-  # URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
-  # URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
-  URL http://headache.hungry.com/~seth/hifi/quazip-0.7.1.tar.gz
-  URL_MD5 72749cd486ef758995f973fdf8062fd6
-  # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
-  CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-  BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
-  LOG_DOWNLOAD 1
-  LOG_CONFIGURE 1
-  LOG_BUILD 1
-)
+
+# URL http://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.1.tar.gz
+# URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
+
+SET(QUAZIP_URL http://headache.hungry.com/~seth/hifi/quazip-0.7.1.tar.gz CACHE STRING "url for QuaZIP")
+SET(QUAZIP_MD5 "72749cd486ef758995f973fdf8062fd6" CACHE STRING "md5 for QuaZIP")
+
+if (WIN32)
+  # if(EXISTS "${QT_DIR}/include/QtZlib/zlib.h")
+  #   SET(ZLIB_INCLUDE_DIRS "${QT_DIR}/include/QtZlib" CACHE STRING "Path to ZLIB headers of Qt")
+  #   # SET(ZLIB_LIBRARIES "${QT_DIR}/src/3rdparty/zlib/libz.a")
+  # else()
+  #   SET(ZLIB_INCLUDE_DIRS $ENV{HIFI_LIB_DIR}/zlib/include CACHE STRING "Path to ZLIB headers of Qt")
+  #   # SET(ZLIB_LIBRARIES "$ENV{HIFI_LIB_DIR}/zlib/lib/libz.a")
+  # endif()
+
+  SET(ZLIB_INCLUDE_DIRS $ENV{HIFI_LIB_DIR}/zlib/include CACHE STRING "Path to ZLIB headers of Qt")
+  SET(ZLIB_LIBRARIES "$ENV{HIFI_LIB_DIR}/zlib/lib/libz.a")
+  message("ZLIB_INCLUDE_DIRS is " ${ZLIB_INCLUDE_DIRS})
+
+  ExternalProject_Add(
+    ${EXTERNAL_NAME}
+    URL ${QUAZIP_URL}
+    URL_MD5 ${QUAZIP_MD5}
+    # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
+    CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DZLIB_INCLUDE_DIRS=${ZLIB_INCLUDE_DIRS} -DZLIB_LIBRARIES=${ZLIB_LIBRARIES} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
+    LOG_DOWNLOAD 1
+    LOG_CONFIGURE 1
+    LOG_BUILD 1
+  )
+else()
+  ExternalProject_Add(
+    ${EXTERNAL_NAME}
+    URL ${QUAZIP_URL}
+    URL_MD5 ${QUAZIP_MD5}
+    # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
+    CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
+    LOG_DOWNLOAD 1
+    LOG_CONFIGURE 1
+    LOG_BUILD 1
+  )
+endif()
 
 # Hide this external target (for ide users)
 set_target_properties(${EXTERNAL_NAME} PROPERTIES FOLDER "hidden/externals")
