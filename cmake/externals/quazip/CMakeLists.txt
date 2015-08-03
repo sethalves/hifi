@@ -17,7 +17,7 @@ include(ExternalProject)
 # URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
 
 SET(QUAZIP_URL http://headache.hungry.com/~seth/hifi/quazip-0.7.1.tar.gz CACHE STRING "url for QuaZIP")
-SET(QUAZIP_MD5 "8d46b992f0ac3719cf5306026b697442" CACHE STRING "md5 for QuaZIP")
+SET(QUAZIP_MD5 "2a9b985d10b29347873186d8bf3f049d" CACHE STRING "md5 for QuaZIP")
 
 if (WIN32)
   if(EXISTS "${QT_DIR}/include/QtZlib/zlib.h")
