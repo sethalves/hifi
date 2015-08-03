@@ -17,20 +17,14 @@ include(ExternalProject)
 # URL_MD5 e4a14ad41b9a1ce494f8dd9add56429e
 
 SET(QUAZIP_URL http://headache.hungry.com/~seth/hifi/quazip-0.7.1.tar.gz CACHE STRING "url for QuaZIP")
-SET(QUAZIP_MD5 "8883f5e49093d841eb4ac15fdce59c5d" CACHE STRING "md5 for QuaZIP")
+SET(QUAZIP_MD5 "8d46b992f0ac3719cf5306026b697442" CACHE STRING "md5 for QuaZIP")
 
 if (WIN32)
-  # if(EXISTS "${QT_DIR}/include/QtZlib/zlib.h")
-  #   SET(ZLIB_INCLUDE_DIRS "${QT_DIR}/include/QtZlib" CACHE STRING "Path to ZLIB headers of Qt")
-  #   # SET(ZLIB_LIBRARIES "${QT_DIR}/src/3rdparty/zlib/libz.a")
-  # else()
-  #   SET(ZLIB_INCLUDE_DIRS $ENV{HIFI_LIB_DIR}/zlib/include CACHE STRING "Path to ZLIB headers of Qt")
-  #   # SET(ZLIB_LIBRARIES "$ENV{HIFI_LIB_DIR}/zlib/lib/libz.a")
-  # endif()
-
-  SET(ZLIB_INCLUDE_DIRS $ENV{HIFI_LIB_DIR}/zlib/include CACHE STRING "Path to ZLIB headers of Qt")
-  SET(ZLIB_LIBRARIES "$ENV{HIFI_LIB_DIR}/zlib/lib/libz.a")
-  message("ZLIB_INCLUDE_DIRS is " ${ZLIB_INCLUDE_DIRS})
+  if(EXISTS "${QT_DIR}/include/QtZlib/zlib.h")
+    SET(ZLIB_INCLUDE_DIRS "${QT_DIR}/include/QtZlib" CACHE STRING "Path to ZLIB headers of Qt")
+  else()
+    SET(ZLIB_INCLUDE_DIRS $ENV{HIFI_LIB_DIR}/zlib/include CACHE STRING "Path to ZLIB headers of Qt")
+  endif()
 
   ExternalProject_Add(
     ${EXTERNAL_NAME}
@@ -38,7 +32,7 @@ if (WIN32)
     URL_MD5 ${QUAZIP_MD5}
     # CONFIGURE_COMMAND ${QMAKE_COMMAND} PREFIX=<INSTALL_DIR>
     # CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DZLIB_INCLUDE_DIRS=${ZLIB_INCLUDE_DIRS} -DZLIB_LIBRARIES=${ZLIB_LIBRARIES} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-    CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DZLIB_DIR=$ENV{HIFI_LIB_DIR}/zlib -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    CMAKE_ARGS ${ANDROID_CMAKE_ARGS} -DZLIB_INCLUDE_DIRS=${ZLIB_INCLUDE_DIRS} -DQt5Core_DIR=${QT_DIR}/lib/cmake/Qt5Core -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DQT_ROOT=${QT_DIR}
     BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
     LOG_DOWNLOAD 1
     LOG_CONFIGURE 1
