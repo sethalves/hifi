@@ -416,6 +416,9 @@ public:
     void deserializeActions();
     void setActionDataDirty(bool value) const { _actionDataDirty = value; }
 
+    virtual void setParentZoneID(const EntityItemID& parentZoneID) { _parentZoneID = parentZoneID; }
+    virtual const EntityItemID& getParentZoneID() const { return _parentZoneID; }
+
 protected:
 
     const QByteArray getActionDataInternal() const;
@@ -522,6 +525,9 @@ protected:
     bool isLocked() const;
     bool isWriteLocked() const;
     bool isUnlocked() const;
+
+    EntityItemID _parentZoneID{UNKNOWN_ENTITY_ID};
+    EntityItemWeakPointer _parentZone;
 };
 
 #endif // hifi_EntityItem_h

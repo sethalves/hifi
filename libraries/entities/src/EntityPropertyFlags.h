@@ -146,6 +146,8 @@ enum EntityPropertyList {
     PROP_Y_P_NEIGHBOR_ID, // used by PolyVox
     PROP_Z_P_NEIGHBOR_ID, // used by PolyVox
 
+    PROP_PARENT_ZONE_ID,
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,

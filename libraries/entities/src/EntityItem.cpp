@@ -134,6 +134,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
+    requestedProperties += PROP_PARENT_ZONE_ID;
 
     return requestedProperties;
 }
@@ -268,6 +269,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_ZONE_ID, getParentZoneID());
 
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
@@ -713,6 +715,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         overwriteLocalData = oldOverwrite;
     }
 
+    READ_ENTITY_PROPERTY(PROP_PARENT_ZONE_ID, EntityItemID, setParentZoneID);
+
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
 
@@ -1052,6 +1056,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHref);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionData);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentZoneID, getParentZoneID);
 
     properties._defaultSettings = false;
 
@@ -1114,6 +1119,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHref);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionData);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentZoneID, setParentZoneID);
 
     if (somethingChanged) {
         uint64_t now = usecTimestampNow();
