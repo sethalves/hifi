@@ -40,7 +40,6 @@ AvatarData::AvatarData() :
     _sessionUUID(),
     _position(0.0f),
     _handPosition(0.0f),
-    _referential(NULL),
     _bodyYaw(-90.0f),
     _bodyPitch(0.0f),
     _bodyRoll(0.0f),
@@ -67,7 +66,6 @@ AvatarData::AvatarData() :
 AvatarData::~AvatarData() {
     delete _headData;
     delete _handData;
-    delete _referential;
 }
 
 // We cannot have a file-level variable (const or otherwise) in the header if it uses PathUtils, because that references Application, which will not yet initialized.
@@ -81,54 +79,37 @@ const QUrl AvatarData::defaultFullAvatarModelUrl() {
 }
 
 const glm::vec3& AvatarData::getPosition() const {
-    if (_referential) {
-        _referential->update();
-    }
     return _position;
 }
 
-void AvatarData::setPosition(const glm::vec3 position, bool overideReferential) {
-    if (!_referential || overideReferential) {
-        _position = position;
-    }
+void AvatarData::setPosition(const glm::vec3 position) {
+    _position = position;
 }
 
 glm::quat AvatarData::getOrientation() const {
-    if (_referential) {
-        _referential->update();
-    }
-
     return glm::quat(glm::radians(glm::vec3(_bodyPitch, _bodyYaw, _bodyRoll)));
 }
 
-void AvatarData::setOrientation(const glm::quat& orientation, bool overideReferential) {
-    if (!_referential || overideReferential) {
-        glm::vec3 eulerAngles = glm::degrees(safeEulerAngles(orientation));
-        _bodyPitch = eulerAngles.x;
-        _bodyYaw = eulerAngles.y;
-        _bodyRoll = eulerAngles.z;
-    }
+void AvatarData::setOrientation(const glm::quat& orientation) {
+    glm::vec3 eulerAngles = glm::degrees(safeEulerAngles(orientation));
+    _bodyPitch = eulerAngles.x;
+    _bodyYaw = eulerAngles.y;
+    _bodyRoll = eulerAngles.z;
 }
 
 float AvatarData::getTargetScale() const {
-    if (_referential) {
-        _referential->update();
-    }
-
     return _targetScale;
 }
 
-void AvatarData::setTargetScale(float targetScale, bool overideReferential) {
-    if (!_referential || overideReferential) {
-        _targetScale = targetScale;
-    }
+void AvatarData::setTargetScale(float targetScale) {
+    _targetScale = targetScale;
 }
 
-void AvatarData::setClampedTargetScale(float targetScale, bool overideReferential) {
+void AvatarData::setClampedTargetScale(float targetScale) {
 
     targetScale =  glm::clamp(targetScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE);
 
-    setTargetScale(targetScale, overideReferential);
+    setTargetScale(targetScale);
     qCDebug(avatars) << "Changed scale to " << _targetScale;
 }
 
@@ -198,16 +179,7 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
     if (_headData->_isEyeTrackerConnected) {
         setAtBit(bitItems, IS_EYE_TRACKER_CONNECTED);
     }
-    // referential state
-    if (_referential != NULL && _referential->isValid()) {
-        setAtBit(bitItems, HAS_REFERENTIAL);
-    }
     *destinationBuffer++ = bitItems;
-
-    // Add referential
-    if (_referential != NULL && _referential->isValid()) {
-        destinationBuffer += _referential->packReferential(destinationBuffer);
-    }
 
     // If it is connected, pack up the data
     if (_headData->_isFaceTrackerConnected) {
@@ -430,22 +402,6 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
 
         _headData->_isFaceTrackerConnected = oneAtBit(bitItems, IS_FACESHIFT_CONNECTED);
         _headData->_isEyeTrackerConnected = oneAtBit(bitItems, IS_EYE_TRACKER_CONNECTED);
-        bool hasReferential = oneAtBit(bitItems, HAS_REFERENTIAL);
-
-        // Referential
-        if (hasReferential) {
-            Referential* ref = new Referential(sourceBuffer, this);
-            if (_referential == NULL ||
-                ref->version() != _referential->version()) {
-                changeReferential(ref);
-            } else {
-                delete ref;
-            }
-            _referential->update();
-        } else if (_referential != NULL) {
-            changeReferential(NULL);
-        }
-
 
         if (_headData->_isFaceTrackerConnected) {
             float leftEyeBlink, rightEyeBlink, averageLoudness, browAudioLift;
@@ -580,10 +536,6 @@ int AvatarData::getAverageBytesReceivedPerSecond() const {
 
 int AvatarData::getReceiveRate() const {
     return lrint(1.0f / _averageBytesReceived.getEventDeltaAverage());
-}
-
-bool AvatarData::hasReferential() {
-    return _referential != NULL;
 }
 
 bool AvatarData::isPlaying() {
@@ -747,11 +699,6 @@ void AvatarData::stopPlaying() {
     if (_player) {
         _player->stopPlaying();
     }
-}
-
-void AvatarData::changeReferential(Referential* ref) {
-    delete _referential;
-    _referential = ref;
 }
 
 void AvatarData::setJointData(int index, const glm::quat& rotation) {

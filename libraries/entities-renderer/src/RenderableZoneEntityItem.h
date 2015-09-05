@@ -14,19 +14,25 @@
 
 #include <Model.h>
 #include <ZoneEntityItem.h>
+#include <PhysicsEngine.h>
+#include <PhysicalEntitySimulation.h>
 
 class NetworkGeometry;
 
 class RenderableZoneEntityItem : public ZoneEntityItem  {
 public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
-    
+
     RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-    ZoneEntityItem(entityItemID, properties),
-    _model(NULL),
-    _needsInitialSimulation(true)
-    { }
-    
+        ZoneEntityItem(entityItemID, properties),
+        _model(NULL),
+        _needsInitialSimulation(true),
+        _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
+        _entitySimulation(new PhysicalEntitySimulation()) {
+        _physicsEngine->init();
+        // _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
+    }
+
     virtual bool setProperties(const EntityItemProperties& properties);
     virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
                                                  ReadBitstreamToTreeParams& args,
@@ -50,6 +56,9 @@ private:
     bool _needsInitialSimulation;
     
     render::ItemID _myMetaItem;
+
+    PhysicsEnginePointer _physicsEngine;
+    PhysicalEntitySimulationPointer _entitySimulation;
 };
 
 #endif // hifi_RenderableZoneEntityItem_h

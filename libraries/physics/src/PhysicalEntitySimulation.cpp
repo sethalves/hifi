@@ -25,7 +25,7 @@ PhysicalEntitySimulation::~PhysicalEntitySimulation() {
 
 void PhysicalEntitySimulation::init(
         EntityTree* tree,
-        PhysicsEngine* physicsEngine,
+        PhysicsEnginePointer physicsEngine,
         EntityEditPacketSender* packetSender) {
     assert(tree);
     setEntityTree(tree);

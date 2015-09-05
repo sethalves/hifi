@@ -533,7 +533,7 @@ private:
 
     ShapeManager _shapeManager;
     PhysicalEntitySimulation _entitySimulation;
-    PhysicsEngine _physicsEngine;
+    PhysicsEnginePointer _physicsEngine;
 
     EntityTreeRenderer _entities;
     EntityTreeRenderer _entityClipboardRenderer;

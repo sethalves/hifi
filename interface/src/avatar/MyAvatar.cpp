@@ -41,7 +41,6 @@
 #include "AvatarManager.h"
 #include "Environment.h"
 #include "Menu.h"
-#include "ModelReferential.h"
 #include "MyAvatar.h"
 #include "Physics.h"
 #include "Recorder.h"
@@ -157,10 +156,6 @@ void MyAvatar::update(float deltaTime) {
         setPosition(_goToPosition);
         setOrientation(_goToOrientation);
         _goToPending = false;
-    }
-
-    if (_referential) {
-        _referential->update();
     }
 
     Head* head = getHead();
@@ -452,32 +447,6 @@ glm::quat MyAvatar::getRightPalmRotation() {
     glm::quat rightRotation;
     getSkeletonModel().getJointRotationInWorldFrame(getSkeletonModel().getRightHandJointIndex(), rightRotation);
     return rightRotation;
-}
-
-void MyAvatar::clearReferential() {
-    changeReferential(NULL);
-}
-
-bool MyAvatar::setModelReferential(const QUuid& id) {
-    EntityTree* tree = Application::getInstance()->getEntities()->getTree();
-    changeReferential(new ModelReferential(id, tree, this));
-    if (_referential->isValid()) {
-        return true;
-    } else {
-        changeReferential(NULL);
-        return false;
-    }
-}
-
-bool MyAvatar::setJointReferential(const QUuid& id, int jointIndex) {
-    EntityTree* tree = Application::getInstance()->getEntities()->getTree();
-    changeReferential(new JointReferential(jointIndex, id, tree, this));
-    if (!_referential->isValid()) {
-        return true;
-    } else {
-        changeReferential(NULL);
-        return false;
-    }
 }
 
 bool MyAvatar::isRecording() {

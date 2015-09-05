@@ -178,10 +178,6 @@ public slots:
     glm::vec3 getRightPalmAngularVelocity();
     glm::quat getRightPalmRotation();
 
-    void clearReferential();
-    bool setModelReferential(const QUuid& id);
-    bool setJointReferential(const QUuid& id, int jointIndex);
-
     bool isRecording();
     qint64 recorderElapsed();
     void startRecording();

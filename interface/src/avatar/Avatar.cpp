@@ -38,7 +38,6 @@
 #include "Hand.h"
 #include "Head.h"
 #include "Menu.h"
-#include "ModelReferential.h"
 #include "Physics.h"
 #include "Recorder.h"
 #include "Util.h"
@@ -148,30 +147,6 @@ float Avatar::getLODDistance() const {
 
 void Avatar::simulate(float deltaTime) {
     PerformanceTimer perfTimer("simulate");
-
-    // update the avatar's position according to its referential
-    if (_referential) {
-        if (_referential->hasExtraData()) {
-            EntityTree* tree = Application::getInstance()->getEntities()->getTree();
-            switch (_referential->type()) {
-                case Referential::MODEL:
-                    _referential = new ModelReferential(_referential,
-                                                        tree,
-                                                        this);
-                    break;
-                case Referential::JOINT:
-                    _referential = new JointReferential(_referential,
-                                                        tree,
-                                                        this);
-                    break;
-                default:
-                    qCDebug(interfaceapp) << "[WARNING] Avatar::simulate(): Unknown referential type.";
-                    break;
-            }
-        }
-
-        _referential->update();
-    }
 
     if (_scale != _targetScale) {
         setScale(_targetScale);
@@ -316,10 +291,6 @@ void Avatar::removeFromScene(AvatarSharedPointer self, std::shared_ptr<render::S
 }
 
 void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
-    if (_referential) {
-        _referential->update();
-    }
-
     auto& batch = *renderArgs->_batch;
 
     if (glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getPosition(), _position) < 10.0f) {

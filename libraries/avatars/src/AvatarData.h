@@ -57,7 +57,6 @@ typedef unsigned long long quint64;
 #include "PathUtils.h"
 #include "Player.h"
 #include "Recorder.h"
-#include "Referential.h"
 
 typedef std::shared_ptr<AvatarData> AvatarSharedPointer;
 typedef std::weak_ptr<AvatarData> AvatarWeakPointer;
@@ -171,7 +170,7 @@ public:
     const QUuid& getSessionUUID() const { return _sessionUUID; }
 
     const glm::vec3& getPosition() const;
-    virtual void setPosition(const glm::vec3 position, bool overideReferential = false);
+    virtual void setPosition(const glm::vec3 position);
 
     glm::vec3 getHandPosition() const;
     void setHandPosition(const glm::vec3& handPosition);
@@ -196,7 +195,7 @@ public:
     void setBodyRoll(float bodyRoll) { _bodyRoll = bodyRoll; }
 
     glm::quat getOrientation() const;
-    virtual void setOrientation(const glm::quat& orientation, bool overideReferential = false);
+    virtual void setOrientation(const glm::quat& orientation);
 
     glm::quat getHeadOrientation() const { return _headData->getOrientation(); }
     void setHeadOrientation(const glm::quat& orientation) { _headData->setOrientation(orientation); }
@@ -219,8 +218,8 @@ public:
 
     //  Scale
     float getTargetScale() const;
-    void setTargetScale(float targetScale, bool overideReferential = false);
-    void setClampedTargetScale(float targetScale, bool overideReferential = false);
+    void setTargetScale(float targetScale);
+    void setClampedTargetScale(float targetScale);
 
     //  Hand State
     Q_INVOKABLE void setHandState(char s) { _handState = s; }
@@ -299,7 +298,6 @@ public:
     void setOwningAvatarMixer(const QWeakPointer<Node>& owningAvatarMixer) { _owningAvatarMixer = owningAvatarMixer; }
     
     const AABox& getLocalAABox() const { return _localAABox; }
-    const Referential* getReferential() const { return _referential; }
 
     int getUsecsSinceLastUpdate() const { return _averageBytesReceived.getUsecsSinceLastEvent(); }
     int getAverageBytesReceivedPerSecond() const;
@@ -319,7 +317,6 @@ public slots:
     void setBillboardFromNetworkReply();
     void setJointMappingsFromNetworkReply();
     void setSessionUUID(const QUuid& sessionUUID) { _sessionUUID = sessionUUID; }
-    bool hasReferential();
     
     bool isPlaying();
     bool isPaused();
@@ -349,7 +346,6 @@ protected:
     glm::vec3 _position = START_LOCATION;
     glm::vec3 _handPosition;
     
-    Referential* _referential;
 
     //  Body rotation
     float _bodyYaw;     // degrees
@@ -396,7 +392,6 @@ protected:
     
     /// Loads the joint indices, names from the FST file (if any)
     virtual void updateJointMappings();
-    void changeReferential(Referential* ref);
 
     glm::vec3 _velocity;
     glm::vec3 _targetVelocity;
