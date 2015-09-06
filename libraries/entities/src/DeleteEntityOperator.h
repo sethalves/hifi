@@ -31,8 +31,8 @@ inline bool operator==(const EntityToDeleteDetails& a, const EntityToDeleteDetai
 
 class DeleteEntityOperator : public RecurseOctreeOperator {
 public:
-    DeleteEntityOperator(EntityTree* tree);
-    DeleteEntityOperator(EntityTree* tree, const EntityItemID& searchEntityID);
+    DeleteEntityOperator(EntityTreePointer tree);
+    DeleteEntityOperator(EntityTreePointer tree, const EntityItemID& searchEntityID);
     ~DeleteEntityOperator();
 
     void addEntityIDToDeleteList(const EntityItemID& searchEntityID);
@@ -41,7 +41,7 @@ public:
 
     const RemovedEntities& getEntities() const { return _entitiesToDelete; }
 private:
-    EntityTree* _tree;
+    EntityTreePointer _tree;
     RemovedEntities _entitiesToDelete;
     quint64 _changeTime;
     int _foundCount;

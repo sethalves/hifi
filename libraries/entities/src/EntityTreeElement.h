@@ -151,8 +151,8 @@ public:
 
     bool hasEntities() const { return _entityItems ? _entityItems->size() > 0 : false; }
 
-    void setTree(EntityTree* tree) { _myTree = tree; }
-    EntityTree* getTree() const { return _myTree; }
+    void setTree(EntityTreePointer tree) { _myTree = tree; }
+    EntityTreePointer getTree() const { return _myTree; }
 
     bool updateEntity(const EntityItem& entity);
     void addEntityItem(EntityItemPointer entity);
@@ -203,7 +203,7 @@ public:
 
 protected:
     virtual void init(unsigned char * octalCode);
-    EntityTree* _myTree;
+    EntityTreePointer _myTree;
     EntityItems* _entityItems;
 };
 

@@ -16,14 +16,14 @@
 
 #include "UpdateEntityOperator.h"
 
-UpdateEntityOperator::UpdateEntityOperator(EntityTree* tree, 
-                        EntityTreeElement* containingElement, 
-                        EntityItemPointer existingEntity, 
+UpdateEntityOperator::UpdateEntityOperator(EntityTreePointer tree,
+                        EntityTreeElement* containingElement,
+                        EntityItemPointer existingEntity,
                         const EntityItemProperties& properties) :
     _tree(tree),
     _existingEntity(existingEntity),
     _containingElement(containingElement),
-    _containingElementCube(containingElement->getAACube()), 
+    _containingElementCube(containingElement->getAACube()),
     _properties(properties),
     _entityItemID(existingEntity->getEntityItemID()),
     _foundOld(false),
@@ -37,10 +37,10 @@ UpdateEntityOperator::UpdateEntityOperator(EntityTree* tree,
 {
     // caller must have verified existence of containingElement and oldEntity
     assert(_containingElement && _existingEntity);
-    
+
     if (_wantDebug) {
         qCDebug(entities) << "UpdateEntityOperator::UpdateEntityOperator() -----------------------------";
-    }    
+    }
 
     // Here we have a choice to make, do we want to "tight fit" the actual minimum for the
     // entity into the the element, or do we want to use the entities "relaxed" bounds

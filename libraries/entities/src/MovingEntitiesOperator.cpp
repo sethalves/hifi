@@ -16,7 +16,7 @@
 
 #include "MovingEntitiesOperator.h"
 
-MovingEntitiesOperator::MovingEntitiesOperator(EntityTree* tree) :
+MovingEntitiesOperator::MovingEntitiesOperator(EntityTreePointer tree) :
     _tree(tree),
     _changeTime(usecTimestampNow()),
     _foundOldCount(0),

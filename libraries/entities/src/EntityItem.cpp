@@ -89,7 +89,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    EntityTree* entityTree = _element ? _element->getTree() : nullptr;
+    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
     EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
     if (simulation) {
         clearActions(simulation);
@@ -1577,7 +1577,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
     assertWriteLocked();
     if (_objectActions.contains(actionID)) {
         if (!simulation) {
-            EntityTree* entityTree = _element ? _element->getTree() : nullptr;
+            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
             simulation = entityTree ? entityTree->getSimulation() : nullptr;
         }
 
@@ -1633,7 +1633,7 @@ void EntityItem::deserializeActionsInternal() {
 
     // Keep track of which actions got added or updated by the new actionData
 
-    EntityTree* entityTree = _element ? _element->getTree() : nullptr;
+    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
     assert(entityTree);
     EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
     assert(simulation);
@@ -1769,8 +1769,6 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     unlock();
     return result;
 }
-
-
 
 #define ENABLE_LOCKING 1
 

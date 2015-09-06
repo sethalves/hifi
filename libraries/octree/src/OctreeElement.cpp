@@ -117,7 +117,7 @@ void OctreeElement::markWithChangedTime() {
 // changed. However, you should hopefully make your bookkeeping relatively
 // localized, because this method will get called for every node in an
 // recursive unwinding case like delete or add voxel
-void OctreeElement::handleSubtreeChanged(Octree* myTree) {
+void OctreeElement::handleSubtreeChanged(OctreePointer myTree) {
     // here's a good place to do color re-averaging...
     if (myTree->getShouldReaverage()) {
         calculateAverageFromChildren();

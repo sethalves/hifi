@@ -31,7 +31,6 @@ EntityTree::EntityTree(bool shouldReaverage) :
     _fbxService(NULL),
     _simulation(NULL)
 {
-    _rootElement = createNewElement();
     resetClientEditStats();
 }
 
@@ -39,9 +38,13 @@ EntityTree::~EntityTree() {
     eraseAllOctreeElements(false);
 }
 
-EntityTreeElement* EntityTree::createNewElement(unsigned char * octalCode) {
+void EntityTree::createRootElement() {
+    _rootElement = createNewElement();
+}
+
+EntityTreeElement* EntityTree::createNewElement(unsigned char* octalCode) {
     EntityTreeElement* newElement = new EntityTreeElement(octalCode);
-    newElement->setTree(this);
+    newElement->setTree(std::static_pointer_cast<EntityTree>(shared_from_this()));
     return newElement;
 }
 
@@ -139,7 +142,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
             if (!wantsLocked) {
                 EntityItemProperties tempProperties;
                 tempProperties.setLocked(wantsLocked);
-                UpdateEntityOperator theOperator(this, containingElement, entity, tempProperties);
+                UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, tempProperties);
                 recurseTreeWithOperator(&theOperator);
                 _isDirty = true;
             }
@@ -201,7 +204,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         quint64 entityScriptTimestampBefore = entity->getScriptTimestamp();
         QString collisionSoundURLBefore = entity->getCollisionSoundURL();
         uint32_t preFlags = entity->getDirtyFlags();
-        UpdateEntityOperator theOperator(this, containingElement, entity, properties);
+        UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, properties);
         recurseTreeWithOperator(&theOperator);
         _isDirty = true;
 
@@ -274,7 +277,7 @@ EntityItemPointer EntityTree::addEntity(const EntityItemID& entityID, const Enti
             result->recordCreationTime();
         }
         // Recurse the tree and store the entity in the correct tree element
-        AddEntityOperator theOperator(this, result);
+        AddEntityOperator theOperator(getThisPointer(), result);
         recurseTreeWithOperator(&theOperator);
 
         postAddEntity(result);
@@ -295,7 +298,7 @@ void EntityTree::maybeNotifyNewCollisionSoundURL(const QString& previousCollisio
 void EntityTree::setSimulation(EntitySimulation* simulation) {
     if (simulation) {
         // assert that the simulation's backpointer has already been properly connected
-        assert(simulation->getEntityTree() == this);
+        assert(simulation->getEntityTree().get() == this);
     }
     if (_simulation && _simulation != simulation) {
         // It's important to clearEntities() on the simulation since taht will update each
@@ -335,7 +338,7 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
     emit deletingEntity(entityID);
 
     // NOTE: callers must lock the tree before using this method
-    DeleteEntityOperator theOperator(this, entityID);
+    DeleteEntityOperator theOperator(getThisPointer(), entityID);
     recurseTreeWithOperator(&theOperator);
     processRemovedEntities(theOperator);
     _isDirty = true;
@@ -343,7 +346,7 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
 
 void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings) {
     // NOTE: callers must lock the tree before using this method
-    DeleteEntityOperator theOperator(this);
+    DeleteEntityOperator theOperator(getThisPointer());
     foreach(const EntityItemID& entityID, entityIDs) {
         EntityTreeElement* containingElement = getContainingElement(entityID);
         if (!containingElement) {
@@ -1013,7 +1016,8 @@ void EntityTree::pruneTree() {
     recurseTreeWithOperator(&theOperator);
 }
 
-QVector<EntityItemID> EntityTree::sendEntities(EntityEditPacketSender* packetSender, EntityTree* localTree, float x, float y, float z) {
+QVector<EntityItemID> EntityTree::sendEntities(EntityEditPacketSender* packetSender, EntityTreePointer localTree,
+                                               float x, float y, float z) {
     SendEntitiesOperationArgs args;
     args.packetSender = packetSender;
     args.localTree = localTree;

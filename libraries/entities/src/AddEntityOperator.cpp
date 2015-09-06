@@ -15,8 +15,7 @@
 
 #include "AddEntityOperator.h"
 
-AddEntityOperator::AddEntityOperator(EntityTree* tree, 
-                        EntityItemPointer newEntity) :
+AddEntityOperator::AddEntityOperator(EntityTreePointer tree, EntityItemPointer newEntity) :
     _tree(tree),
     _newEntity(newEntity),
     _foundNew(false),
@@ -25,7 +24,7 @@ AddEntityOperator::AddEntityOperator(EntityTree* tree,
 {
     // caller must have verified existence of newEntity
     assert(_newEntity);
-    
+
     _newEntityBox = _newEntity->getMaximumAACube().clamp((float)(-HALF_TREE_SCALE), (float)HALF_TREE_SCALE);
 }
 

@@ -34,7 +34,7 @@ inline bool operator==(const EntityToMoveDetails& a, const EntityToMoveDetails& 
 
 class MovingEntitiesOperator : public RecurseOctreeOperator {
 public:
-    MovingEntitiesOperator(EntityTree* tree);
+    MovingEntitiesOperator(EntityTreePointer tree);
     ~MovingEntitiesOperator();
 
     void addEntityToMoveList(EntityItemPointer entity, const AACube& newCube);
@@ -43,7 +43,7 @@ public:
     virtual OctreeElement* possiblyCreateChildAt(OctreeElement* element, int childIndex);
     bool hasMovingEntities() const { return _entitiesToMove.size() > 0; }
 private:
-    EntityTree* _tree;
+    EntityTreePointer _tree;
     QSet<EntityToMoveDetails> _entitiesToMove;
     quint64 _changeTime;
     int _foundOldCount;

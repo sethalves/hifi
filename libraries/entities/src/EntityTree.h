@@ -17,6 +17,10 @@
 
 #include <Octree.h>
 
+class EntityTree;
+typedef std::shared_ptr<EntityTree> EntityTreePointer;
+
+
 #include "EntityTreeElement.h"
 #include "DeleteEntityOperator.h"
 
@@ -39,7 +43,7 @@ public:
 class SendEntitiesOperationArgs {
 public:
     glm::vec3 root;
-    EntityTree* localTree;
+    EntityTreePointer localTree;
     EntityEditPacketSender* packetSender;
     QVector<EntityItemID>* newEntityIDs;
 };
@@ -50,6 +54,8 @@ class EntityTree : public Octree {
 public:
     EntityTree(bool shouldReaverage = false);
     virtual ~EntityTree();
+
+    void createRootElement();
 
     /// Implements our type specific root element factory
     virtual EntityTreeElement* createNewElement(unsigned char * octalCode = NULL);
@@ -151,7 +157,8 @@ public:
     virtual void dumpTree();
     virtual void pruneTree();
 
-    QVector<EntityItemID> sendEntities(EntityEditPacketSender* packetSender, EntityTree* localTree, float x, float y, float z);
+    QVector<EntityItemID> sendEntities(EntityEditPacketSender* packetSender, EntityTreePointer localTree,
+                                       float x, float y, float z);
 
     void entityChanged(EntityItemPointer entity);
 
@@ -192,6 +199,8 @@ public:
         { return _totalTrackedEdits == 0 ? 0 : _totalEditBytes / _totalTrackedEdits; }
     quint64 getMaxEditDelta() const { return _maxEditDelta; }
     quint64 getTotalTrackedEdits() const { return _totalTrackedEdits; }
+
+    EntityTreePointer getThisPointer() { return std::static_pointer_cast<EntityTree>(shared_from_this()); }
 
 signals:
     void deletingEntity(const EntityItemID& entityID);
