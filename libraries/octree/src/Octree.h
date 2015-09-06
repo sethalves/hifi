@@ -14,6 +14,7 @@
 
 #include <set>
 #include <SimpleMovingAverage.h>
+#include <memory>
 
 class CoverageMap;
 class ReadBitstreamToTreeParams;
@@ -22,7 +23,7 @@ class OctreeElement;
 class OctreeElementBag;
 class OctreePacketData;
 class Shape;
-
+typedef std::shared_ptr<Octree> OctreePointer;
 
 #include "JurisdictionMap.h"
 #include "ViewFrustum.h"
@@ -34,7 +35,6 @@ class Shape;
 #include <QHash>
 #include <QObject>
 #include <QReadWriteLock>
-
 
 extern QVector<QString> PERSIST_EXTENSIONS;
 
@@ -216,7 +216,7 @@ public:
     {}
 };
 
-class Octree : public QObject {
+class Octree : public QObject, public std::enable_shared_from_this<Octree> {
     Q_OBJECT
 public:
     Octree(bool shouldReaverage = false);
@@ -403,7 +403,7 @@ protected:
     int readElementData(OctreeElement *destinationElement, const unsigned char* nodeData,
                 int bufferSizeBytes, ReadBitstreamToTreeParams& args);
 
-    OctreeElement* _rootElement;
+    OctreeElement* _rootElement = nullptr;
 
     bool _isDirty;
     bool _shouldReaverage;

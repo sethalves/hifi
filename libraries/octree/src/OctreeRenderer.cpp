@@ -35,22 +35,15 @@ void OctreeRenderer::init() {
 }
 
 OctreeRenderer::~OctreeRenderer() {
-    if (_tree && _managedTree) {
-        delete _tree;
-    }
 }
 
-void OctreeRenderer::setTree(Octree* newTree) {
-    if (_tree && _managedTree) {
-        delete _tree;
-        _managedTree = false;
-    }
+void OctreeRenderer::setTree(OctreePointer newTree) {
     _tree = newTree;
 }
 
 void OctreeRenderer::processDatagram(NLPacket& packet, SharedNodePointer sourceNode) {
     bool extraDebugging = false;
-    
+
     if (extraDebugging) {
         qCDebug(octree) << "OctreeRenderer::processDatagram()";
     }

@@ -859,7 +859,7 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync() {
     properties.setLastEdited(now);
 
     EntityTreeElement* element = getElement();
-    EntityTree* tree = element ? element->getTree() : nullptr;
+    EntityTreePointer tree = element ? element->getTree() : nullptr;
     EntitySimulation* simulation = tree ? tree->getSimulation() : nullptr;
     PhysicalEntitySimulation* peSimulation = static_cast<PhysicalEntitySimulation*>(simulation);
     EntityEditPacketSender* packetSender = peSimulation ? peSimulation->getPacketSender() : nullptr;
@@ -918,7 +918,7 @@ void RenderablePolyVoxEntityItem::clearOutOfDateNeighbors() {
 void RenderablePolyVoxEntityItem::cacheNeighbors() {
     clearOutOfDateNeighbors();
     EntityTreeElement* element = getElement();
-    EntityTree* tree = element ? element->getTree() : nullptr;
+    EntityTreePointer tree = element ? element->getTree() : nullptr;
     if (!tree) {
         return;
     }

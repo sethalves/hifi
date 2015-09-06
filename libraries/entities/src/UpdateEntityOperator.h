@@ -14,15 +14,15 @@
 
 class UpdateEntityOperator : public RecurseOctreeOperator {
 public:
-    UpdateEntityOperator(EntityTree* tree, EntityTreeElement* containingElement, 
-                            EntityItemPointer existingEntity, const EntityItemProperties& properties);
+    UpdateEntityOperator(EntityTreePointer tree, EntityTreeElement* containingElement,
+                         EntityItemPointer existingEntity, const EntityItemProperties& properties);
     ~UpdateEntityOperator();
-                            
+
     virtual bool preRecursion(OctreeElement* element);
     virtual bool postRecursion(OctreeElement* element);
     virtual OctreeElement* possiblyCreateChildAt(OctreeElement* element, int childIndex);
 private:
-    EntityTree* _tree;
+    EntityTreePointer _tree;
     EntityItemPointer _existingEntity;
     EntityTreeElement* _containingElement;
     AACube _containingElementCube; // we temporarily store our cube here in case we need to delete the containing element

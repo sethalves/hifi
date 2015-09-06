@@ -336,7 +336,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
         _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
         _entities(true, this, this),
         _entityClipboardRenderer(false, this, this),
-        _entityClipboard(),
+        _entityClipboard(new EntityTree()),
         _viewFrustum(),
         _lastQueriedViewFrustum(),
         _lastQueriedTime(usecTimestampNow()),
@@ -369,6 +369,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
         _applicationOverlay()
 {
     setInstance(this);
+
+    _entityClipboard->createRootElement();
 
     _pluginContainer = new PluginContainerProxy();
     Plugin::setContainer(_pluginContainer);
@@ -832,7 +834,7 @@ void Application::emptyLocalCache() {
 }
 
 Application::~Application() {
-    EntityTree* tree = _entities.getTree();
+    EntityTreePointer tree = _entities.getTree();
     tree->lockForWrite();
     _entities.getTree()->setSimulation(NULL);
     tree->unlock();
@@ -2346,7 +2348,7 @@ void Application::saveSettings() {
 }
 
 bool Application::importEntities(const QString& urlOrFilename) {
-    _entityClipboard.eraseAllOctreeElements();
+    _entityClipboard->eraseAllOctreeElements();
 
     QUrl url(urlOrFilename);
 
@@ -2355,15 +2357,15 @@ bool Application::importEntities(const QString& urlOrFilename) {
         url = QUrl::fromLocalFile(urlOrFilename);
     }
 
-    bool success = _entityClipboard.readFromURL(url.toString());
+    bool success = _entityClipboard->readFromURL(url.toString());
     if (success) {
-        _entityClipboard.reaverageOctreeElements();
+        _entityClipboard->reaverageOctreeElements();
     }
     return success;
 }
 
 QVector<EntityItemID> Application::pasteEntities(float x, float y, float z) {
-    return _entityClipboard.sendEntities(&_entityEditSender, _entities.getTree(), x, y, z);
+    return _entityClipboard->sendEntities(&_entityEditSender, _entities.getTree(), x, y, z);
 }
 
 void Application::initDisplay() {
@@ -2410,7 +2412,7 @@ void Application::init() {
     ObjectMotionState::setShapeManager(&_shapeManager);
     _physicsEngine->init();
 
-    EntityTree* tree = _entities.getTree();
+    EntityTreePointer tree = _entities.getTree();
     _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
     tree->setSimulation(&_entitySimulation);
 
@@ -2426,10 +2428,10 @@ void Application::init() {
 
     _entityClipboardRenderer.init();
     _entityClipboardRenderer.setViewFrustum(getViewFrustum());
-    _entityClipboardRenderer.setTree(&_entityClipboard);
+    _entityClipboardRenderer.setTree(_entityClipboard);
 
     // Make sure any new sounds are loaded as soon as know about them.
-    connect(tree, &EntityTree::newCollisionSoundURL, DependencyManager::get<SoundCache>().data(), &SoundCache::getSound);
+    connect(tree.get(), &EntityTree::newCollisionSoundURL, DependencyManager::get<SoundCache>().data(), &SoundCache::getSound);
     connect(_myAvatar, &MyAvatar::newCollisionSoundURL, DependencyManager::get<SoundCache>().data(), &SoundCache::getSound);
 }
 

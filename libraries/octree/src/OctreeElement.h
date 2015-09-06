@@ -34,6 +34,8 @@ class ReadBitstreamToTreeParams;
 class Shape;
 class VoxelSystem;
 
+typedef std::shared_ptr<Octree> OctreePointer;
+
 // Callers who want delete hook callbacks should implement this class
 class OctreeElementDeleteHook {
 public:
@@ -145,16 +147,16 @@ public:
     const glm::vec3& getCorner() const { return _cube.getCorner(); }
     float getScale() const { return _cube.getScale(); }
     int getLevel() const { return numberOfThreeBitSectionsInCode(getOctalCode()) + 1; }
-    
+
     float getEnclosingRadius() const;
     bool isInView(const ViewFrustum& viewFrustum) const { return inFrustum(viewFrustum) != ViewFrustum::OUTSIDE; }
     ViewFrustum::location inFrustum(const ViewFrustum& viewFrustum) const;
-    float distanceToCamera(const ViewFrustum& viewFrustum) const; 
+    float distanceToCamera(const ViewFrustum& viewFrustum) const;
     float furthestDistanceToCamera(const ViewFrustum& viewFrustum) const;
 
-    bool calculateShouldRender(const ViewFrustum* viewFrustum, 
+    bool calculateShouldRender(const ViewFrustum* viewFrustum,
                 float voxelSizeScale = DEFAULT_OCTREE_SIZE_SCALE, int boundaryLevelAdjust = 0) const;
-    
+
     // points are assumed to be in Voxel Coordinates (not TREE_SCALE'd)
     float distanceSquareToPoint(const glm::vec3& point) const; // when you don't need the actual distance, use this.
     float distanceToPoint(const glm::vec3& point) const;
@@ -168,13 +170,13 @@ public:
     bool hasChangedSince(quint64 time) const { return (_lastChanged > time); }
     void markWithChangedTime();
     quint64 getLastChanged() const { return _lastChanged; }
-    void handleSubtreeChanged(Octree* myTree);
-    
+    void handleSubtreeChanged(OctreePointer myTree);
+
     // Used by VoxelSystem for rendering in/out of view and LOD
     void setShouldRender(bool shouldRender);
     bool getShouldRender() const { return _shouldRender; }
-    
-    
+
+
     void setSourceUUID(const QUuid& sourceID);
     QUuid getSourceUUID() const;
     uint16_t getSourceUUIDKey() const { return _sourceUUIDKey; }
@@ -186,7 +188,7 @@ public:
 
     static void addUpdateHook(OctreeElementUpdateHook* hook);
     static void removeUpdateHook(OctreeElementUpdateHook* hook);
-    
+
     static void resetPopulationStatistics();
     static unsigned long getNodeCount() { return _voxelNodeCount; }
     static unsigned long getInternalNodeCount() { return _voxelNodeCount - _voxelNodeLeafCount; }

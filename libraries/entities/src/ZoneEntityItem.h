@@ -15,7 +15,8 @@
 #include <EnvironmentData.h>
 
 #include "AtmospherePropertyGroup.h"
-#include "EntityItem.h" 
+#include "EntityItem.h"
+#include "EntityTree.h"
 
 class ZoneEntityItem : public EntityItem {
 public:
@@ -129,6 +130,8 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
+
+    EntityTreePointer subTree;
 };
 
 #endif // hifi_ZoneEntityItem_h

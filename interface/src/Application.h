@@ -208,7 +208,7 @@ public:
     QUndoStack* getUndoStack() { return &_undoStack; }
     MainWindow* getWindow() { return _window; }
     OctreeQuery& getOctreeQuery() { return _octreeQuery; }
-    EntityTree* getEntityClipboard() { return &_entityClipboard; }
+    EntityTreePointer getEntityClipboard() { return _entityClipboard; }
     EntityTreeRenderer* getEntityClipboardRenderer() { return &_entityClipboardRenderer; }
     EntityEditPacketSender* getEntityEditPacketSender() { return &_entityEditSender; }
 
@@ -537,7 +537,7 @@ private:
 
     EntityTreeRenderer _entities;
     EntityTreeRenderer _entityClipboardRenderer;
-    EntityTree _entityClipboard;
+    EntityTreePointer _entityClipboard;
 
     ViewFrustum _viewFrustum; // current state of view frustum, perspective, orientation, etc.
     ViewFrustum _lastQueriedViewFrustum; /// last view frustum used to query octree servers (voxels)

@@ -576,7 +576,7 @@ void Octree::deleteOctalCodeFromTreeRecursion(OctreeElement* element, void* extr
     // If the lower level did some work, then we need to let this element know, so it can
     // do any bookkeeping it wants to, like color re-averaging, time stamp marking, etc
     if (args->pathChanged) {
-        element->handleSubtreeChanged(this);
+        element->handleSubtreeChanged(shared_from_this());
     }
 }
 

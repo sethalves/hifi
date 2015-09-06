@@ -16,7 +16,7 @@
 #include "EntitiesLogging.h"
 #include "DeleteEntityOperator.h"
 
-DeleteEntityOperator::DeleteEntityOperator(EntityTree* tree, const EntityItemID& searchEntityID) :
+DeleteEntityOperator::DeleteEntityOperator(EntityTreePointer tree, const EntityItemID& searchEntityID) :
     _tree(tree),
     _changeTime(usecTimestampNow()),
     _foundCount(0),
@@ -28,7 +28,7 @@ DeleteEntityOperator::DeleteEntityOperator(EntityTree* tree, const EntityItemID&
 DeleteEntityOperator::~DeleteEntityOperator() {
 }
 
-DeleteEntityOperator::DeleteEntityOperator(EntityTree* tree) :
+DeleteEntityOperator::DeleteEntityOperator(EntityTreePointer tree) :
     _tree(tree),
     _changeTime(usecTimestampNow()),
     _foundCount(0),
