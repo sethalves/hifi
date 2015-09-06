@@ -14,8 +14,6 @@
 
 #include <Model.h>
 #include <ZoneEntityItem.h>
-#include <PhysicsEngine.h>
-#include <PhysicalEntitySimulation.h>
 
 class NetworkGeometry;
 
@@ -26,9 +24,7 @@ public:
     RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
         ZoneEntityItem(entityItemID, properties),
         _model(nullptr),
-        _needsInitialSimulation(true),
-        _physicsEngine(nullptr),
-        _entitySimulation(nullptr) {
+        _needsInitialSimulation(true) {
     }
 
     virtual bool setProperties(const EntityItemProperties& properties);
@@ -54,9 +50,6 @@ private:
     bool _needsInitialSimulation;
     
     render::ItemID _myMetaItem;
-
-    PhysicsEnginePointer _physicsEngine;
-    PhysicalEntitySimulationPointer _entitySimulation;
 };
 
 #endif // hifi_RenderableZoneEntityItem_h

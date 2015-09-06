@@ -13,8 +13,8 @@
 
 
 RecurseOctreeToMapOperator::RecurseOctreeToMapOperator(QVariantMap& map,
-                                                       OctreeElement *top,
-                                                       QScriptEngine *engine,
+                                                       OctreeElementPointer top,
+                                                       QScriptEngine* engine,
                                                        bool skipDefaultValues) :
         RecurseOctreeOperator(),
         _map(map),
@@ -31,18 +31,18 @@ RecurseOctreeToMapOperator::RecurseOctreeToMapOperator(QVariantMap& map,
     }
 };
 
-bool RecurseOctreeToMapOperator::preRecursion(OctreeElement* element) {
+bool RecurseOctreeToMapOperator::preRecursion(OctreeElementPointer element) {
     if (element == _top) {
         _withinTop = true;
     }
     return true;
 }
 
-bool RecurseOctreeToMapOperator::postRecursion(OctreeElement* element) {
+bool RecurseOctreeToMapOperator::postRecursion(OctreeElementPointer element) {
 
     EntityItemProperties defaultProperties;
 
-    EntityTreeElement* entityTreeElement = static_cast<EntityTreeElement*>(element);
+    EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
     const EntityItems& entities = entityTreeElement->getEntities();
 
     QVariantList entitiesQList = qvariant_cast<QVariantList>(_map["Entities"]);

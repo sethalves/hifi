@@ -192,7 +192,7 @@ void OctreeRenderer::processDatagram(NLPacket& packet, SharedNodePointer sourceN
     }
 }
 
-bool OctreeRenderer::renderOperation(OctreeElement* element, void* extraData) {
+bool OctreeRenderer::renderOperation(OctreeElementPointer element, void* extraData) {
     RenderArgs* args = static_cast<RenderArgs*>(extraData);
     if (element->isInView(*args->_viewFrustum)) {
         if (element->hasContent()) {

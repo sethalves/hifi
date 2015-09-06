@@ -1775,7 +1775,7 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
 
 void EntityItem::refreshParentEntityItemPointer() const {
     // make sure we have the EntityTree available
-    EntityTreeElement* element = getElement();
+    EntityTreeElementPointer element = getElement();
     EntityTreePointer tree = element ? element->getTree() : nullptr;
     if (!tree) {
         _parentZone.reset();

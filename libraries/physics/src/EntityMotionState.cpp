@@ -31,7 +31,7 @@ const quint64 USECS_BETWEEN_OWNERSHIP_BIDS = USECS_PER_SECOND / 5;
 
 #ifdef WANT_DEBUG_ENTITY_TREE_LOCKS
 bool EntityMotionState::entityTreeIsLocked() const {
-    EntityTreeElement* element = _entity ? _entity->getElement() : nullptr;
+    EntityTreeElementPointer element = _entity ? _entity->getElement() : nullptr;
     EntityTreePointer tree = element ? element->getTree() : nullptr;
     if (tree) {
         bool readSuccess = tree->tryLockForRead();

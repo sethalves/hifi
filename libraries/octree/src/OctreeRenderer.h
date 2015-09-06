@@ -38,7 +38,7 @@ public:
     virtual char getMyNodeType() const = 0;
     virtual PacketType::Value getMyQueryMessageType() const = 0;
     virtual PacketType::Value getExpectedPacketType() const = 0;
-    virtual void renderElement(OctreeElement* element, RenderArgs* args) = 0;
+    virtual void renderElement(OctreeElementPointer element, RenderArgs* args) = 0;
     virtual float getSizeScale() const { return DEFAULT_OCTREE_SIZE_SCALE; }
     virtual int getBoundaryLevelAdjust() const { return 0; }
 
@@ -56,7 +56,7 @@ public:
     ViewFrustum* getViewFrustum() const { return _viewFrustum; }
     void setViewFrustum(ViewFrustum* viewFrustum) { _viewFrustum = viewFrustum; }
 
-    static bool renderOperation(OctreeElement* element, void* extraData);
+    static bool renderOperation(OctreeElementPointer element, void* extraData);
 
     /// clears the tree
     virtual void clear();

@@ -45,7 +45,7 @@ public:
     virtual char getMyNodeType() const { return NodeType::EntityServer; }
     virtual PacketType::Value getMyQueryMessageType() const { return PacketType::EntityQuery; }
     virtual PacketType::Value getExpectedPacketType() const { return PacketType::EntityData; }
-    virtual void renderElement(OctreeElement* element, RenderArgs* args);
+    virtual void renderElement(OctreeElementPointer element, RenderArgs* args);
     virtual float getSizeScale() const;
     virtual int getBoundaryLevelAdjust() const;
     virtual void setTree(OctreePointer newTree);
@@ -135,7 +135,7 @@ private:
     void addEntityToScene(EntityItemPointer entity);
 
     void applyZonePropertiesToScene(std::shared_ptr<ZoneEntityItem> zone);
-    void renderElementProxy(EntityTreeElement* entityTreeElement, RenderArgs* args);
+    void renderElementProxy(EntityTreeElementPointer entityTreeElement, RenderArgs* args);
     void checkAndCallPreload(const EntityItemID& entityID, const bool reload = false);
     void checkAndCallUnload(const EntityItemID& entityID);
 

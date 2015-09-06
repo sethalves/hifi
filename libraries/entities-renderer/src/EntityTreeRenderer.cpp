@@ -554,7 +554,7 @@ const FBXGeometry* EntityTreeRenderer::getCollisionGeometryForEntity(EntityItemP
     return result;
 }
 
-void EntityTreeRenderer::renderElementProxy(EntityTreeElement* entityTreeElement, RenderArgs* args) {
+void EntityTreeRenderer::renderElementProxy(EntityTreeElementPointer entityTreeElement, RenderArgs* args) {
     auto deferredLighting = DependencyManager::get<DeferredLightingEffect>();
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
@@ -628,10 +628,10 @@ void EntityTreeRenderer::renderProxies(EntityItemPointer entity, RenderArgs* arg
     }
 }
 
-void EntityTreeRenderer::renderElement(OctreeElement* element, RenderArgs* args) {
+void EntityTreeRenderer::renderElement(OctreeElementPointer element, RenderArgs* args) {
     // actually render it here...
     // we need to iterate the actual entityItems of the element
-    EntityTreeElement* entityTreeElement = static_cast<EntityTreeElement*>(element);
+    EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
 
     EntityItems& entityItems = entityTreeElement->getEntities();
     
@@ -763,7 +763,7 @@ RayToEntityIntersectionResult EntityTreeRenderer::findRayIntersectionWorker(cons
     if (_tree) {
         EntityTreePointer entityTree = std::static_pointer_cast<EntityTree>(_tree);
 
-        OctreeElement* element;
+        OctreeElementPointer element;
         EntityItemPointer intersectedEntity = NULL;
         result.intersects = entityTree->findRayIntersection(ray.origin, ray.direction, element, result.distance, result.face,
                                                                 (void**)&intersectedEntity, lockType, &result.accurate,

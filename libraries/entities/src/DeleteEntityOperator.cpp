@@ -55,7 +55,7 @@ void DeleteEntityOperator::addEntityIDToDeleteList(const EntityItemID& searchEnt
 
 
 // does this entity tree element contain the old entity
-bool DeleteEntityOperator::subTreeContainsSomeEntitiesToDelete(OctreeElement* element) {
+bool DeleteEntityOperator::subTreeContainsSomeEntitiesToDelete(OctreeElementPointer element) {
     bool containsEntity = false;
 
     // If we don't have an old entity, then we don't contain the entity, otherwise
@@ -72,8 +72,8 @@ bool DeleteEntityOperator::subTreeContainsSomeEntitiesToDelete(OctreeElement* el
     return containsEntity;
 }
 
-bool DeleteEntityOperator::preRecursion(OctreeElement* element) {
-    EntityTreeElement* entityTreeElement = static_cast<EntityTreeElement*>(element);
+bool DeleteEntityOperator::preRecursion(OctreeElementPointer element) {
+    EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
     
     // In Pre-recursion, we're generally deciding whether or not we want to recurse this
     // path of the tree. For this operation, we want to recurse the branch of the tree if:
@@ -100,7 +100,7 @@ bool DeleteEntityOperator::preRecursion(OctreeElement* element) {
                 _foundCount++;
             }
         }
-        
+
         // if we haven't found all of our search for entities, then keep looking
         keepSearching = (_foundCount < _lookingCount);
     }
@@ -108,7 +108,7 @@ bool DeleteEntityOperator::preRecursion(OctreeElement* element) {
     return keepSearching; // if we haven't yet found it, keep looking
 }
 
-bool DeleteEntityOperator::postRecursion(OctreeElement* element) {
+bool DeleteEntityOperator::postRecursion(OctreeElementPointer element) {
     // Post-recursion is the unwinding process. For this operation, while we
     // unwind we want to mark the path as being dirty if we changed it below.
     // We might have two paths, one for the old entity and one for the new entity.
@@ -119,14 +119,13 @@ bool DeleteEntityOperator::postRecursion(OctreeElement* element) {
     if ((subTreeContainsSomeEntitiesToDelete(element))) {
         element->markWithChangedTime();
     }
-    
+
     // It should always be ok to prune children. Because we are only in this PostRecursion function if
     // we've already finished processing all of the children of this current element. If any of those
     // children are the containing element for any entity in our lists of entities to delete, then they
     // must have already deleted the entity, and they are safe to prune. Since this operation doesn't
     // ever add any elements we don't have to worry about memory being reused within this recursion pass.
-    EntityTreeElement* entityTreeElement = static_cast<EntityTreeElement*>(element);
+    EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
     entityTreeElement->pruneChildren(); // take this opportunity to prune any empty leaves
     return keepSearching; // if we haven't yet found it, keep looking
 }
-

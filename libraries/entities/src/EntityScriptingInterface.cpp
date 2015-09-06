@@ -280,7 +280,7 @@ RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersectionWorke
 
     RayToEntityIntersectionResult result;
     if (_entityTree) {
-        OctreeElement* element;
+        OctreeElementPointer element;
         EntityItemPointer intersectedEntity = NULL;
         result.intersects = _entityTree->findRayIntersection(ray.origin, ray.direction, element, result.distance, result.face,
                                                                 (void**)&intersectedEntity, lockType, &result.accurate,

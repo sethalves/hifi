@@ -351,7 +351,7 @@ public:
 bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& origin,
                                                               const glm::vec3& direction,
                                                               bool& keepSearching,
-                                                              OctreeElement*& element,
+                                                              OctreeElementPointer& element,
                                                               float& distance, BoxFace& face,
                                                               void** intersectedObject,
                                                               bool precisionPicking) const
@@ -858,7 +858,7 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync() {
     properties.setVoxelDataDirty();
     properties.setLastEdited(now);
 
-    EntityTreeElement* element = getElement();
+    EntityTreeElementPointer element = getElement();
     EntityTreePointer tree = element ? element->getTree() : nullptr;
     EntitySimulation* simulation = tree ? tree->getSimulation() : nullptr;
     PhysicalEntitySimulation* peSimulation = static_cast<PhysicalEntitySimulation*>(simulation);
@@ -917,7 +917,7 @@ void RenderablePolyVoxEntityItem::clearOutOfDateNeighbors() {
 
 void RenderablePolyVoxEntityItem::cacheNeighbors() {
     clearOutOfDateNeighbors();
-    EntityTreeElement* element = getElement();
+    EntityTreeElementPointer element = getElement();
     EntityTreePointer tree = element ? element->getTree() : nullptr;
     if (!tree) {
         return;
