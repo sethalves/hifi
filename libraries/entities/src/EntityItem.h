@@ -208,20 +208,16 @@ public:
     EntityTypes::EntityType getType() const { return _type; }
 
     inline glm::vec3 getCenterPosition() const { return getTransformToCenter().getTranslation(); }
-    void setCenterPosition(const glm::vec3& position);
-
     const Transform getTransformToCenter() const;
-    void setTranformToCenter(const Transform& transform);
+    Transform getGlobalTransform() const;
+    Transform getParentTransform() const;
 
-    inline const Transform& getTransform() const { return _transform; }
-    inline void setTransform(const Transform& transform) { _transform = transform; requiresRecalcBoxes(); }
+    /// Position in meters (-TREE_SCALE TREE_SCALE)
+    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
+    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
 
-    /// Position in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3& getPosition() const { return _transform.getTranslation(); }
-    inline void setPosition(const glm::vec3& value) { _transform.setTranslation(value); requiresRecalcBoxes(); }
-
-    inline const glm::quat& getRotation() const { return _transform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _transform.setRotation(rotation); requiresRecalcBoxes(); }
+    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
+    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 
     inline void requiresRecalcBoxes() { _recalcAABox = true; _recalcMinAACube = true; _recalcMaxAACube = true; }
 
@@ -233,7 +229,7 @@ public:
     void setDescription(QString value) { _description = value; }
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3& getDimensions() const { return _transform.getScale(); }
+    inline const glm::vec3& getDimensions() const { return _localTransform.getScale(); }
     virtual void setDimensions(const glm::vec3& value);
 
     float getGlowLevel() const { return _glowLevel; }
@@ -418,6 +414,8 @@ public:
 
     virtual void setParentZoneID(const EntityItemID& parentZoneID) { _parentZoneID = parentZoneID; }
     virtual const EntityItemID& getParentZoneID() const { return _parentZoneID; }
+    virtual void acceptChild(EntityItemPointer arrivingEntity);
+    virtual void setDomainAsParent();
 
 protected:
 
@@ -438,7 +436,7 @@ protected:
     quint64 _created;
     quint64 _changedOnServer;
 
-    Transform _transform;
+    Transform _localTransform;
     mutable AABox _cachedAABox;
     mutable AACube _maxAACube;
     mutable AACube _minAACube;
@@ -527,7 +525,8 @@ protected:
     bool isUnlocked() const;
 
     EntityItemID _parentZoneID{UNKNOWN_ENTITY_ID};
-    EntityItemWeakPointer _parentZone;
+    mutable EntityItemWeakPointer _parentZone;
+    void refreshParentEntityItemPointer() const;
 };
 
 #endif // hifi_EntityItem_h

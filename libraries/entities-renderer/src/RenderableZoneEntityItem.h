@@ -25,12 +25,10 @@ public:
 
     RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
         ZoneEntityItem(entityItemID, properties),
-        _model(NULL),
+        _model(nullptr),
         _needsInitialSimulation(true),
-        _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
-        _entitySimulation(new PhysicalEntitySimulation()) {
-        _physicsEngine->init();
-        // _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
+        _physicsEngine(nullptr),
+        _entitySimulation(nullptr) {
     }
 
     virtual bool setProperties(const EntityItemProperties& properties);

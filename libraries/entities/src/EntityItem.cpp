@@ -45,7 +45,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _lastEditedFromRemoteInRemoteTime(0),
     _created(UNKNOWN_CREATED_TIME),
     _changedOnServer(0),
-    _transform(),
+    _localTransform(),
     _glowLevel(ENTITY_ITEM_DEFAULT_GLOW_LEVEL),
     _localRenderAlpha(ENTITY_ITEM_DEFAULT_LOCAL_RENDER_ALPHA),
     _density(ENTITY_ITEM_DEFAULT_DENSITY),
@@ -79,9 +79,9 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _simulated(false)
 {
     // explicitly set transform parts to set dirty flags used by batch rendering
-    _transform.setTranslation(ENTITY_ITEM_DEFAULT_POSITION);
-    _transform.setRotation(ENTITY_ITEM_DEFAULT_ROTATION);
-    _transform.setScale(ENTITY_ITEM_DEFAULT_DIMENSIONS);
+    _localTransform.setTranslation(ENTITY_ITEM_DEFAULT_POSITION);
+    _localTransform.setRotation(ENTITY_ITEM_DEFAULT_ROTATION);
+    _localTransform.setScale(ENTITY_ITEM_DEFAULT_DIMENSIONS);
     quint64 now = usecTimestampNow();
     _lastSimulated = now;
     _lastUpdated = now;
@@ -1161,37 +1161,34 @@ void EntityItem::recordCreationTime() {
     _lastSimulated = now;
 }
 
-void EntityItem::setCenterPosition(const glm::vec3& position) {
-    Transform transformToCenter = getTransformToCenter();
-    transformToCenter.setTranslation(position);
-    setTranformToCenter(transformToCenter);
-}
-
 const Transform EntityItem::getTransformToCenter() const {
-    Transform result = getTransform();
+    Transform result = getGlobalTransform();
     if (getRegistrationPoint() != ENTITY_ITEM_HALF_VEC3) { // If it is not already centered, translate to center
         result.postTranslate(ENTITY_ITEM_HALF_VEC3 - getRegistrationPoint()); // Position to center
     }
     return result;
 }
 
-void EntityItem::setTranformToCenter(const Transform& transform) {
-    if (getRegistrationPoint() == ENTITY_ITEM_HALF_VEC3) {
-        // If it is already centered, just call setTransform
-        setTransform(transform);
-        return;
-    }
+Transform EntityItem::getGlobalTransform() const {
+    Transform result;
+    Transform::mult(result, getParentTransform(), _localTransform);
+    return result;
+}
 
-    Transform copy = transform;
-    copy.postTranslate(getRegistrationPoint() - ENTITY_ITEM_HALF_VEC3); // Center to position
-    setTransform(copy);
+Transform EntityItem::getParentTransform() const {
+    refreshParentEntityItemPointer();
+    EntityItemPointer parentEntityItem = _parentZone.lock();
+    if (!parentEntityItem) {
+        return Transform();
+    }
+    return parentEntityItem->getGlobalTransform();
 }
 
 void EntityItem::setDimensions(const glm::vec3& value) {
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
     }
-    _transform.setScale(value);
+    _localTransform.setScale(value);
     requiresRecalcBoxes();
 }
 
@@ -1776,6 +1773,51 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     return result;
 }
 
+void EntityItem::refreshParentEntityItemPointer() const {
+    // make sure we have the EntityTree available
+    EntityTreeElement* element = getElement();
+    EntityTree* tree = element ? element->getTree() : nullptr;
+    if (!tree) {
+        _parentZone.reset();
+        return;
+    }
+    // if the ID has changed, clear the old pointer
+    if (_parentZoneID != UNKNOWN_ENTITY_ID) {
+        EntityItemPointer parentEntityItem = _parentZone.lock();
+        if (parentEntityItem && parentEntityItem->getID() != _parentZoneID) {
+            _parentZone.reset();
+        }
+    }
+    // if the ID is non-null and we don't have a pointer, find the parent entity
+    if (_parentZoneID != UNKNOWN_ENTITY_ID && _parentZone.expired()) {
+        _parentZone = tree->findEntityByID(_parentZoneID);
+    }
+}
+
+
+void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
+    arrivingEntity->setParentZoneID(_id);
+
+    Transform myGlobalTransform = getGlobalTransform();
+    glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
+
+    Transform newChildGlobalTransform = arrivingEntity->getGlobalTransform();
+    glm::vec3 newChildGlobalPosition = newChildGlobalTransform.getTranslation();
+
+    glm::vec3 newChildLocalPosition = newChildGlobalPosition - myGlobalPosition;
+    arrivingEntity->setPosition(newChildLocalPosition);
+
+    #warning rotation velocity angular-velocity transmit-data
+}
+
+void EntityItem::setDomainAsParent() {
+    setParentZoneID(UNKNOWN_ENTITY_ID);
+    Transform myGlobalTransform = getGlobalTransform();
+    glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
+    setPosition(myGlobalPosition);
+
+    #warning rotation velocity angular-velocity transmit-data
+}
 
 
 #define ENABLE_LOCKING 1
