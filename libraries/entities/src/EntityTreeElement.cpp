@@ -42,8 +42,7 @@ OctreeElementPointer EntityTreeElement::createNewElement(unsigned char* octalCod
                                  // or the destructor wouldn't have been called).  The destructor also can't
                                  // make a new shared pointer -- shared_from_this() is forbidden in a destructor, and
                                  // using OctreeElementPointer(this) also fails.  So, I've installed a custom deleter:
-                                 [=](EntityTreeElement* elt)
-                                 {
+                                 [=](EntityTreeElement* elt) {
                                      // make a new shared pointer with a reference count of 1 (and no custom deleter)
                                      EntityTreeElementPointer tmpSharedPointer(elt);
                                      // call notifyDeleteHooks which will use shared_from_this() to get this same
@@ -195,10 +194,10 @@ void EntityTreeElement::elementEncodeComplete(EncodeBitstreamParams& params, Oct
     // but not necessarily cleanup our own encode data...
     //
     // If we're really complete here's what must be true...
-    //    1) out own data must be complete
+    //    1) our own data must be complete
     //    2) the data for all our immediate children must be complete.
     // However, the following might also be the case...
-    //    1) it's ok for our child trees to not yet be fully encoded/complete... 
+    //    1) it's ok for our child trees to not yet be fully encoded/complete...
     //       SO LONG AS... the our child's node is in the bag ready for encoding
 
     bool someChildTreeNotComplete = false;
