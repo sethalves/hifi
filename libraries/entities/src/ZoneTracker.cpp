@@ -23,3 +23,10 @@ void ZoneTracker::trackZone(EntityItemPointer newZone) {
 void ZoneTracker::forgetZone(EntityItemPointer goingAwayZone) {
     _zones.remove(goingAwayZone->getID());
 }
+
+
+EntityItemPointer ZoneTracker::addEntity(const EntityItemID& entityID,
+                                         const EntityItemProperties& properties,
+                                         EntityTreePointer defaultTree) {
+    return defaultTree->addEntity(entityID, properties);
+}

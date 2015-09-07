@@ -22,6 +22,7 @@
 #include "ModelEntityItem.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
+#include "ZoneTracker.h"
 
 
 EntityScriptingInterface::EntityScriptingInterface() :
@@ -73,7 +74,8 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
     bool success = true;
     if (_entityTree) {
         _entityTree->lockForWrite();
-        EntityItemPointer entity = _entityTree->addEntity(id, propertiesWithSimID);
+        EntityItemPointer entity = DependencyManager::get<ZoneTracker>()->addEntity(id, propertiesWithSimID, _entityTree);
+
         if (entity) {
             // This Node is creating a new object.  If it's in motion, set this Node as the simulator.
             auto nodeList = DependencyManager::get<NodeList>();

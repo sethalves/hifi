@@ -17,6 +17,7 @@
 
 #include <DependencyManager.h>
 
+#include "EntityTree.h"
 #include "EntityItem.h"
 
 class ZoneTracker : public QObject, public Dependency {
@@ -27,6 +28,9 @@ public:
     ZoneTracker();
     void trackZone(EntityItemPointer newZone);
     void forgetZone(EntityItemPointer goingAwayZone);
+    EntityItemPointer addEntity(const EntityItemID& entityID,
+                                const EntityItemProperties& properties,
+                                EntityTreePointer defaultTree);
 
 private:
     QHash<EntityItemID, EntityItemPointer> _zones;

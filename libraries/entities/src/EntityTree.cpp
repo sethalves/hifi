@@ -24,6 +24,7 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
+#include "ZoneTracker.h"
 
 
 EntityTree::EntityTree(bool shouldReaverage) :
@@ -632,7 +633,9 @@ int EntityTree::processEditPacketData(NLPacket& packet, const unsigned char* edi
                         // this is a new entity... assign a new entityID
                         properties.setCreated(properties.getLastEdited());
                         startCreate = usecTimestampNow();
-                        EntityItemPointer newEntity = addEntity(entityItemID, properties);
+                        EntityItemPointer newEntity =
+                            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties, getThisPointer());
+
                         endCreate = usecTimestampNow();
                         _totalCreates++;
                         if (newEntity) {
@@ -1086,7 +1089,9 @@ bool EntityTree::readFromMap(QVariantMap& map) {
             entityItemID = EntityItemID(QUuid::createUuid());
         }
 
-        EntityItemPointer entity = addEntity(entityItemID, properties);
+        EntityItemPointer entity =
+            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties, getThisPointer());
+
         if (!entity) {
             qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
         }

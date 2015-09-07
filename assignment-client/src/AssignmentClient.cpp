@@ -30,6 +30,7 @@
 #include <SharedUtil.h>
 #include <ShutdownEventListener.h>
 #include <SoundCache.h>
+#include <ZoneTracker.h>
 
 #include "AssignmentFactory.h"
 #include "AssignmentActionFactory.h"
@@ -60,6 +61,8 @@ AssignmentClient::AssignmentClient(Assignment::Type requestAssignmentType, QStri
 
     DependencyManager::registerInheritance<EntityActionFactoryInterface, AssignmentActionFactory>();
     auto actionFactory = DependencyManager::set<AssignmentActionFactory>();
+
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
 
     // setup a thread for the NodeList and its PacketReceiver
     QThread* nodeThread = new QThread(this);
