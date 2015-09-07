@@ -39,6 +39,8 @@ typedef std::shared_ptr<const OctreeElement> ConstOctreeElementPointer;
 
 typedef std::shared_ptr<Octree> OctreePointer;
 
+typedef std::shared_ptr<Octree> OctreePointer;
+
 // Callers who want delete hook callbacks should implement this class
 class OctreeElementDeleteHook {
 public:

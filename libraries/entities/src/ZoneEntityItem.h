@@ -130,6 +130,8 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
+
+    EntityTreePointer subTree;
 };
 
 #endif // hifi_ZoneEntityItem_h
