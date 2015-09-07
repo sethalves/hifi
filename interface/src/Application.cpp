@@ -63,6 +63,8 @@
 #include <display-plugins/DisplayPlugin.h>
 
 #include <EntityScriptingInterface.h>
+#include <ZoneTracker.h>
+
 #include <ErrorDialog.h>
 #include <Finally.h>
 #include <FramebufferCache.h>
@@ -293,6 +295,7 @@ bool setupEssentials(int& argc, char** argv) {
     auto animationCache = DependencyManager::set<AnimationCache>();
     auto modelBlender = DependencyManager::set<ModelBlender>();
     auto avatarManager = DependencyManager::set<AvatarManager>();
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
     auto lodManager = DependencyManager::set<LODManager>();
     auto jsConsole = DependencyManager::set<StandAloneJSConsole>();
     auto dialogsManager = DependencyManager::set<DialogsManager>();

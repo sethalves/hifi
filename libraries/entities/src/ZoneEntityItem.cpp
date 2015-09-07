@@ -18,6 +18,7 @@
 #include "EntityTree.h"
 #include "EntitiesLogging.h"
 #include "EntityTreeElement.h"
+#include "ZoneTracker.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
 bool ZoneEntityItem::_drawZoneBoundaries = false;
@@ -30,12 +31,15 @@ const ShapeType ZoneEntityItem::DEFAULT_SHAPE_TYPE = SHAPE_TYPE_BOX;
 const QString ZoneEntityItem::DEFAULT_COMPOUND_SHAPE_URL = "";
 
 EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
-    return std::make_shared<ZoneEntityItem>(entityID, properties);
+    auto result = std::make_shared<ZoneEntityItem>(entityID, properties);
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    zoneTracker->trackZone(result);
+    return result;
 }
 
 ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-        EntityItem(entityItemID) 
-{
+    EntityItem(entityItemID),
+    _subTree(new EntityTree()) {
     _type = EntityTypes::Zone;
 
     _keyLightColor[RED_INDEX] = DEFAULT_KEYLIGHT_COLOR.red;
@@ -49,7 +53,7 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
     _compoundShapeURL = DEFAULT_COMPOUND_SHAPE_URL;
 
     _backgroundMode = BACKGROUND_MODE_INHERIT;
-    
+
     setProperties(properties);
 }
 

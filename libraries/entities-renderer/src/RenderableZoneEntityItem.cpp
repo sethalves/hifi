@@ -23,6 +23,21 @@ EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID
     return std::make_shared<RenderableZoneEntityItem>(entityID, properties);
 }
 
+
+RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
+    ZoneEntityItem(entityItemID, properties),
+    _model(nullptr),
+    _needsInitialSimulation(true),
+    _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
+    _entitySimulation(new PhysicalEntitySimulation()) {
+    // _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
+}
+
+
+RenderableZoneEntityItem::~RenderableZoneEntityItem() {
+}
+
+
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
