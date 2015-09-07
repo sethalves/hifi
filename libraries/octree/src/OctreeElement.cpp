@@ -95,7 +95,10 @@ void OctreeElement::init(unsigned char * octalCode) {
 }
 
 OctreeElement::~OctreeElement() {
-    notifyDeleteHooks();
+    // We can't call notifyDeleteHooks from here:
+    //   notifyDeleteHooks();
+    // see comment in EntityTreeElement::createNewElement.
+    assert(_deleteHooksNotified);
     _voxelNodeCount--;
     if (isLeaf()) {
         _voxelNodeLeafCount--;
@@ -546,6 +549,7 @@ void OctreeElement::notifyDeleteHooks() {
         _deleteHooks[i]->elementDeleted(shared_from_this());
     }
     _deleteHooksLock.unlock();
+    _deleteHooksNotified = true;
 }
 
 std::vector<OctreeElementUpdateHook*> OctreeElement::_updateHooks;

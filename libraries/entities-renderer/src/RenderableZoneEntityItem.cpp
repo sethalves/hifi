@@ -30,7 +30,7 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
     _needsInitialSimulation(true),
     _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
     _entitySimulation(new PhysicalEntitySimulation()) {
-    // _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
+    // _entitySimulation.init(_subTree, _physicsEngine, &_entityEditSender);
 }
 
 

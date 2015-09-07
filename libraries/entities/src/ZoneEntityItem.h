@@ -111,7 +111,9 @@ public:
     static const glm::vec3 DEFAULT_KEYLIGHT_DIRECTION;
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
-    
+
+    EntityTreePointer getSubTree() { return _subTree; }
+
 protected:
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;

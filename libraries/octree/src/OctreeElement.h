@@ -34,11 +34,7 @@ class ReadBitstreamToTreeParams;
 class Shape;
 class VoxelSystem;
 typedef std::shared_ptr<OctreeElement> OctreeElementPointer;
-typedef std::shared_ptr<OctreeElement> OctreeElementPointer;
 typedef std::shared_ptr<const OctreeElement> ConstOctreeElementPointer;
-
-typedef std::shared_ptr<Octree> OctreePointer;
-
 typedef std::shared_ptr<Octree> OctreePointer;
 
 // Callers who want delete hook callbacks should implement this class
@@ -293,6 +289,8 @@ protected:
          _octcodePointer : 1, /// Client and Server only, is this voxel's octal code a pointer or buffer, 1 bit
          _unknownBufferIndex : 1,
          _childrenExternal : 1; /// Client only, is this voxel's VBO buffer the unknown buffer index, 1 bit
+
+    bool _deleteHooksNotified = false;
 
     static QReadWriteLock _deleteHooksLock;
     static std::vector<OctreeElementDeleteHook*> _deleteHooks;

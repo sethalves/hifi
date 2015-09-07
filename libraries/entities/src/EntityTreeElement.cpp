@@ -32,7 +32,26 @@ EntityTreeElement::~EntityTreeElement() {
 // own type to our own tree. This means we should initialize that child with any tree and type
 // specific settings that our children must have.
 OctreeElementPointer EntityTreeElement::createNewElement(unsigned char* octalCode) {
-    EntityTreeElementPointer newChild = EntityTreeElementPointer(new EntityTreeElement(octalCode));
+    EntityTreeElementPointer newChild =
+        EntityTreeElementPointer(new EntityTreeElement(octalCode),
+                                 // This is a little bit horrible, but I haven't found a better way.  The OctreeElement
+                                 // destructor used to call notifyDeleteHooks(), which calls zero or more of
+                                 //   OctreeElementDeleteHook::elementDeleted
+                                 // which (now) expects an OctreeElementPointer argument.  The destructor doesn't have
+                                 // access to the shared pointer (which has had its reference count drop to zero,
+                                 // or the destructor wouldn't have been called).  The destructor also can't
+                                 // make a new shared pointer -- shared_from_this() is forbidden in a destructor, and
+                                 // using OctreeElementPointer(this) also fails.  So, I've installed a custom deleter:
+                                 [=](EntityTreeElement* elt)
+                                 {
+                                     // make a new shared pointer with a reference count of 1 (and no custom deleter)
+                                     EntityTreeElementPointer tmpSharedPointer(elt);
+                                     // call notifyDeleteHooks which will use shared_from_this() to get this same
+                                     // shared pointer, for use with the elementDeleted calls.
+                                     elt->notifyDeleteHooks();
+                                     // And now tmpSharedPointer's reference count drops to zero and the
+                                     // normal destructors are called.
+                                 });
     newChild->setTree(_myTree);
     return newChild;
 }

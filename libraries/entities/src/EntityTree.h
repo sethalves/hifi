@@ -61,7 +61,12 @@ public:
     virtual OctreeElementPointer createNewElement(unsigned char * octalCode = NULL);
 
     /// Type safe version of getRoot()
-    EntityTreeElementPointer getRoot() { return std::static_pointer_cast<EntityTreeElement>(_rootElement); }
+    EntityTreeElementPointer getRoot() {
+        if (!_rootElement) {
+            createRootElement();
+        }
+        return std::static_pointer_cast<EntityTreeElement>(_rootElement);
+    }
 
     virtual void eraseAllOctreeElements(bool createNewRoot = true);
 
