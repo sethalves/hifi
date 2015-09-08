@@ -988,8 +988,8 @@ OctreeElementPointer Octree::getElementEnclosingPoint(const glm::vec3& point, Oc
 
 
 int Octree::encodeTreeBitstream(OctreeElementPointer element,
-                        OctreePacketData* packetData, OctreeElementBag& bag,
-                        EncodeBitstreamParams& params) {
+                                OctreePacketData* packetData, OctreeElementBag& bag,
+                                EncodeBitstreamParams& params) {
 
     // How many bytes have we written so far at this level;
     int bytesWritten = 0;
@@ -1045,7 +1045,7 @@ int Octree::encodeTreeBitstream(OctreeElementPointer element,
     ViewFrustum::location parentLocationThisView = ViewFrustum::INTERSECT; // assume parent is in view, but not fully
 
     int childBytesWritten = encodeTreeBitstreamRecursion(element, packetData, bag, params,
-                                                            currentEncodeLevel, parentLocationThisView);
+                                                         currentEncodeLevel, parentLocationThisView);
 
 
     // if childBytesWritten == 1 then something went wrong... that's not possible
@@ -1077,9 +1077,9 @@ int Octree::encodeTreeBitstream(OctreeElementPointer element,
 }
 
 int Octree::encodeTreeBitstreamRecursion(OctreeElementPointer element,
-                                            OctreePacketData* packetData, OctreeElementBag& bag,
-                                            EncodeBitstreamParams& params, int& currentEncodeLevel,
-                                            const ViewFrustum::location& parentLocationThisView) const {
+                                         OctreePacketData* packetData, OctreeElementBag& bag,
+                                         EncodeBitstreamParams& params, int& currentEncodeLevel,
+                                         const ViewFrustum::location& parentLocationThisView) const {
 
 
     const bool wantDebug = false;
@@ -1331,7 +1331,7 @@ int Octree::encodeTreeBitstreamRecursion(OctreeElementPointer element,
                 params.stats->skippedOutOfView(childElement);
             }
         } else {
-            // Before we determine consider this further, let's see if it's in our LOD scope...
+            // Before we consider this further, let's see if it's in our LOD scope...
             float distance = distancesToChildren[i];
             float boundaryDistance = !params.viewFrustum ? 1 :
                                      boundaryDistanceForRenderLevel(childElement->getLevel() + params.boundaryLevelAdjust,
@@ -1358,7 +1358,7 @@ int Octree::encodeTreeBitstreamRecursion(OctreeElementPointer element,
                 // If the user also asked for occlusion culling, check if this element is occluded
                 if (params.wantOcclusionCulling && childElement->isLeaf()) {
                     // Don't check occlusion here, just add them to our distance ordered array...
-                    
+
                     // FIXME params.ViewFrustum is used here, but later it is checked against nullptr.
                     OctreeProjectedPolygon* voxelPolygon = new OctreeProjectedPolygon(
                                 params.viewFrustum->getProjectedPolygon(childElement->getAACube()));

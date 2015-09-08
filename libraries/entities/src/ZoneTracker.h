@@ -32,8 +32,13 @@ public:
                                 const EntityItemProperties& properties,
                                 EntityTreePointer defaultTree);
 
+    EntityItemPointer findEntityByEntityItemID(EntityTreePointer defaultTree, const EntityItemID& entityID);
+    void reparent(EntityItemID needsReparentID);
+    void doReparentings(EntityTreePointer defaultTree);
+
 private:
     QHash<EntityItemID, EntityItemPointer> _zones;
+    QSet<EntityItemID> _needsReparent;
 };
 
 

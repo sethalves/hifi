@@ -989,6 +989,13 @@ bool EntityItem::isMoving() const {
     return hasVelocity() || hasAngularVelocity();
 }
 
+EntityTreePointer EntityItem::getTree() const {
+    EntityTreeElementPointer elt = getElement();
+    EntityTreePointer tree = elt ? elt->getTree() : nullptr;
+    return tree;
+}
+
+
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     glm::mat4 translation = glm::translate(getPosition());
     glm::mat4 rotation = glm::mat4_cast(getRotation());

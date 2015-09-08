@@ -316,13 +316,13 @@ void EntityTree::setSimulation(EntitySimulation* simulation) {
     _simulation = simulation;
 }
 
-void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
+EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         if (!ignoreWarnings) {
             qCDebug(entities) << "UNEXPECTED!!!!  EntityTree::deleteEntity() entityID doesn't exist!!! entityID=" << entityID;
         }
-        return;
+        return nullptr;
     }
 
     EntityItemPointer existingEntity = containingElement->getEntityWithEntityItemID(entityID);
@@ -331,14 +331,14 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
             qCDebug(entities) << "UNEXPECTED!!!! don't call EntityTree::deleteEntity() on entity items that don't exist. "
                         "entityID=" << entityID;
         }
-        return;
+        return nullptr;
     }
 
     if (existingEntity->getLocked() && !force) {
         if (!ignoreWarnings) {
             qCDebug(entities) << "ERROR! EntityTree::deleteEntity() trying to delete locked entity. entityID=" << entityID;
         }
-        return;
+        return nullptr;
     }
 
     emit deletingEntity(entityID);
@@ -348,6 +348,8 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
     recurseTreeWithOperator(&theOperator);
     processRemovedEntities(theOperator);
     _isDirty = true;
+
+    return existingEntity;
 }
 
 void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings) {
@@ -1131,4 +1133,19 @@ void EntityTree::trackIncomingEntityLastEdited(quint64 lastEditedTime, int bytes
             _maxEditDelta = sinceEdit;
         }
     }
+}
+
+
+QList<EntityItemPointer> EntityTree::getAllEntities() {
+    QList<EntityItemPointer> result;
+    QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
+
+    foreach (EntityTreeElementPointer entityTreeElement, _entityToElementMap.values()) {
+        const EntityItems& entityItems = entityTreeElement->getEntities();
+        foreach (EntityItemPointer entityItem, entityItems) {
+            result << entityItem;
+        }
+    }
+
+    return result;
 }

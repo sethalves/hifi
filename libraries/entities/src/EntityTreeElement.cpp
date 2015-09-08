@@ -17,6 +17,8 @@
 #include "EntityTree.h"
 #include "EntitiesLogging.h"
 #include "EntityTreeElement.h"
+#include "ZoneEntityItem.h"
+#include "ZoneTracker.h"
 
 EntityTreeElement::EntityTreeElement(unsigned char* octalCode) : OctreeElement(), _entityItems(NULL) {
     init(octalCode);
@@ -277,13 +279,36 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                 if (child->hasEntities()) {
                     entityTreeElementExtraEncodeData->childCompleted[i] = false;
                 } else {
-                    entityTreeElementExtraEncodeData->childCompleted[i] = true; // if the child doesn't have enities, it is completed
+                    // if the child doesn't have enities, it is completed
+                    entityTreeElementExtraEncodeData->childCompleted[i] = true;
                 }
             }
         }
         for (uint16_t i = 0; i < _entityItems->size(); i++) {
             EntityItemPointer entity = (*_entityItems)[i];
             entityTreeElementExtraEncodeData->entities.insert(entity->getEntityItemID(), entity->getEntityProperties(params));
+
+#if 1
+            if (entity->getID() == EntityItemID("4a3544d6-a8f3-4717-a929-b48c01cf1d20")) {
+                qDebug() << "\n\nHERE0\n\n";
+            }
+            // TODO: ask Zappoman what to do.
+            // if this entity is a ZoneEntityItem, jam all its children into the list of entities to encode
+            if (entity->getType() == EntityTypes::Zone) {
+
+                auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
+
+                if (entity->getID() == EntityItemID("4a3544d6-a8f3-4717-a929-b48c01cf1d20")) {
+                    qDebug() << "\n\nHERE1" << zoneEntityItem->getSubTree()->getAllEntities().size();
+                }
+
+
+                foreach (EntityItemPointer zoneChildEntity, zoneEntityItem->getSubTree()->getAllEntities()) {
+                    entityTreeElementExtraEncodeData->extraChildren << zoneChildEntity;
+                    qDebug() << "XXXXX ZXXXX XXXXXX  XXX selecting" << zoneChildEntity->getID();
+                }
+            }
+#endif
         }
     }
 
@@ -299,34 +324,34 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
     QVector<uint16_t> indexesOfEntitiesToInclude;
 
     // It's possible that our element has been previous completed. In this case we'll simply not include any of our
-    // entities for encoding. This is needed because we encode the element data at the "parent" level, and so we 
+    // entities for encoding. This is needed because we encode the element data at the "parent" level, and so we
     // need to handle the case where our sibling elements need encoding but we don't.
     if (!entityTreeElementExtraEncodeData->elementCompleted) {
         for (uint16_t i = 0; i < _entityItems->size(); i++) {
             EntityItemPointer entity = (*_entityItems)[i];
             bool includeThisEntity = true;
-            
+
             if (!params.forceSendScene && entity->getLastChangedOnServer() < params.lastViewFrustumSent) {
                 includeThisEntity = false;
             }
-        
+
             if (hadElementExtraData) {
-                includeThisEntity = includeThisEntity && 
+                includeThisEntity = includeThisEntity &&
                                         entityTreeElementExtraEncodeData->entities.contains(entity->getEntityItemID());
             }
-        
+
             if (includeThisEntity && params.viewFrustum) {
-            
+
                 // we want to use the maximum possible box for this, so that we don't have to worry about the nuance of
                 // simulation changing what's visible. consider the case where the entity contains an angular velocity
-                // the entity may not be in view and then in view a frame later, let the client side handle it's view
+                // the entity may not be in view and then in view a frame later, let the client side handle its view
                 // frustum culling on rendering.
                 AACube entityCube = entity->getMaximumAACube();
                 if (params.viewFrustum->cubeInFrustum(entityCube) == ViewFrustum::OUTSIDE) {
                     includeThisEntity = false; // out of view, don't include it
                 }
             }
-        
+
             if (includeThisEntity) {
                 indexesOfEntitiesToInclude << i;
                 numberOfEntities++;
@@ -341,8 +366,8 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
         foreach (uint16_t i, indexesOfEntitiesToInclude) {
             EntityItemPointer entity = (*_entityItems)[i];
             LevelDetails entityLevel = packetData->startLevel();
-            OctreeElement::AppendState appendEntityState = entity->appendEntityData(packetData, 
-                                                                        params, entityTreeElementExtraEncodeData);
+            OctreeElement::AppendState appendEntityState =
+                entity->appendEntityData(packetData, params, entityTreeElementExtraEncodeData);
 
             // If none of this entity data was able to be appended, then discard it
             // and don't include it in our entity count
@@ -354,7 +379,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                 packetData->endLevel(entityLevel);
                 actualNumberOfEntities++;
             }
-            
+
             // If the entity item got completely appended, then we can remove it from the extra encode data
             if (appendEntityState == OctreeElement::COMPLETED) {
                 entityTreeElementExtraEncodeData->entities.remove(entity->getEntityItemID());
@@ -367,6 +392,44 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                 appendElementState = OctreeElement::PARTIAL;
             }
         }
+
+#if 1
+        // TODO: ask Zappoman what to do
+        QMutableSetIterator<EntityItemPointer> extraChildrenIterator(entityTreeElementExtraEncodeData->extraChildren);
+        while (extraChildrenIterator.hasNext()) {
+            EntityItemPointer entity = extraChildrenIterator.next();
+            LevelDetails entityLevel = packetData->startLevel();
+
+            qDebug() << "XXXXX ZXXXX XXXXXX  XXX packing" << entity->getID();
+
+            OctreeElement::AppendState appendEntityState =
+                entity->appendEntityData(packetData, params, entityTreeElementExtraEncodeData);
+
+            // If none of this entity data was able to be appended, then discard it
+            // and don't include it in our entity count
+            if (appendEntityState == OctreeElement::NONE) {
+                packetData->discardLevel(entityLevel);
+            } else {
+                // If either ALL or some of it got appended, then end the level (commit it)
+                // and include the entity in our final count of entities
+                packetData->endLevel(entityLevel);
+                actualNumberOfEntities++;
+            }
+
+            // If the entity item got completely appended, then we can remove it from the extra encode data
+            if (appendEntityState == OctreeElement::COMPLETED) {
+                extraChildrenIterator.remove();
+            }
+
+            // If any part of the entity items didn't fit, then the element is considered partial
+            // NOTE: if the entity item didn't fit or only partially fit, then the entity item should have
+            // added itself to the extra encode data.
+            if (appendEntityState != OctreeElement::COMPLETED) {
+                appendElementState = OctreeElement::PARTIAL;
+            }
+        }
+#endif
+
     } else {
         // we we couldn't add the entity count, then we couldn't add anything for this element and we're in a NONE state
         appendElementState = OctreeElement::NONE;
@@ -377,7 +440,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
     // this octree element.
     if (extraEncodeData && entityTreeElementExtraEncodeData) {
 
-        // After processing, if we are PARTIAL or COMPLETED then we need to re-include our extra data. 
+        // After processing, if we are PARTIAL or COMPLETED then we need to re-include our extra data.
         // Only our parent can remove our extra data in these cases and only after it knows that all of its
         // children have been encoded.
         // If we weren't able to encode ANY data about ourselves, then we go ahead and remove our element data
@@ -717,6 +780,8 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
         return 0;
     }
 
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+
     const unsigned char* dataAt = data;
     int bytesRead = 0;
     uint16_t numberOfEntities = 0;
@@ -743,7 +808,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 // which will correctly handle the case of creating models and letting them parse the old format.
                 if (args.bitstreamVersion >= VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
                     entityItemID = EntityItemID::readEntityItemIDFromBuffer(dataAt, bytesLeftToRead);
-                    entityItem = _myTree->findEntityByEntityItemID(entityItemID);
+                    entityItem = zoneTracker->findEntityByEntityItemID(_myTree, entityItemID);
                 }
 
                 // If the item already exists in our tree, we want do the following...
@@ -770,6 +835,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                             // This is the case where the entity existed, and is in some element in our tree...
                             if (currentContainingElement.get() != this) {
                                 currentContainingElement->removeEntityItem(entityItem);
+
                                 addEntityItem(entityItem);
                                 _myTree->setContainingElement(entityItemID, getThisPointer());
                             }
@@ -780,8 +846,23 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     quint64 entityScriptTimestampAfter = entityItem->getScriptTimestamp();
                     bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
                     if (entityScriptBefore != entityScriptAfter || reload) {
-                        _myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
+                        myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
                     }
+
+                    // make sure entity is in the correct tree
+                    EntityTreePointer tree = entityItem->getTree();
+                    if (entityItem->getParentZoneID() == UNKNOWN_ENTITY_ID) {
+                        if (entityItem->getTree() != _myTree) {
+                            zoneTracker->reparent(entityItemID);
+                        }
+                    } else {
+                        EntityItemPointer parent = zoneTracker->findEntityByEntityItemID(_myTree, entityItem->getID());
+                        auto parentZone = std::dynamic_pointer_cast<ZoneEntityItem>(parent);
+                        if (parentZone && parentZone->getSubTree() != tree) {
+                            zoneTracker->reparent(entityItemID);
+                        }
+                    }
+                    qDebug() << "UPDATE FOR" << entityItem->getName();
 
                 } else {
                     entityItem = EntityTypes::constructEntityItem(dataAt, bytesLeftToRead, args);
@@ -794,6 +875,10 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                         if (entityItem->getCreated() == UNKNOWN_CREATED_TIME) {
                             entityItem->recordCreationTime();
                         }
+                        if (entityItem->getParentZoneID() != UNKNOWN_ENTITY_ID) {
+                            zoneTracker->reparent(entityItemID);
+                        }
+                        qDebug() << "NEW FOR" << entityItem->getName();
                     }
                 }
                 // Move the buffer forward to read more entities
@@ -803,7 +888,9 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
             }
         }
     }
-    
+
+    zoneTracker->doReparentings(_myTree);
+
     return bytesRead;
 }
 

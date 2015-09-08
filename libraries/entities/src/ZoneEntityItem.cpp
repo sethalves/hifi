@@ -54,6 +54,8 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
 
     _backgroundMode = BACKGROUND_MODE_INHERIT;
 
+    _subTree->createRootElement();
+
     setProperties(properties);
 }
 

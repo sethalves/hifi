@@ -30,10 +30,13 @@
 #include "EntityTypes.h"
 #include "SimulationOwner.h"
 
+
 class EntitySimulation;
 class EntityTreeElement;
 class EntityTreeElementExtraEncodeData;
 class EntityActionInterface;
+class EntityTree;
+typedef std::shared_ptr<EntityTree> EntityTreePointer;
 typedef std::shared_ptr<EntityActionInterface> EntityActionPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
 
@@ -385,6 +388,7 @@ public:
 
     void setPhysicsInfo(void* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
+    EntityTreePointer getTree() const;
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
     static bool getSendPhysicsUpdates() { return _sendPhysicsUpdates; }

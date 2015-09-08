@@ -53,6 +53,7 @@ public:
     bool subtreeCompleted;
     bool childCompleted[NUMBER_OF_CHILDREN];
     QMap<EntityItemID, EntityPropertyFlags> entities;
+    QSet<EntityItemPointer> extraChildren;
 };
 
 inline QDebug operator<<(QDebug debug, const EntityTreeElementExtraEncodeData* data) {
