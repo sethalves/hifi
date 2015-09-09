@@ -221,7 +221,6 @@ public:
 
     inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
     inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
-
     inline void requiresRecalcBoxes() { _recalcAABox = true; _recalcMinAACube = true; _recalcMaxAACube = true; }
 
     // Hyperlink related getters and setters

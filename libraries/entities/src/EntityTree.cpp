@@ -72,7 +72,7 @@ void EntityTree::eraseAllOctreeElements(bool createNewRoot) {
     resetClientEditStats();
 }
 
-bool EntityTree::handlesEditPacketType(PacketType::Value packetType) const {
+bool EntityTree::handlesEditPacketType(PacketType packetType) const {
     // we handle these types of "edit" packets
     switch (packetType) {
         case PacketType::EntityAdd:
@@ -316,7 +316,7 @@ void EntityTree::setSimulation(EntitySimulation* simulation) {
     _simulation = simulation;
 }
 
-EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
+void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         if (!ignoreWarnings) {

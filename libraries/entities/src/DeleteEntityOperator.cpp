@@ -74,7 +74,7 @@ bool DeleteEntityOperator::subTreeContainsSomeEntitiesToDelete(OctreeElementPoin
 
 bool DeleteEntityOperator::preRecursion(OctreeElementPointer element) {
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
-    
+
     // In Pre-recursion, we're generally deciding whether or not we want to recurse this
     // path of the tree. For this operation, we want to recurse the branch of the tree if:
     //   * We have not yet found the all entities, and 

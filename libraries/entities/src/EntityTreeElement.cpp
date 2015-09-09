@@ -57,6 +57,8 @@ OctreeElementPointer EntityTreeElement::createNewElement(unsigned char* octalCod
     return newChild;
 }
 
+
+
 void EntityTreeElement::init(unsigned char* octalCode) {
     OctreeElement::init(octalCode);
     _entityItems = new EntityItems;
@@ -555,7 +557,7 @@ bool EntityTreeElement::bestFitBounds(const glm::vec3& minPoint, const glm::vec3
 }
 
 bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElementPointer& element, float& distance, BoxFace& face, 
+                         bool& keepSearching, OctreeElementPointer& element, float& distance, BoxFace& face,
                          void** intersectedObject, bool precisionPicking, float distanceToElementCube) {
 
     // only called if we do intersect our bounding cube, but find if we actually intersect with entities...
