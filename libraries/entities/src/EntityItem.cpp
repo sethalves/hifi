@@ -134,7 +134,6 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
-    requestedProperties += PROP_PARENT_ID;
 
     return requestedProperties;
 }
@@ -274,7 +273,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
-        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, getParentID());
 
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
@@ -393,7 +391,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     }
 #endif
 
-    if (args.bitstreamVersion >= VERSION_ENTITIES_ZONE_HAVE_TREES) {
+    if (args.bitstreamVersion >= VERSION_ENTITIES_ZONES_HAVE_TREES) {
         // parent ID
         parser.readUuid(_parentID);
 #ifdef VALIDATE_ENTITY_ITEM_PARSER
@@ -734,8 +732,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionData);
         overwriteLocalData = oldOverwrite;
     }
-
-    // READ_ENTITY_PROPERTY(PROP_PARENT_ID, EntityItemID, setParentID);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
