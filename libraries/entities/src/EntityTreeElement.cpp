@@ -290,20 +290,15 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             EntityItemPointer entity = (*_entityItems)[i];
             entityTreeElementExtraEncodeData->entities.insert(entity->getEntityItemID(), entity->getEntityProperties(params));
 
-#if 1
-            if (entity->getID() == EntityItemID("4a3544d6-a8f3-4717-a929-b48c01cf1d20")) {
-                qDebug() << "\n\nHERE0\n\n";
-            }
+#if 0
             // TODO: ask Zappoman what to do.
             // if this entity is a ZoneEntityItem, jam all its children into the list of entities to encode
             if (entity->getType() == EntityTypes::Zone) {
 
                 auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
 
-                if (entity->getID() == EntityItemID("4a3544d6-a8f3-4717-a929-b48c01cf1d20")) {
-                    qDebug() << "\n\nHERE1" << zoneEntityItem->getSubTree()->getAllEntities().size();
-                }
-
+                qDebug() << "PACKING ZONE" << entity->getID() << "children-count:"
+                         << zoneEntityItem->getSubTree()->getAllEntities().size();
 
                 foreach (EntityItemPointer zoneChildEntity, zoneEntityItem->getSubTree()->getAllEntities()) {
                     entityTreeElementExtraEncodeData->extraChildren << zoneChildEntity;
@@ -395,7 +390,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             }
         }
 
-#if 1
+#if 0
         // TODO: ask Zappoman what to do
         QMutableSetIterator<EntityItemPointer> extraChildrenIterator(entityTreeElementExtraEncodeData->extraChildren);
         while (extraChildrenIterator.hasNext()) {
@@ -853,7 +848,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
 
                     // make sure entity is in the correct tree
                     EntityTreePointer tree = entityItem->getTree();
-                    if (entityItem->getParentZoneID() == UNKNOWN_ENTITY_ID) {
+                    if (entityItem->getParentID() == UNKNOWN_ENTITY_ID) {
                         if (entityItem->getTree() != _myTree) {
                             zoneTracker->reparent(entityItemID);
                         }
@@ -864,7 +859,10 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                             zoneTracker->reparent(entityItemID);
                         }
                     }
-                    qDebug() << "UPDATE FOR" << entityItem->getName();
+                    if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                        entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                        qDebug() << "UPDATE FOR" << entityItem->getName();
+                    }
 
                 } else {
                     entityItem = EntityTypes::constructEntityItem(dataAt, bytesLeftToRead, args);
@@ -877,10 +875,13 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                         if (entityItem->getCreated() == UNKNOWN_CREATED_TIME) {
                             entityItem->recordCreationTime();
                         }
-                        if (entityItem->getParentZoneID() != UNKNOWN_ENTITY_ID) {
+                        if (entityItem->getParentID() != UNKNOWN_ENTITY_ID) {
                             zoneTracker->reparent(entityItemID);
                         }
-                        qDebug() << "NEW FOR" << entityItem->getName();
+                        if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                            entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                            qDebug() << "NEW FOR" << entityItem->getName();
+                        }
                     }
                 }
                 // Move the buffer forward to read more entities

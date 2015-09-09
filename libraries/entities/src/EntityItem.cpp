@@ -134,7 +134,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
-    requestedProperties += PROP_PARENT_ZONE_ID;
+    requestedProperties += PROP_PARENT_ID;
 
     return requestedProperties;
 }
@@ -153,6 +153,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     // encode our ID as a byte count coded byte stream
     QByteArray encodedID = getID().toRfc4122();
+    QByteArray encodedParentID = getParentID().toRfc4122();
 
     // encode our type as a byte count coded byte stream
     ByteCountCoded<quint32> typeCoder = getType();
@@ -191,6 +192,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     #endif
 
     bool successIDFits = false;
+    bool successParentIDFits = false;
     bool successTypeFits = false;
     bool successCreatedFits = false;
     bool successLastEditedFits = false;
@@ -204,6 +206,9 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     successIDFits = packetData->appendRawData(encodedID);
     if (successIDFits) {
+        successParentIDFits = packetData->appendRawData(encodedParentID);
+    }
+    if (successParentIDFits) {
         successTypeFits = packetData->appendRawData(encodedType);
     }
     if (successTypeFits) {
@@ -269,7 +274,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
-        APPEND_ENTITY_PROPERTY(PROP_PARENT_ZONE_ID, getParentZoneID());
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, getParentID());
 
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
@@ -387,6 +392,21 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
     }
 #endif
+
+    if (args.bitstreamVersion >= VERSION_ENTITIES_ZONE_HAVE_TREES) {
+        // parent ID
+        parser.readUuid(_parentID);
+#ifdef VALIDATE_ENTITY_ITEM_PARSER
+        {
+            QByteArray encodedID = originalDataBuffer.mid(bytesRead, NUM_BYTES_RFC4122_UUID); // maximum possible size
+            QUuid parentID = QUuid::fromRfc4122(encodedID);
+            dataAt += encodedID.size();
+            bytesRead += encodedID.size();
+            Q_ASSERT(parentID == _parentID);
+            Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
+        }
+#endif
+    }
 
     // type
     parser.readCompressedCount<quint32>((quint32&)_type);
@@ -715,7 +735,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         overwriteLocalData = oldOverwrite;
     }
 
-    READ_ENTITY_PROPERTY(PROP_PARENT_ZONE_ID, EntityItemID, setParentZoneID);
+    // READ_ENTITY_PROPERTY(PROP_PARENT_ID, EntityItemID, setParentID);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
@@ -1062,7 +1082,7 @@ EntityItemProperties EntityItem::getProperties() const {
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHref);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionData);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentZoneID, getParentZoneID);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentID, getParentID);
 
     properties._defaultSettings = false;
 
@@ -1125,7 +1145,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHref);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionData);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentZoneID, setParentZoneID);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentID, setParentID);
 
     if (somethingChanged) {
         uint64_t now = usecTimestampNow();
@@ -1788,21 +1808,21 @@ void EntityItem::refreshParentEntityItemPointer() const {
         return;
     }
     // if the ID has changed, clear the old pointer
-    if (_parentZoneID != UNKNOWN_ENTITY_ID) {
+    if (_parentID != UNKNOWN_ENTITY_ID) {
         EntityItemPointer parentEntityItem = _parentZone.lock();
-        if (parentEntityItem && parentEntityItem->getID() != _parentZoneID) {
+        if (parentEntityItem && parentEntityItem->getID() != _parentID) {
             _parentZone.reset();
         }
     }
     // if the ID is non-null and we don't have a pointer, find the parent entity
-    if (_parentZoneID != UNKNOWN_ENTITY_ID && _parentZone.expired()) {
-        _parentZone = tree->findEntityByID(_parentZoneID);
+    if (_parentID != UNKNOWN_ENTITY_ID && _parentZone.expired()) {
+        _parentZone = tree->findEntityByID(_parentID);
     }
 }
 
 
 void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
-    arrivingEntity->setParentZoneID(_id);
+    arrivingEntity->setParentID(_id);
 
     Transform myGlobalTransform = getGlobalTransform();
     glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
@@ -1812,17 +1832,13 @@ void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
 
     glm::vec3 newChildLocalPosition = newChildGlobalPosition - myGlobalPosition;
     arrivingEntity->setPosition(newChildLocalPosition);
-
-    #warning rotation velocity angular-velocity transmit-data
 }
 
 void EntityItem::setDomainAsParent() {
-    setParentZoneID(UNKNOWN_ENTITY_ID);
+    setParentID(UNKNOWN_ENTITY_ID);
     Transform myGlobalTransform = getGlobalTransform();
     glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
     setPosition(myGlobalPosition);
-
-    #warning rotation velocity angular-velocity transmit-data
 }
 
 

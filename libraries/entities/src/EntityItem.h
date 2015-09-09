@@ -415,8 +415,8 @@ public:
     void deserializeActions();
     void setActionDataDirty(bool value) const { _actionDataDirty = value; }
 
-    virtual void setParentZoneID(const EntityItemID& parentZoneID) { _parentZoneID = parentZoneID; }
-    virtual const EntityItemID& getParentZoneID() const { return _parentZoneID; }
+    virtual void setParentID(const EntityItemID& parentID) { _parentID = parentID; }
+    virtual const EntityItemID& getParentID() const { return _parentID; }
     virtual void acceptChild(EntityItemPointer arrivingEntity);
     virtual void setDomainAsParent();
 
@@ -527,7 +527,7 @@ protected:
     bool isWriteLocked() const;
     bool isUnlocked() const;
 
-    EntityItemID _parentZoneID{UNKNOWN_ENTITY_ID};
+    EntityItemID _parentID{UNKNOWN_ENTITY_ID};
     mutable EntityItemWeakPointer _parentZone;
     void refreshParentEntityItemPointer() const;
 };

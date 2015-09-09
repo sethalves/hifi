@@ -44,7 +44,7 @@ void ZoneTracker::doReparentings(EntityTreePointer defaultTree) {
             continue;
         }
 
-        EntityItemID parentID = entity->getParentZoneID();
+        EntityItemID parentID = entity->getParentID();
         EntityTreePointer destinationTree;
         if (parentID == UNKNOWN_ENTITY_ID) {
             destinationTree = defaultTree;
@@ -90,8 +90,7 @@ EntityItemPointer ZoneTracker::addEntity(const EntityItemID& entityID,
                                          const EntityItemProperties& properties,
                                          EntityTreePointer defaultTree) {
 
-    EntityItemID parentID = properties.getParentZoneID();
-    qDebug() << "OKOKOK" << parentID;
+    EntityItemID parentID = properties.getParentID();
     if (parentID != UNKNOWN_ENTITY_ID) {
         EntityItemPointer parentEntity = defaultTree->findEntityByEntityItemID(parentID);
         if (parentEntity) {

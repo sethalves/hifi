@@ -125,7 +125,7 @@ CONSTRUCT_PROPERTY(zNNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(xPNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(yPNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(zPNeighborID, UNKNOWN_ENTITY_ID),
-CONSTRUCT_PROPERTY(parentZoneID, UNKNOWN_ENTITY_ID),
+CONSTRUCT_PROPERTY(parentID, UNKNOWN_ENTITY_ID),
 
 _id(UNKNOWN_ENTITY_ID),
 _idSet(false),
@@ -410,7 +410,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_X_P_NEIGHBOR_ID, xPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_Y_P_NEIGHBOR_ID, yPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_Z_P_NEIGHBOR_ID, zPNeighborID);
-    CHECK_PROPERTY_CHANGE(PROP_PARENT_ZONE_ID, parentZoneID);
+    CHECK_PROPERTY_CHANGE(PROP_PARENT_ID, parentID);
 
     changedProperties += _stage.getChangedProperties();
     changedProperties += _atmosphere.getChangedProperties();
@@ -573,7 +573,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     COPY_PROPERTY_TO_QSCRIPTVALUE(yPNeighborID);
     COPY_PROPERTY_TO_QSCRIPTVALUE(zPNeighborID);
 
-    COPY_PROPERTY_TO_QSCRIPTVALUE(parentZoneID);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(parentID);
 
     return properties;
 }
@@ -692,7 +692,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(yPNeighborID, EntityItemID, setYPNeighborID);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(zPNeighborID, EntityItemID, setZPNeighborID);
 
-    COPY_PROPERTY_FROM_QSCRIPTVALUE(parentZoneID, EntityItemID, setParentZoneID);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(parentID, EntityItemID, setParentID);
 
     _lastEdited = usecTimestampNow();
 }
@@ -847,7 +847,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_USER_DATA, properties.getUserData());
             APPEND_ENTITY_PROPERTY(PROP_HREF, properties.getHref());
             APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, properties.getDescription());
-            APPEND_ENTITY_PROPERTY(PROP_PARENT_ZONE_ID, properties.getParentZoneID());
+            APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, properties.getParentID());
 
             if (properties.getType() == EntityTypes::Web) {
                 APPEND_ENTITY_PROPERTY(PROP_SOURCE_URL, properties.getSourceUrl());
@@ -1130,7 +1130,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_USER_DATA, QString, setUserData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_HREF, QString, setHref);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_DESCRIPTION, QString, setDescription);
-    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_PARENT_ZONE_ID, EntityItemID, setParentZoneID);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_PARENT_ID, EntityItemID, setParentID);
 
     if (properties.getType() == EntityTypes::Web) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SOURCE_URL, QString, setSourceUrl);
@@ -1378,7 +1378,7 @@ void EntityItemProperties::markAllChanged() {
     _yPNeighborIDChanged = true;
     _zPNeighborIDChanged = true;
 
-    _parentZoneIDChanged = true;
+    _parentIDChanged = true;
 }
 
 /// The maximum bounding cube for the entity, independent of it's rotation.

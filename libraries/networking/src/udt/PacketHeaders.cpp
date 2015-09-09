@@ -38,7 +38,7 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityData:
-            return VERSION_ENTITIES_PROTOCOL_HEADER_SWAP;
+            return VERSION_ENTITIES_ZONE_HAVE_TREES;
         default:
             return 14;
     }

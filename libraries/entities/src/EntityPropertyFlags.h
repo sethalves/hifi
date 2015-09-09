@@ -161,7 +161,7 @@ enum EntityPropertyList {
     PROP_ALPHA_START,
     PROP_ALPHA_FINISH,
 
-    PROP_PARENT_ZONE_ID,
+    PROP_PARENT_ID,
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
