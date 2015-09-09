@@ -848,7 +848,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     quint64 entityScriptTimestampAfter = entityItem->getScriptTimestamp();
                     bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
                     if (entityScriptBefore != entityScriptAfter || reload) {
-                        myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
+                        _myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
                     }
 
                     // make sure entity is in the correct tree
