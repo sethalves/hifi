@@ -795,6 +795,14 @@ void Application::aboutToQuit() {
 }
 
 void Application::cleanupBeforeQuit() {
+    // Terminate third party processes so that they're not left running in the event of a subsequent shutdown crash
+#ifdef HAVE_DDE
+    DependencyManager::destroy<DdeFaceTracker>();
+#endif
+#ifdef HAVE_IVIEWHMD
+    DependencyManager::destroy<EyeTracker>();
+#endif
+
     if (_keyboardFocusHighlightID > 0) {
         getOverlays().deleteOverlay(_keyboardFocusHighlightID);
         _keyboardFocusHighlightID = -1;
@@ -811,6 +819,7 @@ void Application::cleanupBeforeQuit() {
 
     // first stop all timers directly or by invokeMethod
     // depending on what thread they run in
+    _avatarUpdate->terminate();
     locationUpdateTimer->stop();
     balanceUpdateTimer->stop();
     identityPacketTimer->stop();
@@ -842,13 +851,6 @@ void Application::cleanupBeforeQuit() {
 
     // destroy the AudioClient so it and its thread have a chance to go down safely
     DependencyManager::destroy<AudioClient>();
-
-#ifdef HAVE_DDE
-    DependencyManager::destroy<DdeFaceTracker>();
-#endif
-#ifdef HAVE_IVIEWHMD
-    DependencyManager::destroy<EyeTracker>();
-#endif
 }
 
 void Application::emptyLocalCache() {
@@ -1077,7 +1079,7 @@ void Application::paintGL() {
 
     // Before anything else, let's sync up the gpuContext with the true glcontext used in case anything happened
     renderArgs._context->syncCache();
- 
+
     if (Menu::getInstance()->isOptionChecked(MenuOption::Mirror)) {
         auto primaryFbo = DependencyManager::get<FramebufferCache>()->getPrimaryFramebufferDepthColor();
         
@@ -1110,6 +1112,7 @@ void Application::paintGL() {
         _applicationOverlay.renderOverlay(&renderArgs);
     }
 
+    _myAvatar->startCapture();
     if (_myCamera.getMode() == CAMERA_MODE_FIRST_PERSON || _myCamera.getMode() == CAMERA_MODE_THIRD_PERSON) {
         Menu::getInstance()->setIsOptionChecked(MenuOption::FirstPerson, _myAvatar->getBoomLength() <= MyAvatar::ZOOM_MIN);
         Menu::getInstance()->setIsOptionChecked(MenuOption::ThirdPerson, !(_myAvatar->getBoomLength() <= MyAvatar::ZOOM_MIN));
@@ -1159,7 +1162,7 @@ void Application::paintGL() {
     if (!isHMDMode()) {
         _myCamera.update(1.0f / _fps);
     }
-
+    _myAvatar->endCapture();
 
     // Primary rendering pass
     auto framebufferCache = DependencyManager::get<FramebufferCache>();
@@ -2181,6 +2184,18 @@ float Application::getAverageSimsPerSecond() {
     }
     return _simsPerSecondReport;
 }
+void Application::setAvatarSimrateSample(float sample) {
+    _avatarSimsPerSecond.updateAverage(sample);
+}
+float Application::getAvatarSimrate() {
+    uint64_t now = usecTimestampNow();
+
+    if (now - _lastAvatarSimsPerSecondUpdate > USECS_PER_SECOND) {
+        _avatarSimsPerSecondReport = _avatarSimsPerSecond.getAverage();
+        _lastAvatarSimsPerSecondUpdate = now;
+    }
+    return _avatarSimsPerSecondReport;
+}
 
 void Application::setLowVelocityFilter(bool lowVelocityFilter) {
     InputDevice::setLowVelocityFilter(lowVelocityFilter);
@@ -2469,7 +2484,19 @@ void Application::init() {
     // Make sure any new sounds are loaded as soon as know about them.
     connect(tree.get(), &EntityTree::newCollisionSoundURL, DependencyManager::get<SoundCache>().data(), &SoundCache::getSound);
     connect(_myAvatar, &MyAvatar::newCollisionSoundURL, DependencyManager::get<SoundCache>().data(), &SoundCache::getSound);
+
+    setAvatarUpdateThreading(Menu::getInstance()->isOptionChecked(MenuOption::EnableAvatarUpdateThreading));
 }
+
+void Application::setAvatarUpdateThreading(bool isThreaded) {
+    if (_avatarUpdate) {
+        getMyAvatar()->destroyAnimGraph();
+        _avatarUpdate->terminate();
+    }
+    _avatarUpdate = new AvatarUpdate();
+    _avatarUpdate->initialize(isThreaded);
+}
+
 
 void Application::closeMirrorView() {
     if (Menu::getInstance()->isOptionChecked(MenuOption::Mirror)) {
@@ -2547,18 +2574,19 @@ void Application::updateMyAvatarLookAtPosition() {
     auto eyeTracker = DependencyManager::get<EyeTracker>();
 
     bool isLookingAtSomeone = false;
+    bool isHMD = _avatarUpdate->isHMDMode();
     glm::vec3 lookAtSpot;
     if (_myCamera.getMode() == CAMERA_MODE_MIRROR) {
         //  When I am in mirror mode, just look right at the camera (myself); don't switch gaze points because when physically
         //  looking in a mirror one's eyes appear steady.
-        if (!isHMDMode()) {
+        if (!isHMD) {
             lookAtSpot = _myCamera.getPosition();
         } else {
             lookAtSpot = _myCamera.getPosition() + transformPoint(_myAvatar->getSensorToWorldMatrix(), extractTranslation(getHMDSensorPose()));
         }
-    } else if (eyeTracker->isTracking() && (isHMDMode() || eyeTracker->isSimulating())) {
+    } else if (eyeTracker->isTracking() && (isHMD || eyeTracker->isSimulating())) {
         //  Look at the point that the user is looking at.
-        if (isHMDMode()) {
+        if (isHMD) {
             glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
             glm::quat hmdRotation = glm::quat_cast(headPose);
             lookAtSpot = _myCamera.getPosition() +
@@ -2601,8 +2629,8 @@ void Application::updateMyAvatarLookAtPosition() {
             }
         } else {
             //  I am not looking at anyone else, so just look forward
-            if (isHMDMode()) {
-                glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
+            if (isHMD) {
+                glm::mat4 headPose = _avatarUpdate->getHeadPose() ;
                 glm::quat headRotation = glm::quat_cast(headPose);
                 lookAtSpot = _myCamera.getPosition() +
                     _myAvatar->getOrientation() * (headRotation * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
@@ -2829,9 +2857,6 @@ void Application::update(float deltaTime) {
 
     updateThreads(deltaTime); // If running non-threaded, then give the threads some time to process...
 
-    //loop through all the other avatars and simulate them...
-    DependencyManager::get<AvatarManager>()->updateOtherAvatars(deltaTime);
-
     updateCamera(deltaTime); // handle various camera tweaks like off axis projection
     updateDialogs(deltaTime); // update various stats dialogs if present
     updateCursor(deltaTime); // Handle cursor updates
@@ -2903,12 +2928,7 @@ void Application::update(float deltaTime) {
         _overlays.update(deltaTime);
     }
 
-    {
-        PerformanceTimer perfTimer("myAvatar");
-        updateMyAvatarLookAtPosition();
-        // Sample hardware, update view frustum if needed, and send avatar data to mixer/nodes
-        DependencyManager::get<AvatarManager>()->updateMyAvatar(deltaTime);
-    }
+    _avatarUpdate->synchronousProcess();
 
     {
         PerformanceTimer perfTimer("emitSimulating");
@@ -3489,7 +3509,10 @@ void Application::displaySide(RenderArgs* renderArgs, Camera& theCamera, bool se
 
     // FIXME: This preRender call is temporary until we create a separate render::scene for the mirror rendering.
     // Then we can move this logic into the Avatar::simulate call.
+    _myAvatar->startRender();
     _myAvatar->preRender(renderArgs);
+    _myAvatar->endRender();
+
 
     activeRenderingThread = QThread::currentThread();
     PROFILE_RANGE(__FUNCTION__);
@@ -3603,7 +3626,9 @@ void Application::displaySide(RenderArgs* renderArgs, Camera& theCamera, bool se
         _renderEngine->setRenderContext(renderContext);
 
         // Before the deferred pass, let's try to use the render engine
+        _myAvatar->startRenderRun();
         _renderEngine->run();
+        _myAvatar->endRenderRun();
 
         auto engineRC = _renderEngine->getRenderContext();
         sceneInterface->setEngineFeedOpaqueItems(engineRC->_numFeedOpaqueItems);
@@ -4773,9 +4798,11 @@ void Application::updateDisplayMode() {
         qDebug() << "Deferring plugin switch until out of painting";
         // Have the old plugin stop requesting renders
         oldDisplayPlugin->stop();
-        QCoreApplication::postEvent(this, new LambdaEvent([this] {
+        QTimer* timer = new QTimer();
+        timer->singleShot(500, [this, timer] {
+            timer->deleteLater();
             updateDisplayMode();
-        }));
+        });
         return;
     }
 

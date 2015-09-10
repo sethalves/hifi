@@ -103,13 +103,15 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         _rig->computeMotionAnimationState(deltaTime, _owningAvatar->getPosition(), _owningAvatar->getVelocity(), _owningAvatar->getOrientation());
     }
     Model::updateRig(deltaTime, parentTransform);
+    Head* head = _owningAvatar->getHead();
     if (_owningAvatar->isMyAvatar()) {
+        MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
         const FBXGeometry& geometry = _geometry->getFBXGeometry();
-        Head* head = _owningAvatar->getHead();
 
         Rig::HeadParameters params;
         params.modelRotation = getRotation();
         params.modelTranslation = getTranslation();
+        params.enableLean = qApp->getAvatarUpdater()->isHMDMode() && !myAvatar->getStandingHMDSensorMode();
         params.leanSideways = head->getFinalLeanSideways();
         params.leanForward = head->getFinalLeanForward();
         params.torsoTwist = head->getTorsoTwist();
@@ -133,7 +135,6 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
         // However, in the !isLookingAtMe case, the eyes aren't rotating the way they should right now.
         // We will revisit that as priorities allow, and particularly after the new rig/animation/joints.
         const FBXGeometry& geometry = _geometry->getFBXGeometry();
-        Head* head = _owningAvatar->getHead();
         // If the head is not positioned, updateEyeJoints won't get the math right
         glm::quat headOrientation;
         _rig->getJointRotation(geometry.headJointIndex, headOrientation);
@@ -147,13 +148,17 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
      }
 }
 
-// Called by Avatar::simulate after it has set the joint states (fullUpdate true if changed),
-// but just before head has been simulated.
-void SkeletonModel::simulate(float deltaTime, bool fullUpdate) {
+void SkeletonModel::updateAttitude() {
     setTranslation(_owningAvatar->getSkeletonPosition());
     static const glm::quat refOrientation = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
     setRotation(_owningAvatar->getOrientation() * refOrientation);
     setScale(glm::vec3(1.0f, 1.0f, 1.0f) * _owningAvatar->getScale());
+}
+
+// Called by Avatar::simulate after it has set the joint states (fullUpdate true if changed),
+// but just before head has been simulated.
+void SkeletonModel::simulate(float deltaTime, bool fullUpdate) {
+    updateAttitude();
     setBlendshapeCoefficients(_owningAvatar->getHead()->getBlendshapeCoefficients());
 
     Model::simulate(deltaTime, fullUpdate);
@@ -617,6 +622,3 @@ bool SkeletonModel::hasSkeleton() {
 void SkeletonModel::onInvalidate() {
 }
 
-void SkeletonModel::initAnimGraph(const QUrl& url, const FBXGeometry& fbxGeometry) {
-    _rig->initAnimGraph(url, fbxGeometry);
-}
