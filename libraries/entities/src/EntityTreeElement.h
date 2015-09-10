@@ -218,6 +218,8 @@ public:
 protected:
     virtual void init(unsigned char * octalCode);
     EntityTreePointer _myTree;
+
+ public: // XXX
     EntityItems* _entityItems;
 };
 

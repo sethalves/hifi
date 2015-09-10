@@ -104,8 +104,9 @@ public:
     // use this method if you have a pointer to the entity (avoid an extra entity lookup)
     bool updateEntity(EntityItemPointer entity, const EntityItemProperties& properties, const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
 
-    EntityItemPointer deleteEntity(const EntityItemID& entityID, bool force = false, bool ignoreWarnings = false);
-    void deleteEntities(QSet<EntityItemID> entityIDs, bool force = false, bool ignoreWarnings = false);
+    EntityItemPointer deleteEntity(const EntityItemID& entityID,
+                                   bool force = false, bool ignoreWarnings = false, bool doEmit = true);
+    void deleteEntities(QSet<EntityItemID> entityIDs, bool force = false, bool ignoreWarnings = false, bool doEmit = true);
 
     /// \param position point of query in world-frame (meters)
     /// \param targetRadius radius of query (meters)
@@ -209,6 +210,8 @@ public:
 
     QList<EntityItemPointer> getAllEntities();
 
+    void consistencyCheck();
+
 signals:
     void deletingEntity(const EntityItemID& entityID);
     void addingEntity(const EntityItemID& entityID);
@@ -237,7 +240,9 @@ private:
     QMultiMap<quint64, QUuid> _recentlyDeletedEntityItemIDs;
     EntityItemFBXService* _fbxService;
 
+ public: // XXX
     QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
+ private: // XXX
 
     EntitySimulation* _simulation;
 

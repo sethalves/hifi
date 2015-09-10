@@ -375,6 +375,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
 {
     setInstance(this);
 
+    // DependencyManager::get<ZoneTracker>()->setDefaultTree(_entities.getTree());
+
     _entityClipboard->createRootElement();
 
     _pluginContainer = new PluginContainerProxy();
@@ -781,6 +783,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
     });
 
     connect(this, &Application::applicationStateChanged, this, &Application::activeChanged);
+
+    qDebug() << "DEFAULT ENTITY TREE =" << _entities.getTree().get();
 }
 
 void Application::aboutToQuit() {
@@ -2437,6 +2441,9 @@ void Application::init() {
 
     _entities.init();
     _entities.setViewFrustum(getViewFrustum());
+
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
+    zoneTracker->setDefaultTree(_entities.getTree());
 
     ObjectMotionState::setShapeManager(&_shapeManager);
     _physicsEngine->init();

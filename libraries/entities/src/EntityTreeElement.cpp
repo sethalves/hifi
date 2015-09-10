@@ -290,7 +290,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             EntityItemPointer entity = (*_entityItems)[i];
             entityTreeElementExtraEncodeData->entities.insert(entity->getEntityItemID(), entity->getEntityProperties(params));
 
-#if 0
+#if 1
             // TODO: ask Zappoman what to do.
             // if this entity is a ZoneEntityItem, jam all its children into the list of entities to encode
             if (entity->getType() == EntityTypes::Zone) {
@@ -390,7 +390,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             }
         }
 
-#if 0
+#if 1
         // TODO: ask Zappoman what to do
         QMutableSetIterator<EntityItemPointer> extraChildrenIterator(entityTreeElementExtraEncodeData->extraChildren);
         while (extraChildrenIterator.hasNext()) {
@@ -805,7 +805,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 // which will correctly handle the case of creating models and letting them parse the old format.
                 if (args.bitstreamVersion >= VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
                     entityItemID = EntityItemID::readEntityItemIDFromBuffer(dataAt, bytesLeftToRead);
-                    entityItem = zoneTracker->findEntityByEntityItemID(_myTree, entityItemID);
+                    entityItem = zoneTracker->findEntityByEntityItemID(entityItemID);
                 }
 
                 // If the item already exists in our tree, we want do the following...
@@ -846,22 +846,58 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                         _myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
                     }
 
+
+                    if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                        entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                        qDebug() << "------------------- update ----------------------";
+                    }
+
                     // make sure entity is in the correct tree
                     EntityTreePointer tree = entityItem->getTree();
                     if (entityItem->getParentID() == UNKNOWN_ENTITY_ID) {
+
+                        if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                            entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                            qDebug() << "null parent";
+                        }
+
+
                         if (entityItem->getTree() != _myTree) {
                             zoneTracker->reparent(entityItemID);
                         }
                     } else {
-                        EntityItemPointer parent = zoneTracker->findEntityByEntityItemID(_myTree, entityItem->getID());
+
+                        if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                            entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                            qDebug() << "non-null parent";
+                        }
+
+                        EntityItemPointer parent = zoneTracker->findEntityByEntityItemID(entityItem->getParentID());
                         auto parentZone = std::dynamic_pointer_cast<ZoneEntityItem>(parent);
                         if (parentZone && parentZone->getSubTree() != tree) {
+
+                            if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                                entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                                qDebug() << "needs re-parent";
+                            }
+
+
                             zoneTracker->reparent(entityItemID);
+
+                        } else {
+
+                            if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                                entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                                qDebug() << "doesn't need re-parent" << "parentZone =" << parentZone.get();
+                            }
+
                         }
                     }
                     if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                         entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                        qDebug() << "UPDATE FOR" << entityItem->getName();
+                        qDebug() << "UPDATE FOR" << entityItem->getName()
+                                 << "tree is" << entityItem->getTree().get()
+                                 << "parent is" << entityItem->getParentID();
                     }
 
                 } else {
@@ -880,10 +916,18 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                         }
                         if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                             entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                            qDebug() << "NEW FOR" << entityItem->getName();
+                            qDebug() << "NEW FOR" << entityItem->getName()
+                                     << "id is" << entityItem->getID()
+                                     << "added to tree" << _myTree.get();
                         }
                     }
                 }
+
+                if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                    entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                    qDebug() << "---------------------------------------------------";
+                }
+
                 // Move the buffer forward to read more entities
                 dataAt += bytesForThisEntity;
                 bytesLeftToRead -= bytesForThisEntity;
@@ -892,7 +936,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
         }
     }
 
-    zoneTracker->doReparentings(_myTree);
+    zoneTracker->doReparentings();
 
     return bytesRead;
 }

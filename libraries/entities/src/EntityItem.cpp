@@ -134,6 +134,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
+    requestedProperties += PROP_PARENT_ID;
 
     return requestedProperties;
 }
@@ -152,7 +153,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     // encode our ID as a byte count coded byte stream
     QByteArray encodedID = getID().toRfc4122();
-    QByteArray encodedParentID = getParentID().toRfc4122();
 
     // encode our type as a byte count coded byte stream
     ByteCountCoded<quint32> typeCoder = getType();
@@ -191,7 +191,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
     #endif
 
     bool successIDFits = false;
-    bool successParentIDFits = false;
     bool successTypeFits = false;
     bool successCreatedFits = false;
     bool successLastEditedFits = false;
@@ -205,9 +204,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     successIDFits = packetData->appendRawData(encodedID);
     if (successIDFits) {
-        successParentIDFits = packetData->appendRawData(encodedParentID);
-    }
-    if (successParentIDFits) {
         successTypeFits = packetData->appendRawData(encodedType);
     }
     if (successTypeFits) {
@@ -273,7 +269,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
-
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, getParentID());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -390,21 +386,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
     }
 #endif
-
-    if (args.bitstreamVersion >= VERSION_ENTITIES_ZONES_HAVE_TREES) {
-        // parent ID
-        parser.readUuid(_parentID);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-        {
-            QByteArray encodedID = originalDataBuffer.mid(bytesRead, NUM_BYTES_RFC4122_UUID); // maximum possible size
-            QUuid parentID = QUuid::fromRfc4122(encodedID);
-            dataAt += encodedID.size();
-            bytesRead += encodedID.size();
-            Q_ASSERT(parentID == _parentID);
-            Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-        }
-#endif
-    }
 
     // type
     parser.readCompressedCount<quint32>((quint32&)_type);
@@ -732,6 +713,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setActionData);
         overwriteLocalData = oldOverwrite;
     }
+
+    READ_ENTITY_PROPERTY(PROP_PARENT_ID, EntityItemID, setParentID);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);

@@ -40,7 +40,9 @@ EntityTree::~EntityTree() {
 }
 
 void EntityTree::createRootElement() {
+    assert(_rootElement == nullptr);
     _rootElement = createNewElement();
+    qDebug() << "EntityTree::createRootElement this =" << shared_from_this().get() << "root =" << _rootElement.get();
 }
 
 OctreeElementPointer EntityTree::createNewElement(unsigned char* octalCode) {
@@ -278,6 +280,11 @@ EntityItemPointer EntityTree::addEntity(const EntityItemID& entityID, const Enti
     EntityTypes::EntityType type = properties.getType();
     result = EntityTypes::constructEntityItem(type, entityID, properties);
 
+    if (entityID == EntityItemID("4a3544d6-a8f3-4717-a929-b48c01cf1d20") ||
+        entityID == EntityItemID("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
+        qDebug() << "For" << entityID << "EntityTypes::constructEntityItem result is" << result->getID();
+    }
+
     if (result) {
         if (recordCreationTime) {
             result->recordCreationTime();
@@ -316,7 +323,7 @@ void EntityTree::setSimulation(EntitySimulation* simulation) {
     _simulation = simulation;
 }
 
-EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
+EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings, bool doEmit) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         if (!ignoreWarnings) {
@@ -341,7 +348,9 @@ EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool fo
         return nullptr;
     }
 
-    emit deletingEntity(entityID);
+    if (doEmit) {
+        emit deletingEntity(entityID);
+    }
 
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer(), entityID);
@@ -352,7 +361,7 @@ EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool fo
     return existingEntity;
 }
 
-void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings) {
+void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings, bool doEmit) {
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer());
     foreach(const EntityItemID& entityID, entityIDs) {
@@ -382,7 +391,9 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
 
         // tell our delete operator about this entityID
         theOperator.addEntityIDToDeleteList(entityID);
-        emit deletingEntity(entityID);
+        if (doEmit) {
+            emit deletingEntity(entityID);
+        }
     }
 
     if (theOperator.getEntities().size() > 0) {
@@ -573,8 +584,20 @@ EntityItemPointer EntityTree::findEntityByID(const QUuid& id) {
 EntityItemPointer EntityTree::findEntityByEntityItemID(const EntityItemID& entityID) /*const*/ {
     EntityItemPointer foundEntity = NULL;
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
+
+    if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+        entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
+        qDebug() << "        EntityTree::findEntityByEntityItemID containingElement is" << containingElement.get()
+                 << "this is" << shared_from_this().get();
+
     if (containingElement) {
         foundEntity = containingElement->getEntityWithEntityItemID(entityID);
+
+        if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+            entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+            qDebug() << "        EntityTree::findEntityByEntityItemID foundEntity is" << foundEntity.get()
+                     << "this is" << shared_from_this().get();
+        }
     }
     return foundEntity;
 }
@@ -641,7 +664,7 @@ int EntityTree::processEditPacketData(NLPacket& packet, const unsigned char* edi
                         properties.setCreated(properties.getLastEdited());
                         startCreate = usecTimestampNow();
                         EntityItemPointer newEntity =
-                            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties, getThisPointer());
+                            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties);
 
                         endCreate = usecTimestampNow();
                         _totalCreates++;
@@ -953,6 +976,12 @@ EntityTreeElementPointer EntityTree::getContainingElement(const EntityItemID& en
 
 void EntityTree::setContainingElement(const EntityItemID& entityItemID, EntityTreeElementPointer element) {
     // TODO: do we need to make this thread safe? Or is it acceptable as is
+
+    if (entityItemID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+        entityItemID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
+        qDebug() << "        EntityTree::setContainingElement" << element.get() << "now contains" << entityItemID
+                 << "this is" << shared_from_this().get();
+
     if (element) {
         _entityToElementMap[entityItemID] = element;
     } else {
@@ -1099,7 +1128,7 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         }
 
         EntityItemPointer entity =
-            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties, getThisPointer());
+            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties);
 
         if (!entity) {
             qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
@@ -1138,7 +1167,6 @@ void EntityTree::trackIncomingEntityLastEdited(quint64 lastEditedTime, int bytes
 
 QList<EntityItemPointer> EntityTree::getAllEntities() {
     QList<EntityItemPointer> result;
-    QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
 
     foreach (EntityTreeElementPointer entityTreeElement, _entityToElementMap.values()) {
         const EntityItems& entityItems = entityTreeElement->getEntities();
@@ -1148,4 +1176,17 @@ QList<EntityItemPointer> EntityTree::getAllEntities() {
     }
 
     return result;
+}
+
+void EntityTree::consistencyCheck() {
+    QHash<EntityItemID, EntityTreeElementPointer>::const_iterator i;
+    for (i = _entityToElementMap.begin(); i != _entityToElementMap.end(); ++i) {
+        const EntityItemID& entityItemID = i.key();
+        const EntityTreeElementPointer& entityElement = i.value();
+        assert(entityElement->getTree().get() == this);
+        foreach (EntityItemPointer entity, entityElement->getEntities()) {
+            assert(entity->getElement() == entityElement);
+            assert(entity->getElement()->getTree().get() == this);
+        }
+    }
 }

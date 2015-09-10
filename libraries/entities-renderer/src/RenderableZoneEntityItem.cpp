@@ -18,9 +18,13 @@
 #include <DependencyManager.h>
 #include <GeometryCache.h>
 #include <PerfStat.h>
+#include <ZoneTracker.h>
 
 EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
-    return std::make_shared<RenderableZoneEntityItem>(entityID, properties);
+    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties);
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    zoneTracker->trackZone(result);
+    return result;
 }
 
 

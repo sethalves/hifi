@@ -26,19 +26,20 @@ class ZoneTracker : public QObject, public Dependency {
 
 public:
     ZoneTracker();
+    void setDefaultTree(EntityTreePointer defaultTree) { assert(defaultTree); _defaultTree = defaultTree; }
     void trackZone(EntityItemPointer newZone);
     void forgetZone(EntityItemPointer goingAwayZone);
     EntityItemPointer addEntity(const EntityItemID& entityID,
-                                const EntityItemProperties& properties,
-                                EntityTreePointer defaultTree);
+                                const EntityItemProperties& properties);
 
-    EntityItemPointer findEntityByEntityItemID(EntityTreePointer defaultTree, const EntityItemID& entityID);
+    EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID);
     void reparent(EntityItemID needsReparentID);
-    void doReparentings(EntityTreePointer defaultTree);
+    void doReparentings();
 
 private:
     QHash<EntityItemID, EntityItemPointer> _zones;
     QSet<EntityItemID> _needsReparent;
+    EntityTreePointer _defaultTree;
 };
 
 

@@ -16,6 +16,7 @@
 #include "EntityServer.h"
 #include "EntityServerConsts.h"
 #include "EntityNodeData.h"
+#include "ZoneTracker.h"
 
 const char* MODEL_SERVER_NAME = "Entity";
 const char* MODEL_SERVER_LOGGING_TARGET_NAME = "entity-server";
@@ -29,6 +30,14 @@ EntityServer::EntityServer(NLPacket& packet) :
     packetReceiver.registerListenerForTypes({ PacketType::EntityAdd, PacketType::EntityEdit, PacketType::EntityErase },
                                             this, "handleEntityPacket");
 }
+
+void EntityServer::run() {
+    OctreeServer::run();
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
+    zoneTracker->setDefaultTree(tree);
+}
+
 
 EntityServer::~EntityServer() {
     if (_pruneDeletedEntitiesTimer) {
