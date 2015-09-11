@@ -815,14 +815,15 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 // TODO: Do we need to also do this?
                 //    3) remember the old cube for the entity so we can mark it as dirty
                 if (entityItem) {
+                    EntityTreePointer tree = entityItem->getTree();
                     QString entityScriptBefore = entityItem->getScript();
                     quint64 entityScriptTimestampBefore = entityItem->getScriptTimestamp();
                     bool bestFitBefore = bestFitEntityBounds(entityItem);
-                    EntityTreeElementPointer currentContainingElement = _myTree->getContainingElement(entityItemID);
+                    EntityTreeElementPointer currentContainingElement = tree->getContainingElement(entityItemID);
 
                     bytesForThisEntity = entityItem->readEntityDataFromBuffer(dataAt, bytesLeftToRead, args);
                     if (entityItem->getDirtyFlags()) {
-                        _myTree->entityChanged(entityItem);
+                        tree->entityChanged(entityItem);
                     }
                     bool bestFitAfter = bestFitEntityBounds(entityItem);
 
@@ -834,7 +835,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                                 currentContainingElement->removeEntityItem(entityItem);
 
                                 addEntityItem(entityItem);
-                                _myTree->setContainingElement(entityItemID, getThisPointer());
+                                tree->setContainingElement(entityItemID, getThisPointer());
                             }
                         }
                     }
@@ -843,7 +844,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     quint64 entityScriptTimestampAfter = entityItem->getScriptTimestamp();
                     bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
                     if (entityScriptBefore != entityScriptAfter || reload) {
-                        _myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
+                        tree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
                     }
 
 
@@ -853,7 +854,6 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     }
 
                     // make sure entity is in the correct tree
-                    EntityTreePointer tree = entityItem->getTree();
                     if (entityItem->getParentID() == UNKNOWN_ENTITY_ID) {
 
                         if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
@@ -896,7 +896,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                         entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
                         qDebug() << "UPDATE FOR" << entityItem->getName()
-                                 << "tree is" << entityItem->getTree().get()
+                                 << "tree is" << entityItem->getTree()->getName()
                                  << "parent is" << entityItem->getParentID();
                     }
 
@@ -918,7 +918,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                             entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
                             qDebug() << "NEW FOR" << entityItem->getName()
                                      << "id is" << entityItem->getID()
-                                     << "added to tree" << _myTree.get();
+                                     << "added to tree" << _myTree->getName();
                         }
                     }
                 }
@@ -1003,4 +1003,19 @@ void EntityTreeElement::debugDump() {
         qCDebug(entities) << "    NO entities!";
     }
 }
-    
+
+void EntityTreeElement::consistencyCheck(EntityTreePointer tree) {
+    assert(_myTree == tree);
+
+    foreach (EntityItemPointer entity, *_entityItems) {
+        assert(entity->getElement().get() == this);
+        assert(entity->getTree() == tree);
+    }
+
+    for (int i = 0; i < NUMBER_OF_CHILDREN; i++) {
+        EntityTreeElementPointer child = getChildAtIndex(i);
+        if (child) {
+            child->consistencyCheck(tree);
+        }
+    }
+}

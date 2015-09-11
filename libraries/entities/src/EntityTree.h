@@ -52,8 +52,11 @@ public:
 class EntityTree : public Octree {
     Q_OBJECT
 public:
-    EntityTree(bool shouldReaverage = false);
+    EntityTree(bool shouldReaverage = false, EntityItemPointer owner = nullptr);
     virtual ~EntityTree();
+
+    void setOwner(EntityItemPointer owner) { _owner = owner; }
+    EntityItemPointer getOwner() { return _owner; }
 
     void createRootElement();
 
@@ -211,6 +214,7 @@ public:
     QList<EntityItemPointer> getAllEntities();
 
     void consistencyCheck();
+    QString getName();
 
 signals:
     void deletingEntity(const EntityItemID& entityID);
@@ -267,6 +271,8 @@ private:
     quint64 _totalEditDeltas = 0;
     quint64 _maxEditDelta = 0;
     quint64 _treeResetTime = 0;
+
+    EntityItemPointer _owner = nullptr;
 };
 
 #endif // hifi_EntityTree_h

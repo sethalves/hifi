@@ -23,7 +23,8 @@ class RenderableZoneEntityItem : public ZoneEntityItem  {
 public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
 
-    RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties);
+    RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties,
+                             EntityEditPacketSender* sender);
     virtual ~RenderableZoneEntityItem();
 
     virtual bool setProperties(const EntityItemProperties& properties);

@@ -43,6 +43,7 @@
 #include "EntitiesRendererLogging.h"
 #include "AddressManager.h"
 #include "EntityRig.h"
+#include "ZoneTracker.h"
 
 EntityTreeRenderer::EntityTreeRenderer(bool wantScripts, AbstractViewStateInterface* viewState,
                                             AbstractScriptingServicesInterface* scriptingServices) :
@@ -122,7 +123,10 @@ void EntityTreeRenderer::init() {
     // make sure our "last avatar position" is something other than our current position, so that on our
     // first chance, we'll check for enter/leave entity events.
     _lastAvatarPosition = _viewState->getAvatarPosition() + glm::vec3((float)TREE_SCALE);
+    connectTree(entityTree);
+}
 
+void EntityTreeRenderer::connectTree(EntityTreePointer entityTree) {
     connect(entityTree.get(), &EntityTree::deletingEntity, this, &EntityTreeRenderer::deletingEntity, Qt::QueuedConnection);
     connect(entityTree.get(), &EntityTree::addingEntity, this, &EntityTreeRenderer::addingEntity, Qt::QueuedConnection);
     connect(entityTree.get(), &EntityTree::entityScriptChanging,
@@ -1027,7 +1031,9 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
 
 void EntityTreeRenderer::addingEntity(const EntityItemID& entityID) {
     checkAndCallPreload(entityID);
-    auto entity = std::static_pointer_cast<EntityTree>(_tree)->findEntityByID(entityID);
+    // auto entity = std::static_pointer_cast<EntityTree>(_tree)->findEntityByID(entityID);
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    auto entity = zoneTracker->findEntityByEntityItemID(entityID);
     if (entity) {
         addEntityToScene(entity);
     }

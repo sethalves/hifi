@@ -36,7 +36,12 @@ class SimpleRenderableEntityItem {
 public:
     bool addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges) {
         _myItem = scene->allocateID();
-        
+
+        if (self->getID() == EntityItemID("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
+            qDebug() << "ADD TO SCENE" << self->getName() << self->getAABox();
+        }
+
+
         auto renderData = std::make_shared<RenderableEntityItemProxy>(self);
         auto renderPayload = std::make_shared<RenderableEntityItemProxy::Payload>(renderData);
         

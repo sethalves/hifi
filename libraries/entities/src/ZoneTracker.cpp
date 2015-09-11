@@ -19,10 +19,13 @@ ZoneTracker::ZoneTracker() {
 }
 
 
+#define GET_TREE_NAME(x) (x ? x->getName() : "null")
+
+
 void ZoneTracker::trackZone(EntityItemPointer newZone) {
 
     auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(newZone);
-    qDebug() << "*** *** TRACKING ZONE" << newZone->getID() << "tree is" << zone->getSubTree().get()
+    qDebug() << "*** *** TRACKING ZONE" << newZone->getID() << "tree is" << GET_TREE_NAME(zone->getSubTree())
              << "root element is" << zone->getSubTree()->getRoot().get();
 
     _zones.insert(newZone->getID(), newZone);
@@ -88,11 +91,13 @@ void ZoneTracker::doReparentings() {
         sourceTree->consistencyCheck();
         destinationTree->consistencyCheck();
 
-        qDebug() << "BEFORE MOVE source =" << sourceTree.get() << "dest =" << destinationTree.get();
-        qDebug() << "BEFORE MOVE" << entityID << "is in" << findEntityByEntityItemID(entityID).get();
+        qDebug() << "BEFORE MOVE source =" << GET_TREE_NAME(sourceTree) << "dest =" << GET_TREE_NAME(destinationTree);
+        qDebug() << "BEFORE MOVE" << entityID << "is in" << GET_TREE_NAME(findEntityByEntityItemID(entityID));
 
         // pull entity out of one tree
         sourceTree->deleteEntity(entityID, true, true, false);
+
+        assert(! sourceTree->findEntityByEntityItemID(entityID));
 
         sourceTree->consistencyCheck();
         destinationTree->consistencyCheck();
@@ -104,10 +109,11 @@ void ZoneTracker::doReparentings() {
 
 
         qDebug() << "MID-ADD- entity->getElement =" << entity->getElement().get();
-        qDebug() << "MID-ADD- entity->getTree =" << entity->getTree().get();
+        qDebug() << "MID-ADD- entity->getTree =" << GET_TREE_NAME(entity->getTree());
         if (entity->getTree()) {
             qDebug() << "MID-ADD- entity->getTree->count =" << entity->getTree()->getAllEntities().count();
         }
+        qDebug() << "MID-ADD- destinationTree->count =" << destinationTree->getAllEntities().count();
 
         AddEntityOperator theOperator(destinationTree, entity);
         destinationTree->recurseTreeWithOperator(&theOperator);
@@ -117,20 +123,23 @@ void ZoneTracker::doReparentings() {
         destinationTree->consistencyCheck();
 
         qDebug() << "MID-ADD entity->getElement =" << entity->getElement().get();
-        qDebug() << "MID-ADD entity->getTree =" << entity->getTree().get();
+        qDebug() << "MID-ADD entity->getTree =" << GET_TREE_NAME(entity->getTree());
         if (entity->getTree()) {
             qDebug() << "MID-ADD entity->getTree->count =" << entity->getTree()->getAllEntities().count();
         }
+        qDebug() << "MID-ADD destinationTree->count =" << destinationTree->getAllEntities().count();
         destinationTree->setContainingElement(entityID, entity->getElement());
         qDebug() << "MID-ADD+ entity->getElement =" << entity->getElement().get();
-        qDebug() << "MID-ADD+ entity->getTree =" << entity->getTree().get();
+        qDebug() << "MID-ADD+ entity->getTree =" << GET_TREE_NAME(entity->getTree());
         if (entity->getTree()) {
             qDebug() << "MID-ADD+ entity->getTree->count =" << entity->getTree()->getAllEntities().count();
         }
+        qDebug() << "MID-ADD+ destinationTree->count =" << destinationTree->getAllEntities().count();
 
         sourceTree->consistencyCheck();
         destinationTree->consistencyCheck();
 
+        entity->requiresRecalcBoxes();
         iter.remove();
 
         qDebug() << "AFTER ADD" << entityID << "is in" << findEntityByEntityItemID(entityID).get();
@@ -153,10 +162,10 @@ EntityItemPointer ZoneTracker::addEntity(const EntityItemID& entityID,
                 EntityItemPointer result = zoneEntityItem->getSubTree()->addEntity(entityID, properties);
                 // zoneEntityItem->getSubTree()->setContainingElement(entityID, result->getElement());
                 qDebug() << "result is" << result->getID() << "tree is"
-                         << result->getTree().get() << "default is" << _defaultTree.get()
+                         << GET_TREE_NAME(result->getTree())
                          << "zone child-count is" << zoneEntityItem->getTree()->getAllEntities().size();
                 qDebug() << "child elt is" << result->getElement().get();
-                qDebug() << "child elt's tree is" << result->getElement()->getTree().get();
+                qDebug() << "child elt's tree is" << GET_TREE_NAME(result->getElement()->getTree());
                 qDebug() << "_entityToElementMap.contains ="
                          << zoneEntityItem->getSubTree()->_entityToElementMap.contains(result->getID());
                 qDebug() << "_entityToElementMap[id] ="
@@ -182,45 +191,56 @@ EntityItemPointer ZoneTracker::addEntity(const EntityItemID& entityID,
 
 
 EntityItemPointer ZoneTracker::findEntityByEntityItemID(const EntityItemID& entityID) {
+    EntityItemPointer result = nullptr;
+
     if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
         entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
         qDebug() << "    ZoneTracker looking up" << entityID;
 
-    assert(_defaultTree);
-    EntityItemPointer result = _defaultTree->findEntityByEntityItemID(entityID);
-    if (result) {
-        if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-            entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
-            qDebug() << "    found in default tree:" << _defaultTree.get();
-        return result;
+    if (_defaultTree) {
+        result = _defaultTree->findEntityByEntityItemID(entityID);
+        if (result) {
+            if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
+                qDebug() << "    ZoneTracker::findEntityByEntityItemID found" << entityID << "in default tree";
+            return result;
+        }
     }
 
     for (QHash<EntityItemID, EntityItemPointer>::iterator it = _zones.begin(); it != _zones.end(); ) {
-        const EntityItemID entityID = it.key();
-        const EntityItemPointer& entity = it.value();
+        // const EntityItemID entityID = it.key();
+        const EntityItemPointer& zoneEntity = it.value();
 
-        if (entity->getType() != EntityTypes::Zone) {
-            if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-                entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
-                qDebug() << "ZoneTracker found non-Zone entity in _zones list";
+        if (zoneEntity->getType() != EntityTypes::Zone) {
+            qDebug() << "ZoneTracker found non-Zone entity in _zones list";
             it = _zones.erase(it);
             continue;
         }
 
-        auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
+        auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(zoneEntity);
         ++it;
 
         result = zone->getSubTree()->findEntityByEntityItemID(entityID);
         if (result) {
             if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                 entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
-                qDebug() << "    found in subtree of" << zone->getID() << "tree:" << zone->getSubTree().get();
+                qDebug() << "    found in subtree of" << zone->getName();
             return result;
         }
         if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
             entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
-            qDebug() << "    NOT found in subtree of" << zone->getID() << "tree:" << zone->getSubTree().get();
+            qDebug() << "    NOT found in subtree of" << zone->getID()
+                     << "tree:" << GET_TREE_NAME(zone->getTree());
     }
+
+    // result = _defaultTree->findEntityByEntityItemID(entityID);
+    // if (result) {
+    //     if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+    //         entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
+    //         qDebug() << "    found in default tree:" << _defaultTree->getName();
+    //     return result;
+    // }
+
 
     if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
         entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))

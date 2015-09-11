@@ -216,8 +216,13 @@ public:
     Transform getParentTransform() const;
 
     /// Position in meters (-TREE_SCALE TREE_SCALE)
-    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
+    inline const glm::vec3& getPosition() const {
+        return _localTransform.getTranslation();
+    }
     inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+
+    glm::vec3 getGlobalPosition() const { return getGlobalTransform().getTranslation(); }
+    glm::quat getGlobalRotation() const { return getGlobalTransform().getRotation(); }
 
     inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
     inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }

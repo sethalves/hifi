@@ -100,8 +100,8 @@ void AvatarData::setOrientation(const glm::quat& orientation) {
 // There are a number of possible strategies for this set of tools through endRender, below.
 void AvatarData::nextAttitude(glm::vec3 position, glm::quat orientation) {
     avatarLock.lock();
-    setPosition(position, true);
-    setOrientation(orientation, true);
+    setPosition(position);
+    setOrientation(orientation);
     avatarLock.unlock();
 }
 void AvatarData::startCapture() {
@@ -131,15 +131,15 @@ void AvatarData::endRenderRun() {
 void AvatarData::startRender() {
     glm::vec3 pos = getPosition();
     glm::quat rot = getOrientation();
-    setPosition(_nextPosition, true);
-    setOrientation(_nextOrientation, true);
+    setPosition(_nextPosition);
+    setOrientation(_nextOrientation);
     updateAttitude();
     _nextPosition = pos;
     _nextOrientation = rot;
 }
 void AvatarData::endRender() {
-    setPosition(_nextPosition, true);
-    setOrientation(_nextOrientation, true);
+    setPosition(_nextPosition);
+    setOrientation(_nextOrientation);
     updateAttitude();
     _nextAllowed = true;
 }

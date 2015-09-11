@@ -995,8 +995,8 @@ EntityTreePointer EntityItem::getTree() const {
 }
 
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
-    glm::mat4 translation = glm::translate(getPosition());
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
+    glm::mat4 translation = glm::translate(getGlobalPosition());
+    glm::mat4 rotation = glm::mat4_cast(getGlobalRotation());
     glm::mat4 scale = glm::scale(getDimensions());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
     return translation * rotation * scale * registration;
@@ -1203,7 +1203,7 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 const AACube& EntityItem::getMaximumAACube() const {
     if (_recalcMaxAACube) {
         // * we know that the position is the center of rotation
-        glm::vec3 centerOfRotation = getPosition(); // also where _registration point is
+        glm::vec3 centerOfRotation = getGlobalPosition(); // also where _registration point is
 
         // * we know that the registration point is the center of rotation
         // * we can calculate the length of the furthest extent from the registration point
@@ -1237,10 +1237,11 @@ const AACube& EntityItem::getMinimumAACube() const {
         glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * getRegistrationPoint());
         glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
         Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-        Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+        Extents rotatedExtentsRelativeToRegistrationPoint =
+            unrotatedExtentsRelativeToRegistrationPoint.getRotated(getGlobalRotation());
 
         // shift the extents to be relative to the position/registration point
-        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getGlobalPosition());
 
         // the cube that best encompasses extents is...
         AABox box(rotatedExtentsRelativeToRegistrationPoint);
@@ -1257,20 +1258,30 @@ const AACube& EntityItem::getMinimumAACube() const {
 
 const AABox& EntityItem::getAABox() const {
     if (_recalcAABox) {
+
         // _position represents the position of the registration point.
         glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
         glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * _registrationPoint);
         glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
         Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-        Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+        Extents rotatedExtentsRelativeToRegistrationPoint =
+            unrotatedExtentsRelativeToRegistrationPoint.getRotated(getGlobalRotation());
 
         // shift the extents to be relative to the position/registration point
-        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getGlobalPosition());
 
         _cachedAABox = AABox(rotatedExtentsRelativeToRegistrationPoint);
         _recalcAABox = false;
+
+
+        if (_id == QUuid("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
+            qDebug() << "RECALCULATING AA BOX FOR" << getName() << _cachedAABox;
+        }
+
+
     }
+
     return _cachedAABox;
 }
 

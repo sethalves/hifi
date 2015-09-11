@@ -783,8 +783,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
     });
 
     connect(this, &Application::applicationStateChanged, this, &Application::activeChanged);
-
-    qDebug() << "DEFAULT ENTITY TREE =" << _entities.getTree().get();
 }
 
 void Application::aboutToQuit() {

@@ -27,10 +27,11 @@
 #include "ZoneTracker.h"
 
 
-EntityTree::EntityTree(bool shouldReaverage) :
+EntityTree::EntityTree(bool shouldReaverage, EntityItemPointer owner) :
     Octree(shouldReaverage),
-    _fbxService(NULL),
-    _simulation(NULL)
+    _fbxService(nullptr),
+    _simulation(nullptr),
+    _owner(owner)
 {
     resetClientEditStats();
 }
@@ -42,7 +43,7 @@ EntityTree::~EntityTree() {
 void EntityTree::createRootElement() {
     assert(_rootElement == nullptr);
     _rootElement = createNewElement();
-    qDebug() << "EntityTree::createRootElement this =" << shared_from_this().get() << "root =" << _rootElement.get();
+    qDebug() << "EntityTree::createRootElement this =" << getName();
 }
 
 OctreeElementPointer EntityTree::createNewElement(unsigned char* octalCode) {
@@ -588,7 +589,7 @@ EntityItemPointer EntityTree::findEntityByEntityItemID(const EntityItemID& entit
     if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
         entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
         qDebug() << "        EntityTree::findEntityByEntityItemID containingElement is" << containingElement.get()
-                 << "this is" << shared_from_this().get();
+                 << "this is" << getName();
 
     if (containingElement) {
         foundEntity = containingElement->getEntityWithEntityItemID(entityID);
@@ -596,7 +597,7 @@ EntityItemPointer EntityTree::findEntityByEntityItemID(const EntityItemID& entit
         if (entityID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
             entityID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
             qDebug() << "        EntityTree::findEntityByEntityItemID foundEntity is" << foundEntity.get()
-                     << "this is" << shared_from_this().get();
+                     << "this is" << getName();
         }
     }
     return foundEntity;
@@ -980,7 +981,7 @@ void EntityTree::setContainingElement(const EntityItemID& entityItemID, EntityTr
     if (entityItemID == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
         entityItemID == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}"))
         qDebug() << "        EntityTree::setContainingElement" << element.get() << "now contains" << entityItemID
-                 << "this is" << shared_from_this().get();
+                 << "this is" << getName();
 
     if (element) {
         _entityToElementMap[entityItemID] = element;
@@ -1181,7 +1182,7 @@ QList<EntityItemPointer> EntityTree::getAllEntities() {
 void EntityTree::consistencyCheck() {
     QHash<EntityItemID, EntityTreeElementPointer>::const_iterator i;
     for (i = _entityToElementMap.begin(); i != _entityToElementMap.end(); ++i) {
-        const EntityItemID& entityItemID = i.key();
+        // const EntityItemID& entityItemID = i.key();
         const EntityTreeElementPointer& entityElement = i.value();
         assert(entityElement->getTree().get() == this);
         foreach (EntityItemPointer entity, entityElement->getEntities()) {
@@ -1189,4 +1190,14 @@ void EntityTree::consistencyCheck() {
             assert(entity->getElement()->getTree().get() == this);
         }
     }
+
+    getRoot()->consistencyCheck(getThisPointer());
+}
+
+
+QString EntityTree::getName() {
+    if (_owner) {
+        return _owner->getName();
+    }
+    return "default";
 }

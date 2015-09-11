@@ -34,6 +34,7 @@ EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const En
     auto result = std::make_shared<ZoneEntityItem>(entityID, properties);
     auto zoneTracker = DependencyManager::get<ZoneTracker>();
     zoneTracker->trackZone(result);
+    result->getSubTree()->setOwner(result);
     return result;
 }
 

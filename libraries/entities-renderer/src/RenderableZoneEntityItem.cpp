@@ -21,20 +21,32 @@
 #include <ZoneTracker.h>
 
 EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
-    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties);
+
     auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    PhysicalEntitySimulation* physParentSim = (PhysicalEntitySimulation*)(zoneTracker->getDefaultTree()->getSimulation());
+    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties, physParentSim->getPacketSender());
     zoneTracker->trackZone(result);
+
+    EntityTreePointer subTree = result->getSubTree();
+    subTree->setOwner(result);
+
+    // EntityTreeRenderer* entityTreeRenderer = Application::getInstance()->getEntities();
+    // entityTreeRenderer->connectTree(subTree);
+
     return result;
 }
 
 
-RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
+RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties,
+                                                   EntityEditPacketSender* sender) :
     ZoneEntityItem(entityItemID, properties),
     _model(nullptr),
     _needsInitialSimulation(true),
     _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
     _entitySimulation(new PhysicalEntitySimulation()) {
-    // _entitySimulation.init(_subTree, _physicsEngine, &_entityEditSender);
+
+    _entitySimulation->init(_subTree, _physicsEngine, sender);
+    _subTree->setSimulation(_entitySimulation.get());
 }
 
 

@@ -27,6 +27,7 @@ class ZoneTracker : public QObject, public Dependency {
 public:
     ZoneTracker();
     void setDefaultTree(EntityTreePointer defaultTree) { assert(defaultTree); _defaultTree = defaultTree; }
+    EntityTreePointer getDefaultTree() { return _defaultTree; }
     void trackZone(EntityItemPointer newZone);
     void forgetZone(EntityItemPointer goingAwayZone);
     EntityItemPointer addEntity(const EntityItemID& entityID,
