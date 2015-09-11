@@ -664,9 +664,7 @@ int EntityTree::processEditPacketData(NLPacket& packet, const unsigned char* edi
                         // this is a new entity... assign a new entityID
                         properties.setCreated(properties.getLastEdited());
                         startCreate = usecTimestampNow();
-                        EntityItemPointer newEntity =
-                            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties);
-
+                        EntityItemPointer newEntity = addEntity(entityItemID, properties);
                         endCreate = usecTimestampNow();
                         _totalCreates++;
                         if (newEntity) {
@@ -1128,8 +1126,7 @@ bool EntityTree::readFromMap(QVariantMap& map) {
             entityItemID = EntityItemID(QUuid::createUuid());
         }
 
-        EntityItemPointer entity =
-            DependencyManager::get<ZoneTracker>()->addEntity(entityItemID, properties);
+        EntityItemPointer entity = addEntity(entityItemID, properties);
 
         if (!entity) {
             qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();

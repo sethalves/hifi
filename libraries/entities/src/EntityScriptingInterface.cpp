@@ -74,7 +74,7 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
     bool success = true;
     if (_entityTree) {
         _entityTree->lockForWrite();
-        EntityItemPointer entity = DependencyManager::get<ZoneTracker>()->addEntity(id, propertiesWithSimID);
+        EntityItemPointer entity = _entityTree->addEntity(id, propertiesWithSimID);
 
         if (entity) {
             // This Node is creating a new object.  If it's in motion, set this Node as the simulator.

@@ -420,7 +420,7 @@ public:
     void deserializeActions();
     void setActionDataDirty(bool value) const { _actionDataDirty = value; }
 
-    virtual void setParentID(const EntityItemID& parentID) { _parentID = parentID; }
+    virtual void setParentID(const EntityItemID& parentID);
     virtual const EntityItemID& getParentID() const { return _parentID; }
     virtual void acceptChild(EntityItemPointer arrivingEntity);
     virtual void setDomainAsParent();

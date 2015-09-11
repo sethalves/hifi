@@ -55,18 +55,18 @@ bool RecurseOctreeToMapOperator::postRecursion(OctreeElementPointer element) {
         }
         entitiesQList << qScriptValues.toVariant();
 
-        if (entityItem->getType() == EntityTypes::Zone) {
-            // Zones have their own sub-EntityTrees
-            auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entityItem);
-            EntityTreePointer subTree = zoneEntityItem->getSubTree();
-            EntityTreeElementPointer subRoot = subTree->getRoot();
-            QVariantMap entityDescription;
-            entityDescription["Entities"] = QVariantList();
-            RecurseOctreeToMapOperator theOperator(entityDescription, subRoot, _engine, _skipDefaultValues);
-            subTree->recurseTreeWithOperator(&theOperator);
-            QVariantList subEntitiesQList = qvariant_cast<QVariantList>(entityDescription["Entities"]);
-            entitiesQList << subEntitiesQList;
-        }
+        // if (entityItem->getType() == EntityTypes::Zone) {
+        //     // Zones have their own sub-EntityTrees
+        //     auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entityItem);
+        //     EntityTreePointer subTree = zoneEntityItem->getSubTree();
+        //     EntityTreeElementPointer subRoot = subTree->getRoot();
+        //     QVariantMap entityDescription;
+        //     entityDescription["Entities"] = QVariantList();
+        //     RecurseOctreeToMapOperator theOperator(entityDescription, subRoot, _engine, _skipDefaultValues);
+        //     subTree->recurseTreeWithOperator(&theOperator);
+        //     QVariantList subEntitiesQList = qvariant_cast<QVariantList>(entityDescription["Entities"]);
+        //     entitiesQList << subEntitiesQList;
+        // }
     }
     _map["Entities"] = entitiesQList;
     if (element == _top) {

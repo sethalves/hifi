@@ -34,13 +34,12 @@ EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const En
     auto result = std::make_shared<ZoneEntityItem>(entityID, properties);
     auto zoneTracker = DependencyManager::get<ZoneTracker>();
     zoneTracker->trackZone(result);
-    result->getSubTree()->setOwner(result);
+    // result->getSubTree()->setOwner(result);
     return result;
 }
 
 ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties) :
-    EntityItem(entityItemID),
-    _subTree(new EntityTree()) {
+    EntityItem(entityItemID) {
     _type = EntityTypes::Zone;
 
     _keyLightColor[RED_INDEX] = DEFAULT_KEYLIGHT_COLOR.red;
@@ -54,8 +53,6 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
     _compoundShapeURL = DEFAULT_COMPOUND_SHAPE_URL;
 
     _backgroundMode = BACKGROUND_MODE_INHERIT;
-
-    _subTree->createRootElement();
 
     setProperties(properties);
 }

@@ -1031,9 +1031,7 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
 
 void EntityTreeRenderer::addingEntity(const EntityItemID& entityID) {
     checkAndCallPreload(entityID);
-    // auto entity = std::static_pointer_cast<EntityTree>(_tree)->findEntityByID(entityID);
-    auto zoneTracker = DependencyManager::get<ZoneTracker>();
-    auto entity = zoneTracker->findEntityByEntityItemID(entityID);
+    auto entity = std::static_pointer_cast<EntityTree>(_tree)->findEntityByID(entityID);
     if (entity) {
         addEntityToScene(entity);
     }

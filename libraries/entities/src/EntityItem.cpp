@@ -30,6 +30,8 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "EntityActionFactoryInterface.h"
+#include "ZoneEntityItem.h"
+#include "ZoneTracker.h"
 
 
 bool EntityItem::_sendPhysicsUpdates = true;
@@ -1790,9 +1792,7 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
 }
 
 void EntityItem::refreshParentEntityItemPointer() const {
-    // make sure we have the EntityTree available
-    EntityTreeElementPointer element = getElement();
-    EntityTreePointer tree = element ? element->getTree() : nullptr;
+    EntityTreePointer tree = getTree();
     if (!tree) {
         _parentZone.reset();
         return;
@@ -1829,6 +1829,16 @@ void EntityItem::setDomainAsParent() {
     Transform myGlobalTransform = getGlobalTransform();
     glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
     setPosition(myGlobalPosition);
+}
+
+void EntityItem::setParentID(const EntityItemID& parentID) {
+    if (_parentID == parentID) {
+        return;
+    }
+
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    zoneTracker->setParent(_id, parentID);
+    _parentID = parentID;
 }
 
 

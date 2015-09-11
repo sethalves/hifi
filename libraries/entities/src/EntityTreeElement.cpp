@@ -257,7 +257,7 @@ void EntityTreeElement::elementEncodeComplete(EncodeBitstreamParams& params, Oct
 
 OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData* packetData,
                                                                 EncodeBitstreamParams& params) const {
-
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
     OctreeElement::AppendState appendElementState = OctreeElement::COMPLETED; // assume the best...
 
     // first, check the params.extraEncodeData to see if there's any partial re-encode data for this element
@@ -295,15 +295,17 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             // if this entity is a ZoneEntityItem, jam all its children into the list of entities to encode
             if (entity->getType() == EntityTypes::Zone) {
 
-                auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
+                // auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
 
-                qDebug() << "PACKING ZONE" << entity->getID() << "children-count:"
-                         << zoneEntityItem->getSubTree()->getAllEntities().size();
-
-                foreach (EntityItemPointer zoneChildEntity, zoneEntityItem->getSubTree()->getAllEntities()) {
+                QList<EntityItemPointer> children = zoneTracker->getChildrenOf(entity);
+                foreach (EntityItemPointer zoneChildEntity, children) {
                     entityTreeElementExtraEncodeData->extraChildren << zoneChildEntity;
                     qDebug() << "XXXXX ZXXXX XXXXXX  XXX selecting" << zoneChildEntity->getID();
                 }
+
+                qDebug() << "PACKING ZONE" << entity->getID() << "children-count:"
+                         << children.size();
+
             }
 #endif
         }
@@ -805,7 +807,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 // which will correctly handle the case of creating models and letting them parse the old format.
                 if (args.bitstreamVersion >= VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
                     entityItemID = EntityItemID::readEntityItemIDFromBuffer(dataAt, bytesLeftToRead);
-                    entityItem = zoneTracker->findEntityByEntityItemID(entityItemID);
+                    entityItem = _myTree->findEntityByEntityItemID(entityItemID);
                 }
 
                 // If the item already exists in our tree, we want do the following...
@@ -854,45 +856,45 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     }
 
                     // make sure entity is in the correct tree
-                    if (entityItem->getParentID() == UNKNOWN_ENTITY_ID) {
+                    // if (entityItem->getParentID() == UNKNOWN_ENTITY_ID) {
 
-                        if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-                            entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                            qDebug() << "null parent";
-                        }
-
-
-                        if (entityItem->getTree() != _myTree) {
-                            zoneTracker->reparent(entityItemID);
-                        }
-                    } else {
-
-                        if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-                            entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                            qDebug() << "non-null parent";
-                        }
-
-                        EntityItemPointer parent = zoneTracker->findEntityByEntityItemID(entityItem->getParentID());
-                        auto parentZone = std::dynamic_pointer_cast<ZoneEntityItem>(parent);
-                        if (parentZone && parentZone->getSubTree() != tree) {
-
-                            if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-                                entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                                qDebug() << "needs re-parent";
-                            }
+                    //     if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                    //         entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                    //         qDebug() << "null parent";
+                    //     }
 
 
-                            zoneTracker->reparent(entityItemID);
+                    //     if (entityItem->getTree() != _myTree) {
+                    //         zoneTracker->reparent(entityItemID);
+                    //     }
+                    // } else {
 
-                        } else {
+                    //     if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                    //         entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                    //         qDebug() << "non-null parent";
+                    //     }
 
-                            if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
-                                entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
-                                qDebug() << "doesn't need re-parent" << "parentZone =" << parentZone.get();
-                            }
+                    //     EntityItemPointer parent = zoneTracker->findEntityByEntityItemID(entityItem->getParentID());
+                    //     auto parentZone = std::dynamic_pointer_cast<ZoneEntityItem>(parent);
+                    //     if (parentZone && parentZone->getSubTree() != tree) {
 
-                        }
-                    }
+                    //         if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                    //             entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                    //             qDebug() << "needs re-parent";
+                    //         }
+
+
+                    //         zoneTracker->reparent(entityItemID);
+
+                    //     } else {
+
+                    //         if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
+                    //             entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
+                    //             qDebug() << "doesn't need re-parent" << "parentZone =" << parentZone.get();
+                    //         }
+
+                    //     }
+                    // }
                     if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                         entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
                         qDebug() << "UPDATE FOR" << entityItem->getName()
@@ -911,9 +913,9 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                         if (entityItem->getCreated() == UNKNOWN_CREATED_TIME) {
                             entityItem->recordCreationTime();
                         }
-                        if (entityItem->getParentID() != UNKNOWN_ENTITY_ID) {
-                            zoneTracker->reparent(entityItemID);
-                        }
+                        // if (entityItem->getParentID() != UNKNOWN_ENTITY_ID) {
+                        //     zoneTracker->reparent(entityItemID);
+                        // }
                         if (entityItem->getID() == EntityItemID("{4a3544d6-a8f3-4717-a929-b48c01cf1d20}") ||
                             entityItem->getID() == EntityItemID("{2ff5305e-2b19-4d70-a5a7-0990aef18b98}")) {
                             qDebug() << "NEW FOR" << entityItem->getName()
@@ -936,7 +938,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
         }
     }
 
-    zoneTracker->doReparentings();
+    // zoneTracker->doReparentings();
 
     return bytesRead;
 }

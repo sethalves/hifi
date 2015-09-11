@@ -20,6 +20,10 @@
 #include "EntityTree.h"
 #include "EntityItem.h"
 
+
+typedef QSet<EntityItemID> ZoneChildren;
+typedef QHash<EntityItemID, ZoneChildren> ZoneChildMap;
+
 class ZoneTracker : public QObject, public Dependency {
     Q_OBJECT
     SINGLETON_DEPENDENCY
@@ -30,17 +34,21 @@ public:
     EntityTreePointer getDefaultTree() { return _defaultTree; }
     void trackZone(EntityItemPointer newZone);
     void forgetZone(EntityItemPointer goingAwayZone);
-    EntityItemPointer addEntity(const EntityItemID& entityID,
-                                const EntityItemProperties& properties);
+    /* EntityItemPointer addEntity(const EntityItemID& entityID, */
+    /*                             const EntityItemProperties& properties); */
 
-    EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID);
-    void reparent(EntityItemID needsReparentID);
-    void doReparentings();
+    // EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID);
+    // void reparent(EntityItemID needsReparentID);
+    // void doReparentings();
 
+    void setParent(EntityItemID child, EntityItemID parent);
+    QList<EntityItemPointer> getChildrenOf(EntityItemID parent);
+    QList<EntityItemPointer> getChildrenOf(EntityItemPointer parent) { return getChildrenOf(parent->getID()); }
 private:
     QHash<EntityItemID, EntityItemPointer> _zones;
     QSet<EntityItemID> _needsReparent;
     EntityTreePointer _defaultTree;
+    ZoneChildMap _childrenMap;
 };
 
 
