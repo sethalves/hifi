@@ -312,6 +312,9 @@ public:
     
     const AABox& getLocalAABox() const { return _localAABox; }
 
+    const QUuid getReferential() const { return _referential; }
+    void setReferential(QUuid referential) { _referential = referential; }
+
     int getUsecsSinceLastUpdate() const { return _averageBytesReceived.getUsecsSinceLastEvent(); }
     int getAverageBytesReceivedPerSecond() const;
     int getReceiveRate() const;
@@ -359,6 +362,7 @@ protected:
     glm::vec3 _position = START_LOCATION;
     glm::vec3 _handPosition;
     
+    QUuid _referential;
 
     //  Body rotation
     float _bodyYaw;     // degrees

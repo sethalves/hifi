@@ -225,7 +225,18 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
     if (_headData->_isEyeTrackerConnected) {
         setAtBit(bitItems, IS_EYE_TRACKER_CONNECTED);
     }
+    // referential state
+    if (!_referential.isNull()) {
+        setAtBit(bitItems, HAS_REFERENTIAL);
+    }
     *destinationBuffer++ = bitItems;
+
+    // Add referential
+    if (!_referential.isNull()) {
+        QByteArray referentialAsBytes = _referential.toRfc4122();
+        memcpy(destinationBuffer, referentialAsBytes.data(), referentialAsBytes.size());
+        destinationBuffer += referentialAsBytes.size();
+    }
 
     // If it is connected, pack up the data
     if (_headData->_isFaceTrackerConnected) {
@@ -448,6 +459,14 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
 
         _headData->_isFaceTrackerConnected = oneAtBit(bitItems, IS_FACESHIFT_CONNECTED);
         _headData->_isEyeTrackerConnected = oneAtBit(bitItems, IS_EYE_TRACKER_CONNECTED);
+        bool hasReferential = oneAtBit(bitItems, HAS_REFERENTIAL);
+
+        if (hasReferential) {
+            const int sizeOfPackedUuid = 16;
+            QByteArray ba((const char*)sourceBuffer, sizeOfPackedUuid);
+            _referential = QUuid::fromRfc4122(ba);
+            sourceBuffer += sizeOfPackedUuid;
+        }
 
         if (_headData->_isFaceTrackerConnected) {
             float leftEyeBlink, rightEyeBlink, averageLoudness, browAudioLift;
