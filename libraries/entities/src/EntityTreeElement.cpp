@@ -758,8 +758,6 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
         return 0;
     }
 
-    auto zoneTracker = DependencyManager::get<ZoneTracker>();
-
     const unsigned char* dataAt = data;
     int bytesRead = 0;
     uint16_t numberOfEntities = 0;
@@ -796,15 +794,14 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 // TODO: Do we need to also do this?
                 //    3) remember the old cube for the entity so we can mark it as dirty
                 if (entityItem) {
-                    EntityTreePointer tree = entityItem->getTree();
                     QString entityScriptBefore = entityItem->getScript();
                     quint64 entityScriptTimestampBefore = entityItem->getScriptTimestamp();
                     bool bestFitBefore = bestFitEntityBounds(entityItem);
-                    EntityTreeElementPointer currentContainingElement = tree->getContainingElement(entityItemID);
+                    EntityTreeElementPointer currentContainingElement = _myTree->getContainingElement(entityItemID);
 
                     bytesForThisEntity = entityItem->readEntityDataFromBuffer(dataAt, bytesLeftToRead, args);
                     if (entityItem->getDirtyFlags()) {
-                        tree->entityChanged(entityItem);
+                        _myTree->entityChanged(entityItem);
                     }
                     bool bestFitAfter = bestFitEntityBounds(entityItem);
 
@@ -816,7 +813,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                                 currentContainingElement->removeEntityItem(entityItem);
 
                                 addEntityItem(entityItem);
-                                tree->setContainingElement(entityItemID, getThisPointer());
+                                _myTree->setContainingElement(entityItemID, getThisPointer());
                             }
                         }
                     }
@@ -825,7 +822,7 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                     quint64 entityScriptTimestampAfter = entityItem->getScriptTimestamp();
                     bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
                     if (entityScriptBefore != entityScriptAfter || reload) {
-                        tree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
+                        _myTree->emitEntityScriptChanging(entityItemID, reload); // the entity script has changed
                     }
 
                 } else {
@@ -849,8 +846,6 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
             }
         }
     }
-
-    // zoneTracker->doReparentings();
 
     return bytesRead;
 }
@@ -927,20 +922,4 @@ void EntityTreeElement::debugDump() {
             qCDebug(entities) << "    NO entities!";
         }
     });
-}
-
-void EntityTreeElement::consistencyCheck(EntityTreePointer tree) {
-    assert(_myTree == tree);
-
-    foreach (EntityItemPointer entity, _entityItems) {
-        assert(entity->getElement().get() == this);
-        assert(entity->getTree() == tree);
-    }
-
-    for (int i = 0; i < NUMBER_OF_CHILDREN; i++) {
-        EntityTreeElementPointer child = getChildAtIndex(i);
-        if (child) {
-            child->consistencyCheck(tree);
-        }
-    }
 }

@@ -123,10 +123,6 @@ void EntityTreeRenderer::init() {
     // make sure our "last avatar position" is something other than our current position, so that on our
     // first chance, we'll check for enter/leave entity events.
     _lastAvatarPosition = _viewState->getAvatarPosition() + glm::vec3((float)TREE_SCALE);
-    connectTree(entityTree);
-}
-
-void EntityTreeRenderer::connectTree(EntityTreePointer entityTree) {
     connect(entityTree.get(), &EntityTree::deletingEntity, this, &EntityTreeRenderer::deletingEntity, Qt::QueuedConnection);
     connect(entityTree.get(), &EntityTree::addingEntity, this, &EntityTreeRenderer::addingEntity, Qt::QueuedConnection);
     connect(entityTree.get(), &EntityTree::entityScriptChanging,
@@ -646,6 +642,8 @@ void EntityTreeRenderer::renderElement(OctreeElementPointer element, RenderArgs*
     // actually render it here...
     // we need to iterate the actual entityItems of the element
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
+
+
     bool isShadowMode = args->_renderMode == RenderArgs::SHADOW_RENDER_MODE;
 
     if (!isShadowMode && _displayModelElementProxy && entityTreeElement->size() > 0) {

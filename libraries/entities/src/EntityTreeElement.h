@@ -221,8 +221,6 @@ public:
         return std::static_pointer_cast<const OctreeElement>(shared_from_this());
     }
 
-    void consistencyCheck(EntityTreePointer tree);
-
 protected:
     virtual void init(unsigned char * octalCode);
     EntityTreePointer _myTree;

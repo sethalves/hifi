@@ -53,7 +53,6 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
 RenderableZoneEntityItem::~RenderableZoneEntityItem() {
 }
 
-
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();

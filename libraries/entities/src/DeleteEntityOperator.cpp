@@ -100,7 +100,7 @@ bool DeleteEntityOperator::preRecursion(OctreeElementPointer element) {
                 _foundCount++;
             }
         }
-
+        
         // if we haven't found all of our search for entities, then keep looking
         keepSearching = (_foundCount < _lookingCount);
     }
@@ -119,7 +119,7 @@ bool DeleteEntityOperator::postRecursion(OctreeElementPointer element) {
     if ((subTreeContainsSomeEntitiesToDelete(element))) {
         element->markWithChangedTime();
     }
-
+    
     // It should always be ok to prune children. Because we are only in this PostRecursion function if
     // we've already finished processing all of the children of this current element. If any of those
     // children are the containing element for any entity in our lists of entities to delete, then they
@@ -129,3 +129,4 @@ bool DeleteEntityOperator::postRecursion(OctreeElementPointer element) {
     entityTreeElement->pruneChildren(); // take this opportunity to prune any empty leaves
     return keepSearching; // if we haven't yet found it, keep looking
 }
+

@@ -44,6 +44,7 @@ bool AddEntityOperator::preRecursion(OctreeElementPointer element) {
 
         // If this element is the best fit for the new entity properties, then add/or update it
         if (entityTreeElement->bestFitBounds(_newEntityBox)) {
+
             entityTreeElement->addEntityItem(_newEntity);
             _tree->setContainingElement(_newEntity->getEntityItemID(), entityTreeElement);
 

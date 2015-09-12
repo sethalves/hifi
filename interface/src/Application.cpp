@@ -375,8 +375,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
 {
     setInstance(this);
 
-    // DependencyManager::get<ZoneTracker>()->setDefaultTree(_entities.getTree());
-
     _entityClipboard->createRootElement();
 
     _pluginContainer = new PluginContainerProxy();

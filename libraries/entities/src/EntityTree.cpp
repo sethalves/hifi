@@ -311,13 +311,13 @@ void EntityTree::setSimulation(EntitySimulation* simulation) {
     });
 }
 
-EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings, bool doEmit) {
+void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         if (!ignoreWarnings) {
             qCDebug(entities) << "UNEXPECTED!!!!  EntityTree::deleteEntity() entityID doesn't exist!!! entityID=" << entityID;
         }
-        return nullptr;
+        return;
     }
 
     EntityItemPointer existingEntity = containingElement->getEntityWithEntityItemID(entityID);
@@ -326,30 +326,26 @@ EntityItemPointer EntityTree::deleteEntity(const EntityItemID& entityID, bool fo
             qCDebug(entities) << "UNEXPECTED!!!! don't call EntityTree::deleteEntity() on entity items that don't exist. "
                         "entityID=" << entityID;
         }
-        return nullptr;
+        return;
     }
 
     if (existingEntity->getLocked() && !force) {
         if (!ignoreWarnings) {
             qCDebug(entities) << "ERROR! EntityTree::deleteEntity() trying to delete locked entity. entityID=" << entityID;
         }
-        return nullptr;
+        return;
     }
 
-    if (doEmit) {
-        emit deletingEntity(entityID);
-    }
+    emit deletingEntity(entityID);
 
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer(), entityID);
     recurseTreeWithOperator(&theOperator);
     processRemovedEntities(theOperator);
     _isDirty = true;
-
-    return existingEntity;
 }
 
-void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings, bool doEmit) {
+void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings) {
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer());
     foreach(const EntityItemID& entityID, entityIDs) {
@@ -379,9 +375,7 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
 
         // tell our delete operator about this entityID
         theOperator.addEntityIDToDeleteList(entityID);
-        if (doEmit) {
-            emit deletingEntity(entityID);
-        }
+        emit deletingEntity(entityID);
     }
 
     if (theOperator.getEntities().size() > 0) {
