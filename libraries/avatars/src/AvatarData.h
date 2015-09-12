@@ -172,6 +172,7 @@ public:
     const QUuid& getSessionUUID() const { return _sessionUUID; }
 
     const glm::vec3& getPosition() const;
+    virtual glm::vec3 getAbsolutePosition() const;
     virtual void setPosition(const glm::vec3 position);
 
     glm::vec3 getHandPosition() const;
@@ -359,7 +360,7 @@ public slots:
     
 protected:
     QUuid _sessionUUID;
-    glm::vec3 _position = START_LOCATION;
+    mutable glm::vec3 _position = START_LOCATION;
     glm::vec3 _handPosition;
     
     QUuid _referential;

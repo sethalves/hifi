@@ -82,6 +82,11 @@ const glm::vec3& AvatarData::getPosition() const {
     return _position;
 }
 
+glm::vec3 AvatarData::getAbsolutePosition() const {
+    assert(false);
+    return _position;
+}
+
 void AvatarData::setPosition(const glm::vec3 position) {
     _position = position;
 }
@@ -108,7 +113,7 @@ void AvatarData::startCapture() {
     avatarLock.lock();
     assert(_nextAllowed);
     _nextAllowed = false;
-    _nextPosition = getPosition();
+    _nextPosition = _position;
     _nextOrientation = getOrientation();
 }
 void AvatarData::endCapture() {
@@ -129,7 +134,7 @@ void AvatarData::endRenderRun() {
     avatarLock.unlock();
 }
 void AvatarData::startRender() {
-    glm::vec3 pos = getPosition();
+    glm::vec3 pos = _position;
     glm::quat rot = getOrientation();
     setPosition(_nextPosition);
     setOrientation(_nextOrientation);

@@ -225,7 +225,7 @@ void MyAvatar::simulate(float deltaTime) {
         Head* head = getHead();
         glm::vec3 headPosition;
         if (!_skeletonModel.getHeadPosition(headPosition)) {
-            headPosition = _position;
+            headPosition = getAbsolutePosition();
         }
         head->setPosition(headPosition);
         head->setScale(_scale);
@@ -271,7 +271,7 @@ void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
 void MyAvatar::updateSensorToWorldMatrix() {
     // update the sensor mat so that the body position will end up in the desired
     // position when driven from the head.
-    glm::mat4 desiredMat = createMatFromQuatAndPos(getOrientation(), getPosition());
+    glm::mat4 desiredMat = createMatFromQuatAndPos(getOrientation(), getAbsolutePosition());
     _sensorToWorldMatrix = desiredMat * glm::inverse(_bodySensorMatrix);
 }
 
@@ -907,7 +907,7 @@ void MyAvatar::updateLookAtTargetAvatar() {
             float angleTo = glm::angle(lookForward, glm::normalize(avatar->getHead()->getEyePosition() - cameraPosition));
             if (angleTo < (smallestAngleTo * (isCurrentTarget ? KEEP_LOOKING_AT_CURRENT_ANGLE_FACTOR : 1.0f))) {
                 _lookAtTargetAvatar = avatarPointer;
-                _targetAvatarPosition = avatarPointer->getPosition();
+                _targetAvatarPosition = avatarPointer->getAbsolutePosition();
                 smallestAngleTo = angleTo;
             }
             if (Application::getInstance()->isLookingAtMyAvatar(avatar)) {
@@ -994,7 +994,7 @@ eyeContactTarget MyAvatar::getEyeContactTarget() {
 }
 
 glm::vec3 MyAvatar::getDefaultEyePosition() const {
-    return getPosition() + getWorldAlignedOrientation() * _skeletonModel.getDefaultEyeModelPosition();
+    return getAbsolutePosition() + getWorldAlignedOrientation() * _skeletonModel.getDefaultEyeModelPosition();
 }
 
 const float SCRIPT_PRIORITY = DEFAULT_PRIORITY + 1.0f;
@@ -1108,10 +1108,22 @@ glm::vec3 MyAvatar::getSkeletonPosition() const {
         // The avatar is rotated PI about the yAxis, so we have to correct for it
         // to get the skeleton offset contribution in the world-frame.
         const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-        return _position + getOrientation() * FLIP * _skeletonOffset;
+        return getPosition() + getOrientation() * FLIP * _skeletonOffset;
     }
     return Avatar::getPosition();
 }
+
+glm::vec3 MyAvatar::getAbsoluteSkeletonPosition() const {
+    CameraMode mode = Application::getInstance()->getCamera()->getMode();
+    if (mode == CAMERA_MODE_THIRD_PERSON || mode == CAMERA_MODE_INDEPENDENT) {
+        // The avatar is rotated PI about the yAxis, so we have to correct for it
+        // to get the skeleton offset contribution in the world-frame.
+        const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
+        return getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+    }
+    return Avatar::getAbsolutePosition();
+}
+
 
 void MyAvatar::rebuildSkeletonBody() {
     // compute localAABox
@@ -1292,7 +1304,7 @@ void MyAvatar::preRender(RenderArgs* renderArgs) {
 
         // bones are aligned such that z is forward, not -z.
         glm::quat rotY180 = glm::angleAxis((float)M_PI, glm::vec3(0.0f, 1.0f, 0.0f));
-        AnimPose xform(glm::vec3(1), rotY180 * getOrientation(), getPosition());
+        AnimPose xform(glm::vec3(1), rotY180 * getOrientation(), getAbsolutePosition());
 
         if (_enableDebugDrawBindPose && _debugDrawSkeleton) {
             glm::vec4 gray(0.2f, 0.2f, 0.2f, 0.2f);

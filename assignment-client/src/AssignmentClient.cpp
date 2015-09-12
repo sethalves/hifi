@@ -30,7 +30,6 @@
 #include <SharedUtil.h>
 #include <ShutdownEventListener.h>
 #include <SoundCache.h>
-#include <ZoneTracker.h>
 
 #include "AssignmentFactory.h"
 #include "AssignmentActionFactory.h"

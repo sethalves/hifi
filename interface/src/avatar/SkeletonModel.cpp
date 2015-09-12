@@ -160,7 +160,7 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 }
 
 void SkeletonModel::updateAttitude() {
-    setTranslation(_owningAvatar->getSkeletonPosition());
+    setTranslation(_owningAvatar->getAbsoluteSkeletonPosition());
     static const glm::quat refOrientation = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
     setRotation(_owningAvatar->getOrientation() * refOrientation);
     setScale(glm::vec3(1.0f, 1.0f, 1.0f) * _owningAvatar->getScale());

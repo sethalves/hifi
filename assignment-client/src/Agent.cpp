@@ -26,9 +26,9 @@
 
 #include <WebSocketServerClass.h>
 #include <EntityScriptingInterface.h> // TODO: consider moving to scriptengine.h
+#include <ZoneTracker.h>
 
 #include "avatars/ScriptableAvatar.h"
-
 #include "Agent.h"
 
 static const int RECEIVED_AUDIO_STREAM_CAPACITY_FRAMES = 10;
@@ -198,6 +198,8 @@ void Agent::run() {
     _entityViewer.setJurisdictionListener(entityScriptingInterface->getJurisdictionListener());
     _entityViewer.init();
     entityScriptingInterface->setEntityTree(_entityViewer.getTree());
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
+    zoneTracker->setDefaultTree(_entityViewer.getTree());
 
     _scriptEngine.setScriptContents(scriptContents);
     _scriptEngine.run();

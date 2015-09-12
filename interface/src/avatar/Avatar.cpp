@@ -123,12 +123,12 @@ void Avatar::init() {
 glm::vec3 Avatar::getChestPosition() const {
     // for now, let's just assume that the "chest" is halfway between the root and the neck
     glm::vec3 neckPosition;
-    return _skeletonModel.getNeckPosition(neckPosition) ? (_position + neckPosition) * 0.5f : _position;
+    return _skeletonModel.getNeckPosition(neckPosition) ? (getAbsolutePosition() + neckPosition) * 0.5f : getAbsolutePosition();
 }
 
 glm::vec3 Avatar::getNeckPosition() const {
     glm::vec3 neckPosition;
-    return _skeletonModel.getNeckPosition(neckPosition) ? neckPosition : _position;
+    return _skeletonModel.getNeckPosition(neckPosition) ? neckPosition : getAbsolutePosition();
 }
 
 
@@ -142,7 +142,7 @@ AABox Avatar::getBounds() const {
 
 float Avatar::getLODDistance() const {
     return DependencyManager::get<LODManager>()->getAvatarLODDistanceMultiplier() *
-            glm::distance(qApp->getCamera()->getPosition(), _position) / _scale;
+        glm::distance(qApp->getCamera()->getPosition(), getAbsolutePosition()) / _scale;
 }
 
 void Avatar::simulate(float deltaTime) {
@@ -164,7 +164,8 @@ void Avatar::simulate(float deltaTime) {
 
     // simple frustum check
     float boundingRadius = getBillboardSize();
-    bool inViewFrustum = Application::getInstance()->getViewFrustum()->sphereInFrustum(_position, boundingRadius) !=
+    bool inViewFrustum =
+        Application::getInstance()->getViewFrustum()->sphereInFrustum(getAbsolutePosition(), boundingRadius) !=
         ViewFrustum::OUTSIDE;
 
     {
@@ -185,7 +186,7 @@ void Avatar::simulate(float deltaTime) {
         }
         {
             PerformanceTimer perfTimer("head");
-            glm::vec3 headPosition = _position;
+            glm::vec3 headPosition = getAbsolutePosition();
             _skeletonModel.getHeadPosition(headPosition);
             Head* head = getHead();
             head->setPosition(headPosition);
@@ -295,7 +296,9 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
 
     auto& batch = *renderArgs->_batch;
 
-    if (glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getPosition(), _position) < 10.0f) {
+    if (glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getAbsolutePosition(), getAbsolutePosition()) <
+        // XXX magic number
+        10.0f) {
         auto geometryCache = DependencyManager::get<GeometryCache>();
         auto deferredLighting = DependencyManager::get<DeferredLightingEffect>();
 
@@ -362,12 +365,12 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
         frustum = Application::getInstance()->getDisplayViewFrustum();
     }
 
-    if (frustum->sphereInFrustum(getPosition(), boundingRadius) == ViewFrustum::OUTSIDE) {
+    if (frustum->sphereInFrustum(getAbsolutePosition(), boundingRadius) == ViewFrustum::OUTSIDE) {
         endRender();
         return;
     }
 
-    glm::vec3 toTarget = cameraPosition - getPosition();
+    glm::vec3 toTarget = cameraPosition - getAbsolutePosition();
     float distanceToTarget = glm::length(toTarget);
 
     {
@@ -423,7 +426,8 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
             const float INDICATOR_OFFSET = 0.22f;
             const float INDICATOR_RADIUS = 0.03f;
             const glm::vec4 LOOK_AT_INDICATOR_COLOR = { 0.8f, 0.0f, 0.0f, 0.75f };
-            glm::vec3 position = glm::vec3(_position.x, getDisplayNamePosition().y + INDICATOR_OFFSET, _position.z);
+            glm::vec3 absPosition = getAbsolutePosition();
+            glm::vec3 position = glm::vec3(absPosition.x, getDisplayNamePosition().y + INDICATOR_OFFSET, absPosition.z);
             Transform transform;
             transform.setTranslation(position);
             batch.setModelTransform(transform);
@@ -491,7 +495,7 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
             if (renderArgs->_renderMode == RenderArgs::DEFAULT_RENDER_MODE && (sphereRadius > MIN_SPHERE_SIZE) &&
                     (angle < MAX_SPHERE_ANGLE) && (angle > MIN_SPHERE_ANGLE)) {
                 Transform transform;
-                transform.setTranslation(_position);
+                transform.setTranslation(getAbsolutePosition());
                 transform.setScale(height);
                 batch.setModelTransform(transform);
 
@@ -624,14 +628,15 @@ void Avatar::renderBillboard(RenderArgs* renderArgs) {
     }
     // rotate about vertical to face the camera
     glm::quat rotation = getOrientation();
-    glm::vec3 cameraVector = glm::inverse(rotation) * (Application::getInstance()->getCamera()->getPosition() - _position);
+    glm::vec3 cameraVector = glm::inverse(rotation) * (Application::getInstance()->getCamera()->getPosition() -
+                                                       getAbsolutePosition());
     rotation = rotation * glm::angleAxis(atan2f(-cameraVector.x, -cameraVector.z), glm::vec3(0.0f, 1.0f, 0.0f));
-    
+
     // compute the size from the billboard camera parameters and scale
     float size = getBillboardSize();
 
     Transform transform;
-    transform.setTranslation(_position);
+    transform.setTranslation(getAbsolutePosition());
     transform.setRotation(rotation);
     transform.setScale(size);
 
@@ -657,7 +662,7 @@ glm::vec3 Avatar::getDisplayNamePosition() const {
         namePosition += getBodyUpDirection() * getHeadHeight() * 1.1f;
     } else {
         const float HEAD_PROPORTION = 0.75f;
-        namePosition = _position + getBodyUpDirection() * (getBillboardSize() * HEAD_PROPORTION);
+        namePosition = getAbsolutePosition() + getBodyUpDirection() * (getBillboardSize() * HEAD_PROPORTION);
     }
 #ifdef DEBUG
     // TODO: Temporary logging to track cause of invalid scale value; remove once cause has been fixed.
@@ -743,7 +748,7 @@ Transform Avatar::calculateDisplayNameTransform(const ViewFrustum& frustum, floa
     glm::vec3 worldOffset = glm::vec3(screenOffset.x, screenOffset.y, 0.0f) / (float)pixelHeight;
     
     // Compute orientation
-    glm::vec3 dPosition = frustum.getPosition() - getPosition();
+    glm::vec3 dPosition = frustum.getPosition() - getAbsolutePosition();
     // If x and z are 0, atan(x, z) is undefined, so default to 0 degrees
     float yawRotation = dPosition.x == 0.0f && dPosition.z == 0.0f ? 0.0f : glm::atan(dPosition.x, dPosition.z);
     glm::quat orientation = glm::quat(glm::vec3(0.0f, yawRotation, 0.0f));
@@ -830,7 +835,48 @@ glm::vec3 Avatar::getSkeletonPosition() const {
     // The avatar is rotated PI about the yAxis, so we have to correct for it
     // to get the skeleton offset contribution in the world-frame.
     const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    return _position + getOrientation() * FLIP * _skeletonOffset;
+    return getPosition() + getOrientation() * FLIP * _skeletonOffset;
+}
+
+glm::vec3 Avatar::getAbsoluteSkeletonPosition() const {
+    // The avatar is rotated PI about the yAxis, so we have to correct for it
+    // to get the skeleton offset contribution in the world-frame.
+    const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
+    return getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+}
+
+glm::vec3 Avatar::getAbsolutePosition() const {
+    EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+    // EntityTreePointer tree = treeRenderer->getTree();
+    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
+
+    if (zone != _currentZone) {
+        if (!zone) {
+            Transform oldZoneTransform = _currentZone->getGlobalTransform();
+            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
+            _position += oldZoneTranslation;
+        } else if (!_currentZone) {
+            Transform newZoneTransform = zone->getGlobalTransform();
+            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
+            _position -= newZoneTranslation;
+        } else {
+            Transform oldZoneTransform = _currentZone->getGlobalTransform();
+            Transform newZoneTransform = zone->getGlobalTransform();
+            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
+            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
+            glm::vec3 oldAbsolutionPosition = oldZoneTranslation + _position;
+            _position = oldAbsolutionPosition - newZoneTranslation;
+        }
+
+        _currentZone = zone;
+    }
+
+    if (zone) {
+        Transform zoneTransform = zone->getGlobalTransform();
+        return zoneTransform.getTranslation() + _position;
+    }
+
+    return _position;
 }
 
 QVector<glm::quat> Avatar::getJointRotations() const {
@@ -945,7 +991,7 @@ void Avatar::setJointModelPositionAndOrientation(const QString& name, glm::vec3 
 
 void Avatar::scaleVectorRelativeToPosition(glm::vec3 &positionToScale) const {
     //Scale a world space vector as if it was relative to the position
-    positionToScale = _position + _scale * (positionToScale - _position);
+    positionToScale = getAbsolutePosition() + _scale * (positionToScale - getAbsolutePosition());
 }
 
 void Avatar::setFaceModelURL(const QUrl& faceModelURL) {
@@ -1004,12 +1050,12 @@ int Avatar::parseDataFromBuffer(const QByteArray& buffer) {
     }
 
     // change in position implies movement
-    glm::vec3 oldPosition = _position;
+    glm::vec3 oldPosition = getAbsolutePosition();
 
     int bytesRead = AvatarData::parseDataFromBuffer(buffer);
 
     const float MOVE_DISTANCE_THRESHOLD = 0.001f;
-    _moving = glm::distance(oldPosition, _position) > MOVE_DISTANCE_THRESHOLD;
+    _moving = glm::distance(oldPosition, getAbsolutePosition()) > MOVE_DISTANCE_THRESHOLD;
     if (_moving && _motionState) {
         _motionState->addDirtyFlags(EntityItem::DIRTY_POSITION);
     }
@@ -1100,7 +1146,7 @@ float Avatar::getHeadHeight() const {
     extents = _skeletonModel.getMeshExtents();
     glm::vec3 neckPosition;
     if (!extents.isEmpty() && extents.isValid() && _skeletonModel.getNeckPosition(neckPosition)) {
-        return extents.maximum.y / 2.0f - neckPosition.y + _position.y;
+        return extents.maximum.y / 2.0f - neckPosition.y + getAbsolutePosition().y;
     }
 
     const float DEFAULT_HEAD_HEIGHT = 0.25f;

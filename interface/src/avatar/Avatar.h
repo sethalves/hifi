@@ -26,6 +26,7 @@
 #include "Head.h"
 #include "SkeletonModel.h"
 #include "world.h"
+#include "ZoneEntityItem.h"
 
 namespace render {
     template <> const ItemKey payloadGetKey(const AvatarSharedPointer& avatar);
@@ -132,9 +133,12 @@ public:
 
     virtual void applyCollision(const glm::vec3& contactPoint, const glm::vec3& penetration) { }
 
+    virtual glm::vec3 getAbsolutePosition() const;
+
     Q_INVOKABLE void setSkeletonOffset(const glm::vec3& offset);
     Q_INVOKABLE glm::vec3 getSkeletonOffset() { return _skeletonOffset; }
     virtual glm::vec3 getSkeletonPosition() const;
+    virtual glm::vec3 getAbsoluteSkeletonPosition() const;
     
     Q_INVOKABLE glm::vec3 getJointPosition(int index) const;
     Q_INVOKABLE glm::vec3 getJointPosition(const QString& name) const;
@@ -238,6 +242,7 @@ private:
     int _voiceSphereID;
 
     AvatarMotionState* _motionState = nullptr;
+    mutable std::shared_ptr<ZoneEntityItem> _currentZone;
 };
 
 #endif // hifi_Avatar_h
