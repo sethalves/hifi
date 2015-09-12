@@ -43,9 +43,9 @@ void RenderableBoxEntityItem::render(RenderArgs* args) {
     batch.setModelTransform(getTransformToCenter()); // we want to include the scale as well
     glm::vec4 cubeColor(toGlm(getXColor()), getLocalRenderAlpha());
 
-    if (getName() == QString("floating box clone")) {
-        qDebug() << "RENDERING" << getName() << getGlobalPosition();
-    }
+    // if (getName() == QString("floating box clone")) {
+    //     qDebug() << "RENDERING" << getName() << getGlobalPosition();
+    // }
 
     if (!_procedural) {
         _procedural.reset(new Procedural(this->getUserData()));

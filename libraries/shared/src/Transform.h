@@ -11,6 +11,9 @@
 #ifndef hifi_gpu_Transform_h
 #define hifi_gpu_Transform_h
 
+#include <QtCore/QDebug>
+#include <QtCore/QDataStream>
+
 #include <assert.h>
 
 #include <glm/glm.hpp>
@@ -527,5 +530,22 @@ inline void Transform::updateCache() const {
         validCache();
     }
 }
+
+
+inline QDebug& operator<<(QDebug& out, const Transform::Quat& quat) {
+    out << "[w:" << quat.w << ", x:" << quat.x << ", y:" << quat.y << ", z:" << quat.z  << "]";
+    return out;
+}
+
+inline QDebug& operator<<(QDebug& out, const Transform::Vec3& vec) {
+    out << "[x:" << vec.x << ", y:" << vec.y << ", z:" << vec.z  << "]";
+    return out;
+}
+
+inline QDebug& operator<<(QDebug& out, const Transform& trans) {
+    out << "[Transform " << trans.getTranslation() << "]";
+    return out;
+}
+
 
 #endif

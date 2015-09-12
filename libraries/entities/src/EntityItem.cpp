@@ -1177,8 +1177,27 @@ const Transform EntityItem::getTransformToCenter() const {
 }
 
 Transform EntityItem::getGlobalTransform() const {
+
+    Transform parentTransform = getParentTransform();
+    Transform parentDescaled(parentTransform.getRotation(), glm::vec3(1.0f), parentTransform.getTranslation());
     Transform result;
-    Transform::mult(result, getParentTransform(), _localTransform);
+    Transform::mult(result, parentDescaled, _localTransform);
+
+    // if (_id == QUuid("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
+    //     qDebug() << "getGlobalTransform parent:" << parentDescaled;
+    //     qDebug() << "    local:" << _localTransform;
+    //     qDebug() << "    result:" << result;
+    //     qDebug() << "    parent isTranslating =" << parentDescaled.isTranslating()
+    //              << parentDescaled.getTranslation();
+    //     qDebug() << "    parent isRotating =" << parentDescaled.isRotating();
+    //     qDebug() << "    local isTranslating =" << _localTransform.isTranslating()
+    //              << _localTransform.getTranslation();
+    //     qDebug() << "    local isRotating =" << _localTransform.isRotating();
+    //     qDebug() << "    result isTranslating =" << result.isTranslating()
+    //              << result.getTranslation();
+    //     qDebug() << "    result isRotating =" << result.isRotating();
+    // }
+
     return result;
 }
 
@@ -1835,10 +1854,10 @@ void EntityItem::setParentID(const EntityItemID& parentID) {
     if (_parentID == parentID) {
         return;
     }
-
     auto zoneTracker = DependencyManager::get<ZoneTracker>();
     zoneTracker->setParent(_id, parentID);
     _parentID = parentID;
+    requiresRecalcBoxes();
 }
 
 

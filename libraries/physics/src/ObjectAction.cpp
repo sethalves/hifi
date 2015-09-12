@@ -79,7 +79,7 @@ void ObjectAction::setPosition(glm::vec3 position) {
 glm::quat ObjectAction::getRotation() {
     auto rigidBody = getRigidBody();
     if (!rigidBody) {
-        return glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+        return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     }
     return bulletToGLM(rigidBody->getOrientation());
 }
