@@ -114,10 +114,10 @@ void EntityTreeRenderer::init() {
 
     if (_wantScripts) {
         _entitiesScriptEngine = new ScriptEngine(NO_SCRIPT, "Entities",
-                                        _scriptingServices->getControllerScriptingInterface());
+                                        _scriptingServices->getControllerScriptingInterface(), false);
         _scriptingServices->registerScriptEngineWithApplicationServices(_entitiesScriptEngine);
 
-        _sandboxScriptEngine = new ScriptEngine(NO_SCRIPT, "Entities Sandbox", NULL);
+        _sandboxScriptEngine = new ScriptEngine(NO_SCRIPT, "Entities Sandbox", NULL, false);
     }
 
     // make sure our "last avatar position" is something other than our current position, so that on our
@@ -346,16 +346,17 @@ void EntityTreeRenderer::checkEnterLeaveEntities() {
             QVector<EntityItemID> entitiesContainingAvatar;
             
             // find the entities near us
-            _tree->lockForRead(); // don't let someone else change our tree while we search
-            std::static_pointer_cast<EntityTree>(_tree)->findEntities(avatarPosition, radius, foundEntities);
+            // don't let someone else change our tree while we search
+            _tree->withReadLock([&] {
+                std::static_pointer_cast<EntityTree>(_tree)->findEntities(avatarPosition, radius, foundEntities);
 
-            // create a list of entities that actually contain the avatar's position
-            foreach(EntityItemPointer entity, foundEntities) {
-                if (entity->contains(avatarPosition)) {
-                    entitiesContainingAvatar << entity->getEntityItemID();
+                // create a list of entities that actually contain the avatar's position
+                foreach(EntityItemPointer entity, foundEntities) {
+                    if (entity->contains(avatarPosition)) {
+                        entitiesContainingAvatar << entity->getEntityItemID();
+                    }
                 }
-            }
-            _tree->unlock();
+            });
             
             // Note: at this point we don't need to worry about the tree being locked, because we only deal with
             // EntityItemIDs from here. The loadEntityScript() method is robust against attempting to load scripts
@@ -506,22 +507,19 @@ void EntityTreeRenderer::render(RenderArgs* renderArgs) {
 
     if (_tree && !_shuttingDown) {
         renderArgs->_renderer = this;
+        _tree->withReadLock([&] {
+            // Whenever you're in an intersection between zones, we will always choose the smallest zone.
+            _bestZone = NULL; // NOTE: Is this what we want?
+            _bestZoneVolume = std::numeric_limits<float>::max();
 
-        _tree->lockForRead();
+            // FIX ME: right now the renderOperation does the following:
+            //   1) determining the best zone (not really rendering)
+            //   2) render the debug cell details
+            // we should clean this up
+            _tree->recurseTreeWithOperation(renderOperation, renderArgs);
 
-        // Whenever you're in an intersection between zones, we will always choose the smallest zone.
-        _bestZone = NULL; // NOTE: Is this what we want?
-        _bestZoneVolume = std::numeric_limits<float>::max();
-        
-        // FIX ME: right now the renderOperation does the following:
-        //   1) determining the best zone (not really rendering)
-        //   2) render the debug cell details
-        // we should clean this up
-        _tree->recurseTreeWithOperation(renderOperation, renderArgs);
-
-        applyZonePropertiesToScene(_bestZone);
-
-        _tree->unlock();
+            applyZonePropertiesToScene(_bestZone);
+        });
     }
     deleteReleasedModels(); // seems like as good as any other place to do some memory cleanup
 }
@@ -648,19 +646,14 @@ void EntityTreeRenderer::renderElement(OctreeElementPointer element, RenderArgs*
     // actually render it here...
     // we need to iterate the actual entityItems of the element
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
-    EntityItems& entityItems = entityTreeElement->getEntities();
-    uint16_t numberOfEntities = entityItems.size();
     bool isShadowMode = args->_renderMode == RenderArgs::SHADOW_RENDER_MODE;
 
-    if (!isShadowMode && _displayModelElementProxy && numberOfEntities > 0) {
+    if (!isShadowMode && _displayModelElementProxy && entityTreeElement->size() > 0) {
         renderElementProxy(entityTreeElement, args);
     }
-    
-    for (uint16_t i = 0; i < numberOfEntities; i++) {
-        EntityItemPointer entityItem = entityItems[i];
-        
-        if (entityItem->isVisible()) {
 
+    entityTreeElement->forEachEntity([&](EntityItemPointer entityItem) {
+        if (entityItem->isVisible()) {
             // NOTE: Zone Entities are a special case we handle here...
             if (entityItem->getType() == EntityTypes::Zone) {
                 if (entityItem->contains(_viewState->getAvatarPosition())) {
@@ -684,7 +677,8 @@ void EntityTreeRenderer::renderElement(OctreeElementPointer element, RenderArgs*
                 }
             }
         }
-    }
+    });
+
 }
 
 float EntityTreeRenderer::getSizeScale() const {

@@ -52,11 +52,8 @@ public:
 class EntityTree : public Octree {
     Q_OBJECT
 public:
-    EntityTree(bool shouldReaverage = false, EntityItemPointer owner = nullptr);
+    EntityTree(bool shouldReaverage = false);
     virtual ~EntityTree();
-
-    void setOwner(EntityItemPointer owner) { _owner = owner; }
-    EntityItemPointer getOwner() { return _owner; }
 
     void createRootElement();
 
@@ -211,11 +208,6 @@ public:
 
     EntityTreePointer getThisPointer() { return std::static_pointer_cast<EntityTree>(shared_from_this()); }
 
-    QList<EntityItemPointer> getAllEntities();
-
-    void consistencyCheck();
-    QString getName();
-
 signals:
     void deletingEntity(const EntityItemID& entityID);
     void addingEntity(const EntityItemID& entityID);
@@ -244,9 +236,7 @@ private:
     QMultiMap<quint64, QUuid> _recentlyDeletedEntityItemIDs;
     EntityItemFBXService* _fbxService;
 
- public: // XXX
     QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
- private: // XXX
 
     EntitySimulation* _simulation;
 
@@ -271,8 +261,6 @@ private:
     quint64 _totalEditDeltas = 0;
     quint64 _maxEditDelta = 0;
     quint64 _treeResetTime = 0;
-
-    EntityItemPointer _owner = nullptr;
 };
 
 #endif // hifi_EntityTree_h

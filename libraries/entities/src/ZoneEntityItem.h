@@ -112,15 +112,6 @@ public:
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
 
-    // EntityTreePointer getSubTree() { return _subTree; }
-    void addChild(EntityItemPointer child) {
-        _children[child->getID()] = child;
-    }
-    void removeChild(EntityItemPointer child) {
-        _children.remove(child->getID());
-    }
-    QList<EntityItemPointer> getAllChildren() { return _children.values(); }
-
 protected:
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;
@@ -139,9 +130,6 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
-
-    // EntityTreePointer _subTree;
-    QHash<EntityItemID, EntityItemPointer> _children;
 };
 
 #endif // hifi_ZoneEntityItem_h

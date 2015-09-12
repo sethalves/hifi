@@ -991,8 +991,8 @@ bool EntityItem::isMoving() const {
 }
 
 EntityTreePointer EntityItem::getTree() const {
-    EntityTreeElementPointer elt = getElement();
-    EntityTreePointer tree = elt ? elt->getTree() : nullptr;
+    EntityTreeElementPointer containingElement = getElement();
+    EntityTreePointer tree = containingElement ? containingElement->getTree() : nullptr;
     return tree;
 }
 
@@ -1177,27 +1177,10 @@ const Transform EntityItem::getTransformToCenter() const {
 }
 
 Transform EntityItem::getGlobalTransform() const {
-
     Transform parentTransform = getParentTransform();
     Transform parentDescaled(parentTransform.getRotation(), glm::vec3(1.0f), parentTransform.getTranslation());
     Transform result;
     Transform::mult(result, parentDescaled, _localTransform);
-
-    // if (_id == QUuid("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
-    //     qDebug() << "getGlobalTransform parent:" << parentDescaled;
-    //     qDebug() << "    local:" << _localTransform;
-    //     qDebug() << "    result:" << result;
-    //     qDebug() << "    parent isTranslating =" << parentDescaled.isTranslating()
-    //              << parentDescaled.getTranslation();
-    //     qDebug() << "    parent isRotating =" << parentDescaled.isRotating();
-    //     qDebug() << "    local isTranslating =" << _localTransform.isTranslating()
-    //              << _localTransform.getTranslation();
-    //     qDebug() << "    local isRotating =" << _localTransform.isRotating();
-    //     qDebug() << "    result isTranslating =" << result.isTranslating()
-    //              << result.getTranslation();
-    //     qDebug() << "    result isRotating =" << result.isRotating();
-    // }
-
     return result;
 }
 
@@ -1294,13 +1277,6 @@ const AABox& EntityItem::getAABox() const {
 
         _cachedAABox = AABox(rotatedExtentsRelativeToRegistrationPoint);
         _recalcAABox = false;
-
-
-        if (_id == QUuid("2ff5305e-2b19-4d70-a5a7-0990aef18b98")) {
-            qDebug() << "RECALCULATING AA BOX FOR" << getName() << _cachedAABox;
-        }
-
-
     }
 
     return _cachedAABox;
@@ -1548,15 +1524,16 @@ void EntityItem::clearSimulationOwnership() {
 
 
 bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
-    lockForWrite();
-    checkWaitingToRemove(simulation);
+    bool result;
+    withWriteLock([&] {
+        checkWaitingToRemove(simulation);
 
-    bool result = addActionInternal(simulation, action);
-    if (!result) {
-        removeActionInternal(action->getID());
-    }
+        result = addActionInternal(simulation, action);
+        if (!result) {
+            removeActionInternal(action->getID());
+        }
+    });
 
-    unlock();
     return result;
 }
 
@@ -1583,33 +1560,33 @@ bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPoi
 }
 
 bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments) {
-    lockForWrite();
-    checkWaitingToRemove(simulation);
+    bool success = false;
+    withWriteLock([&] {
+        checkWaitingToRemove(simulation);
 
-    if (!_objectActions.contains(actionID)) {
-        unlock();
-        return false;
-    }
-    EntityActionPointer action = _objectActions[actionID];
+        if (!_objectActions.contains(actionID)) {
+            return;
+        }
 
-    bool success = action->updateArguments(arguments);
-    if (success) {
-        _allActionsDataCache = serializeActions(success);
-        _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
-    } else {
-        qDebug() << "EntityItem::updateAction failed";
-    }
+        EntityActionPointer action = _objectActions[actionID];
 
-    unlock();
+        success = action->updateArguments(arguments);
+        if (success) {
+            _allActionsDataCache = serializeActions(success);
+            _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
+        } else {
+            qDebug() << "EntityItem::updateAction failed";
+        }
+    });
     return success;
 }
 
 bool EntityItem::removeAction(EntitySimulation* simulation, const QUuid& actionID) {
-    lockForWrite();
-    checkWaitingToRemove(simulation);
-
-    bool success = removeActionInternal(actionID);
-    unlock();
+    bool success = false;
+    withWriteLock([&] {
+        checkWaitingToRemove(simulation);
+        success = removeActionInternal(actionID);
+    });
     return success;
 }
 
@@ -1638,29 +1615,29 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
 }
 
 bool EntityItem::clearActions(EntitySimulation* simulation) {
-    lockForWrite();
-    QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
-    while (i != _objectActions.end()) {
-        const QUuid id = i.key();
-        EntityActionPointer action = _objectActions[id];
-        i = _objectActions.erase(i);
-        action->setOwnerEntity(nullptr);
-        action->removeFromSimulation(simulation);
-    }
-    // empty _serializedActions means no actions for the EntityItem
-    _actionsToRemove.clear();
-    _allActionsDataCache.clear();
-    _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
-    unlock();
+    withWriteLock([&] {
+        QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
+        while (i != _objectActions.end()) {
+            const QUuid id = i.key();
+            EntityActionPointer action = _objectActions[id];
+            i = _objectActions.erase(i);
+            action->setOwnerEntity(nullptr);
+            action->removeFromSimulation(simulation);
+        }
+        // empty _serializedActions means no actions for the EntityItem
+        _actionsToRemove.clear();
+        _allActionsDataCache.clear();
+        _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
+    });
     return true;
 }
 
 
 void EntityItem::deserializeActions() {
     assertUnlocked();
-    lockForWrite();
-    deserializeActionsInternal();
-    unlock();
+    withWriteLock([&] {
+        deserializeActionsInternal();
+    });
 }
 
 
@@ -1734,9 +1711,9 @@ void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
 
 void EntityItem::setActionData(QByteArray actionData) {
     assertUnlocked();
-    lockForWrite();
-    setActionDataInternal(actionData);
-    unlock();
+    withWriteLock([&] {
+        setActionDataInternal(actionData);
+    });
 }
 
 void EntityItem::setActionDataInternal(QByteArray actionData) {
@@ -1790,23 +1767,24 @@ const QByteArray EntityItem::getActionDataInternal() const {
 }
 
 const QByteArray EntityItem::getActionData() const {
+    QByteArray result;
     assertUnlocked();
-    lockForRead();
-    auto result = getActionDataInternal();
-    unlock();
+    withReadLock([&] {
+        result = getActionDataInternal();
+    });
     return result;
 }
 
 QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     QVariantMap result;
-    lockForRead();
+    withReadLock([&] {
+        if (_objectActions.contains(actionID)) {
+            EntityActionPointer action = _objectActions[actionID];
+            result = action->getArguments();
+            result["type"] = EntityActionInterface::actionTypeToString(action->getType());
+        }
+    });
 
-    if (_objectActions.contains(actionID)) {
-        EntityActionPointer action = _objectActions[actionID];
-        result = action->getArguments();
-        result["type"] = EntityActionInterface::actionTypeToString(action->getType());
-    }
-    unlock();
     return result;
 }
 
@@ -1829,7 +1807,6 @@ void EntityItem::refreshParentEntityItemPointer() const {
     }
 }
 
-
 void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
     arrivingEntity->setParentID(_id);
 
@@ -1843,13 +1820,6 @@ void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
     arrivingEntity->setPosition(newChildLocalPosition);
 }
 
-void EntityItem::setDomainAsParent() {
-    setParentID(UNKNOWN_ENTITY_ID);
-    Transform myGlobalTransform = getGlobalTransform();
-    glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
-    setPosition(myGlobalPosition);
-}
-
 void EntityItem::setParentID(const EntityItemID& parentID) {
     if (_parentID == parentID) {
         return;
@@ -1859,99 +1829,3 @@ void EntityItem::setParentID(const EntityItemID& parentID) {
     _parentID = parentID;
     requiresRecalcBoxes();
 }
-
-
-#define ENABLE_LOCKING 1
-
-#ifdef ENABLE_LOCKING
-void EntityItem::lockForRead() const {
-    _lock.lockForRead();
-}
-
-bool EntityItem::tryLockForRead() const {
-    return _lock.tryLockForRead();
-}
-
-void EntityItem::lockForWrite() const {
-    _lock.lockForWrite();
-}
-
-bool EntityItem::tryLockForWrite() const {
-    return _lock.tryLockForWrite();
-}
-
-void EntityItem::unlock() const {
-    _lock.unlock();
-}
-
-bool EntityItem::isLocked() const {
-    bool readSuccess = tryLockForRead();
-    if (readSuccess) {
-        unlock();
-    }
-    bool writeSuccess = tryLockForWrite();
-    if (writeSuccess) {
-        unlock();
-    }
-    if (readSuccess && writeSuccess) {
-        return false;  // if we can take both kinds of lock, there was no previous lock
-    }
-    return true; // either read or write failed, so there is some lock in place.
-}
-
-
-bool EntityItem::isWriteLocked() const {
-    bool readSuccess = tryLockForRead();
-    if (readSuccess) {
-        unlock();
-        return false;
-    }
-    bool writeSuccess = tryLockForWrite();
-    if (writeSuccess) {
-        unlock();
-        return false;
-    }
-    return true; // either read or write failed, so there is some lock in place.
-}
-
-
-bool EntityItem::isUnlocked() const {
-    // this can't be sure -- this may get unlucky and hit locks from other threads.  what we're actually trying
-    // to discover is if *this* thread hasn't locked the EntityItem.  Try repeatedly to take both kinds of lock.
-    bool readSuccess = false;
-    for (int i=0; i<80; i++) {
-        readSuccess = tryLockForRead();
-        if (readSuccess) {
-            unlock();
-            break;
-        }
-        QThread::usleep(200);
-    }
-
-    bool writeSuccess = false;
-    if (readSuccess) {
-        for (int i=0; i<80; i++) {
-            writeSuccess = tryLockForWrite();
-            if (writeSuccess) {
-                unlock();
-                break;
-            }
-            QThread::usleep(300);
-        }
-    }
-
-    if (readSuccess && writeSuccess) {
-        return true;  // if we can take both kinds of lock, there was no previous lock
-    }
-    return false;
-}
-#else
-void EntityItem::lockForRead() const { }
-bool EntityItem::tryLockForRead() const { return true; }
-void EntityItem::lockForWrite() const { }
-bool EntityItem::tryLockForWrite() const { return true; }
-void EntityItem::unlock() const { }
-bool EntityItem::isLocked() const { return true; }
-bool EntityItem::isWriteLocked() const { return true; }
-bool EntityItem::isUnlocked() const { return true; }
-#endif

@@ -34,13 +34,6 @@ public:
     EntityTreePointer getDefaultTree() { return _defaultTree; }
     void trackZone(EntityItemPointer newZone);
     void forgetZone(EntityItemPointer goingAwayZone);
-    /* EntityItemPointer addEntity(const EntityItemID& entityID, */
-    /*                             const EntityItemProperties& properties); */
-
-    // EntityItemPointer findEntityByEntityItemID(const EntityItemID& entityID);
-    // void reparent(EntityItemID needsReparentID);
-    // void doReparentings();
-
     void setParent(EntityItemID child, EntityItemID parent);
     QList<EntityItemPointer> getChildrenOf(EntityItemID parent);
     QList<EntityItemPointer> getChildrenOf(EntityItemPointer parent) { return getChildrenOf(parent->getID()); }

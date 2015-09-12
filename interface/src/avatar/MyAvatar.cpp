@@ -679,7 +679,6 @@ float loadSetting(QSettings& settings, const char* name, float defaultValue) {
 // If we demand the animation from the update thread while we're locked, we'll deadlock.
 // Until we untangle this, code puts the updates back on the main thread temporarilly and starts all the loading.
 void MyAvatar::safelyLoadAnimations() {
-    qApp->setAvatarUpdateThreading(false);
     _rig->addAnimationByRole("idle");
     _rig->addAnimationByRole("walk");
     _rig->addAnimationByRole("backup");
@@ -690,30 +689,40 @@ void MyAvatar::safelyLoadAnimations() {
 }
 
 void MyAvatar::setEnableRigAnimations(bool isEnabled) {
-    if (isEnabled) {
-        safelyLoadAnimations();
+    if (_rig->getEnableRig() == isEnabled) {
+        return;
     }
-    _rig->setEnableRig(isEnabled);
-    if (!isEnabled) {
+    if (isEnabled) {
+        qApp->setRawAvatarUpdateThreading(false);
+        setEnableAnimGraph(false);
+        Menu::getInstance()->setIsOptionChecked(MenuOption::EnableAnimGraph, false);
+        safelyLoadAnimations();
+        qApp->setRawAvatarUpdateThreading();
+        _rig->setEnableRig(true);
+    } else {
+        _rig->setEnableRig(false);
         _rig->deleteAnimations();
-    } else if (Menu::getInstance()->isOptionChecked(MenuOption::EnableAvatarUpdateThreading)) {
-        qApp->setAvatarUpdateThreading(true);
     }
 }
 
 void MyAvatar::setEnableAnimGraph(bool isEnabled) {
-    if (isEnabled) {
-        safelyLoadAnimations();
+    if (_rig->getEnableAnimGraph() == isEnabled) {
+        return;
     }
-    _rig->setEnableAnimGraph(isEnabled);
     if (isEnabled) {
+        qApp->setRawAvatarUpdateThreading(false);
+        setEnableRigAnimations(false);
+        Menu::getInstance()->setIsOptionChecked(MenuOption::EnableRigAnimations, false);
+        safelyLoadAnimations();
         if (_skeletonModel.readyToAddToScene()) {
-            initAnimGraph();
-        }
-        if (Menu::getInstance()->isOptionChecked(MenuOption::EnableAvatarUpdateThreading)) {
-            qApp->setAvatarUpdateThreading(true);
-        }
+            _rig->setEnableAnimGraph(true);
+           initAnimGraph(); // must be enabled for the init to happen
+            _rig->setEnableAnimGraph(false); // must be disable to safely reset threading
+       }
+        qApp->setRawAvatarUpdateThreading();
+        _rig->setEnableAnimGraph(true);
     } else {
+        _rig->setEnableAnimGraph(false);
         destroyAnimGraph();
     }
 }
@@ -1067,7 +1076,17 @@ void MyAvatar::useFullAvatarURL(const QUrl& fullAvatarURL, const QString& modelN
 
     const QString& urlString = fullAvatarURL.toString();
     if (urlString.isEmpty() || (fullAvatarURL != getSkeletonModelURL())) {
+        bool isRigEnabled = getEnableRigAnimations();
+        bool isGraphEnabled = getEnableAnimGraph();
+        qApp->setRawAvatarUpdateThreading(false);
+        setEnableRigAnimations(false);
+        setEnableAnimGraph(false);
+
         setSkeletonModelURL(fullAvatarURL);
+
+        setEnableRigAnimations(isRigEnabled);
+        setEnableAnimGraph(isGraphEnabled);
+        qApp->setRawAvatarUpdateThreading();
         UserActivityLogger::getInstance().changedModel("skeleton", urlString);
     }
     sendIdentityPacket();
@@ -1201,7 +1220,10 @@ void MyAvatar::renderBody(RenderArgs* renderArgs, ViewFrustum* renderFrustum, fl
         getHead()->renderLookAts(renderArgs);
     }
 
-    getHand()->render(renderArgs, true);
+    if (renderArgs->_renderMode != RenderArgs::SHADOW_RENDER_MODE && 
+            Menu::getInstance()->isOptionChecked(MenuOption::DisplayHandTargets)) {
+        getHand()->renderHandTargets(renderArgs, true);
+    }
 }
 
 void MyAvatar::setVisibleInSceneIfReady(Model* model, render::ScenePointer scene, bool visible) {
@@ -1237,10 +1259,16 @@ void MyAvatar::initHeadBones() {
 }
 
 void MyAvatar::initAnimGraph() {
+    // avatar.json
     // https://gist.github.com/hyperlogic/7d6a0892a7319c69e2b9
-    // python2 -m SimpleHTTPServer&
-    //auto graphUrl = QUrl("http://localhost:8000/avatar.json");
-    auto graphUrl = QUrl("https://gist.githubusercontent.com/hyperlogic/7d6a0892a7319c69e2b9/raw/e2cb37aee601b6fba31d60eac3f6ae3ef72d4a66/avatar.json");
+    //
+    // ik-avatar.json
+    // https://gist.github.com/hyperlogic/e58e0a24cc341ad5d060
+    //
+    // or run a local web-server
+    // python -m SimpleHTTPServer&
+    // auto graphUrl = QUrl("http://localhost:8000/avatar.json");
+    auto graphUrl = QUrl("https://gist.githubusercontent.com/hyperlogic/e58e0a24cc341ad5d060/raw/8f824da2908fd89ad1befadd1d8f5d7b3b6efa66/ik-avatar.json");
     _rig->initAnimGraph(graphUrl, _skeletonModel.getGeometry()->getFBXGeometry());
 }
 
