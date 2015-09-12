@@ -548,7 +548,7 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
     }
 
     EntityItemPointer entity;
-    bool success;
+    bool doTransmit = false;
     _entityTree->withWriteLock([&] {
         EntitySimulation* simulation = _entityTree->getSimulation();
         entity = _entityTree->findEntityByEntityItemID(entityID);
@@ -562,14 +562,14 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
             return;
         }
 
-        success = actor(simulation, entity);
-        if (success) {
+        doTransmit = actor(simulation, entity);
+        if (doTransmit) {
             _entityTree->entityChanged(entity);
         }
     });
 
     // transmit the change
-    if (success) {
+    if (doTransmit) {
         EntityItemProperties properties;
         _entityTree->withReadLock([&] {
             properties = entity->getProperties();
@@ -581,7 +581,7 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
         queueEntityMessage(PacketType::EntityEdit, entityID, properties);
     }
 
-    return success;
+    return doTransmit;
 }
 
 
@@ -645,7 +645,7 @@ QVector<QUuid> EntityScriptingInterface::getActionIDs(const QUuid& entityID) {
     actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
             QList<QUuid> actionIDs = entity->getActionIDs();
             result = QVector<QUuid>::fromList(actionIDs);
-            return true;
+            return false; // don't send an edit packet
         });
     return result;
 }
@@ -654,7 +654,7 @@ QVariantMap EntityScriptingInterface::getActionArguments(const QUuid& entityID, 
     QVariantMap result;
     actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
             result = entity->getActionArguments(actionID);
-            return true;
+            return false; // don't send an edit packet
         });
     return result;
 }

@@ -20,7 +20,7 @@
 #include "ZoneEntityItem.h"
 #include "ZoneTracker.h"
 
-EntityTreeElement::EntityTreeElement(unsigned char* octalCode) : OctreeElement(), _entityItems(NULL) {
+EntityTreeElement::EntityTreeElement(unsigned char* octalCode) : OctreeElement() {
     init(octalCode);
 };
 
