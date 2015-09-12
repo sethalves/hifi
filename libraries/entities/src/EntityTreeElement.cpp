@@ -294,12 +294,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                 QList<EntityItemPointer> children = zoneTracker->getChildrenOf(entity);
                 foreach (EntityItemPointer zoneChildEntity, children) {
                     entityTreeElementExtraEncodeData->extraChildren << zoneChildEntity;
-                    qDebug() << "XXXXX ZXXXX XXXXXX  XXX selecting" << zoneChildEntity->getID();
                 }
-
-                qDebug() << "PACKING ZONE" << entity->getID() << "children-count:"
-                         << children.size();
-
             }
 #endif
         });
@@ -398,8 +393,6 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
         while (extraChildrenIterator.hasNext()) {
             EntityItemPointer entity = extraChildrenIterator.next();
             LevelDetails entityLevel = packetData->startLevel();
-
-            qDebug() << "XXXXX ZXXXX XXXXXX  XXX packing" << entity->getID();
 
             OctreeElement::AppendState appendEntityState =
                 entity->appendEntityData(packetData, params, entityTreeElementExtraEncodeData);

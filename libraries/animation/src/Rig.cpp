@@ -544,13 +544,13 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             isMoving = isMoving || isOn;
             if (isOn) {
                 if (!isRunningRole(role)) {
-                    qCDebug(animation) << "Rig STARTING" << role;
+                    // qCDebug(animation) << "Rig STARTING" << role;
                     startAnimationByRole(role);
 
                 }
             } else {
                 if (isRunningRole(role)) {
-                    qCDebug(animation) << "Rig stopping" << role;
+                    // qCDebug(animation) << "Rig stopping" << role;
                     stopAnimationByRole(role);
                 }
             }

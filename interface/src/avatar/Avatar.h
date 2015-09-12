@@ -14,6 +14,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <QtCore/QMutex>
 #include <QtCore/QScopedPointer>
 #include <QtCore/QUuid>
 
@@ -243,6 +244,7 @@ private:
 
     AvatarMotionState* _motionState = nullptr;
     mutable std::shared_ptr<ZoneEntityItem> _currentZone;
+    mutable QMutex _currentZoneMutex;
 };
 
 #endif // hifi_Avatar_h

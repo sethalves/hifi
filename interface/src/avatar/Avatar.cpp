@@ -846,6 +846,8 @@ glm::vec3 Avatar::getAbsoluteSkeletonPosition() const {
 }
 
 glm::vec3 Avatar::getAbsolutePosition() const {
+    _currentZoneMutex.lock();
+
     EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
     // EntityTreePointer tree = treeRenderer->getTree();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
@@ -873,9 +875,11 @@ glm::vec3 Avatar::getAbsolutePosition() const {
 
     if (zone) {
         Transform zoneTransform = zone->getGlobalTransform();
+        _currentZoneMutex.unlock();
         return zoneTransform.getTranslation() + _position;
     }
 
+    _currentZoneMutex.unlock();
     return _position;
 }
 
