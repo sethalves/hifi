@@ -515,6 +515,7 @@ void EntityTreeRenderer::render(RenderArgs* renderArgs) {
             _tree->recurseTreeWithOperation(renderOperation, renderArgs);
 
             applyZonePropertiesToScene(_bestZone);
+            _currentBestZone = _bestZone;
         });
     }
     deleteReleasedModels(); // seems like as good as any other place to do some memory cleanup

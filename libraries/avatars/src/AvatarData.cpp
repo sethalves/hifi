@@ -82,7 +82,7 @@ const glm::vec3& AvatarData::getPosition() const {
     return _position;
 }
 
-glm::vec3 AvatarData::getAbsolutePosition() const {
+const glm::vec3& AvatarData::getAbsolutePosition() const {
     assert(false);
     return _position;
 }

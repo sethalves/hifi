@@ -134,12 +134,12 @@ public:
 
     virtual void applyCollision(const glm::vec3& contactPoint, const glm::vec3& penetration) { }
 
-    virtual glm::vec3 getAbsolutePosition() const;
+    virtual const glm::vec3& getAbsolutePosition() const;
 
     Q_INVOKABLE void setSkeletonOffset(const glm::vec3& offset);
     Q_INVOKABLE glm::vec3 getSkeletonOffset() { return _skeletonOffset; }
     virtual glm::vec3 getSkeletonPosition() const;
-    virtual glm::vec3 getAbsoluteSkeletonPosition() const;
+    virtual const glm::vec3& getAbsoluteSkeletonPosition() const;
     
     Q_INVOKABLE glm::vec3 getJointPosition(int index) const;
     Q_INVOKABLE glm::vec3 getJointPosition(const QString& name) const;
@@ -228,6 +228,9 @@ protected:
 
     render::ItemID _renderItemID;
 
+    mutable glm::vec3 _absoluteSkeletonPosition; // this is so Avatar::getAbsoluteSkeletonPosition can return by reference
+    mutable glm::vec3 _absolutePosition; // this is so Avatar::getAbsolutePosition can return by reference
+
 private:
     bool _initialized;
     NetworkTexturePointer _billboardTexture;
@@ -243,8 +246,6 @@ private:
     int _voiceSphereID;
 
     AvatarMotionState* _motionState = nullptr;
-    mutable std::shared_ptr<ZoneEntityItem> _currentZone;
-    mutable QMutex _currentZoneMutex;
 };
 
 #endif // hifi_Avatar_h

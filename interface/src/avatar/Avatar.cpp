@@ -838,48 +838,26 @@ glm::vec3 Avatar::getSkeletonPosition() const {
     return getPosition() + getOrientation() * FLIP * _skeletonOffset;
 }
 
-glm::vec3 Avatar::getAbsoluteSkeletonPosition() const {
+const glm::vec3& Avatar::getAbsoluteSkeletonPosition() const {
     // The avatar is rotated PI about the yAxis, so we have to correct for it
     // to get the skeleton offset contribution in the world-frame.
     const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    return getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+    _absoluteSkeletonPosition = getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+    return _absoluteSkeletonPosition;
 }
 
-glm::vec3 Avatar::getAbsolutePosition() const {
-    _currentZoneMutex.lock();
-
-    EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
-    // EntityTreePointer tree = treeRenderer->getTree();
-    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
-
-    if (zone != _currentZone) {
-        if (!zone) {
-            Transform oldZoneTransform = _currentZone->getGlobalTransform();
-            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
-            _position += oldZoneTranslation;
-        } else if (!_currentZone) {
-            Transform newZoneTransform = zone->getGlobalTransform();
-            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
-            _position -= newZoneTranslation;
-        } else {
-            Transform oldZoneTransform = _currentZone->getGlobalTransform();
-            Transform newZoneTransform = zone->getGlobalTransform();
-            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
-            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
-            glm::vec3 oldAbsolutionPosition = oldZoneTranslation + _position;
-            _position = oldAbsolutionPosition - newZoneTranslation;
+const glm::vec3& Avatar::getAbsolutePosition() const {
+    if (!_referential.isNull()) {
+        EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+        EntityTreePointer tree = treeRenderer->getTree();
+        EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
+        if (zone) {
+            Transform zoneTransform = zone->getGlobalTransform();
+            _absolutePosition = zoneTransform.getTranslation() + _position;
+            return _absolutePosition;
         }
-
-        _currentZone = zone;
     }
 
-    if (zone) {
-        Transform zoneTransform = zone->getGlobalTransform();
-        _currentZoneMutex.unlock();
-        return zoneTransform.getTranslation() + _position;
-    }
-
-    _currentZoneMutex.unlock();
     return _position;
 }
 

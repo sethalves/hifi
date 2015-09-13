@@ -155,6 +155,12 @@ void MyAvatar::update(float deltaTime) {
     if (_goToPending) {
         setPosition(_goToPosition);
         setOrientation(_goToOrientation);
+        _currentZone = _goToZone;
+        if (_goToZone) {
+            _referential = _goToZone->getID();
+        } else {
+            _referential = QUuid();
+        }
         _goToPending = false;
     }
 
@@ -168,7 +174,51 @@ void MyAvatar::update(float deltaTime) {
     head->setAudioAverageLoudness(audio->getAudioAverageInputLoudness());
 
     simulate(deltaTime);
+    handleZoneChange();
 }
+
+
+void MyAvatar::handleZoneChange() {
+    EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
+
+    // if (Application::getInstance()->getMyAvatar() == this)
+    //     qDebug() << "zone =" << zone.get() << "_currentZone =" << _currentZone.get() << "this =" << this
+    //              << "_position =" << _position;
+
+    if (_goToPending) {
+        return;
+    }
+
+    if (zone != _currentZone) {
+        if (!zone) {
+            qDebug() << "leaving zone" << _currentZone->getName();
+            Transform oldZoneTransform = _currentZone->getGlobalTransform();
+            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
+            _goToPosition = _position + oldZoneTranslation;
+            _goToOrientation = getOrientation(); // XXX
+        } else if (!_currentZone) {
+            qDebug() << "entering zone" << zone->getName();
+            Transform newZoneTransform = zone->getGlobalTransform();
+            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
+            _goToPosition = _position - newZoneTranslation;
+            _goToOrientation = getOrientation(); // XXX
+        } else {
+            qDebug() << "leaving zone" << _currentZone->getName() << "and entering zone" << zone->getName();
+            Transform oldZoneTransform = _currentZone->getGlobalTransform();
+            Transform newZoneTransform = zone->getGlobalTransform();
+            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
+            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
+            glm::vec3 oldAbsolutionPosition = oldZoneTranslation + _position;
+            _goToPosition = oldAbsolutionPosition - newZoneTranslation;
+            _goToOrientation = getOrientation(); // XXX
+        }
+
+        _goToZone = zone;
+        _goToPending = true;
+    }
+}
+
 
 void MyAvatar::simulate(float deltaTime) {
     PerformanceTimer perfTimer("simulate");
@@ -1113,13 +1163,14 @@ glm::vec3 MyAvatar::getSkeletonPosition() const {
     return Avatar::getPosition();
 }
 
-glm::vec3 MyAvatar::getAbsoluteSkeletonPosition() const {
+const glm::vec3& MyAvatar::getAbsoluteSkeletonPosition() const {
     CameraMode mode = Application::getInstance()->getCamera()->getMode();
     if (mode == CAMERA_MODE_THIRD_PERSON || mode == CAMERA_MODE_INDEPENDENT) {
         // The avatar is rotated PI about the yAxis, so we have to correct for it
         // to get the skeleton offset contribution in the world-frame.
         const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-        return getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+        _absoluteSkeletonPosition = getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+        return _absoluteSkeletonPosition;
     }
     return Avatar::getAbsolutePosition();
 }
@@ -1655,6 +1706,7 @@ void MyAvatar::goToLocation(const glm::vec3& newPosition,
     _goToPending = true;
     _goToPosition = newPosition;
     _goToOrientation = getOrientation();
+    _goToZone.reset();
     if (hasOrientation) {
         qCDebug(interfaceapp).nospace() << "MyAvatar goToLocation - new orientation is "
                                         << newOrientation.x << ", " << newOrientation.y << ", " << newOrientation.z << ", " << newOrientation.w;

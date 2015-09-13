@@ -217,7 +217,7 @@ private:
     bool isMyAvatar() const { return true; }
     virtual int parseDataFromBuffer(const QByteArray& buffer);
     virtual glm::vec3 getSkeletonPosition() const;
-    virtual glm::vec3 getAbsoluteSkeletonPosition() const;
+    virtual const glm::vec3& getAbsoluteSkeletonPosition() const;
 
     glm::vec3 getScriptedMotorVelocity() const { return _scriptedMotorVelocity; }
     float getScriptedMotorTimescale() const { return _scriptedMotorTimescale; }
@@ -314,6 +314,8 @@ private:
     bool _goToPending;
     glm::vec3 _goToPosition;
     glm::quat _goToOrientation;
+    std::shared_ptr<ZoneEntityItem> _goToZone;
+    std::shared_ptr<ZoneEntityItem> _currentZone;
 
     std::unordered_set<int> _headBoneSet;
     RigPointer _rig;
@@ -322,6 +324,8 @@ private:
     bool _enableDebugDrawBindPose = false;
     bool _enableDebugDrawAnimPose = false;
     AnimSkeleton::ConstPointer _debugDrawSkeleton = nullptr;
+
+    void handleZoneChange();
 };
 
 #endif // hifi_MyAvatar_h

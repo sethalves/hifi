@@ -93,7 +93,7 @@ public:
     // For Scene.shouldRenderEntities
     QList<EntityItemID>& getEntitiesLastInScene() { return _entityIDsLastInScene; }
 
-    std::shared_ptr<ZoneEntityItem> getMyAvatarZone() { return _bestZone; }
+    std::shared_ptr<ZoneEntityItem> getMyAvatarZone() { return _currentBestZone; }
 
 signals:
     void mousePressOnEntity(const RayToEntityIntersectionResult& entityItemID, const QMouseEvent* event, unsigned int deviceId);
@@ -187,6 +187,7 @@ private:
     bool _hasPreviousZone = false;
     std::shared_ptr<ZoneEntityItem> _bestZone;
     float _bestZoneVolume;
+    std::shared_ptr<ZoneEntityItem> _currentBestZone;
 
     glm::vec3 _previousKeyLightColor;
     float _previousKeyLightIntensity;
