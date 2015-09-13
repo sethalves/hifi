@@ -471,6 +471,8 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
             QByteArray ba((const char*)sourceBuffer, sizeOfPackedUuid);
             _referential = QUuid::fromRfc4122(ba);
             sourceBuffer += sizeOfPackedUuid;
+        } else {
+            _referential = QUuid();
         }
 
         if (_headData->_isFaceTrackerConnected) {
