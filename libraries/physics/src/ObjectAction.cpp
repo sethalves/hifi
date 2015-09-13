@@ -40,7 +40,7 @@ void ObjectAction::updateAction(btCollisionWorld* collisionWorld, btScalar delta
 void ObjectAction::debugDraw(btIDebugDraw* debugDrawer) {
 }
 
-void ObjectAction::removeFromSimulation(EntitySimulation* simulation) const {
+void ObjectAction::removeFromSimulation(EntitySimulationPointer simulation) const {
     simulation->removeAction(_id);
 }
 

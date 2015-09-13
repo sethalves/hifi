@@ -25,6 +25,10 @@
 typedef QSet<EntityItemPointer> SetOfEntities;
 typedef QVector<EntityItemPointer> VectorOfEntities;
 
+class EntitySimulation;
+typedef std::shared_ptr<EntitySimulation> EntitySimulationPointer;
+
+
 // the EntitySimulation needs to know when these things change on an entity,
 // so it can sort EntityItem or relay its state to the PhysicsEngine.
 const int DIRTY_SIMULATION_FLAGS =

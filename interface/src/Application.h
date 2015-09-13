@@ -540,7 +540,7 @@ private:
     bool _justStarted;
 
     ShapeManager _shapeManager;
-    PhysicalEntitySimulation _entitySimulation;
+    EntitySimulationPointer _entitySimulation;
     PhysicsEnginePointer _physicsEngine;
 
     EntityTreeRenderer _entities;

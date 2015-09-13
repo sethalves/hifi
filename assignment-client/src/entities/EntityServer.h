@@ -54,7 +54,7 @@ private slots:
     void handleEntityPacket(QSharedPointer<NLPacket> packet, SharedNodePointer senderNode);
 
 private:
-    EntitySimulation* _entitySimulation;
+    EntitySimulationPointer _entitySimulation;
     QTimer* _pruneDeletedEntitiesTimer = nullptr;
 };
 

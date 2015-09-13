@@ -92,7 +92,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 EntityItem::~EntityItem() {
     // clear out any left-over actions
     EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
     if (simulation) {
         clearActions(simulation);
     }
@@ -1523,7 +1523,7 @@ void EntityItem::clearSimulationOwnership() {
 }
 
 
-bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
+bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPointer action) {
     bool result;
     withWriteLock([&] {
         checkWaitingToRemove(simulation);
@@ -1537,8 +1537,7 @@ bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer act
     return result;
 }
 
-bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPointer action) {
-    assertLocked();
+bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action) {
     assert(action);
     assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
@@ -1559,7 +1558,7 @@ bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPoi
     return success;
 }
 
-bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments) {
+bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments) {
     bool success = false;
     withWriteLock([&] {
         checkWaitingToRemove(simulation);
@@ -1581,7 +1580,7 @@ bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionI
     return success;
 }
 
-bool EntityItem::removeAction(EntitySimulation* simulation, const QUuid& actionID) {
+bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& actionID) {
     bool success = false;
     withWriteLock([&] {
         checkWaitingToRemove(simulation);
@@ -1590,8 +1589,7 @@ bool EntityItem::removeAction(EntitySimulation* simulation, const QUuid& actionI
     return success;
 }
 
-bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* simulation) {
-    assertWriteLocked();
+bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation) {
     if (_objectActions.contains(actionID)) {
         if (!simulation) {
             EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
@@ -1614,7 +1612,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
     return false;
 }
 
-bool EntityItem::clearActions(EntitySimulation* simulation) {
+bool EntityItem::clearActions(EntitySimulationPointer simulation) {
     withWriteLock([&] {
         QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
         while (i != _objectActions.end()) {
@@ -1634,7 +1632,6 @@ bool EntityItem::clearActions(EntitySimulation* simulation) {
 
 
 void EntityItem::deserializeActions() {
-    assertUnlocked();
     withWriteLock([&] {
         deserializeActionsInternal();
     });
@@ -1642,8 +1639,6 @@ void EntityItem::deserializeActions() {
 
 
 void EntityItem::deserializeActionsInternal() {
-    assertWriteLocked();
-
     if (!_element) {
         return;
     }
@@ -1652,7 +1647,7 @@ void EntityItem::deserializeActionsInternal() {
 
     EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
     assert(entityTree);
-    EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
     assert(simulation);
 
     QVector<QByteArray> serializedActions;
@@ -1701,8 +1696,7 @@ void EntityItem::deserializeActionsInternal() {
     return;
 }
 
-void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
-    assertLocked();
+void EntityItem::checkWaitingToRemove(EntitySimulationPointer simulation) {
     foreach(QUuid actionID, _actionsToRemove) {
         removeActionInternal(actionID, simulation);
     }
@@ -1710,21 +1704,18 @@ void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
 }
 
 void EntityItem::setActionData(QByteArray actionData) {
-    assertUnlocked();
     withWriteLock([&] {
         setActionDataInternal(actionData);
     });
 }
 
 void EntityItem::setActionDataInternal(QByteArray actionData) {
-    assertWriteLocked();
     checkWaitingToRemove();
     _allActionsDataCache = actionData;
     deserializeActionsInternal();
 }
 
 QByteArray EntityItem::serializeActions(bool& success) const {
-    assertLocked();
     QByteArray result;
 
     if (_objectActions.size() == 0) {
@@ -1768,7 +1759,6 @@ const QByteArray EntityItem::getActionDataInternal() const {
 
 const QByteArray EntityItem::getActionData() const {
     QByteArray result;
-    assertUnlocked();
     withReadLock([&] {
         result = getActionDataInternal();
     });

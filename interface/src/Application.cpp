@@ -338,6 +338,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
         _frameCount(0),
         _fps(60.0f),
         _justStarted(true),
+        _entitySimulation(new PhysicalEntitySimulation()),
         _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
         _entities(true, this, this),
         _entityClipboardRenderer(false, this, this),
@@ -2468,13 +2469,13 @@ void Application::init() {
     _physicsEngine->init();
 
     EntityTreePointer tree = _entities.getTree();
-    _entitySimulation.init(_physicsEngine, &_entityEditSender);
-    tree->setSimulation(&_entitySimulation);
+    std::static_pointer_cast<PhysicalEntitySimulation>(_entitySimulation)->init(_physicsEngine, &_entityEditSender);
+    tree->setSimulation(_entitySimulation);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
 
     // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
-    connect(&_entitySimulation, &EntitySimulation::entityCollisionWithEntity,
+    connect(_entitySimulation.get(), &EntitySimulation::entityCollisionWithEntity,
             &_entities, &EntityTreeRenderer::entityCollisionWithEntity);
 
     // connect the _entities (EntityTreeRenderer) to our script engine's EntityScriptingInterface for firing
@@ -2893,22 +2894,25 @@ void Application::update(float deltaTime) {
         PerformanceTimer perfTimer("physics");
         _myAvatar->relayDriveKeysToCharacterController();
 
+        std::shared_ptr<PhysicalEntitySimulation> physicalEntitySimulation =
+            std::static_pointer_cast<PhysicalEntitySimulation>(_entitySimulation);
+
         static VectorOfMotionStates motionStates;
-        _entitySimulation.getObjectsToDelete(motionStates);
+        physicalEntitySimulation->getObjectsToDelete(motionStates);
         _physicsEngine->deleteObjects(motionStates);
 
         _entities.getTree()->withWriteLock([&] {
-            _entitySimulation.getObjectsToAdd(motionStates);
+            physicalEntitySimulation->getObjectsToAdd(motionStates);
             _physicsEngine->addObjects(motionStates);
 
         });
         _entities.getTree()->withWriteLock([&] {
-            _entitySimulation.getObjectsToChange(motionStates);
+            physicalEntitySimulation->getObjectsToChange(motionStates);
             VectorOfMotionStates stillNeedChange = _physicsEngine->changeObjects(motionStates);
-            _entitySimulation.setObjectsToChange(stillNeedChange);
+            physicalEntitySimulation->setObjectsToChange(stillNeedChange);
         });
 
-        _entitySimulation.applyActionChanges();
+        _entitySimulation->applyActionChanges();
 
         AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
         avatarManager->getObjectsToDelete(motionStates);
@@ -2921,10 +2925,11 @@ void Application::update(float deltaTime) {
         _entities.getTree()->withWriteLock([&] {
             _physicsEngine->stepSimulation();
         });
-        
+
         if (_physicsEngine->hasOutgoingChanges()) {
             _entities.getTree()->withWriteLock([&] {
-                _entitySimulation.handleOutgoingChanges(_physicsEngine->getOutgoingChanges(), _physicsEngine->getSessionID());
+                physicalEntitySimulation->handleOutgoingChanges(_physicsEngine->getOutgoingChanges(),
+                                                           _physicsEngine->getSessionID());
                 avatarManager->handleOutgoingChanges(_physicsEngine->getOutgoingChanges());
             });
 
@@ -2937,7 +2942,7 @@ void Application::update(float deltaTime) {
                 PerformanceTimer perfTimer("entities");
                 // Collision events (and their scripts) must not be handled when we're locked, above. (That would risk
                 // deadlock.)
-                _entitySimulation.handleCollisionEvents(collisionEvents);
+                physicalEntitySimulation->handleCollisionEvents(collisionEvents);
                 // NOTE: the _entities.update() call below will wait for lock
                 // and will simulate entity motion (the EntityTree has been given an EntitySimulation).
                 _entities.update(); // update the models...

@@ -542,7 +542,7 @@ bool EntityScriptingInterface::appendPoint(QUuid entityID, const glm::vec3& poin
 
 
 bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
-                                            std::function<bool(EntitySimulation*, EntityItemPointer)> actor) {
+                                            std::function<bool(EntitySimulationPointer, EntityItemPointer)> actor) {
     if (!_entityTree) {
         return false;
     }
@@ -550,7 +550,7 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
     EntityItemPointer entity;
     bool doTransmit = false;
     _entityTree->withWriteLock([&] {
-        EntitySimulation* simulation = _entityTree->getSimulation();
+        EntitySimulationPointer simulation = _entityTree->getSimulation();
         entity = _entityTree->findEntityByEntityItemID(entityID);
         if (!entity) {
             qDebug() << "actionWorker -- unknown entity" << entityID;
@@ -590,7 +590,7 @@ QUuid EntityScriptingInterface::addAction(const QString& actionTypeString,
                                           const QVariantMap& arguments) {
     QUuid actionID = QUuid::createUuid();
     auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
-    bool success = actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
+    bool success = actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             // create this action even if the entity doesn't have physics info.  it will often be the
             // case that a script adds an action immediately after an object is created, and the physicsInfo
             // is computed asynchronously.
@@ -621,7 +621,7 @@ QUuid EntityScriptingInterface::addAction(const QString& actionTypeString,
 
 
 bool EntityScriptingInterface::updateAction(const QUuid& entityID, const QUuid& actionID, const QVariantMap& arguments) {
-    return actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
+    return actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             bool success = entity->updateAction(simulation, actionID, arguments);
             if (success) {
                 auto nodeList = DependencyManager::get<NodeList>();
@@ -635,14 +635,14 @@ bool EntityScriptingInterface::updateAction(const QUuid& entityID, const QUuid& 
 }
 
 bool EntityScriptingInterface::deleteAction(const QUuid& entityID, const QUuid& actionID) {
-    return actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
+    return actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             return entity->removeAction(simulation, actionID);
         });
 }
 
 QVector<QUuid> EntityScriptingInterface::getActionIDs(const QUuid& entityID) {
     QVector<QUuid> result;
-    actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
+    actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             QList<QUuid> actionIDs = entity->getActionIDs();
             result = QVector<QUuid>::fromList(actionIDs);
             return false; // don't send an edit packet
@@ -652,7 +652,7 @@ QVector<QUuid> EntityScriptingInterface::getActionIDs(const QUuid& entityID) {
 
 QVariantMap EntityScriptingInterface::getActionArguments(const QUuid& entityID, const QUuid& actionID) {
     QVariantMap result;
-    actionWorker(entityID, [&](EntitySimulation* simulation, EntityItemPointer entity) {
+    actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             result = entity->getActionArguments(actionID);
             return false; // don't send an edit packet
         });

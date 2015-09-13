@@ -23,21 +23,20 @@
 EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
 
     auto zoneTracker = DependencyManager::get<ZoneTracker>();
-    PhysicalEntitySimulation* physParentSim = (PhysicalEntitySimulation*)(zoneTracker->getDefaultTree()->getSimulation());
-    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties, physParentSim->getPacketSender());
+    EntitySimulationPointer physParentSim = zoneTracker->getDefaultTree()->getSimulation();
+
+    EntityEditPacketSender* sender =
+        std::static_pointer_cast<PhysicalEntitySimulation>(physParentSim)->getPacketSender();
+
+    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties, sender);
     zoneTracker->trackZone(result);
-
-    // EntityTreePointer subTree = result->getSubTree();
-    // subTree->setOwner(result);
-
-    // EntityTreeRenderer* entityTreeRenderer = Application::getInstance()->getEntities();
-    // entityTreeRenderer->connectTree(subTree);
 
     return result;
 }
 
 
-RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID, const EntityItemProperties& properties,
+RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID,
+                                                   const EntityItemProperties& properties,
                                                    EntityEditPacketSender* sender) :
     ZoneEntityItem(entityItemID, properties),
     _model(nullptr),
@@ -45,7 +44,7 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
     _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
     _entitySimulation(new PhysicalEntitySimulation()) {
 
-    // _entitySimulation->init(_subTree, _physicsEngine, sender);
+    _entitySimulation->init(_physicsEngine, sender);
     // _subTree->setSimulation(_entitySimulation.get());
 }
 

@@ -296,7 +296,7 @@ void EntityTree::maybeNotifyNewCollisionSoundURL(const QString& previousCollisio
     }
 }
 
-void EntityTree::setSimulation(EntitySimulation* simulation) {
+void EntityTree::setSimulation(EntitySimulationPointer simulation) {
     this->withWriteLock([&] {
         if (_simulation && _simulation != simulation) {
             // It's important to clearEntities() on the simulation since taht will update each
