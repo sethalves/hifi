@@ -65,7 +65,6 @@ OctreePointer EntityServer::createTree() {
     tree->addNewlyCreatedHook(this);
     if (!_entitySimulation) {
         SimpleEntitySimulation* simpleSimulation = new SimpleEntitySimulation();
-        simpleSimulation->setEntityTree(tree);
         tree->setSimulation(simpleSimulation);
         _entitySimulation = simpleSimulation;
     }

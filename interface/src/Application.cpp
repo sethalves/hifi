@@ -2468,7 +2468,7 @@ void Application::init() {
     _physicsEngine->init();
 
     EntityTreePointer tree = _entities.getTree();
-    _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
+    _entitySimulation.init(_physicsEngine, &_entityEditSender);
     tree->setSimulation(&_entitySimulation);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();

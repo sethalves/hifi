@@ -850,12 +850,14 @@ const glm::vec3& Avatar::getAbsolutePosition() const {
     if (!_referential.isNull()) {
         EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
         EntityTreePointer tree = treeRenderer->getTree();
-        EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
-        if (zone) {
-            Transform zoneTransform = zone->getGlobalTransform();
-            _absolutePosition = zoneTransform.getTranslation() + _position;
-            return _absolutePosition;
-        }
+        tree->withReadLock([&] {
+            EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
+            if (zone) {
+                Transform zoneTransform = zone->getGlobalTransform();
+                _absolutePosition = zoneTransform.getTranslation() + _position;
+            }
+        });
+        return _absolutePosition;
     }
 
     return _position;

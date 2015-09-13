@@ -298,10 +298,6 @@ void EntityTree::maybeNotifyNewCollisionSoundURL(const QString& previousCollisio
 
 void EntityTree::setSimulation(EntitySimulation* simulation) {
     this->withWriteLock([&] {
-        if (simulation) {
-            // assert that the simulation's backpointer has already been properly connected
-            assert(simulation->getEntityTree().get() == this);
-        }
         if (_simulation && _simulation != simulation) {
             // It's important to clearEntities() on the simulation since taht will update each
             // EntityItem::_simulationState correctly so as to not confuse the next _simulation.
@@ -715,7 +711,7 @@ void EntityTree::entityChanged(EntityItemPointer entity) {
 void EntityTree::update() {
     if (_simulation) {
         withWriteLock([&] {
-            _simulation->updateEntities();
+            _simulation->updateEntities(getThisPointer());
             VectorOfEntities pendingDeletes;
             _simulation->getEntitiesToDelete(pendingDeletes);
 

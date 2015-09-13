@@ -30,7 +30,7 @@ public:
     PhysicalEntitySimulation();
     ~PhysicalEntitySimulation();
 
-    void init(EntityTreePointer tree, PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
+    void init(PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
 
     virtual void addAction(EntityActionPointer action) override;
     virtual void applyActionChanges() override;

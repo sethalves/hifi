@@ -15,18 +15,7 @@
 #include "EntitiesLogging.h"
 #include "MovingEntitiesOperator.h"
 
-void EntitySimulation::setEntityTree(EntityTreePointer tree) {
-    if (_entityTree && _entityTree != tree) {
-        _mortalEntities.clear();
-        _nextExpiry = quint64(-1);
-        _entitiesToUpdate.clear();
-        _entitiesToSort.clear();
-        _simpleKinematicEntities.clear();
-    }
-    _entityTree = tree;
-}
-
-void EntitySimulation::updateEntities() {
+void EntitySimulation::updateEntities(EntityTreePointer tree) {
     QMutexLocker lock(&_mutex);
     quint64 now = usecTimestampNow();
 
@@ -35,7 +24,7 @@ void EntitySimulation::updateEntities() {
     callUpdateOnEntitiesThatNeedIt(now);
     moveSimpleKinematics(now);
     updateEntitiesInternal(now);
-    sortEntitiesThatMoved();
+    sortEntitiesThatMoved(tree);
 }
 
 void EntitySimulation::getEntitiesToDelete(VectorOfEntities& entitiesToDelete) {
@@ -109,11 +98,11 @@ void EntitySimulation::callUpdateOnEntitiesThatNeedIt(const quint64& now) {
 }
 
 // protected
-void EntitySimulation::sortEntitiesThatMoved() {
+void EntitySimulation::sortEntitiesThatMoved(EntityTreePointer tree) {
     // NOTE: this is only for entities that have been moved by THIS EntitySimulation.
     // External changes to entity position/shape are expected to be sorted outside of the EntitySimulation.
     PerformanceTimer perfTimer("sortingEntities");
-    MovingEntitiesOperator moveOperator(_entityTree);
+    MovingEntitiesOperator moveOperator(tree);
     AACube domainBounds(glm::vec3((float)-HALF_TREE_SCALE), (float)TREE_SCALE);
     SetOfEntities::iterator itemItr = _entitiesToSort.begin();
     while (itemItr != _entitiesToSort.end()) {
@@ -139,7 +128,7 @@ void EntitySimulation::sortEntitiesThatMoved() {
     }
     if (moveOperator.hasMovingEntities()) {
         PerformanceTimer perfTimer("recurseTreeWithOperator");
-        _entityTree->recurseTreeWithOperator(&moveOperator);
+        tree->recurseTreeWithOperator(&moveOperator);
     }
 
     _entitiesToSort.clear();

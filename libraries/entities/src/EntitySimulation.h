@@ -44,15 +44,10 @@ const int DIRTY_SIMULATION_FLAGS =
 class EntitySimulation : public QObject {
 Q_OBJECT
 public:
-    EntitySimulation() : _mutex(QMutex::Recursive), _entityTree(NULL), _nextExpiry(quint64(-1)) { }
-    virtual ~EntitySimulation() { setEntityTree(NULL); }
+    EntitySimulation() : _mutex(QMutex::Recursive), _nextExpiry(quint64(-1)) { }
+    virtual ~EntitySimulation() {}
 
-    /// \param tree pointer to EntityTree which is stored internally
-    void setEntityTree(EntityTreePointer tree);
-
-    void updateEntities();
-
-//    friend class EntityTree;
+    void updateEntities(EntityTreePointer tree);
 
     virtual void addAction(EntityActionPointer action);
     virtual void removeAction(const QUuid actionID);
@@ -75,11 +70,6 @@ public:
     void clearEntities();
 
     void moveSimpleKinematics(const quint64& now);
-protected: // these only called by the EntityTree?
-
-public:
-
-    EntityTreePointer getEntityTree() { return _entityTree; }
 
     void getEntitiesToDelete(VectorOfEntities& entitiesToDelete);
 
@@ -97,7 +87,7 @@ protected:
 
     void expireMortalEntities(const quint64& now);
     void callUpdateOnEntitiesThatNeedIt(const quint64& now);
-    void sortEntitiesThatMoved();
+    void sortEntitiesThatMoved(EntityTreePointer tree);
 
     QMutex _mutex{ QMutex::Recursive };
 
@@ -108,9 +98,6 @@ protected:
 
 private:
     void moveSimpleKinematics();
-
-    // back pointer to EntityTree structure
-    EntityTreePointer _entityTree;
 
     // We maintain multiple lists, each for its distinct purpose.
     // An entity may be in more than one list.
