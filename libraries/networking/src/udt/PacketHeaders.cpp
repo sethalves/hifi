@@ -40,7 +40,7 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityData:
             return VERSION_ENTITIES_ZONES_HAVE_TREES;
         default:
-            return 14;
+            return 15;
     }
 }
 

@@ -163,5 +163,3 @@ void AvatarMotionState::clearObjectBackPointer() {
     ObjectMotionState::clearObjectBackPointer();
     _avatar = nullptr;
 }
-
-

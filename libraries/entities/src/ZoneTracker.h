@@ -24,6 +24,9 @@
 typedef QSet<EntityItemID> ZoneChildren;
 typedef QHash<EntityItemID, ZoneChildren> ZoneChildMap;
 
+class ZoneEntityItem;
+typedef std::shared_ptr<ZoneEntityItem> ZoneEntityItemPointer;
+
 class ZoneTracker : public QObject, public Dependency {
     Q_OBJECT
     SINGLETON_DEPENDENCY
@@ -37,8 +40,11 @@ public:
     void setParent(EntityItemID child, EntityItemID parent);
     QList<EntityItemPointer> getChildrenOf(EntityItemID parent);
     QList<EntityItemPointer> getChildrenOf(EntityItemPointer parent) { return getChildrenOf(parent->getID()); }
+    EntitySimulationPointer getSimulationByReferential(QUuid referential);
+    QList<ZoneEntityItemPointer> getAllZones() { return _zones.values(); }
 private:
-    QHash<EntityItemID, EntityItemPointer> _zones;
+    void handleChangesForSimulation(EntitySimulationPointer simulation);
+    QHash<EntityItemID, ZoneEntityItemPointer> _zones;
     QSet<EntityItemID> _needsReparent;
     EntityTreePointer _defaultTree;
     ZoneChildMap _childrenMap;

@@ -41,10 +41,10 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
     ZoneEntityItem(entityItemID, properties),
     _model(nullptr),
     _needsInitialSimulation(true),
-    _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
-    _entitySimulation(new PhysicalEntitySimulation()) {
-
-    _entitySimulation->init(_physicsEngine, sender);
+    _physicsEngine(new PhysicsEngine(Vectors::ZERO)) {
+    _physicsEngine->init();
+    _subEntitySimulation = EntitySimulationPointer(new PhysicalEntitySimulation());
+    std::static_pointer_cast<PhysicalEntitySimulation>(_subEntitySimulation)->init(_physicsEngine, sender);
     // _subTree->setSimulation(_entitySimulation.get());
 }
 

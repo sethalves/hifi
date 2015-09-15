@@ -91,12 +91,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
-    if (simulation) {
-        clearActions(simulation);
-    }
-
+    clearActions();
     // these pointers MUST be correct at delete, else we probably have a dangling backpointer
     // to this EntityItem in the corresponding data structure.
     assert(!_simulated);
@@ -996,6 +991,10 @@ EntityTreePointer EntityItem::getTree() const {
     return tree;
 }
 
+EntitySimulationPointer EntityItem::getSimulation() const {
+    return _simulation;
+}
+
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     glm::mat4 translation = glm::translate(getGlobalPosition());
     glm::mat4 rotation = glm::mat4_cast(getGlobalRotation());
@@ -1185,7 +1184,6 @@ Transform EntityItem::getGlobalTransform() const {
 }
 
 Transform EntityItem::getParentTransform() const {
-    refreshParentEntityItemPointer();
     EntityItemPointer parentEntityItem = _parentZone.lock();
     if (!parentEntityItem) {
         return Transform();
@@ -1523,12 +1521,12 @@ void EntityItem::clearSimulationOwnership() {
 }
 
 
-bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPointer action) {
+bool EntityItem::addAction(EntityActionPointer action) {
     bool result;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
-
-        result = addActionInternal(simulation, action);
+        EntitySimulationPointer simulation = getSimulation();
+        checkWaitingToRemove();
+        result = addActionInternal(action);
         if (!result) {
             removeActionInternal(action->getID());
         }
@@ -1537,8 +1535,9 @@ bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPoint
     return result;
 }
 
-bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action) {
+bool EntityItem::addActionInternal(EntityActionPointer action) {
     assert(action);
+    EntitySimulationPointer simulation = getSimulation();
     assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
     assert(actionOwnerEntity);
@@ -1558,10 +1557,10 @@ bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityAct
     return success;
 }
 
-bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments) {
+bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& arguments) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        checkWaitingToRemove();
 
         if (!_objectActions.contains(actionID)) {
             return;
@@ -1580,22 +1579,19 @@ bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& a
     return success;
 }
 
-bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& actionID) {
+bool EntityItem::removeAction(const QUuid& actionID) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        EntitySimulationPointer simulation = getSimulation();
+        checkWaitingToRemove();
         success = removeActionInternal(actionID);
     });
     return success;
 }
 
-bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation) {
+bool EntityItem::removeActionInternal(const QUuid& actionID) {
     if (_objectActions.contains(actionID)) {
-        if (!simulation) {
-            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-            simulation = entityTree ? entityTree->getSimulation() : nullptr;
-        }
-
+        EntitySimulationPointer simulation = getSimulation();
         EntityActionPointer action = _objectActions[actionID];
         action->setOwnerEntity(nullptr);
         _objectActions.remove(actionID);
@@ -1612,7 +1608,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
     return false;
 }
 
-bool EntityItem::clearActions(EntitySimulationPointer simulation) {
+bool EntityItem::clearActions() {
     withWriteLock([&] {
         QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
         while (i != _objectActions.end()) {
@@ -1620,7 +1616,7 @@ bool EntityItem::clearActions(EntitySimulationPointer simulation) {
             EntityActionPointer action = _objectActions[id];
             i = _objectActions.erase(i);
             action->setOwnerEntity(nullptr);
-            action->removeFromSimulation(simulation);
+            action->removeFromSimulation(getSimulation());
         }
         // empty _serializedActions means no actions for the EntityItem
         _actionsToRemove.clear();
@@ -1639,15 +1635,15 @@ void EntityItem::deserializeActions() {
 
 
 void EntityItem::deserializeActionsInternal() {
+    if (!_simulation) {
+        return;
+    }
     if (!_element) {
         return;
     }
 
     // Keep track of which actions got added or updated by the new actionData
-
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    assert(entityTree);
-    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    EntitySimulationPointer simulation = getSimulation();
     assert(simulation);
 
     QVector<QByteArray> serializedActions;
@@ -1673,12 +1669,10 @@ void EntityItem::deserializeActionsInternal() {
             action->deserialize(serializedAction);
         } else {
             auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
-
-            // EntityItemPointer entity = entityTree->findEntityByEntityItemID(_id, false);
             EntityItemPointer entity = shared_from_this();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
-                entity->addActionInternal(simulation, action);
+                entity->addActionInternal(action);
             }
         }
     }
@@ -1696,9 +1690,9 @@ void EntityItem::deserializeActionsInternal() {
     return;
 }
 
-void EntityItem::checkWaitingToRemove(EntitySimulationPointer simulation) {
+void EntityItem::checkWaitingToRemove() {
     foreach(QUuid actionID, _actionsToRemove) {
-        removeActionInternal(actionID, simulation);
+        removeActionInternal(actionID);
     }
     _actionsToRemove.clear();
 }
@@ -1778,9 +1772,13 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     return result;
 }
 
-void EntityItem::refreshParentEntityItemPointer() const {
+void EntityItem::refreshParentEntityItemPointer() {
+    if (!_parentIDSet) {
+        return;
+    }
     EntityTreePointer tree = getTree();
     if (!tree) {
+        removeFromSimulation();
         _parentZone.reset();
         return;
     }
@@ -1788,29 +1786,45 @@ void EntityItem::refreshParentEntityItemPointer() const {
     if (_parentID != UNKNOWN_ENTITY_ID) {
         EntityItemPointer parentEntityItem = _parentZone.lock();
         if (parentEntityItem && parentEntityItem->getID() != _parentID) {
+            removeFromSimulation();
             _parentZone.reset();
         }
     }
     // if the ID is non-null and we don't have a pointer, find the parent entity
     if (_parentID != UNKNOWN_ENTITY_ID && _parentZone.expired()) {
         _parentZone = tree->findEntityByID(_parentID);
+        EntityItemPointer parentEntityItem = _parentZone.lock();
+        if (parentEntityItem) {
+            auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(parentEntityItem);
+            _simulation = zone->getSimulation();
+            _simulation->addEntity(shared_from_this());
+        }
+    }
+    if (_parentID == UNKNOWN_ENTITY_ID) {
+        _simulation = getTree()->getSimulation();
+        _simulation->addEntity(shared_from_this());
     }
 }
 
-void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
-    arrivingEntity->setParentID(_id);
-
-    Transform myGlobalTransform = getGlobalTransform();
-    glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
-
-    Transform newChildGlobalTransform = arrivingEntity->getGlobalTransform();
-    glm::vec3 newChildGlobalPosition = newChildGlobalTransform.getTranslation();
-
-    glm::vec3 newChildLocalPosition = newChildGlobalPosition - myGlobalPosition;
-    arrivingEntity->setPosition(newChildLocalPosition);
+void EntityItem::removeFromSimulation() {
+    if (_simulation) {
+        _simulation->removeEntity(shared_from_this());
+        _simulation.reset();
+    }
 }
 
+// void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
+//     arrivingEntity->setParentID(_id);
+//     Transform myGlobalTransform = getGlobalTransform();
+//     glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
+//     Transform newChildGlobalTransform = arrivingEntity->getGlobalTransform();
+//     glm::vec3 newChildGlobalPosition = newChildGlobalTransform.getTranslation();
+//     glm::vec3 newChildLocalPosition = newChildGlobalPosition - myGlobalPosition;
+//     arrivingEntity->setPosition(newChildLocalPosition);
+// }
+
 void EntityItem::setParentID(const EntityItemID& parentID) {
+    _parentIDSet = true;
     if (_parentID == parentID) {
         return;
     }

@@ -132,6 +132,9 @@ public:
 
     friend class PhysicsEngine;
 
+    EntitySimulationPointer getSimulation() { return _simulation; }
+    void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
+
 protected:
     virtual bool isReadyToComputeShape() = 0;
     virtual btCollisionShape* computeNewShape() = 0;
@@ -150,6 +153,7 @@ protected:
     float _mass;
 
     uint32_t _lastKinematicStep;
+    EntitySimulationPointer _simulation;
 };
 
 typedef QSet<ObjectMotionState*> SetOfMotionStates;

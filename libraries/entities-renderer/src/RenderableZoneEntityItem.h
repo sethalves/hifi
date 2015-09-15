@@ -52,7 +52,6 @@ private:
     render::ItemID _myMetaItem;
 
     PhysicsEnginePointer _physicsEngine;
-    PhysicalEntitySimulationPointer _entitySimulation;
 };
 
 #endif // hifi_RenderableZoneEntityItem_h

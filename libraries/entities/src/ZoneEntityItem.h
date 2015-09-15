@@ -112,6 +112,9 @@ public:
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
 
+    EntitySimulationPointer getSubEntitySimulation() { return _subEntitySimulation; }
+    void stepSimulations();
+
 protected:
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;
@@ -130,6 +133,8 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
+
+    EntitySimulationPointer _subEntitySimulation;
 };
 
 #endif // hifi_ZoneEntityItem_h

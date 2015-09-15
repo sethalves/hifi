@@ -46,7 +46,7 @@ public:
     virtual float getObjectFriction() const;
     virtual float getObjectLinearDamping() const;
     virtual float getObjectAngularDamping() const;
-    
+
     virtual glm::vec3 getObjectPosition() const;
     virtual glm::quat getObjectRotation() const;
     virtual glm::vec3 getObjectLinearVelocity() const;
@@ -64,6 +64,8 @@ public:
     virtual int16_t computeCollisionGroup();
 
     friend class AvatarManager;
+
+    QUuid getReferential() { return _avatar ? _avatar->getReferential() : QUuid(); }
 
 protected:
     virtual bool isReadyToComputeShape() { return true; }

@@ -56,9 +56,11 @@ public:
     void addObject(ObjectMotionState* motionState);
     void removeObject(ObjectMotionState* motionState);
 
+    void deleteObject(ObjectMotionState* object);
     void deleteObjects(const VectorOfMotionStates& objects);
     void deleteObjects(const SetOfMotionStates& objects); // only called during teardown
     void addObjects(const VectorOfMotionStates& objects);
+    bool changeObject(ObjectMotionState* object);
     VectorOfMotionStates changeObjects(const VectorOfMotionStates& objects);
     void reinsertObject(ObjectMotionState* object);
 

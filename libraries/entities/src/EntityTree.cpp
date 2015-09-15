@@ -87,9 +87,10 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
 void EntityTree::postAddEntity(EntityItemPointer entity) {
     assert(entity);
     // check to see if we need to simulate this entity..
-    if (_simulation) {
-        _simulation->addEntity(entity);
-    }
+    // we no longer do this here because the correct simulation for this entity may not yet be alloced.
+    // if (_simulation) {
+    //     _simulation->addEntity(entity);
+    // }
     _isDirty = true;
     maybeNotifyNewCollisionSoundURL("", entity->getCollisionSoundURL());
     emit addingEntity(entity->getEntityItemID());
@@ -395,8 +396,8 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
         }
 
         if (_simulation) {
-            theEntity->clearActions(_simulation);
-            _simulation->removeEntity(theEntity);
+            theEntity->clearActions();
+            theEntity->removeFromSimulation();
         }
     }
 }

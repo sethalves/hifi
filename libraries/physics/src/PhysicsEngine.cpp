@@ -16,6 +16,7 @@
 #include "PhysicsHelpers.h"
 #include "ThreadSafeDynamicsWorld.h"
 #include "PhysicsLogging.h"
+#include "PhysicalEntitySimulation.h"
 
 uint32_t PhysicsEngine::getNumSubsteps() {
     return _numSubsteps;
@@ -150,32 +151,28 @@ void PhysicsEngine::removeObject(ObjectMotionState* object) {
     _dynamicsWorld->removeRigidBody(body);
 }
 
-void PhysicsEngine::deleteObjects(const VectorOfMotionStates& objects) {
-    for (auto object : objects) {
+void PhysicsEngine::deleteObject(ObjectMotionState* object) {
+        btRigidBody* body = object->getRigidBody();
         removeObject(object);
 
         // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-        btRigidBody* body = object->getRigidBody();
         object->setRigidBody(nullptr);
         body->setMotionState(nullptr);
         delete body;
         object->releaseShape();
         delete object;
+}
+
+void PhysicsEngine::deleteObjects(const VectorOfMotionStates& objects) {
+    for (auto object : objects) {
+        deleteObject(object);
     }
 }
 
 // Same as above, but takes a Set instead of a Vector.  Should only be called during teardown.
 void PhysicsEngine::deleteObjects(const SetOfMotionStates& objects) {
     for (auto object : objects) {
-        btRigidBody* body = object->getRigidBody();
-        removeObject(object);
-
-        // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-        object->setRigidBody(nullptr);
-        body->setMotionState(nullptr);
-        delete body;
-        object->releaseShape();
-        delete object;
+        deleteObject(object);
     }
 }
 
@@ -185,22 +182,35 @@ void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
     }
 }
 
+bool PhysicsEngine::changeObject(ObjectMotionState* object) {
+    // returns true if the object needs to be put bach on the to-change list
+    uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
+    if (flags & HARD_DIRTY_PHYSICS_FLAGS) {
+        if (object->handleHardAndEasyChanges(flags, this)) {
+            object->clearIncomingDirtyFlags();
+            return false;
+        }
+        return true;
+    } else if (flags & EASY_DIRTY_PHYSICS_FLAGS) {
+        if (object->handleEasyChanges(flags, this)) {
+            object->clearIncomingDirtyFlags();
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& objects) {
     VectorOfMotionStates stillNeedChange;
     for (auto object : objects) {
-        uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
-        if (flags & HARD_DIRTY_PHYSICS_FLAGS) {
-            if (object->handleHardAndEasyChanges(flags, this)) {
-                object->clearIncomingDirtyFlags();
-            } else {
-                stillNeedChange.push_back(object);
-            }
-        } else if (flags & EASY_DIRTY_PHYSICS_FLAGS) {
-            if (object->handleEasyChanges(flags, this)) {
-                object->clearIncomingDirtyFlags();
-            } else {
-                stillNeedChange.push_back(object);
-            }
+        if (std::static_pointer_cast<PhysicalEntitySimulation>(object->getSimulation())->getPhysicsEngine().get() != this) {
+            // this object is for some other PhysicsEngine.
+            stillNeedChange.push_back(object);
+            continue;
+        }
+        if (changeObject(object)) {
+            stillNeedChange.push_back(object);
         }
     }
     return stillNeedChange;

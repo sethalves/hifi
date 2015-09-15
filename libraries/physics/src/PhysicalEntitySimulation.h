@@ -53,6 +53,7 @@ public:
     void handleCollisionEvents(const CollisionEvents& collisionEvents);
 
     EntityEditPacketSender* getPacketSender() { return _entityPacketSender; }
+    PhysicsEnginePointer getPhysicsEngine() { return _physicsEngine; }
 
 private:
     // incoming changes
@@ -70,8 +71,5 @@ private:
 
     uint32_t _lastStepSendPackets = 0;
 };
-
-
-typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
 
 #endif // hifi_PhysicalEntitySimulation_h

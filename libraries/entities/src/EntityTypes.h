@@ -21,6 +21,7 @@
 
 class EntityItem;
 typedef std::shared_ptr<EntityItem> EntityItemPointer;
+typedef std::shared_ptr<const EntityItem> ConstEntityItemPointer;
 typedef std::weak_ptr<EntityItem> EntityItemWeakPointer;
 
 inline uint qHash(const EntityItemPointer& a, uint seed) {

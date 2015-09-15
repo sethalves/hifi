@@ -379,6 +379,8 @@ public:
     void setPhysicsInfo(void* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
     EntityTreePointer getTree() const;
+    EntitySimulationPointer getSimulation() const;
+    void removeFromSimulation();
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
     static bool getSendPhysicsUpdates() { return _sendPhysicsUpdates; }
@@ -394,10 +396,10 @@ public:
 
     void flagForOwnership() { _dirtyFlags |= DIRTY_SIMULATOR_OWNERSHIP; }
 
-    bool addAction(EntitySimulationPointer simulation, EntityActionPointer action);
-    bool updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments);
-    bool removeAction(EntitySimulationPointer simulation, const QUuid& actionID);
-    bool clearActions(EntitySimulationPointer simulation);
+    bool addAction(EntityActionPointer action);
+    bool updateAction(const QUuid& actionID, const QVariantMap& arguments);
+    bool removeAction(const QUuid& actionID);
+    bool clearActions();
     void setActionData(QByteArray actionData);
     const QByteArray getActionData() const;
     bool hasActions() { return !_objectActions.empty(); }
@@ -408,9 +410,13 @@ public:
 
     virtual void setParentID(const EntityItemID& parentID);
     virtual const EntityItemID& getParentID() const { return _parentID; }
-    virtual void acceptChild(EntityItemPointer arrivingEntity);
+    // virtual void acceptChild(EntityItemPointer arrivingEntity);
+
+    void refreshParentEntityItemPointer();
 
 protected:
+
+    bool _parentIDSet = false;
 
     const QByteArray getActionDataInternal() const;
     void setActionDataInternal(QByteArray actionData);
@@ -488,12 +494,12 @@ protected:
     uint32_t _dirtyFlags;   // things that have changed from EXTERNAL changes (via script or packet) but NOT from simulation
 
     // these backpointers are only ever set/cleared by friends:
-    EntityTreeElementPointer _element = nullptr; // set by EntityTreeElement
+    EntityTreeElementPointer _element; // set by EntityTreeElement
     void* _physicsInfo = nullptr; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
-    bool addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action);
-    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation = nullptr);
+    bool addActionInternal(EntityActionPointer action);
+    bool removeActionInternal(const QUuid& actionID);
     void deserializeActionsInternal();
     QByteArray serializeActions(bool& success) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
@@ -503,13 +509,14 @@ protected:
     // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
     // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
     // are used to keep track of and work around this situation.
-    void checkWaitingToRemove(EntitySimulationPointer simulation = nullptr);
+    void checkWaitingToRemove();
     mutable QSet<QUuid> _actionsToRemove;
     mutable bool _actionDataDirty = false;
 
     EntityItemID _parentID{UNKNOWN_ENTITY_ID};
     mutable EntityItemWeakPointer _parentZone;
-    void refreshParentEntityItemPointer() const;
+
+    mutable EntitySimulationPointer _simulation;
 };
 
 #endif // hifi_EntityItem_h
