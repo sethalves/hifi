@@ -44,8 +44,6 @@ typedef QVector<Collision> CollisionEvents;
 
 class PhysicsEngine {
 public:
-    uint32_t getNumSubsteps();
-
     PhysicsEngine(const glm::vec3& offset);
     ~PhysicsEngine();
     void init();
@@ -98,6 +96,8 @@ public:
     EntityActionPointer getActionByID(const QUuid& actionID) const;
     void addAction(EntityActionPointer action);
     void removeAction(const QUuid actionID);
+
+    uint32_t getNumSubsteps() { return _numSubsteps; }
 
 private:
     void removeContacts(ObjectMotionState* motionState);

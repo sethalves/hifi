@@ -82,3 +82,18 @@ EntitySimulationPointer ZoneTracker::getSimulationByReferential(QUuid referentia
         });
     return result;
 }
+
+QList<EntitySimulationPointer> ZoneTracker::getAllSimulations() {
+    QList<EntitySimulationPointer> allSimulations;
+    allSimulations << _defaultTree->getSimulation();
+    foreach (ZoneEntityItemPointer parentEntityItem, getAllZones()) {
+        auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(parentEntityItem);
+        if (zone) {
+            EntitySimulationPointer zoneSimulation = zone->getSubEntitySimulation();
+            if (zoneSimulation) {
+                allSimulations << zoneSimulation;
+            }
+        }
+    }
+    return allSimulations;
+}

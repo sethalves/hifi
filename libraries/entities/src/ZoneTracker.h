@@ -42,8 +42,8 @@ public:
     QList<EntityItemPointer> getChildrenOf(EntityItemPointer parent) { return getChildrenOf(parent->getID()); }
     EntitySimulationPointer getSimulationByReferential(QUuid referential);
     QList<ZoneEntityItemPointer> getAllZones() { return _zones.values(); }
+    QList<EntitySimulationPointer> getAllSimulations();
 private:
-    void handleChangesForSimulation(EntitySimulationPointer simulation);
     QHash<EntityItemID, ZoneEntityItemPointer> _zones;
     QSet<EntityItemID> _needsReparent;
     EntityTreePointer _defaultTree;

@@ -270,3 +270,11 @@ void PhysicalEntitySimulation::applyActionChanges() {
     }
     EntitySimulation::applyActionChanges();
 }
+
+
+uint32_t PhysicalEntitySimulation::getWorldSimulationStep() const {
+    if (_physicsEngine) {
+        return _physicsEngine->getNumSubsteps();
+    }
+    return 0;
+}

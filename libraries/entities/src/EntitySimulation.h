@@ -77,6 +77,8 @@ public:
 
     void getEntitiesToDelete(VectorOfEntities& entitiesToDelete);
 
+    virtual uint32_t getWorldSimulationStep() const { return 0; }
+
 signals:
     void entityCollisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);
 

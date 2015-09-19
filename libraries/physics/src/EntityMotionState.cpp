@@ -164,7 +164,7 @@ void EntityMotionState::getWorldTransform(btTransform& worldTrans) const {
     if (_motionType == MOTION_TYPE_KINEMATIC) {
         // This is physical kinematic motion which steps strictly by the subframe count
         // of the physics simulation.
-        uint32_t thisStep = ObjectMotionState::getWorldSimulationStep();
+        uint32_t thisStep = getWorldSimulationStep();
         float dt = (thisStep - _lastKinematicStep) * PHYSICS_ENGINE_FIXED_SUBSTEP;
         _entity->simulateKinematicMotion(dt);
 

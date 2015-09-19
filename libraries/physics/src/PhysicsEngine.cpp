@@ -18,10 +18,6 @@
 #include "PhysicsLogging.h"
 #include "PhysicalEntitySimulation.h"
 
-uint32_t PhysicsEngine::getNumSubsteps() {
-    return _numSubsteps;
-}
-
 PhysicsEngine::PhysicsEngine(const glm::vec3& offset) :
         _originOffset(offset),
         _characterController(nullptr) {
@@ -265,7 +261,6 @@ void PhysicsEngine::stepSimulation() {
     if (numSubsteps > 0) {
         BT_PROFILE("postSimulation");
         _numSubsteps += (uint32_t)numSubsteps;
-        ObjectMotionState::setWorldSimulationStep(_numSubsteps);
 
         if (_characterController) {
             _characterController->postSimulation();

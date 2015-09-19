@@ -616,7 +616,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     //COPY_PROPERTY_TO_QSCRIPTVALUE(glowLevel);
     //COPY_PROPERTY_TO_QSCRIPTVALUE(localRenderAlpha);
 
-    COPY_PROPERTY_TO_QSCRIPTVALUE(parentID);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_PARENT_ID, parentID);
 
     return properties;
 }

@@ -380,7 +380,7 @@ public:
     EntityTreeElementPointer getElement() const { return _element; }
     EntityTreePointer getTree() const;
     EntitySimulationPointer getSimulation() const;
-    void removeFromSimulation();
+    void removeFromSimulation() const;
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
     static bool getSendPhysicsUpdates() { return _sendPhysicsUpdates; }
@@ -412,7 +412,7 @@ public:
     virtual const EntityItemID& getParentID() const { return _parentID; }
     // virtual void acceptChild(EntityItemPointer arrivingEntity);
 
-    void refreshParentEntityItemPointer();
+    void refreshParentEntityItemPointer() const;
 
 protected:
 

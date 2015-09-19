@@ -1261,6 +1261,8 @@ const AACube& EntityItem::getMinimumAACube() const {
 }
 
 const AABox& EntityItem::getAABox() const {
+    refreshParentEntityItemPointer();
+
     if (_recalcAABox) {
 
         // _position represents the position of the registration point.
@@ -1774,11 +1776,12 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     return result;
 }
 
-void EntityItem::refreshParentEntityItemPointer() {
+void EntityItem::refreshParentEntityItemPointer() const {
     if (!_parentIDSet) {
         return;
     }
     EntityTreePointer tree = getTree();
+    EntityItemPointer unconstThis = const_cast<EntityItem*>(this)->shared_from_this();
     if (!tree) {
         removeFromSimulation();
         _parentZone.reset();
@@ -1799,18 +1802,24 @@ void EntityItem::refreshParentEntityItemPointer() {
         if (parentEntityItem) {
             auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(parentEntityItem);
             _simulation = zone->getSimulation();
-            _simulation->addEntity(shared_from_this());
+            if (!_simulation) {
+                return;
+            }
+            _simulation->addEntity(unconstThis);
         }
     }
-    if (_parentID == UNKNOWN_ENTITY_ID) {
+    // if the ID is null and we have a parent pointer, clear it
+    if (_parentID == UNKNOWN_ENTITY_ID && !_parentZone.expired()) {
         _simulation = getTree()->getSimulation();
-        _simulation->addEntity(shared_from_this());
+        _simulation->addEntity(unconstThis);
+        _parentZone.reset();
     }
 }
 
-void EntityItem::removeFromSimulation() {
+void EntityItem::removeFromSimulation() const {
     if (_simulation) {
-        _simulation->removeEntity(shared_from_this());
+        EntityItemPointer unconstThis = const_cast<EntityItem*>(this)->shared_from_this();
+        _simulation->removeEntity(unconstThis);
         _simulation.reset();
     }
 }

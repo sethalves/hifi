@@ -2780,32 +2780,24 @@ void Application::setCursorVisible(bool visible) {
     _cursorVisible = visible;
 }
 
-
-void Application::handleChangesForSimulation(EntitySimulationPointer simulation) {
-    QVector<Collision> collisionEvents;
-    PhysicsEnginePointer physicsEngine;
-    _entities.getTree()->withWriteLock([&] {
-        std::shared_ptr<PhysicalEntitySimulation> physicalEntitySimulation =
+void foreachPhysicalSimulation(std::function<void(PhysicalEntitySimulationPointer)> functor) {
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    foreach (EntitySimulationPointer simulation, zoneTracker->getAllSimulations()) {
+        PhysicalEntitySimulationPointer physicalSimulation =
             std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-        physicsEngine = physicalEntitySimulation->getPhysicsEngine();
-        auto changes = physicsEngine->getOutgoingChanges();
-        auto nodeList = DependencyManager::get<NodeList>();
-        physicalEntitySimulation->handleOutgoingChanges(physicsEngine->getOutgoingChanges(), nodeList->getSessionUUID());
-        auto avatarManager = DependencyManager::get<AvatarManager>();
-        avatarManager->handleOutgoingChanges(changes);
-        collisionEvents = physicsEngine->getCollisionEvents();
-        avatarManager->handleCollisionEvents(collisionEvents);
-    });
+        functor(physicalSimulation);
+    }
+}
 
-    physicsEngine->dumpStatsIfNecessary();
+PhysicsEnginePointer getPhysicsEngineFromSimulation(EntitySimulationPointer simulation) {
+    PhysicalEntitySimulationPointer physicalSimulation =
+        std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+    return physicalSimulation->getPhysicsEngine();
+}
 
-    PerformanceTimer perfTimer("entities");
-    std::shared_ptr<PhysicalEntitySimulation> physicalEntitySimulation =
-        std::static_pointer_cast<PhysicalEntitySimulation>(_entitySimulation);
-
-    // Collision events (and their scripts) must not be handled when we're locked, above. (That would risk
-    // deadlock.)
-    physicalEntitySimulation->handleCollisionEvents(collisionEvents);
+PhysicsEnginePointer getPhysicsEngineFromMotionState(ObjectMotionState* motionState) {
+    EntitySimulationPointer simulation = motionState->getSimulation();
+    return getPhysicsEngineFromSimulation(simulation);
 }
 
 
@@ -2917,92 +2909,88 @@ void Application::update(float deltaTime) {
     updateCursor(deltaTime); // Handle cursor updates
 
     {
+        PerformanceTimer perfTimer("physics");
+        VectorOfMotionStates motionStates;
+        AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
         auto zoneTracker = DependencyManager::get<ZoneTracker>();
 
-        PerformanceTimer perfTimer("physics");
         _myAvatar->relayDriveKeysToCharacterController();
 
-        std::shared_ptr<PhysicalEntitySimulation> physicalEntitySimulation =
-            std::static_pointer_cast<PhysicalEntitySimulation>(_entitySimulation);
-
-        static VectorOfMotionStates motionStates;
-        physicalEntitySimulation->getObjectsToDelete(motionStates);
-        physicalEntitySimulation->getPhysicsEngine()->deleteObjects(motionStates);
-
-        _entities.getTree()->withWriteLock([&] {
-            physicalEntitySimulation->getObjectsToAdd(motionStates);
-            physicalEntitySimulation->getPhysicsEngine()->addObjects(motionStates);
-
-        });
-        _entities.getTree()->withWriteLock([&] {
-            physicalEntitySimulation->getObjectsToChange(motionStates);
-            VectorOfMotionStates stillNeedChange = physicalEntitySimulation->getPhysicsEngine()->changeObjects(motionStates);
-            physicalEntitySimulation->setObjectsToChange(stillNeedChange);
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            simulation->getObjectsToDelete(motionStates);
+            simulation->getPhysicsEngine()->deleteObjects(motionStates);
         });
 
-        _entitySimulation->applyActionChanges();
+        _entities.getTree()->withWriteLock([&] {
+            foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+                simulation->getObjectsToAdd(motionStates);
+                simulation->getPhysicsEngine()->addObjects(motionStates);
+                simulation->getObjectsToChange(motionStates);
+                VectorOfMotionStates stillNeedChange = simulation->getPhysicsEngine()->changeObjects(motionStates);
+                simulation->setObjectsToChange(stillNeedChange);
+            });
+        });
 
-        AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            simulation->applyActionChanges();
+        });
+
+
         avatarManager->getObjectsToDelete(motionStates);
-        foreach (ObjectMotionState* obMoState, motionStates) {
-            AvatarMotionState* avMoState = static_cast<AvatarMotionState*>(obMoState);
-            EntitySimulationPointer simulation = avMoState->getSimulation();
-            assert(simulation);
-            std::static_pointer_cast<PhysicalEntitySimulation>(simulation)->getPhysicsEngine()->deleteObject(obMoState);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            getPhysicsEngineFromMotionState(motionState)->deleteObject(motionState);
         }
-
         avatarManager->getObjectsToAdd(motionStates);
-
-        foreach (ObjectMotionState* obMoState, motionStates) {
-            AvatarMotionState* avMoState = static_cast<AvatarMotionState*>(obMoState);
-            EntitySimulationPointer simulation;
-            QUuid referential = avMoState->getReferential();
-            if (!referential.isNull()) {
-                simulation = zoneTracker->getSimulationByReferential(referential);
-            } else {
-                simulation = _entitySimulation;
-            }
-            assert(simulation);
-            avMoState->setSimulation(simulation);
-            std::static_pointer_cast<PhysicalEntitySimulation>(simulation)->getPhysicsEngine()->addObject(obMoState);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            AvatarMotionState* avatarMotionState = static_cast<AvatarMotionState*>(motionState);
+            QUuid avatarReferential = avatarMotionState->getReferential();
+            EntitySimulationPointer simulation = zoneTracker->getSimulationByReferential(avatarReferential);
+            getPhysicsEngineFromSimulation(simulation)->addObject(motionState);
         }
-
         avatarManager->getObjectsToChange(motionStates);
-        // handle default simulation
-        std::shared_ptr<PhysicalEntitySimulation> defaultSimulation =
-            std::static_pointer_cast<PhysicalEntitySimulation>(_entities.getTree()->getSimulation());
-        VectorOfMotionStates objectsToChange = defaultSimulation->getPhysicsEngine()->changeObjects(motionStates);
-        // handle each zone's simulation
-        foreach (ZoneEntityItemPointer zone, zoneTracker->getAllZones()) {
-            EntitySimulationPointer simulation = zone->getSubEntitySimulation();
-            std::shared_ptr<PhysicalEntitySimulation> physicalEntitySimulation =
-                std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-            objectsToChange = physicalEntitySimulation->getPhysicsEngine()->changeObjects(objectsToChange);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            getPhysicsEngineFromMotionState(motionState)->changeObject(motionState);
         }
-        assert(objectsToChange.size() == 0);
 
-
+        bool needUpdate = false;
         _entities.getTree()->withWriteLock([&] {
-            // step the default simulation
-            defaultSimulation->getPhysicsEngine()->stepSimulation();
-            // step each of the zone-specific simulations
-            foreach (ZoneEntityItemPointer zone, zoneTracker->getAllZones()) {
-                EntitySimulationPointer simulation = zone->getSubEntitySimulation();
-                std::static_pointer_cast<PhysicalEntitySimulation>(simulation)->getPhysicsEngine()->stepSimulation();
+            foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+                PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
+                PhysicalEntitySimulationPointer physicalEntitySimulation =
+                    std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+                physicsEngine->stepSimulation();
+                if (physicsEngine->hasOutgoingChanges()) {
+                    physicalEntitySimulation->handleOutgoingChanges(physicsEngine->getOutgoingChanges(),
+                                                                    physicsEngine->getSessionID());
+                    avatarManager->handleOutgoingChanges(physicsEngine->getOutgoingChanges());
+                    needUpdate = true;
+                }
+            });
+        });
+
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
+            PhysicalEntitySimulationPointer physicalEntitySimulation =
+                std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+
+            auto collisionEvents = physicsEngine->getCollisionEvents();
+            avatarManager->handleCollisionEvents(collisionEvents);
+
+            physicsEngine->dumpStatsIfNecessary();
+
+            if (!_aboutToQuit) {
+                PerformanceTimer perfTimer("entities");
+                // Collision events (and their scripts) must not be handled when we're locked, above. (That would risk
+                // deadlock.)
+                physicalEntitySimulation->handleCollisionEvents(collisionEvents);
+                // NOTE: the _entities.update() call below will wait for lock
+                // and will simulate entity motion (the EntityTree has been given an EntitySimulation).
             }
         });
 
-        if (_physicsEngine->hasOutgoingChanges() && !_aboutToQuit) {
-            handleChangesForSimulation(defaultSimulation);
-            foreach (EntityItemPointer zoneEntity, zoneTracker->getAllZones()) {
-                auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(zoneEntity);
-                handleChangesForSimulation(zone->getSimulation());
-            }
+        if (needUpdate) {
+            _entities.update(); // update the models...
         }
-
-        // NOTE: the _entities.update() call below will wait for lock
-        // and will simulate entity motion (the EntityTree has been given an EntitySimulation).
-        _entities.getTree()->update(); // update the models...
     }
 
     {

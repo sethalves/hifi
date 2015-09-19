@@ -62,8 +62,7 @@ public:
     static void setWorldOffset(const glm::vec3& offset);
     static const glm::vec3& getWorldOffset();
 
-    static void setWorldSimulationStep(uint32_t step);
-    static uint32_t getWorldSimulationStep();
+    virtual uint32_t getWorldSimulationStep() const;
 
     static void setShapeManager(ShapeManager* manager);
     static ShapeManager* getShapeManager();
@@ -133,7 +132,7 @@ public:
     friend class PhysicsEngine;
 
     EntitySimulationPointer getSimulation() { return _simulation; }
-    void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
+    void setSimulation(EntitySimulationPointer simulation);
 
 protected:
     virtual bool isReadyToComputeShape() = 0;
