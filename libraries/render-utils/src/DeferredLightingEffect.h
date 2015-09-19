@@ -32,12 +32,17 @@ class DeferredLightingEffect : public Dependency {
     
 public:
     static const int NORMAL_FITTING_MAP_SLOT = 10;
+    static const int DEFERRED_TRANSFORM_BUFFER_SLOT = 2;
 
     void init(AbstractViewStateInterface* viewState);
 
     /// Sets up the state necessary to render static untextured geometry with the simple program.
-    void bindSimpleProgram(gpu::Batch& batch, bool textured = false, bool culled = true,
+    gpu::PipelinePointer bindSimpleProgram(gpu::Batch& batch, bool textured = false, bool culled = true,
                            bool emmisive = false, bool depthBias = false);
+
+    /// Sets up the state necessary to render static untextured geometry with the simple program.
+    void bindInstanceProgram(gpu::Batch& batch, bool textured = false, bool culled = true,
+        bool emmisive = false, bool depthBias = false);
 
     //// Renders a solid sphere with the simple program.
     void renderSolidSphere(gpu::Batch& batch, float radius, int slices, int stacks, const glm::vec4& color);
@@ -45,6 +50,9 @@ public:
     //// Renders a wireframe sphere with the simple program.
     void renderWireSphere(gpu::Batch& batch, float radius, int slices, int stacks, const glm::vec4& color);
     
+    //// Renders a solid cube using instancing.  Transform should include scaling.
+    void renderSolidCubeInstance(gpu::Batch& batch, const Transform& xfm, const glm::vec4& color);
+
     //// Renders a solid cube with the simple program.
     void renderSolidCube(gpu::Batch& batch, float size, const glm::vec4& color);
 
@@ -78,7 +86,7 @@ public:
     void setGlobalAtmosphere(const model::AtmospherePointer& atmosphere) { _atmosphere = atmosphere; }
 
     void setGlobalSkybox(const model::SkyboxPointer& skybox);
-    
+
 private:
     DeferredLightingEffect() {}
     virtual ~DeferredLightingEffect() { }
@@ -151,6 +159,19 @@ private:
     int _ambientLightMode = 0;
     model::AtmospherePointer _atmosphere;
     model::SkyboxPointer _skybox;
+
+    // Class describing the uniform buffer with all the parameters common to the deferred shaders
+    class DeferredTransform {
+    public:
+        glm::mat4 projection;
+        glm::mat4 viewInverse;
+        float stereoSide{ 0.f };
+        float spareA, spareB, spareC;
+
+        DeferredTransform() {}
+    };
+    typedef gpu::BufferView UniformBufferView;
+    UniformBufferView _deferredTransformBuffer[2];
 };
 
 class SimpleProgramKey {

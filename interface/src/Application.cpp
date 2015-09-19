@@ -184,9 +184,6 @@ public:
 
 using namespace std;
 
-//  Starfield information
-const qint64 MAXIMUM_CACHE_SIZE = 10 * BYTES_PER_GIGABYTES;  // 10GB
-
 static QTimer* locationUpdateTimer = NULL;
 static QTimer* balanceUpdateTimer = NULL;
 static QTimer* identityPacketTimer = NULL;
@@ -374,6 +371,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
         _lastFaceTrackerUpdate(0),
         _applicationOverlay()
 {
+    thread()->setObjectName("Main Thread");
+    
     setInstance(this);
 
     _entityClipboard->createRootElement();
@@ -464,13 +463,12 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
 
     audioThread->start();
 
-    QThread* assetThread = new QThread;
-
-    assetThread->setObjectName("Asset Thread");
+    // Setup AssetClient
     auto assetClient = DependencyManager::get<AssetClient>();
-
+    QThread* assetThread = new QThread;
+    assetThread->setObjectName("Asset Thread");
     assetClient->moveToThread(assetThread);
-
+    connect(assetThread, &QThread::started, assetClient.data(), &AssetClient::init);
     assetThread->start();
 
     const DomainHandler& domainHandler = nodeList->getDomainHandler();
@@ -859,8 +857,7 @@ void Application::cleanupBeforeQuit() {
 }
 
 void Application::emptyLocalCache() {
-    QNetworkDiskCache* cache = qobject_cast<QNetworkDiskCache*>(NetworkAccessManager::getInstance().cache());
-    if (cache) {
+    if (auto cache = NetworkAccessManager::getInstance().cache()) {
         qDebug() << "DiskCacheEditor::clear(): Clearing disk cache.";
         cache->clear();
     }
@@ -1070,7 +1067,7 @@ void Application::paintGL() {
     auto lodManager = DependencyManager::get<LODManager>();
 
 
-    RenderArgs renderArgs(_gpuContext, nullptr, getViewFrustum(), lodManager->getOctreeSizeScale(),
+    RenderArgs renderArgs(_gpuContext, getEntities(), getViewFrustum(), lodManager->getOctreeSizeScale(),
                           lodManager->getBoundaryLevelAdjust(), RenderArgs::DEFAULT_RENDER_MODE,
                           RenderArgs::MONO, RenderArgs::RENDER_DEBUG_NONE);
 
@@ -2904,8 +2901,8 @@ void Application::update(float deltaTime) {
     UserInputMapper::PoseValue leftHand = userInputMapper->getPoseState(UserInputMapper::LEFT_HAND);
     UserInputMapper::PoseValue rightHand = userInputMapper->getPoseState(UserInputMapper::RIGHT_HAND);
     Hand* hand = DependencyManager::get<AvatarManager>()->getMyAvatar()->getHand();
-    setPalmData(hand, leftHand, deltaTime, LEFT_HAND_INDEX);
-    setPalmData(hand, rightHand, deltaTime, RIGHT_HAND_INDEX);
+    setPalmData(hand, leftHand, deltaTime, LEFT_HAND_INDEX, userInputMapper->getActionState(UserInputMapper::LEFT_HAND_CLICK));
+    setPalmData(hand, rightHand, deltaTime, RIGHT_HAND_INDEX, userInputMapper->getActionState(UserInputMapper::RIGHT_HAND_CLICK));
     if (Menu::getInstance()->isOptionChecked(MenuOption::HandMouseInput)) {
         emulateMouse(hand, userInputMapper->getActionState(UserInputMapper::LEFT_HAND_CLICK),
             userInputMapper->getActionState(UserInputMapper::SHIFT), LEFT_HAND_INDEX);
@@ -3634,7 +3631,6 @@ void Application::displaySide(RenderArgs* renderArgs, Camera& theCamera, bool se
                     (RenderArgs::DebugFlags) (renderDebugFlags | (int)RenderArgs::RENDER_DEBUG_SIMULATION_OWNERSHIP);
             }
             renderArgs->_debugFlags = renderDebugFlags;
-            _entities.render(renderArgs);
             //ViveControllerManager::getInstance().updateRendering(renderArgs, _main3DScene, pendingChanges);
         }
     }
@@ -3718,14 +3714,6 @@ void Application::displaySide(RenderArgs* renderArgs, Camera& theCamera, bool se
 
         sceneInterface->setEngineFeedOverlay3DItems(engineRC->_numFeedOverlay3DItems);
         sceneInterface->setEngineDrawnOverlay3DItems(engineRC->_numDrawnOverlay3DItems);
-    }
-
-    if (!selfAvatarOnly) {
-        // give external parties a change to hook in
-        {
-            PerformanceTimer perfTimer("inWorldInterface");
-            emit renderingInWorldInterface();
-        }
     }
 
     activeRenderingThread = nullptr;
@@ -4095,8 +4083,8 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     AvatarManager::registerMetaTypes(scriptEngine);
 
     // hook our avatar and avatar hash map object into this script engine
-    scriptEngine->setAvatarData(_myAvatar, "MyAvatar"); // leave it as a MyAvatar class to expose thrust features
-    scriptEngine->setAvatarHashMap(DependencyManager::get<AvatarManager>().data(), "AvatarList");
+    scriptEngine->registerGlobalObject("MyAvatar", _myAvatar);
+    scriptEngine->registerGlobalObject("AvatarList", DependencyManager::get<AvatarManager>().data());
 
     scriptEngine->registerGlobalObject("Camera", &_myCamera);
 
@@ -4120,9 +4108,9 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
 
     scriptEngine->registerGlobalObject("Desktop", DependencyManager::get<DesktopScriptingInterface>().data());
 
-    QScriptValue windowValue = scriptEngine->registerGlobalObject("Window", DependencyManager::get<WindowScriptingInterface>().data());
+    scriptEngine->registerGlobalObject("Window", DependencyManager::get<WindowScriptingInterface>().data());
     scriptEngine->registerGetterSetter("location", LocationScriptingInterface::locationGetter,
-                                       LocationScriptingInterface::locationSetter, windowValue);
+                        LocationScriptingInterface::locationSetter, "Window");
     // register `location` on the global object.
     scriptEngine->registerGetterSetter("location", LocationScriptingInterface::locationGetter,
                                        LocationScriptingInterface::locationSetter);
@@ -4152,9 +4140,9 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
 
     scriptEngine->registerGlobalObject("Paths", DependencyManager::get<PathUtils>().data());
 
-    QScriptValue hmdInterface = scriptEngine->registerGlobalObject("HMD", &HMDScriptingInterface::getInstance());
-    scriptEngine->registerFunction(hmdInterface, "getHUDLookAtPosition2D", HMDScriptingInterface::getHUDLookAtPosition2D, 0);
-    scriptEngine->registerFunction(hmdInterface, "getHUDLookAtPosition3D", HMDScriptingInterface::getHUDLookAtPosition3D, 0);
+    scriptEngine->registerGlobalObject("HMD", &HMDScriptingInterface::getInstance());
+    scriptEngine->registerFunction("HMD", "getHUDLookAtPosition2D", HMDScriptingInterface::getHUDLookAtPosition2D, 0);
+    scriptEngine->registerFunction("HMD", "getHUDLookAtPosition3D", HMDScriptingInterface::getHUDLookAtPosition3D, 0);
 
     scriptEngine->registerGlobalObject("Scene", DependencyManager::get<SceneScriptingInterface>().data());
 
@@ -4163,31 +4151,6 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
 #ifdef HAVE_RTMIDI
     scriptEngine->registerGlobalObject("MIDI", &MIDIManager::getInstance());
 #endif
-
-    // TODO: Consider moving some of this functionality into the ScriptEngine class instead. It seems wrong that this
-    // work is being done in the Application class when really these dependencies are more related to the ScriptEngine's
-    // implementation
-    QThread* workerThread = new QThread(this);
-    QString scriptEngineName = QString("Script Thread:") + scriptEngine->getFilename();
-    workerThread->setObjectName(scriptEngineName);
-
-    // when the worker thread is started, call our engine's run..
-    connect(workerThread, &QThread::started, scriptEngine, &ScriptEngine::run);
-    
-    // when the thread is terminated, add both scriptEngine and thread to the deleteLater queue
-    connect(scriptEngine, &ScriptEngine::doneRunning, scriptEngine, &ScriptEngine::deleteLater);
-    connect(workerThread, &QThread::finished, workerThread, &QThread::deleteLater);
-    
-    // tell the thread to stop when the script engine is done
-    connect(scriptEngine, &ScriptEngine::destroyed, workerThread, &QThread::quit);
-
-    auto nodeList = DependencyManager::get<NodeList>();
-    connect(nodeList.data(), &NodeList::nodeKilled, scriptEngine, &ScriptEngine::nodeKilled);
-
-    scriptEngine->moveToThread(workerThread);
-
-    // Starts an event loop, and emits workerThread->started()
-    workerThread->start();
 }
 
 void Application::initializeAcceptedFiles() {
@@ -4333,11 +4296,14 @@ ScriptEngine* Application::loadScript(const QString& scriptFilename, bool isUser
     scriptEngine->setUserLoaded(isUserLoaded);
 
     if (scriptFilename.isNull()) {
+        // This appears to be the script engine used by the script widget's evaluation window before the file has been saved...
+
         // this had better be the script editor (we should de-couple so somebody who thinks they are loading a script
         // doesn't just get an empty script engine)
 
         // we can complete setup now since there isn't a script we have to load
         registerScriptEngineWithApplicationServices(scriptEngine);
+        scriptEngine->runInThread();
     } else {
         // connect to the appropriate signals of this script engine
         connect(scriptEngine, &ScriptEngine::scriptLoaded, this, &Application::handleScriptEngineLoaded);
@@ -4359,6 +4325,7 @@ void Application::reloadScript(const QString& scriptName, bool isUserLoaded) {
     loadScript(scriptName, isUserLoaded, false, false, true);
 }
 
+// FIXME - change to new version of ScriptCache loading notification
 void Application::handleScriptEngineLoaded(const QString& scriptFilename) {
     ScriptEngine* scriptEngine = qobject_cast<ScriptEngine*>(sender());
 
@@ -4368,8 +4335,10 @@ void Application::handleScriptEngineLoaded(const QString& scriptFilename) {
 
     // register our application services and set it off on its own thread
     registerScriptEngineWithApplicationServices(scriptEngine);
+    scriptEngine->runInThread();
 }
 
+// FIXME - change to new version of ScriptCache loading notification
 void Application::handleScriptLoadError(const QString& scriptFilename) {
     qCDebug(interfaceapp) << "Application::loadScript(), script failed to load...";
     QMessageBox::warning(getWindow(), "Error Loading Script", scriptFilename + " failed to load.");
@@ -4438,6 +4407,8 @@ void Application::stopScript(const QString &scriptName, bool restart) {
 }
 
 void Application::reloadAllScripts() {
+    DependencyManager::get<ScriptCache>()->clearCache();
+    getEntities()->reloadEntityScripts();
     stopAllScripts(true);
 }
 
@@ -5039,7 +5010,7 @@ mat4 Application::getHMDSensorPose() const {
     return mat4();
 }
 
-void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float deltaTime, int index) {
+void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float deltaTime, int index, float triggerValue) {
     PalmData* palm;
     bool foundHand = false;
     for (size_t j = 0; j < hand->getNumPalms(); j++) {
@@ -5109,6 +5080,7 @@ void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float
         palm->setTipVelocity(glm::vec3(0.0f));
     }
     palm->setTipPosition(newTipPosition);
+    palm->setTrigger(triggerValue);
 }
 
 void Application::emulateMouse(Hand* hand, float click, float shift, int index) {
