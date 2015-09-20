@@ -395,7 +395,7 @@ void ParticleEffectEntityItem::debugDump() const {
     quint64 now = usecTimestampNow();
     qCDebug(entities) << "PA EFFECT EntityItem id:" << getEntityItemID() << "---------------------------------------------";
     qCDebug(entities) << "                  color:" << _color[0] << "," << _color[1] << "," << _color[2];
-    qCDebug(entities) << "               position:" << debugTreeVector(getPosition());
+    qCDebug(entities) << "               position:" << debugTreeVector(getGlobalPosition());
     qCDebug(entities) << "             dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "          getLastEdited:" << debugTime(getLastEdited(), now);
 }
@@ -628,7 +628,7 @@ void ParticleEffectEntityItem::stepSimulation(float deltaTime) {
             spreadOffset.z =  -_velocitySpread.z + randFloat() * (_velocitySpread.z * 2.0f);
 
             // set initial conditions
-            _particlePositions[i] = getPosition();
+            _particlePositions[i] = getGlobalPosition();
             _particleVelocities[i] = _emitVelocity + spreadOffset;
             
             spreadOffset.x =  -_accelerationSpread.x + randFloat() * (_accelerationSpread.x * 2.0f);

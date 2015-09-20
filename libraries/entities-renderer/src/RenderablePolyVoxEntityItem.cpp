@@ -148,7 +148,7 @@ glm::mat4 RenderablePolyVoxEntityItem::localToVoxelMatrix() const {
 }
 
 glm::mat4 RenderablePolyVoxEntityItem::voxelToWorldMatrix() const {
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
+    glm::mat4 rotation = glm::mat4_cast(getGlobalRotation());
     glm::mat4 translation = glm::translate(getGlobalPosition());
     return translation * rotation * voxelToLocalMatrix();
 }

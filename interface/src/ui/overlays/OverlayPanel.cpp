@@ -173,7 +173,7 @@ void OverlayPanel::applyTransformTo(Transform& transform, bool force) {
             } else if (!_anchorPositionBindEntity.isNull()) {
                 transform.setTranslation(DependencyManager::get<EntityScriptingInterface>()
                                          ->getEntityTree()->findEntityByID(_anchorPositionBindEntity)
-                                         ->getPosition());
+                                         ->getGlobalPosition());
             } else {
                 transform.setTranslation(getAnchorPosition());
             }
@@ -184,7 +184,7 @@ void OverlayPanel::applyTransformTo(Transform& transform, bool force) {
             } else if (!_anchorRotationBindEntity.isNull()) {
                 transform.setRotation(DependencyManager::get<EntityScriptingInterface>()
                                       ->getEntityTree()->findEntityByID(_anchorRotationBindEntity)
-                                      ->getRotation());
+                                      ->getGlobalRotation());
             } else {
                 transform.setRotation(getAnchorRotation());
             }

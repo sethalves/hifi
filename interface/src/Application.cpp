@@ -746,8 +746,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
                         _keyboardFocusHighlight->setIgnoreRayIntersection(true);
                         _keyboardFocusHighlight->setDrawInFront(true);
                     }
-                    _keyboardFocusHighlight->setRotation(webEntity->getRotation());
-                    _keyboardFocusHighlight->setPosition(webEntity->getPosition());
+                    _keyboardFocusHighlight->setRotation(webEntity->getGlobalRotation());
+                    _keyboardFocusHighlight->setPosition(webEntity->getGlobalPosition());
                     _keyboardFocusHighlight->setDimensions(webEntity->getDimensions() * 1.05f);
                     _keyboardFocusHighlight->setVisible(true);
                     _keyboardFocusHighlightID = getOverlays().addOverlay(_keyboardFocusHighlight);

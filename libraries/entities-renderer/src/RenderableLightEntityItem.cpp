@@ -28,7 +28,7 @@ void RenderableLightEntityItem::render(RenderArgs* args) {
     assert(getType() == EntityTypes::Light);
     glm::vec3 position = getGlobalPosition();
     glm::vec3 dimensions = getDimensions();
-    glm::quat rotation = getRotation();
+    glm::quat rotation = getGlobalRotation();
     float largestDiameter = glm::max(dimensions.x, dimensions.y, dimensions.z);
 
     glm::vec3 color = toGlm(getXColor());

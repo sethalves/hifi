@@ -69,7 +69,7 @@ UpdateEntityOperator::UpdateEntityOperator(EntityTreePointer tree,
 
     }
     if (!_properties.containsPositionChange() && _properties.containsDimensionsChange()) {
-        glm::vec3 oldPosition= _existingEntity->getPosition();
+        glm::vec3 oldPosition= _existingEntity->getGlobalPosition();
         _properties.setPosition(oldPosition);
 
         if (_wantDebug) {

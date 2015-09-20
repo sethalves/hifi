@@ -120,8 +120,8 @@ bool RenderableModelEntityItem::readyToAddToScene(RenderArgs* renderArgs) {
     if (renderArgs && _model && _needsInitialSimulation && _model->isActive() && _model->isLoaded()) {
         _model->setScaleToFit(true, getDimensions());
         _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
-        _model->setRotation(getRotation());
-        _model->setTranslation(getPosition());
+        _model->setRotation(getGlobalRotation());
+        _model->setTranslation(getGlobalPosition());
     
         // make sure to simulate so everything gets set up correctly for rendering
         {
@@ -285,7 +285,7 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
                     }
                 }
 
-                glm::quat rotation = getRotation();
+                glm::quat rotation = getGlobalRotation();
                 bool movingOrAnimating = isMoving() || isAnimatingSomething();
                 if ((movingOrAnimating || _needsInitialSimulation) && _model->isActive()) {
                     _model->setScaleToFit(true, dimensions);

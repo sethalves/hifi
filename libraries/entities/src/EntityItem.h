@@ -202,16 +202,9 @@ public:
     Transform getParentTransform() const;
 
     /// Position in meters (-TREE_SCALE TREE_SCALE)
-    inline const glm::vec3& getPosition() const {
-        return _localTransform.getTranslation();
-    }
-    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
-
     glm::vec3 getGlobalPosition() const { return getGlobalTransform().getTranslation(); }
     glm::quat getGlobalRotation() const { return getGlobalTransform().getRotation(); }
 
-    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
     inline void requiresRecalcBoxes() { _recalcAABox = true; _recalcMinAACube = true; _recalcMaxAACube = true; }
 
     // Hyperlink related getters and setters
@@ -414,6 +407,19 @@ public:
 
     void refreshParentEntityItemPointer() const;
 
+
+    // give physics related code access to the parent-relative coordinates
+    inline const glm::vec3& getPhysicsPosition() const { return _localTransform.getTranslation(); }
+    inline void setPhysicsPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getPhysicsRotation() const { return _localTransform.getRotation(); }
+    inline void setPhysicsRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+
+    // XXX delete these
+    inline const glm::vec3& getOKPosition() const { return _localTransform.getTranslation(); }
+    inline void setOKPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getOKRotation() const { return _localTransform.getRotation(); }
+    inline void setOKRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+
 protected:
 
     bool _parentIDSet = false;
@@ -435,14 +441,13 @@ protected:
     quint64 _created;
     quint64 _changedOnServer;
 
-    Transform _localTransform;
     mutable AABox _cachedAABox;
     mutable AACube _maxAACube;
     mutable AACube _minAACube;
     mutable bool _recalcAABox = true;
     mutable bool _recalcMinAACube = true;
     mutable bool _recalcMaxAACube = true;
-    
+
     float _glowLevel;
     float _localRenderAlpha;
     float _density = ENTITY_ITEM_DEFAULT_DENSITY; // kg/m^3
@@ -517,6 +522,13 @@ protected:
     mutable EntityItemWeakPointer _parentZone;
 
     mutable EntitySimulationPointer _simulation;
+
+ private:
+    Transform _localTransform;
+    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
+    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
+    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 };
 
 #endif // hifi_EntityItem_h

@@ -78,8 +78,8 @@ EntityMotionState::~EntityMotionState() {
 
 void EntityMotionState::updateServerPhysicsVariables() {
     assert(entityTreeIsLocked());
-    _serverPosition = _entity->getPosition();
-    _serverRotation = _entity->getRotation();
+    _serverPosition = _entity->getPhysicsPosition();
+    _serverRotation = _entity->getPhysicsRotation();
     _serverVelocity = _entity->getVelocity();
     _serverAngularVelocity = _entity->getAngularVelocity();
     _serverAcceleration = _entity->getAcceleration();
@@ -172,7 +172,7 @@ void EntityMotionState::getWorldTransform(btTransform& worldTrans) const {
         const_cast<EntityMotionState*>(this)->_lastKinematicStep = thisStep;
     }
     worldTrans.setOrigin(glmToBullet(getObjectPosition()));
-    worldTrans.setRotation(glmToBullet(_entity->getRotation()));
+    worldTrans.setRotation(glmToBullet(getObjectRotation()));
 }
 
 // This callback is invoked by the physics simulation at the end of each simulation step...
@@ -183,8 +183,8 @@ void EntityMotionState::setWorldTransform(const btTransform& worldTrans) {
     }
     assert(entityTreeIsLocked());
     measureBodyAcceleration();
-    _entity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
-    _entity->setRotation(bulletToGLM(worldTrans.getRotation()));
+    _entity->setPhysicsPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
+    _entity->setPhysicsRotation(bulletToGLM(worldTrans.getRotation()));
 
     _entity->setVelocity(getBodyLinearVelocity());
     _entity->setAngularVelocity(getBodyAngularVelocity());
@@ -430,8 +430,8 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, const Q
     }
 
     // remember properties for local server prediction
-    _serverPosition = _entity->getPosition();
-    _serverRotation = _entity->getRotation();
+    _serverPosition = _entity->getPhysicsPosition();
+    _serverRotation = _entity->getPhysicsRotation();
     _serverVelocity = _entity->getVelocity();
     _serverAcceleration = _entity->getAcceleration();
     _serverAngularVelocity = _entity->getAngularVelocity();

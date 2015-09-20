@@ -47,7 +47,6 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _lastEditedFromRemoteInRemoteTime(0),
     _created(UNKNOWN_CREATED_TIME),
     _changedOnServer(0),
-    _localTransform(),
     _glowLevel(ENTITY_ITEM_DEFAULT_GLOW_LEVEL),
     _localRenderAlpha(ENTITY_ITEM_DEFAULT_LOCAL_RENDER_ALPHA),
     _density(ENTITY_ITEM_DEFAULT_DENSITY),
@@ -78,7 +77,8 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _dirtyFlags(0),
     _element(nullptr),
     _physicsInfo(nullptr),
-    _simulated(false)
+    _simulated(false),
+    _localTransform()
 {
     // explicitly set transform parts to set dirty flags used by batch rendering
     _localTransform.setTranslation(ENTITY_ITEM_DEFAULT_POSITION);

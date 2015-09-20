@@ -45,7 +45,6 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
     _physicsEngine->init();
     _subEntitySimulation = EntitySimulationPointer(new PhysicalEntitySimulation());
     std::static_pointer_cast<PhysicalEntitySimulation>(_subEntitySimulation)->init(_physicsEngine, sender);
-    // _subTree->setSimulation(_entitySimulation.get());
 }
 
 
@@ -55,22 +54,23 @@ RenderableZoneEntityItem::~RenderableZoneEntityItem() {
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
-    glm::vec3 oldPosition = getPosition(), oldDimensions = getDimensions();
-    glm::quat oldRotation = getRotation();
-    
+    glm::vec3 oldPosition = getOKPosition();
+    glm::quat oldRotation = getOKRotation();
+    glm::vec3 oldDimensions = getDimensions();
+
     setNewProperties();
-    
+
     if (oldShapeURL != getCompoundShapeURL()) {
         if (_model) {
             delete _model;
         }
-        
+
         _model = getModel();
         _needsInitialSimulation = true;
         _model->setURL(getCompoundShapeURL());
     }
-    if (oldPosition != getPosition() ||
-        oldRotation != getRotation() ||
+    if (oldPosition != getOKPosition() ||
+        oldRotation != getOKRotation() ||
         oldDimensions != getDimensions()) {
         _needsInitialSimulation = true;
     }
@@ -105,8 +105,8 @@ Model* RenderableZoneEntityItem::getModel() {
 void RenderableZoneEntityItem::initialSimulation() {
     _model->setScaleToFit(true, getDimensions());
     _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
-    _model->setRotation(getRotation());
-    _model->setTranslation(getPosition());
+    _model->setRotation(getGlobalRotation());
+    _model->setTranslation(getGlobalPosition());
     _model->simulate(0.0f);
     _needsInitialSimulation = false;
 }
