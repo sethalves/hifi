@@ -222,7 +222,7 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
     PerformanceTimer perfTimer("RMEIrender");
     assert(getType() == EntityTypes::Model);
     
-    glm::vec3 position = getPosition();
+    glm::vec3 position = getGlobalPosition();
     glm::vec3 dimensions = getDimensions();
 
     if (hasModel()) {

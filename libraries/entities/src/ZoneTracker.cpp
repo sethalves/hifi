@@ -62,7 +62,9 @@ QList<EntityItemPointer> ZoneTracker::getChildrenOf(EntityItemID parent) {
     if (_childrenMap.contains(parent)) {
         foreach (EntityItemID childID, _childrenMap[parent]) {
             EntityItemPointer child = _defaultTree->findEntityByEntityItemID(childID);
-            children << child;
+            if (child && child->getParentID() == parent) {
+                children << child;
+            }
         }
     }
     return children;

@@ -142,7 +142,7 @@ void RenderablePolyLineEntityItem::render(RenderArgs* args) {
     
     gpu::Batch& batch = *args->_batch;
     Transform transform = Transform();
-    transform.setTranslation(getPosition());
+    transform.setTranslation(getGlobalPosition());
     transform.setRotation(getRotation());
     batch.setModelTransform(transform);
 

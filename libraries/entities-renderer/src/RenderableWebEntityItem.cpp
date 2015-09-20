@@ -125,7 +125,7 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
 
                 // Map the intersection point to an actual offscreen pixel
                 glm::vec3 point = intersection.intersection;
-                point -= getPosition();
+                point -= getGlobalPosition();
                 point = glm::inverse(getRotation()) * point;
                 point /= getDimensions();
                 point += 0.5f;
