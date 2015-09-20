@@ -200,8 +200,8 @@ bool PhysicsEngine::changeObject(ObjectMotionState* object) {
 VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& objects) {
     VectorOfMotionStates stillNeedChange;
     for (auto object : objects) {
-        if (std::static_pointer_cast<PhysicalEntitySimulation>(object->getSimulation())->getPhysicsEngine().get() != this) {
-            // this object is for some other PhysicsEngine.
+        EntitySimulationPointer simulation = object->getSimulation();
+        if (!simulation) {
             stillNeedChange.push_back(object);
             continue;
         }

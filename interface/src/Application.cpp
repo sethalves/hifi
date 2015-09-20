@@ -2935,7 +2935,6 @@ void Application::update(float deltaTime) {
             simulation->applyActionChanges();
         });
 
-
         avatarManager->getObjectsToDelete(motionStates);
         foreach (ObjectMotionState* motionState, motionStates) {
             getPhysicsEngineFromMotionState(motionState)->deleteObject(motionState);
@@ -2952,7 +2951,7 @@ void Application::update(float deltaTime) {
             getPhysicsEngineFromMotionState(motionState)->changeObject(motionState);
         }
 
-        bool needUpdate = false;
+        bool needEntitiesUpdate = false;
         _entities.getTree()->withWriteLock([&] {
             foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
                 PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
@@ -2963,7 +2962,7 @@ void Application::update(float deltaTime) {
                     physicalEntitySimulation->handleOutgoingChanges(physicsEngine->getOutgoingChanges(),
                                                                     physicsEngine->getSessionID());
                     avatarManager->handleOutgoingChanges(physicsEngine->getOutgoingChanges());
-                    needUpdate = true;
+                    needEntitiesUpdate = true;
                 }
             });
         });
@@ -2988,7 +2987,7 @@ void Application::update(float deltaTime) {
             }
         });
 
-        if (needUpdate) {
+        if (needEntitiesUpdate) {
             _entities.update(); // update the models...
         }
     }

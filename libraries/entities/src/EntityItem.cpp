@@ -1814,6 +1814,11 @@ void EntityItem::refreshParentEntityItemPointer() const {
         _simulation->addEntity(unconstThis);
         _parentZone.reset();
     }
+
+    if (_parentID == UNKNOWN_ENTITY_ID && !_simulation) {
+        _simulation = getTree()->getSimulation();
+        _simulation->addEntity(unconstThis);
+    }
 }
 
 void EntityItem::removeFromSimulation() const {

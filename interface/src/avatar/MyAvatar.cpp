@@ -184,7 +184,7 @@ void MyAvatar::handleZoneChange() {
 
     // if (Application::getInstance()->getMyAvatar() == this)
     //     qDebug() << "zone =" << zone.get() << "_currentZone =" << _currentZone.get() << "this =" << this
-    //              << "_position =" << _position;
+    //              << "_position =" << _position << "_goToPending =" << _goToPending;
 
     if (_goToPending) {
         return;
