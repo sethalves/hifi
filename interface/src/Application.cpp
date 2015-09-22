@@ -2799,6 +2799,9 @@ void foreachPhysicalSimulation(std::function<void(PhysicalEntitySimulationPointe
 }
 
 PhysicsEnginePointer getPhysicsEngineFromSimulation(EntitySimulationPointer simulation) {
+    if (!simulation) {
+        return nullptr;
+    }
     PhysicalEntitySimulationPointer physicalSimulation =
         std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
     return physicalSimulation->getPhysicsEngine();
@@ -2946,7 +2949,10 @@ void Application::update(float deltaTime) {
 
         avatarManager->getObjectsToDelete(motionStates);
         foreach (ObjectMotionState* motionState, motionStates) {
-            getPhysicsEngineFromMotionState(motionState)->deleteObject(motionState);
+            PhysicsEnginePointer physicsEngine = getPhysicsEngineFromMotionState(motionState);
+            if (physicsEngine) {
+                physicsEngine->deleteObject(motionState);
+            }
         }
         avatarManager->getObjectsToAdd(motionStates);
         foreach (ObjectMotionState* motionState, motionStates) {
@@ -2964,6 +2970,9 @@ void Application::update(float deltaTime) {
         _entities.getTree()->withWriteLock([&] {
             foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
                 PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
+                if (!physicsEngine) {
+                    return;
+                }
                 PhysicalEntitySimulationPointer physicalEntitySimulation =
                     std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
                 physicsEngine->stepSimulation();
