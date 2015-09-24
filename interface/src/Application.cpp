@@ -798,6 +798,8 @@ void Application::cleanupBeforeQuit() {
     DependencyManager::get<EyeTracker>()->setEnabled(false, true);
 #endif
 
+    AnimDebugDraw::getInstance().shutdown();
+
     if (_keyboardFocusHighlightID > 0) {
         getOverlays().deleteOverlay(_keyboardFocusHighlightID);
         _keyboardFocusHighlightID = -1;

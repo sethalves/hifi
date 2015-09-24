@@ -46,6 +46,7 @@
 #include "Recorder.h"
 #include "Util.h"
 #include "InterfaceLogging.h"
+#include "DebugDraw.h"
 
 using namespace std;
 
@@ -1365,7 +1366,7 @@ void MyAvatar::preRender(RenderArgs* renderArgs) {
 
         // bones are aligned such that z is forward, not -z.
         glm::quat rotY180 = glm::angleAxis((float)M_PI, glm::vec3(0.0f, 1.0f, 0.0f));
-        AnimPose xform(glm::vec3(1), rotY180 * getOrientation(), getAbsolutePosition());
+        AnimPose xform(glm::vec3(1), getOrientation() * rotY180, getAbsolutePosition());
 
         if (_enableDebugDrawBindPose && _debugDrawSkeleton) {
             glm::vec4 gray(0.2f, 0.2f, 0.2f, 0.2f);
@@ -1389,6 +1390,9 @@ void MyAvatar::preRender(RenderArgs* renderArgs) {
             AnimDebugDraw::getInstance().addPoses("myAvatar", _debugDrawSkeleton, poses, xform, cyan);
         }
     }
+
+    DebugDraw::getInstance().updateMyAvatarPos(getPosition());
+    DebugDraw::getInstance().updateMyAvatarRot(getOrientation());
 
     if (shouldDrawHead != _prevShouldDrawHead) {
         _skeletonModel.setCauterizeBones(!shouldDrawHead);
