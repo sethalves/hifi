@@ -58,8 +58,8 @@ RenderableZoneEntityItem::~RenderableZoneEntityItem() {
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
-    glm::vec3 oldPosition = getOKPosition();
-    glm::quat oldRotation = getOKRotation();
+    glm::vec3 oldPosition = getPosition();
+    glm::quat oldRotation = getRotation();
     glm::vec3 oldDimensions = getDimensions();
 
     setNewProperties();
@@ -73,8 +73,8 @@ void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
         _needsInitialSimulation = true;
         _model->setURL(getCompoundShapeURL());
     }
-    if (oldPosition != getOKPosition() ||
-        oldRotation != getOKRotation() ||
+    if (oldPosition != getPosition() ||
+        oldRotation != getRotation() ||
         oldDimensions != getDimensions()) {
         _needsInitialSimulation = true;
     }

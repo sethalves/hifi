@@ -16,6 +16,7 @@ class UpdateEntityOperator : public RecurseOctreeOperator {
 public:
     UpdateEntityOperator(EntityTreePointer tree, EntityTreeElementPointer containingElement,
                          EntityItemPointer existingEntity, const EntityItemProperties& properties);
+
     ~UpdateEntityOperator();
 
     virtual bool preRecursion(OctreeElementPointer element);
