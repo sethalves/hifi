@@ -1186,6 +1186,7 @@ Transform EntityItem::getGlobalTransform() const {
 }
 
 Transform EntityItem::getParentTransform() const {
+    refreshParentEntityItemPointer();
     EntityItemPointer parentEntityItem = _parentZone.lock();
     if (!parentEntityItem) {
         return Transform();
@@ -1262,7 +1263,6 @@ const AACube& EntityItem::getMinimumAACube() const {
 
 const AABox& EntityItem::getAABox() const {
     refreshParentEntityItemPointer();
-
     if (_recalcAABox) {
 
         // _position represents the position of the registration point.

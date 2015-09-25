@@ -414,11 +414,10 @@ public:
     inline const glm::quat& getPhysicsRotation() const { return _localTransform.getRotation(); }
     inline void setPhysicsRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 
-    // XXX delete these
-    inline const glm::vec3& getOKPosition() const { return _localTransform.getTranslation(); }
-    inline void setOKPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
-    inline const glm::quat& getOKRotation() const { return _localTransform.getRotation(); }
-    inline void setOKRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
+    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
+    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 
 protected:
 
@@ -523,12 +522,7 @@ protected:
 
     mutable EntitySimulationPointer _simulation;
 
- private:
     Transform _localTransform;
-    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
-    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
-    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 };
 
 #endif // hifi_EntityItem_h
