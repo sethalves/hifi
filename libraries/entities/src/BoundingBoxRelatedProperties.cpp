@@ -34,7 +34,7 @@ BoundingBoxReleatedProperties::BoundingBoxReleatedProperties(EntityItemPointer e
         EntityItemPointer parentZone = tree->findEntityByID(parentID);
         if (parentZone) {
             parentFound = true;
-            glm::vec3 localPosition = propertiesWithUpdates.positionChanged() ?
+            glm::vec3 localPosition = propertiesWithUpdates.containsPositionChange() ?
                 propertiesWithUpdates.getPosition() :
                 entity->getPosition();
 
@@ -54,7 +54,7 @@ BoundingBoxReleatedProperties::BoundingBoxReleatedProperties(EntityItemPointer e
     }
 
     if (!parentFound) {
-        if (propertiesWithUpdates.positionChanged()) {
+        if (propertiesWithUpdates.containsPositionChange()) {
             position = propertiesWithUpdates.getPosition();
         }
         if (propertiesWithUpdates.rotationChanged()) {
