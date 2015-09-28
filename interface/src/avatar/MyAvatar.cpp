@@ -103,7 +103,6 @@ MyAvatar::MyAvatar(RigPointer rig) :
     _hmdSensorPosition(),
     _bodySensorMatrix(),
     _sensorToWorldMatrix(),
-    _standingHMDSensorMode(false),
     _goToPending(false),
     _goToPosition(),
     _goToOrientation(),
@@ -150,6 +149,25 @@ void MyAvatar::reset() {
     eulers.x = 0.0f;
     eulers.z = 0.0f;
     setOrientation(glm::quat(eulers));
+
+    // This should be simpler when we have only graph animations always on.
+    bool isRig = _rig->getEnableRig();
+    bool isGraph = _rig->getEnableAnimGraph();
+    qApp->setRawAvatarUpdateThreading(false);
+    _rig->disableHands = true;
+    setEnableRigAnimations(true);
+    _skeletonModel.simulate(0.1f);  // non-zero
+    setEnableRigAnimations(false);
+    _skeletonModel.simulate(0.1f);
+    if (isRig) {
+        setEnableRigAnimations(true);
+        Menu::getInstance()->setIsOptionChecked(MenuOption::EnableRigAnimations, true);
+    } else if (isGraph) {
+        setEnableAnimGraph(true);
+        Menu::getInstance()->setIsOptionChecked(MenuOption::EnableAnimGraph, true);
+    }
+    _rig->disableHands = false;
+    qApp->setRawAvatarUpdateThreading();
 }
 
 void MyAvatar::update(float deltaTime) {
@@ -294,29 +312,59 @@ void MyAvatar::simulate(float deltaTime) {
 }
 
 glm::mat4 MyAvatar::getSensorToWorldMatrix() const {
-    if (getStandingHMDSensorMode()) {
-        return _sensorToWorldMatrix;
-    } else {
-        return createMatFromQuatAndPos(getWorldAlignedOrientation(), getDefaultEyePosition());
-    }
+    return _sensorToWorldMatrix;
 }
 
 // best called at start of main loop just after we have a fresh hmd pose.
 // update internal body position from new hmd pose.
-void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
+void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix, float deltaTime) {
     // update the sensorMatrices based on the new hmd pose
     _hmdSensorMatrix = hmdSensorMatrix;
     _hmdSensorPosition = extractTranslation(hmdSensorMatrix);
     _hmdSensorOrientation = glm::quat_cast(hmdSensorMatrix);
-    _bodySensorMatrix = deriveBodyFromHMDSensor();
 
-    if (getStandingHMDSensorMode()) {
-        // set the body position/orientation to reflect motion due to the head.
-        auto worldMat = _sensorToWorldMatrix * _bodySensorMatrix;
-        nextAttitude(extractTranslation(worldMat), glm::quat_cast(worldMat));
+    const float STRAIGHTING_LEAN_DURATION = 0.5f;  // seconds
+    const float STRAIGHTING_LEAN_THRESHOLD = 0.2f;  // meters
+
+    auto newBodySensorMatrix = deriveBodyFromHMDSensor();
+    glm::vec3 diff = extractTranslation(newBodySensorMatrix) - extractTranslation(_bodySensorMatrix);
+    if (!_straightingLean && glm::length(diff) > STRAIGHTING_LEAN_THRESHOLD) {
+
+        // begin homing toward derived body position.
+        _straightingLean = true;
+        _straightingLeanAlpha = 0.0f;
+
+    } else if (_straightingLean) {
+
+        auto newBodySensorMatrix = deriveBodyFromHMDSensor();
+        auto worldBodyMatrix = _sensorToWorldMatrix * newBodySensorMatrix;
+        glm::vec3 worldBodyPos = extractTranslation(worldBodyMatrix);
+        glm::quat worldBodyRot = glm::normalize(glm::quat_cast(worldBodyMatrix));
+
+        _straightingLeanAlpha += (1.0f / STRAIGHTING_LEAN_DURATION) * deltaTime;
+
+        if (_straightingLeanAlpha >= 1.0f) {
+            _straightingLean = false;
+            nextAttitude(worldBodyPos, worldBodyRot);
+            _bodySensorMatrix = newBodySensorMatrix;
+        } else {
+            // interp position toward the desired pos
+            glm::vec3 pos = lerp(getPosition(), worldBodyPos, _straightingLeanAlpha);
+            glm::quat rot = glm::normalize(safeMix(getOrientation(), worldBodyRot, _straightingLeanAlpha));
+            nextAttitude(pos, rot);
+
+            // interp sensor matrix toward desired
+            glm::vec3 nextBodyPos = extractTranslation(newBodySensorMatrix);
+            glm::quat nextBodyRot = glm::normalize(glm::quat_cast(newBodySensorMatrix));
+            glm::vec3 prevBodyPos = extractTranslation(_bodySensorMatrix);
+            glm::quat prevBodyRot = glm::normalize(glm::quat_cast(_bodySensorMatrix));
+            pos = lerp(prevBodyPos, nextBodyPos, _straightingLeanAlpha);
+            rot = glm::normalize(safeMix(prevBodyRot, nextBodyRot, _straightingLeanAlpha));
+            _bodySensorMatrix = createMatFromQuatAndPos(rot, pos);
+        }
     }
 }
-
+// 
 // best called at end of main loop, just before rendering.
 // update sensor to world matrix from current body position and hmd sensor.
 // This is so the correct camera can be used for rendering.
@@ -385,11 +433,9 @@ void MyAvatar::updateFromTrackers(float deltaTime) {
 
     Head* head = getHead();
     if (inHmd || isPlaying()) {
-        if (!getStandingHMDSensorMode()) {
-            head->setDeltaPitch(estimatedRotation.x);
-            head->setDeltaYaw(estimatedRotation.y);
-            head->setDeltaRoll(estimatedRotation.z);
-        }
+        head->setDeltaPitch(estimatedRotation.x);
+        head->setDeltaYaw(estimatedRotation.y);
+        head->setDeltaRoll(estimatedRotation.z);
     } else {
         float magnifyFieldOfView = qApp->getFieldOfView() /
                                    _realWorldFieldOfView.get();
@@ -411,12 +457,10 @@ void MyAvatar::updateFromTrackers(float deltaTime) {
         relativePosition.x = -relativePosition.x;
     }
 
-    if (!(inHmd && getStandingHMDSensorMode())) {
-        head->setLeanSideways(glm::clamp(glm::degrees(atanf(relativePosition.x * _leanScale / TORSO_LENGTH)),
-                                         -MAX_LEAN, MAX_LEAN));
-        head->setLeanForward(glm::clamp(glm::degrees(atanf(relativePosition.z * _leanScale / TORSO_LENGTH)),
-                                        -MAX_LEAN, MAX_LEAN));
-    }
+    head->setLeanSideways(glm::clamp(glm::degrees(atanf(relativePosition.x * _leanScale / TORSO_LENGTH)),
+                                     -MAX_LEAN, MAX_LEAN));
+    head->setLeanForward(glm::clamp(glm::degrees(atanf(relativePosition.z * _leanScale / TORSO_LENGTH)),
+                                    -MAX_LEAN, MAX_LEAN));
 }
 
 
@@ -1756,11 +1800,6 @@ void MyAvatar::updateMotionBehaviorFromMenu() {
         _motionBehaviors &= ~AVATAR_MOTION_SCRIPTED_MOTOR_ENABLED;
     }
     _characterController.setEnabled(menu->isOptionChecked(MenuOption::EnableCharacterController));
-}
-
-void MyAvatar::updateStandingHMDModeFromMenu() {
-    Menu* menu = Menu::getInstance();
-    _standingHMDSensorMode = menu->isOptionChecked(MenuOption::StandingHMDSensorMode);
 }
 
 //Renders sixense laser pointers for UI selection with controllers
