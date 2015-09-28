@@ -78,12 +78,6 @@ typedef std::shared_ptr<EntitySimulation> EntitySimulationPointer;
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
 /// one directly, instead you must only construct one of it's derived classes with additional features.
 class EntityItem : public std::enable_shared_from_this<EntityItem>, public ReadWriteLockable {
-    // These two classes manage lists of EntityItem pointers and must be able to cleanup pointers when an EntityItem is deleted.
-    // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by
-    // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
-    // do cleanup.
-    friend class EntityTreeElement;
-    friend class EntitySimulation;
 public:
     enum EntityDirtyFlags {
         DIRTY_POSITION = 0x0001,
@@ -371,6 +365,7 @@ public:
 
     void setPhysicsInfo(void* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
+    void setElement(EntityTreeElementPointer newElement) { _element = newElement; }
     EntityTreePointer getTree() const;
     EntitySimulationPointer getSimulation() const;
     void removeFromSimulation() const;
@@ -418,6 +413,9 @@ public:
     inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
     inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
     inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+
+    bool getSimulated() const { return _simulated; }
+    void setSimulated(bool simulated) { _simulated = simulated; }
 
 protected:
 
