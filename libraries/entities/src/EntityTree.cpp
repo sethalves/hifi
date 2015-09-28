@@ -118,6 +118,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
     return updateEntityWithElement(entity, properties, containingElement, senderNode);
 }
 
+
 bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityItemProperties& origProperties,
                                          EntityTreeElementPointer containingElement, const SharedNodePointer& senderNode) {
     EntityItemProperties properties = origProperties;
@@ -216,7 +217,32 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newBBRelProperties);
         recurseTreeWithOperator(&theOperator);
         entity->setProperties(properties);
+
+        // if the entity is a zone, run UpdateEntityOperator on all its children.  If a child is a zone, recurse.
+        if (entity->getType() == EntityTypes::Zone) {
+            auto zoneTracker = DependencyManager::get<ZoneTracker>();
+            QQueue<EntityItemPointer> toProcess;
+            foreach (EntityItemPointer childEntity, zoneTracker->getChildrenOf(entity)) {
+                toProcess.enqueue(childEntity);
+            }
+
+            while (!toProcess.empty()) {
+                EntityItemPointer childEntity = toProcess.dequeue();
+                BoundingBoxReleatedProperties newChildBBRelProperties(childEntity);
+                UpdateEntityOperator theChildOperator(getThisPointer(),
+                                                      childEntity->getElement(),
+                                                      childEntity, newChildBBRelProperties);
+                recurseTreeWithOperator(&theChildOperator);
+                if (childEntity->getType() == EntityTypes::Zone) {
+                    foreach (EntityItemPointer childChildEntity, zoneTracker->getChildrenOf(childEntity)) {
+                        toProcess.enqueue(childChildEntity);
+                    }
+                }
+            }
+        }
+
         _isDirty = true;
+
 
         uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
         if (newFlags) {
