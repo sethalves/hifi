@@ -40,7 +40,7 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityData:
             return VERSION_ENTITIES_ZONES_HAVE_PHYSICS;
         default:
-            return 15;
+            return 14;
     }
 }
 
