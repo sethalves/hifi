@@ -1059,6 +1059,9 @@ void Application::paintGL() {
     displayPlugin->preRender();
     _offscreenContext->makeCurrent();
 
+    // update the avatar with a fresh HMD pose
+    _myAvatar->updateFromHMDSensorMatrix(getHMDSensorPose());
+
     auto lodManager = DependencyManager::get<LODManager>();
 
 
@@ -2341,7 +2344,8 @@ bool Application::exportEntities(const QString& filename, const QVector<EntityIt
     QVector<EntityItemPointer> entities;
 
     auto entityTree = _entities.getTree();
-    EntityTree exportTree;
+    auto exportTree = std::make_shared<EntityTree>();
+    exportTree->createRootElement();
 
     glm::vec3 root(TREE_SCALE, TREE_SCALE, TREE_SCALE);
     for (auto entityID : entityIDs) {
@@ -2368,10 +2372,10 @@ bool Application::exportEntities(const QString& filename, const QVector<EntityIt
         auto properties = entityItem->getProperties();
 
         properties.setPosition(properties.getPosition() - root);
-        exportTree.addEntity(entityItem->getEntityItemID(), properties);
+        exportTree->addEntity(entityItem->getEntityItemID(), properties);
     }
 
-    exportTree.writeToJSONFile(filename.toLocal8Bit().constData());
+    exportTree->writeToJSONFile(filename.toLocal8Bit().constData());
 
     // restore the main window's active state
     _window->activateWindow();
@@ -2384,15 +2388,16 @@ bool Application::exportEntities(const QString& filename, float x, float y, floa
 
     if (entities.size() > 0) {
         glm::vec3 root(x, y, z);
-        EntityTree exportTree;
+        auto exportTree = std::make_shared<EntityTree>();
+        exportTree->createRootElement();
 
         for (int i = 0; i < entities.size(); i++) {
             EntityItemProperties properties = entities.at(i)->getProperties();
             EntityItemID id = entities.at(i)->getEntityItemID();
             properties.setPosition(properties.getPosition() - root);
-            exportTree.addEntity(id, properties);
+            exportTree->addEntity(id, properties);
         }
-        exportTree.writeToSVOFile(filename.toLocal8Bit().constData());
+        exportTree->writeToSVOFile(filename.toLocal8Bit().constData());
     } else {
         qCDebug(interfaceapp) << "No models were selected";
         return false;
@@ -2925,9 +2930,6 @@ void Application::update(float deltaTime) {
         emulateMouse(hand, userInputMapper->getActionState(UserInputMapper::RIGHT_HAND_CLICK),
             userInputMapper->getActionState(UserInputMapper::SHIFT), RIGHT_HAND_INDEX);
     }
-
-    // update the avatar with a fresh HMD pose
-    _myAvatar->updateFromHMDSensorMatrix(getHMDSensorPose(), deltaTime);
 
     updateThreads(deltaTime); // If running non-threaded, then give the threads some time to process...
 
