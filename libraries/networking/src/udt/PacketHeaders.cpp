@@ -39,8 +39,11 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityEdit:
         case PacketType::EntityData:
             return VERSION_ENTITIES_ZONES_HAVE_PHYSICS;
+        case PacketType::AvatarData:
+        case PacketType::BulkAvatarData:
+                return 15;
         default:
-            return 15;
+            return 14;
     }
 }
 

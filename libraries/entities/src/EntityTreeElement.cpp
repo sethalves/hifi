@@ -543,9 +543,9 @@ bool EntityTreeElement::bestFitBounds(const glm::vec3& minPoint, const glm::vec3
     return false;
 }
 
-bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElementPointer& element, float& distance, BoxFace& face,
-                         void** intersectedObject, bool precisionPicking, float distanceToElementCube) {
+bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction, bool& keepSearching,
+                                    OctreeElementPointer& element, float& distance, BoxFace& face, glm::vec3& surfaceNormal,
+                                    void** intersectedObject, bool precisionPicking, float distanceToElementCube) {
 
     // only called if we do intersect our bounding cube, but find if we actually intersect with entities...
     int entityNumber = 0;
@@ -554,9 +554,10 @@ bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, con
         AABox entityBox = entity->getAABox();
         float localDistance;
         BoxFace localFace;
+        glm::vec3 localSurfaceNormal;
 
         // if the ray doesn't intersect with our cube, we can stop searching!
-        if (!entityBox.findRayIntersection(origin, direction, localDistance, localFace)) {
+        if (!entityBox.findRayIntersection(origin, direction, localDistance, localFace, localSurfaceNormal)) {
             return;
         }
 
@@ -577,16 +578,18 @@ bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, con
 
         // we can use the AABox's ray intersection by mapping our origin and direction into the entity frame
         // and testing intersection there.
-        if (entityFrameBox.findRayIntersection(entityFrameOrigin, entityFrameDirection, localDistance, localFace)) {
+        if (entityFrameBox.findRayIntersection(entityFrameOrigin, entityFrameDirection, localDistance, 
+                                                localFace, localSurfaceNormal)) {
             if (localDistance < distance) {
                 // now ask the entity if we actually intersect
                 if (entity->supportsDetailedRayIntersection()) {
                     if (entity->findDetailedRayIntersection(origin, direction, keepSearching, element, localDistance,
-                        localFace, intersectedObject, precisionPicking)) {
+                        localFace, localSurfaceNormal, intersectedObject, precisionPicking)) {
 
                         if (localDistance < distance) {
                             distance = localDistance;
                             face = localFace;
+                            surfaceNormal = localSurfaceNormal;
                             *intersectedObject = (void*)entity.get();
                             somethingIntersected = true;
                         }
@@ -596,6 +599,7 @@ bool EntityTreeElement::findDetailedRayIntersection(const glm::vec3& origin, con
                     if (localDistance < distance) {
                         distance = localDistance;
                         face = localFace;
+                        surfaceNormal = localSurfaceNormal;
                         *intersectedObject = (void*)entity.get();
                         somethingIntersected = true;
                     }
@@ -695,7 +699,7 @@ void EntityTreeElement::cleanupEntities() {
             // access it by smart pointers, when we remove it from the _entityItems
             // we know that it will be deleted.
             //delete entity;
-            entity->_element = NULL;
+            entity->setElement(nullptr);
         }
         _entityItems.clear();
     });
@@ -709,7 +713,7 @@ bool EntityTreeElement::removeEntityWithEntityItemID(const EntityItemID& id) {
             EntityItemPointer& entity = _entityItems[i];
             if (entity->getEntityItemID() == id) {
                 foundEntity = true;
-                entity->_element = NULL;
+                entity->setElement(nullptr);
                 _entityItems.removeAt(i);
                 break;
             }
@@ -724,8 +728,8 @@ bool EntityTreeElement::removeEntityItem(EntityItemPointer entity) {
         numEntries = _entityItems.removeAll(entity);
     });
     if (numEntries > 0) {
-        assert(entity->_element.get() == this);
-        entity->_element = NULL;
+        assert(entity->getElement().get() == this);
+        entity->setElement(nullptr);
         return true;
     }
     return false;
@@ -845,11 +849,11 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
 
 void EntityTreeElement::addEntityItem(EntityItemPointer entity) {
     assert(entity);
-    assert(entity->_element == nullptr);
+    assert(entity->getElement() == nullptr);
     withWriteLock([&] {
         _entityItems.push_back(entity);
     });
-    entity->_element = getThisPointer();
+    entity->setElement(getThisPointer());
 }
 
 // will average a "common reduced LOD view" from the the child elements...
