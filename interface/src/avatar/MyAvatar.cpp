@@ -47,6 +47,7 @@
 #include "Util.h"
 #include "InterfaceLogging.h"
 #include "DebugDraw.h"
+#include "ZoneTracker.h"
 
 using namespace std;
 
@@ -178,11 +179,29 @@ void MyAvatar::update(float deltaTime) {
         setOrientation(_goToOrientation);
         _currentZone = _goToZone;
         if (_goToZone) {
+            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+            if (physicsEngine) {
+                physicsEngine->setCharacterController(&_characterController);
+            }
             _referential = _goToZone->getID();
         } else {
             _referential = QUuid();
         }
         _goToPending = false;
+
+        if (!getPhysicsEngine()) {
+            // join default physics engine
+            auto zoneTracker = DependencyManager::get<ZoneTracker>();
+            EntityTreePointer defaultTree = zoneTracker->getDefaultTree();
+            EntitySimulationPointer defaultSimulation = defaultTree ? defaultTree->getSimulation() : nullptr;
+            PhysicalEntitySimulationPointer defaultPhysicalSimulation =
+                std::static_pointer_cast<PhysicalEntitySimulation>(defaultSimulation);
+            PhysicsEnginePointer physicsEngine =
+                defaultPhysicalSimulation ? defaultPhysicalSimulation->getPhysicsEngine() : nullptr;
+            if (physicsEngine) {
+                physicsEngine->setCharacterController(&_characterController);
+            }
+        }
     }
 
     Head* head = getHead();
@@ -198,6 +217,12 @@ void MyAvatar::update(float deltaTime) {
     handleZoneChange();
 }
 
+PhysicsEnginePointer MyAvatar::getPhysicsEngine() {
+    EntitySimulationPointer currentSimulation = _currentZone ? _currentZone->getSimulation() : nullptr;
+    PhysicalEntitySimulationPointer currentPhysicalSimulation =
+        std::static_pointer_cast<PhysicalEntitySimulation>(currentSimulation);
+    return currentPhysicalSimulation ? currentPhysicalSimulation->getPhysicsEngine() : nullptr;
+}
 
 void MyAvatar::handleZoneChange() {
     EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
@@ -218,6 +243,8 @@ void MyAvatar::handleZoneChange() {
             glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
             _goToPosition = _position + oldZoneTranslation;
             _goToOrientation = getOrientation(); // XXX
+            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+            physicsEngine->setCharacterController(nullptr);
         } else if (!_currentZone) {
             qDebug() << "entering zone" << zone->getName();
             Transform newZoneTransform = zone->getGlobalTransform();
@@ -233,6 +260,10 @@ void MyAvatar::handleZoneChange() {
             glm::vec3 oldAbsolutionPosition = oldZoneTranslation + _position;
             _goToPosition = oldAbsolutionPosition - newZoneTranslation;
             _goToOrientation = getOrientation(); // XXX
+            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+            if (physicsEngine) {
+                physicsEngine->setCharacterController(nullptr);
+            }
         }
 
         _goToZone = zone;
