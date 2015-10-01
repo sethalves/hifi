@@ -26,7 +26,7 @@ void ZoneTracker::trackZone(EntityItemPointer newZone) {
     _zones.insert(newZone->getID(), std::static_pointer_cast<ZoneEntityItem>(newZone));
 
     foreach (EntityItemPointer child, getChildrenOf(newZone->getID())) {
-        child->refreshParentEntityItemPointer();
+        child->fixupParentAndSimulation();
     }
 }
 
@@ -52,7 +52,7 @@ void ZoneTracker::setParent(EntityItemID childID, EntityItemID parent) {
 
     EntityItemPointer child = _defaultTree->findEntityByEntityItemID(childID);
     if (child) {
-        child->refreshParentEntityItemPointer();
+        child->fixupParentAndSimulation();
     }
 }
 

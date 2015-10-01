@@ -399,10 +399,8 @@ public:
 
     virtual void setParentID(const EntityItemID& parentID);
     virtual const EntityItemID& getParentID() const { return _parentID; }
-    // virtual void acceptChild(EntityItemPointer arrivingEntity);
 
-    void refreshParentEntityItemPointer() const;
-
+    void fixupParentAndSimulation() const;
 
     // give physics related code access to the parent-relative coordinates
     inline const glm::vec3& getPhysicsPosition() const { return _localTransform.getTranslation(); }

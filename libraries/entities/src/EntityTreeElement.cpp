@@ -207,7 +207,7 @@ void EntityTreeElement::elementEncodeComplete(EncodeBitstreamParams& params, Oct
 
             // why would this ever fail???
             // If we've encoding this element before... but we're coming back a second time in an attempt to
-            // encoud our parent... this might happen.
+            // encode our parent... this might happen.
             if (extraEncodeData->contains(childElement.get())) {
                 EntityTreeElementExtraEncodeData* childExtraEncodeData
                     = static_cast<EntityTreeElementExtraEncodeData*>(extraEncodeData->value(childElement.get()));
