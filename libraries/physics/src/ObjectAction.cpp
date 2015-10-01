@@ -37,7 +37,7 @@ void ObjectAction::updateAction(btCollisionWorld* collisionWorld, btScalar delta
             EntityItemPointer ownerEntity = _ownerEntity.lock();
             _active = false;
             if (ownerEntity) {
-                ownerEntity->removeAction(nullptr, getID());
+                ownerEntity->removeAction(getID());
             }
         }
     }
