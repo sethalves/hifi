@@ -144,6 +144,7 @@ void EntityTreeRenderer::update() {
         // have a pending download of the skybox texture, then we should attempt to reapply to 
         // get the correct texture.
         if (_pendingSkyboxTextureDownload) {
+            _currentBestZone = _bestZone;
             applyZonePropertiesToScene(_bestZone);
         }
 

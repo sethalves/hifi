@@ -17,6 +17,7 @@
 #include <Rig.h>
 
 #include "Avatar.h"
+#include "PhysicsEngine.h"
 
 class ModelItemID;
 
@@ -179,6 +180,8 @@ public:
     glm::quat getCustomListenOrientation() { return _customListenOrientation; }
     void setCustomListenOrientation(glm::quat customListenOrientation) { _customListenOrientation = customListenOrientation; }
 
+    PhysicsEnginePointer getPhysicsEngine();
+
 public slots:
     void increaseSize();
     void decreaseSize();
@@ -231,6 +234,7 @@ signals:
     void transformChanged();
     void newCollisionSoundURL(const QUrl& url);
     void collisionWithEntity(const Collision& collision);
+
 
 private:
 
