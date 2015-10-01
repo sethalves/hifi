@@ -1828,7 +1828,7 @@ void MyAvatar::goToLocation(const glm::vec3& newPosition,
     _goToPending = true;
     _goToPosition = newPosition;
     _goToOrientation = getOrientation();
-    _goToZone.reset();
+    _goToZone = _currentZone;
     if (hasOrientation) {
         qCDebug(interfaceapp).nospace() << "MyAvatar goToLocation - new orientation is "
                                         << newOrientation.x << ", " << newOrientation.y << ", " << newOrientation.z << ", " << newOrientation.w;
