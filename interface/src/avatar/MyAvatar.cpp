@@ -1828,7 +1828,16 @@ void MyAvatar::goToLocation(const glm::vec3& newPosition,
     _goToPending = true;
     _goToPosition = newPosition;
     _goToOrientation = getOrientation();
-    _goToZone = _currentZone;
+    _goToZone = nullptr;
+    if (_currentZone) {
+        _characterController.setEnabled(false);
+        PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+        if (physicsEngine) {
+            _characterController.setEnabled(false);
+            physicsEngine->setCharacterController(nullptr);
+        }
+    }
+
     if (hasOrientation) {
         qCDebug(interfaceapp).nospace() << "MyAvatar goToLocation - new orientation is "
                                         << newOrientation.x << ", " << newOrientation.y << ", " << newOrientation.z << ", " << newOrientation.w;
