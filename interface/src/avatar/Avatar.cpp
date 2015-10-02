@@ -133,7 +133,7 @@ glm::vec3 Avatar::getNeckPosition() const {
 
 
 glm::quat Avatar::getWorldAlignedOrientation () const {
-    return computeRotationFromBodyToWorldUp() * getOrientation();
+    return computeRotationFromBodyToWorldUp() * getLocalOrientation();
 }
 
 AABox Avatar::getBounds() const {
@@ -219,14 +219,14 @@ void Avatar::simulate(float deltaTime) {
 }
 
 void Avatar::slamPosition(const glm::vec3& newPosition) {
-    setPosition(newPosition);
+    setLocalPosition(newPosition);
     _positionDeltaAccumulator = glm::vec3(0.0f);
     _velocity = glm::vec3(0.0f);
     _lastVelocity = glm::vec3(0.0f);
 }
 
 void Avatar::applyPositionDelta(const glm::vec3& delta) {
-    _position += delta;
+    setLocalPosition(getLocalPosition() + delta);
     _positionDeltaAccumulator += delta;
 }
 
@@ -240,11 +240,11 @@ void Avatar::measureMotionDerivatives(float deltaTime) {
     _acceleration = (_velocity - _lastVelocity) * invDeltaTime;
     _lastVelocity = _velocity;
     // angular
-    glm::quat orientation = getOrientation();
+    glm::quat orientation = getLocalOrientation();
     glm::quat delta = glm::inverse(_lastOrientation) * orientation;
     _angularVelocity = safeEulerAngles(delta) * invDeltaTime;
     _angularAcceleration = (_angularVelocity - _lastAngularVelocity) * invDeltaTime;
-    _lastOrientation = getOrientation();
+    _lastOrientation = getLocalOrientation();
 }
 
 enum TextRendererType {
@@ -398,7 +398,7 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
             const float LIGHT_CUTOFF = glm::radians(80.0f);
             float distance = BASE_LIGHT_DISTANCE * _scale;
             glm::vec3 position = glm::mix(_skeletonModel.getTranslation(), getHead()->getFaceModel().getTranslation(), 0.9f);
-            glm::quat orientation = getOrientation();
+            glm::quat orientation = getAbsoluteOrientation();
             foreach (const AvatarManager::LocalLight& light, DependencyManager::get<AvatarManager>()->getLocalLights()) {
                 glm::vec3 direction = orientation * light.direction;
                 DependencyManager::get<DeferredLightingEffect>()->addSpotLight(position - direction * distance,
@@ -520,7 +520,7 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
 }
 
 glm::quat Avatar::computeRotationFromBodyToWorldUp(float proportion) const {
-    glm::quat orientation = getOrientation();
+    glm::quat orientation = getLocalOrientation();
     glm::vec3 currentUp = orientation * IDENTITY_UP;
     float angle = acosf(glm::clamp(glm::dot(currentUp, _worldUpDirection), -1.0f, 1.0f));
     if (angle < EPSILON) {
@@ -625,7 +625,7 @@ void Avatar::renderBillboard(RenderArgs* renderArgs) {
         return;
     }
     // rotate about vertical to face the camera
-    glm::quat rotation = getOrientation();
+    glm::quat rotation = getAbsoluteOrientation();
     glm::vec3 cameraVector = glm::inverse(rotation) * (Application::getInstance()->getCamera()->getPosition() -
                                                        getAbsolutePosition());
     rotation = rotation * glm::angleAxis(atan2f(-cameraVector.x, -cameraVector.z), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -833,14 +833,14 @@ glm::vec3 Avatar::getSkeletonPosition() const {
     // The avatar is rotated PI about the yAxis, so we have to correct for it
     // to get the skeleton offset contribution in the world-frame.
     const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    return getPosition() + getOrientation() * FLIP * _skeletonOffset;
+    return getLocalPosition() + getLocalOrientation() * FLIP * _skeletonOffset;
 }
 
 const glm::vec3& Avatar::getAbsoluteSkeletonPosition() const {
     // The avatar is rotated PI about the yAxis, so we have to correct for it
     // to get the skeleton offset contribution in the world-frame.
     const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    _absoluteSkeletonPosition = getAbsolutePosition() + getOrientation() * FLIP * _skeletonOffset;
+    _absoluteSkeletonPosition = getAbsolutePosition() + getAbsoluteOrientation() * FLIP * _skeletonOffset;
     return _absoluteSkeletonPosition;
 }
 
@@ -852,13 +852,31 @@ const glm::vec3& Avatar::getAbsolutePosition() const {
             EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
             if (zone) {
                 Transform zoneTransform = zone->getGlobalTransform();
-                _absolutePosition = zoneTransform.getTranslation() + _position;
+                _absolutePosition = zoneTransform.getTranslation() + getLocalPosition();
             }
         });
         return _absolutePosition;
     }
 
-    return _position;
+    return getLocalPosition();
+}
+
+const glm::quat& Avatar::getAbsoluteOrientation() const {
+    if (!_referential.isNull()) {
+        EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+        EntityTreePointer tree = treeRenderer->getTree();
+        tree->withReadLock([&] {
+            EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
+            if (zone) {
+                Transform zoneTransform = zone->getGlobalTransform();
+                _absoluteRotation = zoneTransform.getRotation() * getLocalOrientation();
+            }
+        });
+    } else {
+        _absoluteRotation = getLocalOrientation();
+    }
+
+    return _absoluteRotation;
 }
 
 QVector<glm::quat> Avatar::getJointRotations() const {

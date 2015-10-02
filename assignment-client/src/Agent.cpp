@@ -330,7 +330,7 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
                 audioPacket->writePrimitive(SCRIPT_AUDIO_BUFFER_SAMPLES);
 
                 // use the orientation and position of this avatar for the source of this audio
-                audioPacket->writePrimitive(_avatarData->getPosition());
+                audioPacket->writePrimitive(_avatarData->getAbsolutePosition());
                 glm::quat headOrientation = _avatarData->getHeadOrientation();
                 audioPacket->writePrimitive(headOrientation);
 
@@ -339,7 +339,7 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
                 audioPacket->writePrimitive((quint8)0);
 
                 // use the orientation and position of this avatar for the source of this audio
-                audioPacket->writePrimitive(_avatarData->getPosition());
+                audioPacket->writePrimitive(_avatarData->getAbsolutePosition());
                 glm::quat headOrientation = _avatarData->getHeadOrientation();
                 audioPacket->writePrimitive(headOrientation);
 

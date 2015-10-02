@@ -38,7 +38,6 @@ const glm::vec3 DEFAULT_LOCAL_AABOX_SCALE(1.0f);
 
 AvatarData::AvatarData() :
     _sessionUUID(),
-    _position(0.0f),
     _handPosition(0.0f),
     _bodyYaw(-90.0f),
     _bodyPitch(0.0f),
@@ -58,7 +57,8 @@ AvatarData::AvatarData() :
     _owningAvatarMixer(),
     _velocity(0.0f),
     _targetVelocity(0.0f),
-    _localAABox(DEFAULT_LOCAL_AABOX_CORNER, DEFAULT_LOCAL_AABOX_SCALE)
+    _localAABox(DEFAULT_LOCAL_AABOX_CORNER, DEFAULT_LOCAL_AABOX_SCALE),
+    _localPosition(0.0f)
 {
 
 }
@@ -78,24 +78,30 @@ const QUrl& AvatarData::defaultFullAvatarModelUrl() {
     return _defaultFullAvatarModelUrl;
 }
 
-const glm::vec3& AvatarData::getPosition() const {
-    return _position;
+const glm::vec3& AvatarData::getLocalPosition() const {
+    return _localPosition;
 }
 
 const glm::vec3& AvatarData::getAbsolutePosition() const {
     assert(false);
-    return _position;
+    return _localPosition;
 }
 
-void AvatarData::setPosition(const glm::vec3 position) {
-    _position = position;
+void AvatarData::setLocalPosition(const glm::vec3 position) {
+    _localPosition = position;
 }
 
-glm::quat AvatarData::getOrientation() const {
-    return glm::quat(glm::radians(glm::vec3(_bodyPitch, _bodyYaw, _bodyRoll)));
+const glm::quat& AvatarData::getLocalOrientation() const {
+    _localOrientation = glm::quat(glm::radians(glm::vec3(_bodyPitch, _bodyYaw, _bodyRoll)));
+    return _localOrientation;
 }
 
-void AvatarData::setOrientation(const glm::quat& orientation) {
+const glm::quat& AvatarData::getAbsoluteOrientation() const {
+    assert(false);
+    return AvatarData::getLocalOrientation();
+}
+
+void AvatarData::setLocalOrientation(const glm::quat& orientation) {
     glm::vec3 eulerAngles = glm::degrees(safeEulerAngles(orientation));
     _bodyPitch = eulerAngles.x;
     _bodyYaw = eulerAngles.y;
@@ -105,16 +111,16 @@ void AvatarData::setOrientation(const glm::quat& orientation) {
 // There are a number of possible strategies for this set of tools through endRender, below.
 void AvatarData::nextAttitude(glm::vec3 position, glm::quat orientation) {
     avatarLock.lock();
-    setPosition(position);
-    setOrientation(orientation);
+    setLocalPosition(position);
+    setLocalOrientation(orientation);
     avatarLock.unlock();
 }
 void AvatarData::startCapture() {
     avatarLock.lock();
     assert(_nextAllowed);
     _nextAllowed = false;
-    _nextPosition = _position;
-    _nextOrientation = getOrientation();
+    _nextPosition = _localPosition;
+    _nextOrientation = getLocalOrientation();
 }
 void AvatarData::endCapture() {
     avatarLock.unlock();
@@ -134,17 +140,17 @@ void AvatarData::endRenderRun() {
     avatarLock.unlock();
 }
 void AvatarData::startRender() {
-    glm::vec3 pos = _position;
-    glm::quat rot = getOrientation();
-    setPosition(_nextPosition);
-    setOrientation(_nextOrientation);
+    glm::vec3 pos = _localPosition;
+    glm::quat rot = getLocalOrientation();
+    setLocalPosition(_nextPosition);
+    setLocalOrientation(_nextOrientation);
     updateAttitude();
     _nextPosition = pos;
     _nextOrientation = rot;
 }
 void AvatarData::endRender() {
-    setPosition(_nextPosition);
-    setOrientation(_nextOrientation);
+    setLocalPosition(_nextPosition);
+    setLocalOrientation(_nextOrientation);
     updateAttitude();
     _nextAllowed = true;
 }
@@ -166,12 +172,12 @@ void AvatarData::setClampedTargetScale(float targetScale) {
 }
 
 glm::vec3 AvatarData::getHandPosition() const {
-    return getOrientation() * _handPosition + _position;
+    return getLocalOrientation() * _handPosition + getLocalPosition();
 }
 
 void AvatarData::setHandPosition(const glm::vec3& handPosition) {
     // store relative to position/orientation
-    _handPosition = glm::inverse(getOrientation()) * (handPosition - _position);
+    _handPosition = glm::inverse(getLocalOrientation()) * (handPosition - _localPosition);
 }
 
 QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
@@ -192,8 +198,8 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
     unsigned char* destinationBuffer = reinterpret_cast<unsigned char*>(avatarDataByteArray.data());
     unsigned char* startPosition = destinationBuffer;
 
-    memcpy(destinationBuffer, &_position, sizeof(_position));
-    destinationBuffer += sizeof(_position);
+    memcpy(destinationBuffer, &_localPosition, sizeof(_localPosition));
+    destinationBuffer += sizeof(_localPosition);
 
     // Body rotation (NOTE: This needs to become a quaternion to save two bytes)
     destinationBuffer += packFloatAngleToTwoByte(destinationBuffer, _bodyYaw);
@@ -387,7 +393,7 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
             }
             return maxAvailableSize;
         }
-        setPosition(position);
+        setLocalPosition(position);
 
         // rotation (NOTE: This needs to become a quaternion to save two bytes)
         float yaw, pitch, roll;

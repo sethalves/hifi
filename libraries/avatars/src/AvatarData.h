@@ -136,14 +136,18 @@ class JointData;
 class AvatarData : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(glm::vec3 position READ getPosition WRITE setPosition)
+    // XXX rename this back localPosition -> position
+    Q_PROPERTY(glm::vec3 localPosition READ getLocalPosition WRITE setLocalPosition)
+
     Q_PROPERTY(float scale READ getTargetScale WRITE setTargetScale)
     Q_PROPERTY(glm::vec3 handPosition READ getHandPosition WRITE setHandPosition)
     Q_PROPERTY(float bodyYaw READ getBodyYaw WRITE setBodyYaw)
     Q_PROPERTY(float bodyPitch READ getBodyPitch WRITE setBodyPitch)
     Q_PROPERTY(float bodyRoll READ getBodyRoll WRITE setBodyRoll)
 
-    Q_PROPERTY(glm::quat orientation READ getOrientation WRITE setOrientation)
+    // XXX rename this back localOrientation -> orientation
+    Q_PROPERTY(glm::quat localOrientation READ getLocalOrientation WRITE setLocalOrientation)
+
     Q_PROPERTY(glm::quat headOrientation READ getHeadOrientation WRITE setHeadOrientation)
     Q_PROPERTY(float headPitch READ getHeadPitch WRITE setHeadPitch)
     Q_PROPERTY(float headYaw READ getHeadYaw WRITE setHeadYaw)
@@ -171,9 +175,13 @@ public:
 
     const QUuid& getSessionUUID() const { return _sessionUUID; }
 
-    const glm::vec3& getPosition() const;
+    const glm::vec3& getLocalPosition() const;
     virtual const glm::vec3& getAbsolutePosition() const;
-    virtual void setPosition(const glm::vec3 position);
+    virtual void setLocalPosition(const glm::vec3 position);
+
+    virtual const glm::quat& getLocalOrientation() const;
+    virtual void setLocalOrientation(const glm::quat& orientation);
+    virtual const glm::quat& getAbsoluteOrientation() const;
 
     glm::vec3 getHandPosition() const;
     void setHandPosition(const glm::vec3& handPosition);
@@ -196,9 +204,6 @@ public:
     void setBodyPitch(float bodyPitch) { _bodyPitch = bodyPitch; }
     float getBodyRoll() const { return _bodyRoll; }
     void setBodyRoll(float bodyRoll) { _bodyRoll = bodyRoll; }
-
-    glm::quat getOrientation() const;
-    virtual void setOrientation(const glm::quat& orientation);
 
     void nextAttitude(glm::vec3 position, glm::quat orientation); // Can be safely called at any time.
     void startCapture();    // start/end of the period in which the latest values are about to be captured for camera, etc.
@@ -360,7 +365,7 @@ public slots:
     
 protected:
     QUuid _sessionUUID;
-    mutable glm::vec3 _position = START_LOCATION;
+
     glm::vec3 _handPosition;
     
     QUuid _referential;
@@ -429,6 +434,9 @@ private:
     // privatize the copy constructor and assignment operator so they cannot be called
     AvatarData(const AvatarData&);
     AvatarData& operator= (const AvatarData&);
+
+    glm::vec3 _localPosition = START_LOCATION;
+    mutable glm::quat _localOrientation; // use by getLocalOrientation to return by reference
 };
 Q_DECLARE_METATYPE(AvatarData*)
 

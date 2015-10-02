@@ -452,7 +452,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
     connect(audioIO.data(), &AudioClient::disconnected, &audioScriptingInterface, &AudioScriptingInterface::disconnected);
     connect(audioIO.data(), &AudioClient::muteEnvironmentRequested, [](glm::vec3 position, float radius) {
         auto audioClient = DependencyManager::get<AudioClient>();
-        float distance = glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getPosition(),
+        float distance = glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getAbsolutePosition(),
                                  position);
         bool shouldMute = !audioClient->isMuted() && (distance < radius);
 
@@ -1145,7 +1145,7 @@ void Application::paintGL() {
                 // Ignore MenuOption::CenterPlayerInView in HMD view
                 glm::vec3 hmdOffset = extractTranslation(_myAvatar->getHMDSensorMatrix());
                 _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
-                    + _myAvatar->getOrientation() 
+                    + _myAvatar->getAbsoluteOrientation()
                     * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f) + hmdOffset));
             } else {
                 _myCamera.setRotation(_myAvatar->getHead()->getOrientation());
@@ -1155,27 +1155,27 @@ void Application::paintGL() {
                         * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f)));
                 } else {
                     _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
-                        + _myAvatar->getOrientation() 
+                        + _myAvatar->getAbsoluteOrientation()
                         * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f)));
                 }
             }
         } else if (_myCamera.getMode() == CAMERA_MODE_MIRROR) {
             if (isHMDMode()) {
                 glm::quat hmdRotation = extractRotation(_myAvatar->getHMDSensorMatrix());
-                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation() 
+                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation()
                     * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f)) * hmdRotation);
                 glm::vec3 hmdOffset = extractTranslation(_myAvatar->getHMDSensorMatrix());
-                _myCamera.setPosition(_myAvatar->getDefaultEyePosition() 
-                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0) 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
-                    glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f))) * hmdOffset);
+                _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
+                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0)
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
+                    glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f))) * hmdOffset);
             } else {
-                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation() 
+                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation()
                     * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f)));
-                _myCamera.setPosition(_myAvatar->getDefaultEyePosition() 
-                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0) 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
+                _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
+                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0)
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
                     glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror);
             }
             renderArgs._renderMode = RenderArgs::MIRROR_RENDER_MODE;
@@ -2642,7 +2642,7 @@ void Application::updateMyAvatarLookAtPosition() {
         if (isHMD) {
             glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
             glm::quat hmdRotation = glm::quat_cast(headPose);
-            lookAtSpot = _myCamera.getPosition() + _myAvatar->getOrientation() * (hmdRotation * lookAtPosition);
+            lookAtSpot = _myCamera.getPosition() + _myAvatar->getAbsoluteOrientation() * (hmdRotation * lookAtPosition);
         } else {
             lookAtSpot = _myAvatar->getHead()->getEyePosition()
                 + (_myAvatar->getHead()->getFinalOrientationInWorldFrame() * lookAtPosition);
@@ -2685,7 +2685,7 @@ void Application::updateMyAvatarLookAtPosition() {
                 glm::mat4 headPose = _avatarUpdate->getHeadPose() ;
                 glm::quat headRotation = glm::quat_cast(headPose);
                 lookAtSpot = _myCamera.getPosition() +
-                    _myAvatar->getOrientation() * (headRotation * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
+                    _myAvatar->getAbsoluteOrientation() * (headRotation * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
             } else {
                 lookAtSpot = _myAvatar->getHead()->getEyePosition() +
                     (_myAvatar->getHead()->getFinalOrientationInWorldFrame() * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
@@ -3751,12 +3751,14 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
     // bool eyeRelativeCamera = false;
     if (billboard) {
         fov = BILLBOARD_FIELD_OF_VIEW;  // degees
-        _mirrorCamera.setPosition(_myAvatar->getPosition() +
-                                  _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * BILLBOARD_DISTANCE * _myAvatar->getScale());
+        _mirrorCamera.setPosition(_myAvatar->getAbsolutePosition() +
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  BILLBOARD_DISTANCE * _myAvatar->getScale());
 
     } else if (!AvatarInputs::getInstance()->mirrorZoomed()) {
         _mirrorCamera.setPosition(_myAvatar->getChestPosition() +
-                                  _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_REARVIEW_BODY_DISTANCE * _myAvatar->getScale());
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  MIRROR_REARVIEW_BODY_DISTANCE * _myAvatar->getScale());
 
     } else { // HEAD zoom level
         // FIXME note that the positioing of the camera relative to the avatar can suffer limited
@@ -3776,7 +3778,8 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
         // investigated in order to adapt the technique while fixing the head rendering issue,
         // but the complexity of the hack suggests that a better approach
         _mirrorCamera.setPosition(_myAvatar->getDefaultEyePosition() +
-                                    _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_REARVIEW_DISTANCE * _myAvatar->getScale());
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  MIRROR_REARVIEW_DISTANCE * _myAvatar->getScale());
     }
     _mirrorCamera.setProjection(glm::perspective(glm::radians(fov), aspect, DEFAULT_NEAR_CLIP, DEFAULT_FAR_CLIP));
     _mirrorCamera.setRotation(_myAvatar->getWorldAlignedOrientation() * glm::quat(glm::vec3(0.0f, PI, 0.0f)));
@@ -4489,7 +4492,7 @@ void Application::openUrl(const QUrl& url) {
 
 void Application::updateMyAvatarTransform() {
     const float SIMULATION_OFFSET_QUANTIZATION = 16.0f; // meters
-    glm::vec3 avatarPosition = _myAvatar->getPosition();
+    glm::vec3 avatarPosition = _myAvatar->getLocalPosition();
     glm::vec3 physicsWorldOffset = _physicsEngine->getOriginOffset();
     if (glm::distance(avatarPosition, physicsWorldOffset) > SIMULATION_OFFSET_QUANTIZATION) {
         glm::vec3 newOriginOffset = avatarPosition;
@@ -5059,7 +5062,7 @@ void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float
     // transform from sensor space, to world space, to avatar model space.
     glm::mat4 poseMat = createMatFromQuatAndPos(pose.getRotation(), pose.getTranslation());
     glm::mat4 sensorToWorldMat = _myAvatar->getSensorToWorldMatrix();
-    glm::mat4 modelMat = createMatFromQuatAndPos(_myAvatar->getOrientation(), _myAvatar->getPosition());
+    glm::mat4 modelMat = createMatFromQuatAndPos(_myAvatar->getAbsoluteOrientation(), _myAvatar->getAbsolutePosition());
     glm::mat4 objectPose = glm::inverse(modelMat) * sensorToWorldMat * poseMat;
 
     glm::vec3 position = extractTranslation(objectPose);
@@ -5135,7 +5138,7 @@ void Application::emulateMouse(Hand* hand, float click, float shift, int index) 
     }
     else {
         // Get directon relative to avatar orientation
-        glm::vec3 direction = glm::inverse(_myAvatar->getOrientation()) * palm->getFingerDirection();
+        glm::vec3 direction = glm::inverse(_myAvatar->getAbsoluteOrientation()) * palm->getFingerDirection();
 
         // Get the angles, scaled between (-0.5,0.5)
         float xAngle = (atan2f(direction.z, direction.x) + (float)M_PI_2);

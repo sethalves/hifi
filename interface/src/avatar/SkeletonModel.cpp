@@ -112,7 +112,8 @@ const float PALM_PRIORITY = DEFAULT_PRIORITY;
 // Called within Model::simulate call, below.
 void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
     if (_owningAvatar->isMyAvatar()) {
-        _rig->computeMotionAnimationState(deltaTime, _owningAvatar->getPosition(), _owningAvatar->getVelocity(), _owningAvatar->getOrientation());
+        _rig->computeMotionAnimationState(deltaTime, _owningAvatar->getLocalPosition(),
+                                          _owningAvatar->getVelocity(), _owningAvatar->getLocalOrientation());
     }
     Model::updateRig(deltaTime, parentTransform);
     Head* head = _owningAvatar->getHead();
@@ -135,7 +136,7 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             headParams.isInHMD = true;
 
             // get HMD position from sensor space into world space, and back into model space
-            AnimPose avatarToWorld(glm::vec3(1), myAvatar->getOrientation(), myAvatar->getPosition());
+            AnimPose avatarToWorld(glm::vec3(1), myAvatar->getLocalOrientation(), myAvatar->getLocalPosition());
             glm::mat4 worldToAvatar = glm::inverse((glm::mat4)avatarToWorld);
             glm::mat4 worldHMDMat = myAvatar->getSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
             glm::mat4 hmdMat = worldToAvatar * worldHMDMat;
@@ -217,7 +218,7 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
 void SkeletonModel::updateAttitude() {
     setTranslation(_owningAvatar->getAbsoluteSkeletonPosition());
     static const glm::quat refOrientation = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    setRotation(_owningAvatar->getOrientation() * refOrientation);
+    setRotation(_owningAvatar->getLocalOrientation() * refOrientation);
     setScale(glm::vec3(1.0f, 1.0f, 1.0f) * _owningAvatar->getScale());
 }
 
