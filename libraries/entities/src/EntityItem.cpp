@@ -1186,7 +1186,7 @@ Transform EntityItem::getGlobalTransform() const {
 }
 
 Transform EntityItem::getParentTransform() const {
-    refreshParentEntityItemPointer();
+    fixupParentAndSimulation();
     EntityItemPointer parentEntityItem = _parentZone.lock();
     if (!parentEntityItem) {
         return Transform();
@@ -1262,7 +1262,7 @@ const AACube& EntityItem::getMinimumAACube() const {
 }
 
 const AABox& EntityItem::getAABox() const {
-    refreshParentEntityItemPointer();
+    fixupParentAndSimulation();
     if (_recalcAABox) {
 
         // _position represents the position of the registration point.
@@ -1776,7 +1776,16 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     return result;
 }
 
-void EntityItem::refreshParentEntityItemPointer() const {
+void EntityItem::fixupParentAndSimulation() const {
+    // considerations:
+    // 1 -- is _parentIDSet true?
+    // 2 -- is _parentID null or a non-zero uuid?
+    // 3 -- is _parentZone null or does it point to a zone?
+    // 4 -- if _parentID is non-null and _parentZone is non-null, do they agree?
+    // 5 -- if _parentZone points to a zone, does that zone have physics enabled?
+    // 6 -- is _simulation null or non-null?
+
+
     if (!_parentIDSet) {
         return;
     }
@@ -1817,7 +1826,9 @@ void EntityItem::refreshParentEntityItemPointer() const {
 
     if (_parentID == UNKNOWN_ENTITY_ID && !_simulation) {
         _simulation = getTree()->getSimulation();
-        _simulation->addEntity(unconstThis);
+        if (_simulation) {
+            _simulation->addEntity(unconstThis);
+        }
     }
 }
 
@@ -1828,16 +1839,6 @@ void EntityItem::removeFromSimulation() const {
         _simulation.reset();
     }
 }
-
-// void EntityItem::acceptChild(EntityItemPointer arrivingEntity) {
-//     arrivingEntity->setParentID(_id);
-//     Transform myGlobalTransform = getGlobalTransform();
-//     glm::vec3 myGlobalPosition = myGlobalTransform.getTranslation();
-//     Transform newChildGlobalTransform = arrivingEntity->getGlobalTransform();
-//     glm::vec3 newChildGlobalPosition = newChildGlobalTransform.getTranslation();
-//     glm::vec3 newChildLocalPosition = newChildGlobalPosition - myGlobalPosition;
-//     arrivingEntity->setPosition(newChildLocalPosition);
-// }
 
 void EntityItem::setParentID(const EntityItemID& parentID) {
     _parentIDSet = true;

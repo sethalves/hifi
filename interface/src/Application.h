@@ -480,7 +480,6 @@ private:
     
     void emptyLocalCache();
 
-    void handleChangesForSimulation(EntitySimulationPointer simulation);
     void update(float deltaTime);
 
     void setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float deltaTime, int index, float triggerValue);

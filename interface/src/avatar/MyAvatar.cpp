@@ -177,31 +177,18 @@ void MyAvatar::update(float deltaTime) {
     if (_goToPending) {
         setPosition(_goToPosition);
         setOrientation(_goToOrientation);
-        _currentZone = _goToZone;
-        if (_goToZone) {
-            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-            if (physicsEngine) {
-                physicsEngine->setCharacterController(&_characterController);
+        if (_currentZone != _goToZone) {
+            _currentZone = _goToZone;
+            if (_goToZone) {
+                _referential = _goToZone->getID();
+            } else {
+                _referential = QUuid();
             }
-            _referential = _goToZone->getID();
-        } else {
-            _referential = QUuid();
+            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+            physicsEngine->setCharacterController(getCharacterController());
+            _characterController.setEnabled(true);
         }
         _goToPending = false;
-
-        if (!getPhysicsEngine()) {
-            // join default physics engine
-            auto zoneTracker = DependencyManager::get<ZoneTracker>();
-            EntityTreePointer defaultTree = zoneTracker->getDefaultTree();
-            EntitySimulationPointer defaultSimulation = defaultTree ? defaultTree->getSimulation() : nullptr;
-            PhysicalEntitySimulationPointer defaultPhysicalSimulation =
-                std::static_pointer_cast<PhysicalEntitySimulation>(defaultSimulation);
-            PhysicsEnginePointer physicsEngine =
-                defaultPhysicalSimulation ? defaultPhysicalSimulation->getPhysicsEngine() : nullptr;
-            if (physicsEngine) {
-                physicsEngine->setCharacterController(&_characterController);
-            }
-        }
     }
 
     Head* head = getHead();
@@ -221,7 +208,18 @@ PhysicsEnginePointer MyAvatar::getPhysicsEngine() {
     EntitySimulationPointer currentSimulation = _currentZone ? _currentZone->getSimulation() : nullptr;
     PhysicalEntitySimulationPointer currentPhysicalSimulation =
         std::static_pointer_cast<PhysicalEntitySimulation>(currentSimulation);
-    return currentPhysicalSimulation ? currentPhysicalSimulation->getPhysicsEngine() : nullptr;
+    if (currentPhysicalSimulation) {
+        return currentPhysicalSimulation->getPhysicsEngine();
+    }
+
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    EntityTreePointer defaultTree = zoneTracker->getDefaultTree();
+    EntitySimulationPointer defaultSimulation = defaultTree ? defaultTree->getSimulation() : nullptr;
+    PhysicalEntitySimulationPointer defaultPhysicalSimulation =
+        std::static_pointer_cast<PhysicalEntitySimulation>(defaultSimulation);
+    PhysicsEnginePointer physicsEngine =
+        defaultPhysicalSimulation ? defaultPhysicalSimulation->getPhysicsEngine() : nullptr;
+    return physicsEngine;
 }
 
 void MyAvatar::handleZoneChange() {
@@ -237,14 +235,20 @@ void MyAvatar::handleZoneChange() {
     }
 
     if (zone != _currentZone) {
+
+        _characterController.setEnabled(false);
+        PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+        if (physicsEngine) {
+            _characterController.setEnabled(false);
+            physicsEngine->setCharacterController(nullptr);
+        }
+
         if (!zone) {
             qDebug() << "leaving zone" << _currentZone->getName();
             Transform oldZoneTransform = _currentZone->getGlobalTransform();
             glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
             _goToPosition = _position + oldZoneTranslation;
             _goToOrientation = getOrientation(); // XXX
-            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-            physicsEngine->setCharacterController(nullptr);
         } else if (!_currentZone) {
             qDebug() << "entering zone" << zone->getName();
             Transform newZoneTransform = zone->getGlobalTransform();
@@ -260,10 +264,6 @@ void MyAvatar::handleZoneChange() {
             glm::vec3 oldAbsolutionPosition = oldZoneTranslation + _position;
             _goToPosition = oldAbsolutionPosition - newZoneTranslation;
             _goToOrientation = getOrientation(); // XXX
-            PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-            if (physicsEngine) {
-                physicsEngine->setCharacterController(nullptr);
-            }
         }
 
         _goToZone = zone;
@@ -1828,7 +1828,16 @@ void MyAvatar::goToLocation(const glm::vec3& newPosition,
     _goToPending = true;
     _goToPosition = newPosition;
     _goToOrientation = getOrientation();
-    _goToZone.reset();
+    _goToZone = nullptr;
+    if (_currentZone) {
+        _characterController.setEnabled(false);
+        PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+        if (physicsEngine) {
+            _characterController.setEnabled(false);
+            physicsEngine->setCharacterController(nullptr);
+        }
+    }
+
     if (hasOrientation) {
         qCDebug(interfaceapp).nospace() << "MyAvatar goToLocation - new orientation is "
                                         << newOrientation.x << ", " << newOrientation.y << ", " << newOrientation.z << ", " << newOrientation.w;

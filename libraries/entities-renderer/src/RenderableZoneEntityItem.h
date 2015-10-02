@@ -38,6 +38,8 @@ public:
     virtual bool addToScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges);
     virtual void removeFromScene(EntityItemPointer self, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges);
 
+    virtual void setHasSubphysics(bool hasSubphysics);
+
 private:
     Model* getModel();
     void initialSimulation();

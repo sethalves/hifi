@@ -207,7 +207,7 @@ void EntityTreeElement::elementEncodeComplete(EncodeBitstreamParams& params, Oct
 
             // why would this ever fail???
             // If we've encoding this element before... but we're coming back a second time in an attempt to
-            // encoud our parent... this might happen.
+            // encode our parent... this might happen.
             if (extraEncodeData->contains(childElement.get())) {
                 EntityTreeElementExtraEncodeData* childExtraEncodeData
                     = static_cast<EntityTreeElementExtraEncodeData*>(extraEncodeData->value(childElement.get()));
@@ -284,19 +284,6 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
         }
         forEachEntity([&](EntityItemPointer entity) {
             entityTreeElementExtraEncodeData->entities.insert(entity->getEntityItemID(), entity->getEntityProperties(params));
-#if 1
-            // TODO: ask Zappoman what to do.
-            // if this entity is a ZoneEntityItem, jam all its children into the list of entities to encode
-            if (entity->getType() == EntityTypes::Zone) {
-
-                // auto zoneEntityItem = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
-
-                QList<EntityItemPointer> children = zoneTracker->getChildrenOf(entity);
-                foreach (EntityItemPointer zoneChildEntity, children) {
-                    entityTreeElementExtraEncodeData->extraChildren << zoneChildEntity;
-                }
-            }
-#endif
         });
     }
 
@@ -386,41 +373,6 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
             // we we couldn't add the entity count, then we couldn't add anything for this element and we're in a NONE state
             appendElementState = OctreeElement::NONE;
         }
-
-#if 1
-        // TODO: ask Zappoman what to do
-        QMutableSetIterator<EntityItemPointer> extraChildrenIterator(entityTreeElementExtraEncodeData->extraChildren);
-        while (extraChildrenIterator.hasNext()) {
-            EntityItemPointer entity = extraChildrenIterator.next();
-            LevelDetails entityLevel = packetData->startLevel();
-
-            OctreeElement::AppendState appendEntityState =
-                entity->appendEntityData(packetData, params, entityTreeElementExtraEncodeData);
-
-            // If none of this entity data was able to be appended, then discard it
-            // and don't include it in our entity count
-            if (appendEntityState == OctreeElement::NONE) {
-                packetData->discardLevel(entityLevel);
-            } else {
-                // If either ALL or some of it got appended, then end the level (commit it)
-                // and include the entity in our final count of entities
-                packetData->endLevel(entityLevel);
-                actualNumberOfEntities++;
-            }
-
-            // If the entity item got completely appended, then we can remove it from the extra encode data
-            if (appendEntityState == OctreeElement::COMPLETED) {
-                extraChildrenIterator.remove();
-            }
-
-            // If any part of the entity items didn't fit, then the element is considered partial
-            // NOTE: if the entity item didn't fit or only partially fit, then the entity item should have
-            // added itself to the extra encode data.
-            if (appendEntityState != OctreeElement::COMPLETED) {
-                appendElementState = OctreeElement::PARTIAL;
-            }
-        }
-#endif
     });
 
 

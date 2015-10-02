@@ -571,12 +571,12 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID, std::function
     bool doTransmit = false;
     _entityTree->withWriteLock([&] {
         entity = _entityTree->findEntityByEntityItemID(entityID);
-        EntitySimulationPointer simulation = entity->getSimulation();
         if (!entity) {
             qDebug() << "actionWorker -- unknown entity" << entityID;
             return;
         }
 
+        EntitySimulationPointer simulation = entity->getSimulation();
         if (!simulation) {
             qDebug() << "actionWorker -- no simulation" << entityID;
             return;

@@ -242,3 +242,8 @@ void RenderableZoneEntityItem::removeFromScene(EntityItemPointer self, std::shar
         _model->removeFromScene(scene, pendingChanges);
     }
 }
+
+void RenderableZoneEntityItem::setHasSubphysics(bool hasSubphysics) {
+    // XXX
+    _hasSubphysics = hasSubphysics;
+}

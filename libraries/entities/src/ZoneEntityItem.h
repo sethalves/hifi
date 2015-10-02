@@ -114,7 +114,9 @@ public:
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
 
     EntitySimulationPointer getSubEntitySimulation() { return _subEntitySimulation; }
-    void stepSimulations();
+
+    virtual void setHasSubphysics(bool hasSubphysics) { _hasSubphysics = hasSubphysics; }
+    virtual bool getHasSubphysics() const { return _hasSubphysics; }
 
 protected:
     // properties of the "sun" in the zone
@@ -135,6 +137,7 @@ protected:
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
 
+    bool _hasSubphysics = false;
     EntitySimulationPointer _subEntitySimulation;
 };
 

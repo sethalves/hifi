@@ -93,6 +93,8 @@ EntityItemProperties ZoneEntityItem::getProperties(EntityPropertyFlags desiredPr
     _atmosphereProperties.getProperties(properties);
     _skyboxProperties.getProperties(properties);
 
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(hasSubphysics, getHasSubphysics);
+
     return properties;
 }
 
@@ -113,6 +115,8 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
 
     bool somethingChangedInAtmosphere = _atmosphereProperties.setProperties(properties);
     bool somethingChangedInSkybox = _skyboxProperties.setProperties(properties);
+
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(hasSubphysics, setHasSubphysics);
 
     somethingChanged = somethingChanged || somethingChangedInStage || somethingChangedInAtmosphere || somethingChangedInSkybox;
 
@@ -141,9 +145,9 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     READ_ENTITY_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, float, setKeyLightAmbientIntensity);
     READ_ENTITY_PROPERTY(PROP_KEYLIGHT_DIRECTION, glm::vec3, setKeyLightDirection);
 
-    int bytesFromStage = _stageProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args, 
+    int bytesFromStage = _stageProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                                                propertyFlags, overwriteLocalData);
-                                                                               
+
     bytesRead += bytesFromStage;
     dataAt += bytesFromStage;
 
@@ -151,16 +155,21 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     READ_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
     READ_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundMode);
 
-    int bytesFromAtmosphere = _atmosphereProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args, 
-                                                                               propertyFlags, overwriteLocalData);
-                                                                               
+    int bytesFromAtmosphere = _atmosphereProperties.readEntitySubclassDataFromBuffer(dataAt,
+                                                                                     (bytesLeftToRead - bytesRead),
+                                                                                     args,
+                                                                                     propertyFlags,
+                                                                                     overwriteLocalData);
+
     bytesRead += bytesFromAtmosphere;
     dataAt += bytesFromAtmosphere;
 
-    int bytesFromSkybox = _skyboxProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args, 
+    int bytesFromSkybox = _skyboxProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                                            propertyFlags, overwriteLocalData);
     bytesRead += bytesFromSkybox;
     dataAt += bytesFromSkybox;
+
+    READ_ENTITY_PROPERTY(PROP_HAS_SUBPHYSICS, bool, setHasSubphysics);
 
     return bytesRead;
 }
@@ -180,7 +189,8 @@ EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& p
     requestedProperties += _stageProperties.getEntityProperties(params);
     requestedProperties += _atmosphereProperties.getEntityProperties(params);
     requestedProperties += _skyboxProperties.getEntityProperties(params);
-    
+    requestedProperties += PROP_HAS_SUBPHYSICS;
+
     return requestedProperties;
 }
 
@@ -206,13 +216,14 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
     APPEND_ENTITY_PROPERTY(PROP_SHAPE_TYPE, (uint32_t)getShapeType());
     APPEND_ENTITY_PROPERTY(PROP_COMPOUND_SHAPE_URL, getCompoundShapeURL());
     APPEND_ENTITY_PROPERTY(PROP_BACKGROUND_MODE, (uint32_t)getBackgroundMode()); // could this be a uint16??
-    
+
     _atmosphereProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
                                     propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
     _skyboxProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
                                     propertyFlags, propertiesDidntFit, propertyCount, appendState);
 
+    APPEND_ENTITY_PROPERTY(PROP_HAS_SUBPHYSICS, getHasSubphysics());
 }
 
 void ZoneEntityItem::debugDump() const {
@@ -226,6 +237,7 @@ void ZoneEntityItem::debugDump() const {
     qCDebug(entities) << " _keyLightAmbientIntensity:" << _keyLightAmbientIntensity;
     qCDebug(entities) << "        _keyLightDirection:" << _keyLightDirection;
     qCDebug(entities) << "               _backgroundMode:" << EntityItemProperties::getBackgroundModeString(_backgroundMode);
+    qCDebug(entities) << "               _hasSubphysics:" << _hasSubphysics;
 
     _stageProperties.debugDump();
     _atmosphereProperties.debugDump();
