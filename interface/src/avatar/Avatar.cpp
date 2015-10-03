@@ -858,7 +858,11 @@ const glm::vec3& Avatar::getAbsolutePosition() const {
             EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
             if (zone) {
                 Transform zoneTransform = zone->getGlobalTransform();
-                _absolutePosition = zoneTransform.getTranslation() + getLocalPosition();
+                Transform zoneTransformDescaled = zoneTransform.setScale(1.0f);
+                glm::mat4 zoneMat;
+                zoneTransformDescaled.getMatrix(zoneMat);
+                glm::vec4 absPos = zoneMat * glm::vec4(getLocalPosition(), 1.0f);
+                _absolutePosition = glm::vec3(absPos);
             }
         });
         return _absolutePosition;
