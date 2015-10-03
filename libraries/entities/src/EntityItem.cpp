@@ -1179,7 +1179,7 @@ const Transform EntityItem::getTransformToCenter() const {
 
 Transform EntityItem::getGlobalTransform() const {
     Transform parentTransform = getParentTransform();
-    Transform parentDescaled(parentTransform.getRotation(), glm::vec3(1.0f), parentTransform.getTranslation());
+    Transform parentDescaled = parentTransform.setScale(1.0);
     Transform result;
     Transform::mult(result, parentDescaled, _localTransform);
     return result;
