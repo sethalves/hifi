@@ -1726,7 +1726,17 @@ glm::vec3 MyAvatar::applyScriptedMotor(float deltaTime, const glm::vec3& localVe
 
 void MyAvatar::updatePosition(float deltaTime) {
     // rotate velocity into camera frame
-    glm::quat rotation = getHead()->getCameraOrientation();
+    glm::quat absRotation = getHead()->getCameraOrientation();
+    glm::quat rotation = absRotation;
+    if (_currentZone) {
+        // convert rotation from absolute to zone-based
+        Transform zoneTrans = _currentZone->getGlobalTransform();
+        Transform descaled = zoneTrans.setScale(1.0f);
+        glm::mat4 zoneInverse;
+        descaled.getInverseMatrix(zoneInverse);
+        rotation = extractRotation(zoneInverse) * rotation;
+    }
+
     glm::vec3 localVelocity = glm::inverse(rotation) * _targetVelocity;
 
     bool isHovering = _characterController.isHovering();
