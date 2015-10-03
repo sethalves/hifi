@@ -322,8 +322,8 @@ void DynamicCharacterController::updateShapeIfNecessary() {
             _rigidBody = new btRigidBody(mass, nullptr, _shape, inertia);
             _rigidBody->setSleepingThresholds(0.0f, 0.0f);
             _rigidBody->setAngularFactor(0.0f);
-            _rigidBody->setWorldTransform(btTransform(glmToBullet(_avatarData->getOrientation()),
-                                                      glmToBullet(_avatarData->getPosition())));
+            _rigidBody->setWorldTransform(btTransform(glmToBullet(_avatarData->getLocalOrientation()),
+                                                      glmToBullet(_avatarData->getLocalPosition())));
             if (_isHovering) {
                 _rigidBody->setGravity(btVector3(0.0f, 0.0f, 0.0f));
             } else {
@@ -349,12 +349,12 @@ void DynamicCharacterController::updateUpAxis(const glm::quat& rotation) {
 
 void DynamicCharacterController::preSimulation(btScalar timeStep) {
     if (_enabled && _dynamicsWorld) {
-        glm::quat rotation = _avatarData->getOrientation();
+        glm::quat rotation = _avatarData->getLocalOrientation();
 
         // TODO: update gravity if up has changed
         updateUpAxis(rotation);
 
-        glm::vec3 position = _avatarData->getPosition() + rotation * _shapeLocalOffset;
+        glm::vec3 position = _avatarData->getLocalPosition() + rotation * _shapeLocalOffset;
         _rigidBody->setWorldTransform(btTransform(glmToBullet(rotation), glmToBullet(position)));
 
         // the rotation is dictated by AvatarData

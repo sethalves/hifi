@@ -65,8 +65,8 @@ void Player::startPlaying() {
     if (!isPaused()) {
         _currentContext.globalTimestamp = usecTimestampNow();
         _currentContext.domain = DependencyManager::get<NodeList>()->getDomainHandler().getHostname();
-        _currentContext.position = _avatar->getPosition();
-        _currentContext.orientation = _avatar->getOrientation();
+        _currentContext.position = _avatar->getLocalPosition();
+        _currentContext.orientation = _avatar->getLocalOrientation();
         _currentContext.scale = _avatar->getTargetScale();
         _currentContext.headModel = _avatar->getFaceModelURL().toString();
         _currentContext.skeletonModel = _avatar->getSkeletonModelURL().toString();
@@ -168,8 +168,8 @@ void Player::pausePlayer() {
 void Player::setupAudioThread() {
     _audioThread = new QThread();
     _audioThread->setObjectName("Player Audio Thread");
-    _options.position = _avatar->getPosition();
-    _options.orientation = _avatar->getOrientation();
+    _options.position = _avatar->getLocalPosition();
+    _options.orientation = _avatar->getLocalOrientation();
     _options.stereo = _recording->numberAudioChannel() == 2;
     
     _injector.reset(new AudioInjector(_recording->getAudioData(), _options), &QObject::deleteLater);
@@ -235,12 +235,12 @@ void Player::play() {
     glm::vec3 translation = glm::mix(currentFrame.getTranslation(),
                                      nextFrame.getTranslation(),
                                      _frameInterpolationFactor);
-    _avatar->setPosition(context->position + context->orientation * translation);
+    _avatar->setLocalPosition(context->position + context->orientation * translation);
     
     glm::quat rotation = safeMix(currentFrame.getRotation(),
                                  nextFrame.getRotation(),
                                  _frameInterpolationFactor);
-    _avatar->setOrientation(context->orientation * rotation);
+    _avatar->setLocalOrientation(context->orientation * rotation);
     
     float scale = glm::mix(currentFrame.getScale(),
                            nextFrame.getScale(),
@@ -254,8 +254,17 @@ void Player::play() {
                                     nextFrame.getJointRotations()[i],
                                     _frameInterpolationFactor);
     }
+
+    QVector<glm::vec3> jointTranslations(currentFrame.getJointTranslations().size());
+    for (int i = 0; i < currentFrame.getJointTranslations().size(); ++i) {
+        jointTranslations[i] =
+            currentFrame.getJointTranslations()[i] * (1.0f - _frameInterpolationFactor) +
+            nextFrame.getJointTranslations()[i] * _frameInterpolationFactor;
+    }
+
     _avatar->setJointRotations(jointRotations);
-    
+    _avatar->setJointTranslations(jointTranslations);
+
     HeadData* head = const_cast<HeadData*>(_avatar->getHeadData());
     if (head) {
         // Make sure fake face tracker connection doesn't get turned off
@@ -296,8 +305,8 @@ void Player::play() {
         qCDebug(avatars) << "WARNING: Player couldn't find head data.";
     }
     
-    _options.position = _avatar->getPosition();
-    _options.orientation = _avatar->getOrientation();
+    _options.position = _avatar->getLocalPosition();
+    _options.orientation = _avatar->getLocalOrientation();
     _injector->setOptions(_options);
 }
 

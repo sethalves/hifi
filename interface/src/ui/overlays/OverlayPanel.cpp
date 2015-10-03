@@ -169,7 +169,7 @@ void OverlayPanel::applyTransformTo(Transform& transform, bool force) {
         if (!getParentPanel()) {
             if (_anchorPositionBindMyAvatar) {
                 transform.setTranslation(DependencyManager::get<AvatarManager>()->getMyAvatar()
-                                         ->getPosition());
+                                         ->getAbsolutePosition());
             } else if (!_anchorPositionBindEntity.isNull()) {
                 transform.setTranslation(DependencyManager::get<EntityScriptingInterface>()
                                          ->getEntityTree()->findEntityByID(_anchorPositionBindEntity)
@@ -180,7 +180,7 @@ void OverlayPanel::applyTransformTo(Transform& transform, bool force) {
 
             if (_anchorRotationBindMyAvatar) {
                 transform.setRotation(DependencyManager::get<AvatarManager>()->getMyAvatar()
-                                      ->getOrientation());
+                                      ->getAbsoluteOrientation());
             } else if (!_anchorRotationBindEntity.isNull()) {
                 transform.setRotation(DependencyManager::get<EntityScriptingInterface>()
                                       ->getEntityTree()->findEntityByID(_anchorRotationBindEntity)

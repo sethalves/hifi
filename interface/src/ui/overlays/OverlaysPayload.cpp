@@ -64,8 +64,8 @@ namespace render {
             if (overlay->getAnchor() == Overlay::MY_AVATAR) {
                 auto batch = args->_batch;
                 MyAvatar* avatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
-                glm::quat myAvatarRotation = avatar->getOrientation();
-                glm::vec3 myAvatarPosition = avatar->getPosition();
+                glm::quat myAvatarRotation = avatar->getAbsoluteOrientation();
+                glm::vec3 myAvatarPosition = avatar->getAbsolutePosition();
                 float angle = glm::degrees(glm::angle(myAvatarRotation));
                 glm::vec3 axis = glm::axis(myAvatarRotation);
                 float myAvatarScale = avatar->getScale();

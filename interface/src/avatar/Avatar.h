@@ -117,6 +117,7 @@ public:
     
     virtual QVector<glm::quat> getJointRotations() const;
     virtual glm::quat getJointRotation(int index) const;
+    virtual glm::vec3 getJointTranslation(int index) const;
     virtual int getJointIndex(const QString& name) const;
     virtual QStringList getJointNames() const;
     
@@ -135,6 +136,7 @@ public:
     virtual void applyCollision(const glm::vec3& contactPoint, const glm::vec3& penetration) { }
 
     virtual const glm::vec3& getAbsolutePosition() const;
+    virtual const glm::quat& getAbsoluteOrientation() const;
 
     Q_INVOKABLE void setSkeletonOffset(const glm::vec3& offset);
     Q_INVOKABLE glm::vec3 getSkeletonOffset() { return _skeletonOffset; }
@@ -183,7 +185,7 @@ protected:
     QVector<Model*> _unusedAttachments;
     float _bodyYawDelta;
 
-    // These position histories and derivatives are in the world-frame.
+    // These position histories and derivatives are in the local physics-frame.
     // The derivatives are the MEASURED results of all external and internal forces
     // and are therefore READ-ONLY --> motion control of the Avatar is NOT obtained
     // by setting these values.
@@ -204,9 +206,9 @@ protected:
     bool _moving; ///< set when position is changing
 
     // protected methods...
-    glm::vec3 getBodyRightDirection() const { return getOrientation() * IDENTITY_RIGHT; }
-    glm::vec3 getBodyUpDirection() const { return getOrientation() * IDENTITY_UP; }
-    glm::vec3 getBodyFrontDirection() const { return getOrientation() * IDENTITY_FRONT; }
+    glm::vec3 getBodyRightDirection() const { return getLocalOrientation() * IDENTITY_RIGHT; }
+    glm::vec3 getBodyUpDirection() const { return getLocalOrientation() * IDENTITY_UP; }
+    glm::vec3 getBodyFrontDirection() const { return getLocalOrientation() * IDENTITY_FRONT; }
     glm::quat computeRotationFromBodyToWorldUp(float proportion = 1.0f) const;
     void setScale(float scale);
     void measureMotionDerivatives(float deltaTime);
@@ -230,6 +232,7 @@ protected:
 
     mutable glm::vec3 _absoluteSkeletonPosition; // this is so Avatar::getAbsoluteSkeletonPosition can return by reference
     mutable glm::vec3 _absolutePosition; // this is so Avatar::getAbsolutePosition can return by reference
+    mutable glm::quat _absoluteRotation; // this is so Avatar::getAbsoluteRotation can return by reference
 
 private:
     bool _initialized;

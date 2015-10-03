@@ -116,6 +116,7 @@ const QString DEFAULT_FULL_AVATAR_MODEL_NAME = QString("Default");
 const float AVATAR_SEND_FULL_UPDATE_RATIO = 0.02f;
 // this controls how large a change in joint-rotation must be before the interface sends it to the avatar mixer
 const float AVATAR_MIN_ROTATION_DOT = 0.9999999f;
+const float AVATAR_MIN_TRANSLATION = 0.0001f;
 
 
 // Where one's own Avatar begins in the world (will be overwritten if avatar data file is found).
@@ -136,14 +137,18 @@ class JointData;
 class AvatarData : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(glm::vec3 position READ getPosition WRITE setPosition)
+    // XXX rename this back localPosition -> position
+    Q_PROPERTY(glm::vec3 localPosition READ getLocalPosition WRITE setLocalPosition)
+
     Q_PROPERTY(float scale READ getTargetScale WRITE setTargetScale)
     Q_PROPERTY(glm::vec3 handPosition READ getHandPosition WRITE setHandPosition)
     Q_PROPERTY(float bodyYaw READ getBodyYaw WRITE setBodyYaw)
     Q_PROPERTY(float bodyPitch READ getBodyPitch WRITE setBodyPitch)
     Q_PROPERTY(float bodyRoll READ getBodyRoll WRITE setBodyRoll)
 
-    Q_PROPERTY(glm::quat orientation READ getOrientation WRITE setOrientation)
+    // XXX rename this back localOrientation -> orientation
+    Q_PROPERTY(glm::quat localOrientation READ getLocalOrientation WRITE setLocalOrientation)
+
     Q_PROPERTY(glm::quat headOrientation READ getHeadOrientation WRITE setHeadOrientation)
     Q_PROPERTY(float headPitch READ getHeadPitch WRITE setHeadPitch)
     Q_PROPERTY(float headYaw READ getHeadYaw WRITE setHeadYaw)
@@ -171,9 +176,13 @@ public:
 
     const QUuid& getSessionUUID() const { return _sessionUUID; }
 
-    const glm::vec3& getPosition() const;
+    const glm::vec3& getLocalPosition() const;
     virtual const glm::vec3& getAbsolutePosition() const;
-    virtual void setPosition(const glm::vec3 position);
+    virtual void setLocalPosition(const glm::vec3 position);
+
+    virtual const glm::quat& getLocalOrientation() const;
+    virtual void setLocalOrientation(const glm::quat& orientation);
+    virtual const glm::quat& getAbsoluteOrientation() const;
 
     glm::vec3 getHandPosition() const;
     void setHandPosition(const glm::vec3& handPosition);
@@ -196,9 +205,6 @@ public:
     void setBodyPitch(float bodyPitch) { _bodyPitch = bodyPitch; }
     float getBodyRoll() const { return _bodyRoll; }
     void setBodyRoll(float bodyRoll) { _bodyRoll = bodyRoll; }
-
-    glm::quat getOrientation() const;
-    virtual void setOrientation(const glm::quat& orientation);
 
     void nextAttitude(glm::vec3 position, glm::quat orientation); // Can be safely called at any time.
     void startCapture();    // start/end of the period in which the latest values are about to be captured for camera, etc.
@@ -240,20 +246,24 @@ public:
     Q_INVOKABLE char getHandState() const { return _handState; }
 
     const QVector<JointData>& getJointData() const { return _jointData; }
-    void setJointData(const QVector<JointData>& jointData) { _jointData = jointData; }
 
-    Q_INVOKABLE virtual void setJointData(int index, const glm::quat& rotation);
+    Q_INVOKABLE virtual void setJointData(int index, const glm::quat& rotation, const glm::vec3& translation);
+    Q_INVOKABLE virtual void setJointRotation(int index, const glm::quat& rotation);
+    Q_INVOKABLE virtual void setJointTranslation(int index, const glm::vec3& translation);
     Q_INVOKABLE virtual void clearJointData(int index);
     Q_INVOKABLE bool isJointDataValid(int index) const;
     Q_INVOKABLE virtual glm::quat getJointRotation(int index) const;
+    Q_INVOKABLE virtual glm::vec3 getJointTranslation(int index) const;
 
-    Q_INVOKABLE void setJointData(const QString& name, const glm::quat& rotation);
+    Q_INVOKABLE void setJointData(const QString& name, const glm::quat& rotation, const glm::vec3& translation);
     Q_INVOKABLE void clearJointData(const QString& name);
     Q_INVOKABLE bool isJointDataValid(const QString& name) const;
     Q_INVOKABLE glm::quat getJointRotation(const QString& name) const;
+    Q_INVOKABLE glm::vec3 getJointTranslation(const QString& name) const;
     
     Q_INVOKABLE virtual QVector<glm::quat> getJointRotations() const;
     Q_INVOKABLE virtual void setJointRotations(QVector<glm::quat> jointRotations);
+    Q_INVOKABLE virtual void setJointTranslations(QVector<glm::vec3> jointTranslations);
     
     Q_INVOKABLE virtual void clearJointsData();
     
@@ -360,7 +370,7 @@ public slots:
     
 protected:
     QUuid _sessionUUID;
-    mutable glm::vec3 _position = START_LOCATION;
+
     glm::vec3 _handPosition;
     
     QUuid _referential;
@@ -388,6 +398,7 @@ protected:
 
     bool _forceFaceTrackerConnected;
     bool _hasNewJointRotations; // set in AvatarData, cleared in Avatar
+    bool _hasNewJointTranslations; // set in AvatarData, cleared in Avatar
 
     HeadData* _headData;
     HandData* _handData;
@@ -429,12 +440,18 @@ private:
     // privatize the copy constructor and assignment operator so they cannot be called
     AvatarData(const AvatarData&);
     AvatarData& operator= (const AvatarData&);
+
+    glm::vec3 _localPosition = START_LOCATION;
+    mutable glm::quat _localOrientation; // use by getLocalOrientation to return by reference
 };
 Q_DECLARE_METATYPE(AvatarData*)
 
 class JointData {
 public:
     glm::quat rotation;
+    bool rotationSet = false;
+    glm::vec3 translation;
+    bool translationSet = false;
 };
 
 class AttachmentData {

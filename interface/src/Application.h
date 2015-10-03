@@ -140,8 +140,8 @@ class Application : public QApplication, public AbstractViewStateInterface, publ
 
 public:
     static Application* getInstance() { return qApp; } // TODO: replace fully by qApp
-    static const glm::vec3& getPositionForPath() { return getInstance()->_myAvatar->getPosition(); }
-    static glm::quat getOrientationForPath() { return getInstance()->_myAvatar->getOrientation(); }
+    static const glm::vec3& getPositionForPath() { return getInstance()->_myAvatar->getAbsolutePosition(); }
+    static glm::quat getOrientationForPath() { return getInstance()->_myAvatar->getAbsoluteOrientation(); }
     static glm::vec3 getPositionForAudio() { return getInstance()->_myAvatar->getPositionForAudio(); }
     static glm::quat getOrientationForAudio() { return getInstance()->_myAvatar->getOrientationForAudio(); }
     static void initPlugins();

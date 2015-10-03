@@ -244,7 +244,7 @@ vec2 ApplicationCompositor::getPolarCoordinates(const PalmData& palm) const {
     MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
     glm::vec3 tip = myAvatar->getLaserPointerTipPosition(&palm);
     glm::vec3 relativePos = myAvatar->getDefaultEyePosition();
-    glm::quat rotation = myAvatar->getOrientation();
+    glm::quat rotation = myAvatar->getAbsoluteOrientation();
     if (Menu::getInstance()->isOptionChecked(MenuOption::StandingHMDSensorMode)) {
         relativePos = _modelTransform.getTranslation();
         rotation = _modelTransform.getRotation();
@@ -388,7 +388,7 @@ QPoint ApplicationCompositor::getPalmClickLocation(const PalmData *palm) const {
         MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
         glm::mat4 projection;
         qApp->getDisplayViewFrustum()->evalProjectionMatrix(projection);
-        glm::quat invOrientation = glm::inverse(myAvatar->getOrientation());
+        glm::quat invOrientation = glm::inverse(myAvatar->getAbsoluteOrientation());
         glm::vec3 eyePos = myAvatar->getDefaultEyePosition();
         glm::vec3 tip = myAvatar->getLaserPointerTipPosition(palm);
         glm::vec3 tipPos = invOrientation * (tip - eyePos);
@@ -409,7 +409,7 @@ QPoint ApplicationCompositor::getPalmClickLocation(const PalmData *palm) const {
 bool ApplicationCompositor::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result) const {
     MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
 
-    glm::quat inverseOrientation = glm::inverse(myAvatar->getOrientation());
+    glm::quat inverseOrientation = glm::inverse(myAvatar->getAbsoluteOrientation());
 
     glm::vec3 relativePosition = inverseOrientation * (position - myAvatar->getDefaultEyePosition());
     glm::vec3 relativeDirection = glm::normalize(inverseOrientation * direction);
@@ -512,7 +512,7 @@ void ApplicationCompositor::renderControllerPointers(gpu::Batch& batch) {
         int mouseX, mouseY;
 
         // Get directon relative to avatar orientation
-        glm::vec3 direction = glm::inverse(myAvatar->getOrientation()) * palmData->getFingerDirection();
+        glm::vec3 direction = glm::inverse(myAvatar->getAbsoluteOrientation()) * palmData->getFingerDirection();
 
         // Get the angles, scaled between (-0.5,0.5)
         float xAngle = (atan2f(direction.z, direction.x) + PI_OVER_TWO);

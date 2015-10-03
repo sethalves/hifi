@@ -43,15 +43,15 @@ HeadData::HeadData(AvatarData* owningAvatar) :
 }
 
 glm::quat HeadData::getOrientation() const {
-    return _owningAvatar->getOrientation() * glm::quat(glm::radians(glm::vec3(_basePitch, _baseYaw, _baseRoll)));
+    return _owningAvatar->getLocalOrientation() * glm::quat(glm::radians(glm::vec3(_basePitch, _baseYaw, _baseRoll)));
 }
 
 void HeadData::setOrientation(const glm::quat& orientation) {
     // rotate body about vertical axis
-    glm::quat bodyOrientation = _owningAvatar->getOrientation();
+    glm::quat bodyOrientation = _owningAvatar->getLocalOrientation();
     glm::vec3 newFront = glm::inverse(bodyOrientation) * (orientation * IDENTITY_FRONT);
     bodyOrientation = bodyOrientation * glm::angleAxis(atan2f(-newFront.x, -newFront.z), glm::vec3(0.0f, 1.0f, 0.0f));
-    _owningAvatar->setOrientation(bodyOrientation);
+    _owningAvatar->setLocalOrientation(bodyOrientation);
     
     // the rest goes to the head
     glm::vec3 eulers = glm::degrees(safeEulerAngles(glm::inverse(bodyOrientation) * orientation));
