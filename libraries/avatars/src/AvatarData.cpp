@@ -497,6 +497,7 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
             _bodyYaw = yaw;
             _bodyPitch = pitch;
             _bodyRoll = roll;
+            getLocalOrientation(); // update _localOrientation
         }
 
         // scale
