@@ -241,10 +241,6 @@ void MyAvatar::handleZoneChange() {
     if (zone != _currentZone) {
 
         _characterController.setEnabled(false);
-        PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-        if (!physicsEngine) {
-            return;
-        }
 
         if (!zone) {
             qDebug() << "leaving zone" << _currentZone->getName();
@@ -254,15 +250,37 @@ void MyAvatar::handleZoneChange() {
             qDebug() << "leaving zone" << _currentZone->getName() << "and entering zone" << zone->getName();
         }
 
-        Transform zoneTransform = getParentTransform();
-        btCollisionObject* rigidBody = _characterController.getCollisionObject();
+        btCollisionObject* collisionObject = nullptr;
+        btRigidBody* rigidBody = nullptr;
+
+        collisionObject = _characterController.getCollisionObject();
+        if (collisionObject) {
+            rigidBody = static_cast<btRigidBody*>(collisionObject);
+        }
+
+        glm::vec3 currentZoneRelativeVelocity;
+        glm::vec3 absoluteVelocity;
+        if (rigidBody) {
+            Transform zoneTransform = getParentTransform();
+            currentZoneRelativeVelocity = bulletToGLM(rigidBody->getLinearVelocity());
+            glm::mat4 rotMat;
+            zoneTransform.getRotationScaleMatrix(rotMat);
+            absoluteVelocity = glm::vec3(rotMat * glm::vec4(currentZoneRelativeVelocity, 0.0f));
+        }
+
+        _characterController.setEnabled(false);
+        PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+        if (physicsEngine) {
+            physicsEngine->setCharacterController(nullptr);
+        }
 
         if (!zone) {
             _goToPosition = getAbsolutePosition();
             _goToOrientation = getAbsoluteOrientation();
-
-            // TODO rotate velocity for new zone
-            // _rigidBody->setLinearVelocity(velocity);
+            if (rigidBody) {
+                qDebug() << "VELOCITY: " << currentZoneRelativeVelocity << absoluteVelocity;
+                rigidBody->setLinearVelocity(glmToBullet(absoluteVelocity));
+            }
         } else {
             Transform newZoneTransform = zone->getGlobalTransform();
             Transform descaled = newZoneTransform.setScale(1.0f);
@@ -270,10 +288,12 @@ void MyAvatar::handleZoneChange() {
             descaled.getInverseMatrix(zoneInverse);
             _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
             _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
+            glm::vec3 zoneRelativeVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteVelocity, 0.0f));
+            if (rigidBody) {
+                qDebug() << "VELOCITY: " << currentZoneRelativeVelocity << zoneRelativeVelocity;
+                rigidBody->setLinearVelocity(glmToBullet(zoneRelativeVelocity));
+            }
         }
-
-        _characterController.setEnabled(false);
-        physicsEngine->setCharacterController(nullptr);
 
         _goToZone = zone;
         _goToPending = true;
