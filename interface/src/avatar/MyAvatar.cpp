@@ -245,25 +245,24 @@ void MyAvatar::handleZoneChange() {
 
         if (!zone) {
             qDebug() << "leaving zone" << _currentZone->getName();
-            Transform oldZoneTransform = _currentZone->getGlobalTransform();
-            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
-            _goToPosition = getLocalPosition() + oldZoneTranslation;
-            _goToOrientation = getLocalOrientation(); // XXX
+            _goToPosition = getAbsolutePosition();
+            _goToOrientation = getAbsoluteOrientation();
         } else if (!_currentZone) {
             qDebug() << "entering zone" << zone->getName();
             Transform newZoneTransform = zone->getGlobalTransform();
-            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
-            _goToPosition = getLocalPosition() - newZoneTranslation;
-            _goToOrientation = getLocalOrientation(); // XXX
+            Transform descaled = newZoneTransform.setScale(1.0f);
+            glm::mat4 zoneInverse;
+            descaled.getInverseMatrix(zoneInverse);
+            _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
+            _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         } else {
             qDebug() << "leaving zone" << _currentZone->getName() << "and entering zone" << zone->getName();
-            Transform oldZoneTransform = _currentZone->getGlobalTransform();
             Transform newZoneTransform = zone->getGlobalTransform();
-            glm::vec3 oldZoneTranslation = oldZoneTransform.getTranslation();
-            glm::vec3 newZoneTranslation = newZoneTransform.getTranslation();
-            glm::vec3 oldAbsolutionPosition = oldZoneTranslation + getLocalPosition();
-            _goToPosition = oldAbsolutionPosition - newZoneTranslation;
-            _goToOrientation = getLocalOrientation(); // XXX
+            Transform descaled = newZoneTransform.setScale(1.0f);
+            glm::mat4 zoneInverse;
+            descaled.getInverseMatrix(zoneInverse);
+            _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
+            _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         }
 
         _goToZone = zone;
