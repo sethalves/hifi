@@ -299,6 +299,9 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
 
     auto& batch = *renderArgs->_batch;
 
+    _skeletonModel.setRotation(getAbsoluteOrientation());
+    _skeletonModel.setTranslation(getAbsolutePosition());
+
     if (glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getAbsolutePosition(), getAbsolutePosition()) <
         // XXX magic number
         10.0f) {
