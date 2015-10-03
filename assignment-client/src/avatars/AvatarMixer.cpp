@@ -269,7 +269,7 @@ void AvatarMixer::broadcastAvatarData() {
 
                         otherNodeData->incrementNumOutOfOrderSends();
 
-                        assert(false);
+                        // assert(false);
                     }
 
                     // make sure we haven't already sent this data from this sender to this receiver

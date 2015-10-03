@@ -133,7 +133,7 @@ glm::vec3 Avatar::getNeckPosition() const {
 
 
 glm::quat Avatar::getWorldAlignedOrientation () const {
-    return computeRotationFromBodyToWorldUp() * getLocalOrientation();
+    return computeRotationFromBodyToWorldUp() * getAbsoluteOrientation();
 }
 
 AABox Avatar::getBounds() const {
