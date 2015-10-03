@@ -850,7 +850,9 @@ const glm::vec3& Avatar::getAbsoluteSkeletonPosition() const {
     return _absoluteSkeletonPosition;
 }
 
-const glm::vec3& Avatar::getAbsolutePosition() const {
+
+Transform Avatar::getParentTransform() const {
+    Transform result;
     if (!_referential.isNull()) {
         EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
         EntityTreePointer tree = treeRenderer->getTree();
@@ -858,34 +860,25 @@ const glm::vec3& Avatar::getAbsolutePosition() const {
             EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
             if (zone) {
                 Transform zoneTransform = zone->getGlobalTransform();
-                Transform zoneTransformDescaled = zoneTransform.setScale(1.0f);
-                glm::mat4 zoneMat;
-                zoneTransformDescaled.getMatrix(zoneMat);
-                glm::vec4 absPos = zoneMat * glm::vec4(getLocalPosition(), 1.0f);
-                _absolutePosition = glm::vec3(absPos);
+                result = zoneTransform.setScale(1.0f);
             }
         });
-        return _absolutePosition;
     }
+    return result;
+}
 
-    return getLocalPosition();
+const glm::vec3& Avatar::getAbsolutePosition() const {
+    Transform zoneTransformDescaled = getParentTransform();
+    glm::mat4 zoneMat;
+    zoneTransformDescaled.getMatrix(zoneMat);
+    glm::vec4 absPos = zoneMat * glm::vec4(getLocalPosition(), 1.0f);
+    _absolutePosition = glm::vec3(absPos);
+    return _absolutePosition;
 }
 
 const glm::quat& Avatar::getAbsoluteOrientation() const {
-    if (!_referential.isNull()) {
-        EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
-        EntityTreePointer tree = treeRenderer->getTree();
-        tree->withReadLock([&] {
-            EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);
-            if (zone) {
-                Transform zoneTransform = zone->getGlobalTransform();
-                _absoluteRotation = zoneTransform.getRotation() * getLocalOrientation();
-            }
-        });
-    } else {
-        _absoluteRotation = getLocalOrientation();
-    }
-
+    Transform zoneTransformDescaled = getParentTransform();
+    _absoluteRotation = zoneTransformDescaled.getRotation() * getLocalOrientation();
     return _absoluteRotation;
 }
 

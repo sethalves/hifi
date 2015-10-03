@@ -57,6 +57,7 @@ typedef unsigned long long quint64;
 #include "PathUtils.h"
 #include "Player.h"
 #include "Recorder.h"
+#include "Transform.h"
 
 using AvatarSharedPointer = std::shared_ptr<AvatarData>;
 using AvatarWeakPointer = std::weak_ptr<AvatarData>;
@@ -175,6 +176,8 @@ public:
     virtual bool isMyAvatar() const { return false; }
 
     const QUuid& getSessionUUID() const { return _sessionUUID; }
+
+    virtual Transform getParentTransform() const { assert(false); return Transform(); }
 
     const glm::vec3& getLocalPosition() const;
     virtual const glm::vec3& getAbsolutePosition() const;
