@@ -135,6 +135,8 @@ public:
 
     virtual void applyCollision(const glm::vec3& contactPoint, const glm::vec3& penetration) { }
 
+    virtual Transform getParentTransform() const;
+
     virtual const glm::vec3& getAbsolutePosition() const;
     virtual const glm::quat& getAbsoluteOrientation() const;
 

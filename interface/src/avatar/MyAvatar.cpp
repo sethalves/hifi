@@ -187,6 +187,10 @@ void MyAvatar::update(float deltaTime) {
             PhysicsEnginePointer physicsEngine = getPhysicsEngine();
             physicsEngine->setCharacterController(getCharacterController());
             _characterController.setEnabled(true);
+
+            // btCollisionObject* rigidBody = _characterController.getCollisionObject();
+            // TODO rotate velocity for new zone
+            // _rigidBody->setLinearVelocity(velocity);
         }
         _goToPending = false;
     }
@@ -238,25 +242,28 @@ void MyAvatar::handleZoneChange() {
 
         _characterController.setEnabled(false);
         PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-        if (physicsEngine) {
-            _characterController.setEnabled(false);
-            physicsEngine->setCharacterController(nullptr);
+        if (!physicsEngine) {
+            return;
         }
 
         if (!zone) {
             qDebug() << "leaving zone" << _currentZone->getName();
-            _goToPosition = getAbsolutePosition();
-            _goToOrientation = getAbsoluteOrientation();
         } else if (!_currentZone) {
             qDebug() << "entering zone" << zone->getName();
-            Transform newZoneTransform = zone->getGlobalTransform();
-            Transform descaled = newZoneTransform.setScale(1.0f);
-            glm::mat4 zoneInverse;
-            descaled.getInverseMatrix(zoneInverse);
-            _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
-            _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         } else {
             qDebug() << "leaving zone" << _currentZone->getName() << "and entering zone" << zone->getName();
+        }
+
+        Transform zoneTransform = getParentTransform();
+        btCollisionObject* rigidBody = _characterController.getCollisionObject();
+
+        if (!zone) {
+            _goToPosition = getAbsolutePosition();
+            _goToOrientation = getAbsoluteOrientation();
+
+            // TODO rotate velocity for new zone
+            // _rigidBody->setLinearVelocity(velocity);
+        } else {
             Transform newZoneTransform = zone->getGlobalTransform();
             Transform descaled = newZoneTransform.setScale(1.0f);
             glm::mat4 zoneInverse;
@@ -264,6 +271,9 @@ void MyAvatar::handleZoneChange() {
             _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
             _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         }
+
+        _characterController.setEnabled(false);
+        physicsEngine->setCharacterController(nullptr);
 
         _goToZone = zone;
         _goToPending = true;
