@@ -274,32 +274,28 @@ void MyAvatar::handleZoneChange() {
             physicsEngine->setCharacterController(nullptr);
         }
 
+        // transform position, orientation, and linear-velocities to the new zone's frame
+        glm::mat4 zoneInverse;
         if (!zone) {
             // avatar is going from some zone to no zone
-            _goToPosition = getAbsolutePosition();
-            _goToOrientation = getAbsoluteOrientation();
-            if (rigidBody) {
-                rigidBody->setLinearVelocity(glmToBullet(absoluteRigidBodyVelocity));
-            }
-            _velocity = absoluteVelocity;
-            _targetVelocity = absoluteTargetVelocity;
+            zoneInverse = glm::mat4();
         } else {
             // avatar is either going from no zone to some zone or from some zone to another zone
             Transform newZoneTransform = zone->getGlobalTransform().setScale(1.0f);
-            glm::mat4 zoneInverse;
             newZoneTransform.getInverseMatrix(zoneInverse);
-            _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
-            _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
-            glm::vec3 zoneRelativeRBVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteRigidBodyVelocity, 0.0f));
-            if (rigidBody) {
-                rigidBody->setLinearVelocity(glmToBullet(zoneRelativeRBVelocity));
-            }
-            _velocity = glm::vec3(zoneInverse * glm::vec4(absoluteVelocity, 0.0f));
-            _targetVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteTargetVelocity, 0.0f));
         }
 
+        _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
+        _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         _goToZone = zone;
         _goToPending = true;
+
+        if (rigidBody) {
+            glm::vec3 zoneRelativeRBVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteRigidBodyVelocity, 0.0f));
+            rigidBody->setLinearVelocity(glmToBullet(zoneRelativeRBVelocity));
+        }
+        _velocity = glm::vec3(zoneInverse * glm::vec4(absoluteVelocity, 0.0f));
+        _targetVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteTargetVelocity, 0.0f));
     }
 }
 
