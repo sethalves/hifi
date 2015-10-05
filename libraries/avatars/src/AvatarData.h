@@ -138,8 +138,8 @@ class JointData;
 class AvatarData : public QObject {
     Q_OBJECT
 
-    // XXX rename this back localPosition -> position
-    Q_PROPERTY(glm::vec3 localPosition READ getLocalPosition WRITE setLocalPosition)
+    Q_PROPERTY(glm::vec3 position READ getLocalPosition WRITE setLocalPosition)
+    Q_PROPERTY(glm::vec3 absolutePosition READ getAbsolutePosition)
 
     Q_PROPERTY(float scale READ getTargetScale WRITE setTargetScale)
     Q_PROPERTY(glm::vec3 handPosition READ getHandPosition WRITE setHandPosition)
@@ -147,8 +147,8 @@ class AvatarData : public QObject {
     Q_PROPERTY(float bodyPitch READ getBodyPitch WRITE setBodyPitch)
     Q_PROPERTY(float bodyRoll READ getBodyRoll WRITE setBodyRoll)
 
-    // XXX rename this back localOrientation -> orientation
-    Q_PROPERTY(glm::quat localOrientation READ getLocalOrientation WRITE setLocalOrientation)
+    Q_PROPERTY(glm::quat orientation READ getLocalOrientation WRITE setLocalOrientation)
+    Q_PROPERTY(glm::quat absoluteOrientation READ getAbsoluteOrientation)
 
     Q_PROPERTY(glm::quat headOrientation READ getHeadOrientation WRITE setHeadOrientation)
     Q_PROPERTY(float headPitch READ getHeadPitch WRITE setHeadPitch)
@@ -326,7 +326,7 @@ public:
     
     const AABox& getLocalAABox() const { return _localAABox; }
 
-    QUuid getReferential() const { return _referential; }
+    Q_INVOKABLE QUuid getReferential() const { return _referential; }
     void setReferential(QUuid referential) { _referential = referential; }
 
     int getUsecsSinceLastUpdate() const { return _averageBytesReceived.getUsecsSinceLastEvent(); }
