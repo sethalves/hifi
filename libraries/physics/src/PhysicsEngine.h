@@ -44,8 +44,6 @@ typedef QVector<Collision> CollisionEvents;
 
 class PhysicsEngine {
 public:
-    uint32_t getNumSubsteps();
-
     PhysicsEngine(const glm::vec3& offset);
     ~PhysicsEngine();
     void init();
@@ -56,9 +54,11 @@ public:
     void addObject(ObjectMotionState* motionState);
     void removeObject(ObjectMotionState* motionState);
 
+    void deleteObject(ObjectMotionState* object);
     void deleteObjects(const VectorOfMotionStates& objects);
     void deleteObjects(const SetOfMotionStates& objects); // only called during teardown
     void addObjects(const VectorOfMotionStates& objects);
+    bool changeObject(ObjectMotionState* object);
     VectorOfMotionStates changeObjects(const VectorOfMotionStates& objects);
     void reinsertObject(ObjectMotionState* object);
 
@@ -96,6 +96,8 @@ public:
     EntityActionPointer getActionByID(const QUuid& actionID) const;
     void addAction(EntityActionPointer action);
     void removeAction(const QUuid actionID);
+
+    uint32_t getNumSubsteps() { return _numSubsteps; }
 
 private:
     void removeContacts(ObjectMotionState* motionState);

@@ -37,7 +37,7 @@ QScriptValue HMDScriptingInterface::getHUDLookAtPosition2D(QScriptContext* conte
     if ((&HMDScriptingInterface::getInstance())->getHUDLookAtPosition3D(hudIntersection)) {
         MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
         glm::vec3 sphereCenter = myAvatar->getDefaultEyePosition();
-        glm::vec3 direction = glm::inverse(myAvatar->getOrientation()) * (hudIntersection - sphereCenter);
+        glm::vec3 direction = glm::inverse(myAvatar->getLocalOrientation()) * (hudIntersection - sphereCenter);
         glm::quat rotation = ::rotationBetween(glm::vec3(0.0f, 0.0f, -1.0f), direction);
         glm::vec3 eulers = ::safeEulerAngles(rotation);
         return qScriptValueFromValue<glm::vec2>(engine, Application::getInstance()->getApplicationCompositor()

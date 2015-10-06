@@ -26,9 +26,9 @@ EntityItemPointer RenderableLightEntityItem::factory(const EntityItemID& entityI
 void RenderableLightEntityItem::render(RenderArgs* args) {
     PerformanceTimer perfTimer("RenderableLightEntityItem::render");
     assert(getType() == EntityTypes::Light);
-    glm::vec3 position = getPosition();
+    glm::vec3 position = getGlobalPosition();
     glm::vec3 dimensions = getDimensions();
-    glm::quat rotation = getRotation();
+    glm::quat rotation = getGlobalRotation();
     float largestDiameter = glm::max(dimensions.x, dimensions.y, dimensions.z);
 
     glm::vec3 color = toGlm(getXColor());

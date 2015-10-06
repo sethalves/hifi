@@ -11,6 +11,9 @@
 #ifndef hifi_gpu_Transform_h
 #define hifi_gpu_Transform_h
 
+#include <QtCore/QDebug>
+#include <QtCore/QDataStream>
+
 #include <assert.h>
 
 #include <glm/glm.hpp>

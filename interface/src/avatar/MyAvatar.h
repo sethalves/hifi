@@ -17,6 +17,7 @@
 #include <Rig.h>
 
 #include "Avatar.h"
+#include "PhysicsEngine.h"
 
 class ModelItemID;
 
@@ -182,6 +183,8 @@ public:
     glm::quat getCustomListenOrientation() { return _customListenOrientation; }
     void setCustomListenOrientation(glm::quat customListenOrientation) { _customListenOrientation = customListenOrientation; }
 
+    PhysicsEnginePointer getPhysicsEngine();
+
 public slots:
     void increaseSize();
     void decreaseSize();
@@ -206,10 +209,6 @@ public slots:
     glm::vec3 getRightPalmVelocity();
     glm::vec3 getRightPalmAngularVelocity();
     glm::quat getRightPalmRotation();
-
-    void clearReferential();
-    bool setModelReferential(const QUuid& id);
-    bool setJointReferential(const QUuid& id, int jointIndex);
 
     bool isRecording();
     qint64 recorderElapsed();
@@ -239,6 +238,7 @@ signals:
     void newCollisionSoundURL(const QUrl& url);
     void collisionWithEntity(const Collision& collision);
 
+
 private:
 
     glm::vec3 getWorldBodyPosition() const;
@@ -255,6 +255,7 @@ private:
     bool isMyAvatar() const override { return true; }
     virtual int parseDataFromBuffer(const QByteArray& buffer) override;
     virtual glm::vec3 getSkeletonPosition() const override;
+    virtual const glm::vec3& getAbsoluteSkeletonPosition() const override;
 
     glm::vec3 getScriptedMotorVelocity() const { return _scriptedMotorVelocity; }
     float getScriptedMotorTimescale() const { return _scriptedMotorTimescale; }
@@ -350,6 +351,8 @@ private:
     bool _goToPending;
     glm::vec3 _goToPosition;
     glm::quat _goToOrientation;
+    std::shared_ptr<ZoneEntityItem> _goToZone;
+    std::shared_ptr<ZoneEntityItem> _currentZone;
 
     std::unordered_set<int> _headBoneSet;
     RigPointer _rig;
@@ -358,6 +361,8 @@ private:
     bool _enableDebugDrawBindPose = false;
     bool _enableDebugDrawAnimPose = false;
     AnimSkeleton::ConstPointer _debugDrawSkeleton = nullptr;
+
+    void handleZoneChange();
 
     AudioListenerMode _audioListenerMode;
     glm::vec3 _customListenPosition;

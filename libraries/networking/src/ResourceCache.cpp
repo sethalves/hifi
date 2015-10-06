@@ -207,7 +207,7 @@ Resource::Resource(const QUrl& url, bool delayLoad) :
     init();
     
     // start loading immediately unless instructed otherwise
-    if (!(_startedLoading || delayLoad)) {    
+    if (!(_startedLoading || delayLoad)) {
         QTimer::singleShot(0, this, &Resource::ensureLoading);
     }
 }

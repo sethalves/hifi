@@ -30,6 +30,8 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "EntityActionFactoryInterface.h"
+#include "ZoneEntityItem.h"
+#include "ZoneTracker.h"
 
 
 bool EntityItem::_sendPhysicsUpdates = true;
@@ -46,7 +48,6 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _lastEditedFromRemoteInRemoteTime(0),
     _created(UNKNOWN_CREATED_TIME),
     _changedOnServer(0),
-    _transform(),
     _glowLevel(ENTITY_ITEM_DEFAULT_GLOW_LEVEL),
     _localRenderAlpha(ENTITY_ITEM_DEFAULT_LOCAL_RENDER_ALPHA),
     _density(ENTITY_ITEM_DEFAULT_DENSITY),
@@ -77,12 +78,13 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _dirtyFlags(0),
     _element(nullptr),
     _physicsInfo(nullptr),
-    _simulated(false)
+    _simulated(false),
+    _localTransform()
 {
     // explicitly set transform parts to set dirty flags used by batch rendering
-    _transform.setTranslation(ENTITY_ITEM_DEFAULT_POSITION);
-    _transform.setRotation(ENTITY_ITEM_DEFAULT_ROTATION);
-    _transform.setScale(ENTITY_ITEM_DEFAULT_DIMENSIONS);
+    _localTransform.setTranslation(ENTITY_ITEM_DEFAULT_POSITION);
+    _localTransform.setRotation(ENTITY_ITEM_DEFAULT_ROTATION);
+    _localTransform.setScale(ENTITY_ITEM_DEFAULT_DIMENSIONS);
     quint64 now = usecTimestampNow();
     _lastSimulated = now;
     _lastUpdated = now;
@@ -90,12 +92,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
-    if (simulation) {
-        clearActions(simulation);
-    }
-
+    clearActions();
     // these pointers MUST be correct at delete, else we probably have a dangling backpointer
     // to this EntityItem in the corresponding data structure.
     assert(!_simulated);
@@ -135,6 +132,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_HREF;
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
+    requestedProperties += PROP_PARENT_ID;
 
     return requestedProperties;
 }
@@ -269,7 +267,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
         APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
         APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
-
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, getParentID());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -714,6 +712,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         overwriteLocalData = oldOverwrite;
     }
 
+    READ_ENTITY_PROPERTY(PROP_PARENT_ID, EntityItemID, setParentID);
+
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData);
 
@@ -992,9 +992,13 @@ EntityTreePointer EntityItem::getTree() const {
     return tree;
 }
 
+EntitySimulationPointer EntityItem::getSimulation() const {
+    return _simulation;
+}
+
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
-    glm::mat4 translation = glm::translate(getPosition());
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
+    glm::mat4 translation = glm::translate(getGlobalPosition());
+    glm::mat4 rotation = glm::mat4_cast(getGlobalRotation());
     glm::mat4 scale = glm::scale(getDimensions());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
     return translation * rotation * scale * registration;
@@ -1061,6 +1065,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(href, getHref);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getActionData);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentID, getParentID);
 
     properties._defaultSettings = false;
 
@@ -1123,6 +1128,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(href, setHref);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setActionData);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentID, setParentID);
 
     if (somethingChanged) {
         uint64_t now = usecTimestampNow();
@@ -1165,18 +1171,35 @@ void EntityItem::recordCreationTime() {
 }
 
 const Transform EntityItem::getTransformToCenter() const {
-    Transform result = getTransform();
+    Transform result = getGlobalTransform();
     if (getRegistrationPoint() != ENTITY_ITEM_HALF_VEC3) { // If it is not already centered, translate to center
         result.postTranslate(ENTITY_ITEM_HALF_VEC3 - getRegistrationPoint()); // Position to center
     }
     return result;
 }
 
+Transform EntityItem::getGlobalTransform() const {
+    Transform parentTransform = getParentTransform();
+    Transform parentDescaled = parentTransform.setScale(1.0f);
+    Transform result;
+    Transform::mult(result, parentDescaled, _localTransform);
+    return result;
+}
+
+Transform EntityItem::getParentTransform() const {
+    fixupParentAndSimulation();
+    EntityItemPointer parentEntityItem = _parentZone.lock();
+    if (!parentEntityItem) {
+        return Transform();
+    }
+    return parentEntityItem->getGlobalTransform();
+}
+
 void EntityItem::setDimensions(const glm::vec3& value) {
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
     }
-    _transform.setScale(value);
+    _localTransform.setScale(value);
     requiresRecalcBoxes();
 }
 
@@ -1186,7 +1209,7 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 const AACube& EntityItem::getMaximumAACube() const {
     if (_recalcMaxAACube) {
         // * we know that the position is the center of rotation
-        glm::vec3 centerOfRotation = getPosition(); // also where _registration point is
+        glm::vec3 centerOfRotation = getGlobalPosition(); // also where _registration point is
 
         // * we know that the registration point is the center of rotation
         // * we can calculate the length of the furthest extent from the registration point
@@ -1220,10 +1243,11 @@ const AACube& EntityItem::getMinimumAACube() const {
         glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * getRegistrationPoint());
         glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
         Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-        Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+        Extents rotatedExtentsRelativeToRegistrationPoint =
+            unrotatedExtentsRelativeToRegistrationPoint.getRotated(getGlobalRotation());
 
         // shift the extents to be relative to the position/registration point
-        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getGlobalPosition());
 
         // the cube that best encompasses extents is...
         AABox box(rotatedExtentsRelativeToRegistrationPoint);
@@ -1239,21 +1263,25 @@ const AACube& EntityItem::getMinimumAACube() const {
 }
 
 const AABox& EntityItem::getAABox() const {
+    fixupParentAndSimulation();
     if (_recalcAABox) {
+
         // _position represents the position of the registration point.
         glm::vec3 registrationRemainder = glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint;
 
         glm::vec3 unrotatedMinRelativeToEntity = - (getDimensions() * _registrationPoint);
         glm::vec3 unrotatedMaxRelativeToEntity = getDimensions() * registrationRemainder;
         Extents unrotatedExtentsRelativeToRegistrationPoint = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
-        Extents rotatedExtentsRelativeToRegistrationPoint = unrotatedExtentsRelativeToRegistrationPoint.getRotated(getRotation());
+        Extents rotatedExtentsRelativeToRegistrationPoint =
+            unrotatedExtentsRelativeToRegistrationPoint.getRotated(getGlobalRotation());
 
         // shift the extents to be relative to the position/registration point
-        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getPosition());
+        rotatedExtentsRelativeToRegistrationPoint.shiftBy(getGlobalPosition());
 
         _cachedAABox = AABox(rotatedExtentsRelativeToRegistrationPoint);
         _recalcAABox = false;
     }
+
     return _cachedAABox;
 }
 
@@ -1498,12 +1526,12 @@ void EntityItem::clearSimulationOwnership() {
 }
 
 
-bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer action) {
+bool EntityItem::addAction(EntityActionPointer action) {
     bool result;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
-
-        result = addActionInternal(simulation, action);
+        EntitySimulationPointer simulation = getSimulation();
+        checkWaitingToRemove();
+        result = addActionInternal(action);
         if (!result) {
             removeActionInternal(action->getID());
         } else {
@@ -1514,9 +1542,9 @@ bool EntityItem::addAction(EntitySimulation* simulation, EntityActionPointer act
     return result;
 }
 
-bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPointer action) {
-    assertLocked();
+bool EntityItem::addActionInternal(EntityActionPointer action) {
     assert(action);
+    EntitySimulationPointer simulation = getSimulation();
     assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
     assert(actionOwnerEntity);
@@ -1537,10 +1565,10 @@ bool EntityItem::addActionInternal(EntitySimulation* simulation, EntityActionPoi
     return success;
 }
 
-bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments) {
+bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& arguments) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        checkWaitingToRemove();
 
         if (!_objectActions.contains(actionID)) {
             return;
@@ -1559,24 +1587,21 @@ bool EntityItem::updateAction(EntitySimulation* simulation, const QUuid& actionI
     return success;
 }
 
-bool EntityItem::removeAction(EntitySimulation* simulation, const QUuid& actionID) {
+bool EntityItem::removeAction(const QUuid& actionID) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        EntitySimulationPointer simulation = getSimulation();
+        checkWaitingToRemove();
         success = removeActionInternal(actionID);
     });
     return success;
 }
 
-bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* simulation) {
-    assertWriteLocked();
+
+bool EntityItem::removeActionInternal(const QUuid& actionID) {
     _previouslyDeletedActions.insert(actionID, usecTimestampNow());
     if (_objectActions.contains(actionID)) {
-        if (!simulation) {
-            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-            simulation = entityTree ? entityTree->getSimulation() : nullptr;
-        }
-
+        EntitySimulationPointer simulation = getSimulation();
         EntityActionPointer action = _objectActions[actionID];
         action->setOwnerEntity(nullptr);
         _objectActions.remove(actionID);
@@ -1593,7 +1618,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulation* s
     return false;
 }
 
-bool EntityItem::clearActions(EntitySimulation* simulation) {
+bool EntityItem::clearActions() {
     withWriteLock([&] {
         QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
         while (i != _objectActions.end()) {
@@ -1601,7 +1626,7 @@ bool EntityItem::clearActions(EntitySimulation* simulation) {
             EntityActionPointer action = _objectActions[id];
             i = _objectActions.erase(i);
             action->setOwnerEntity(nullptr);
-            action->removeFromSimulation(simulation);
+            action->removeFromSimulation(getSimulation());
         }
         // empty _serializedActions means no actions for the EntityItem
         _actionsToRemove.clear();
@@ -1613,7 +1638,6 @@ bool EntityItem::clearActions(EntitySimulation* simulation) {
 
 
 void EntityItem::deserializeActions() {
-    assertUnlocked();
     withWriteLock([&] {
         deserializeActionsInternal();
     });
@@ -1621,8 +1645,6 @@ void EntityItem::deserializeActions() {
 
 
 void EntityItem::deserializeActionsInternal() {
-    assertWriteLocked();
-
     quint64 now = usecTimestampNow();
 
     if (!_element) {
@@ -1630,10 +1652,7 @@ void EntityItem::deserializeActionsInternal() {
     }
 
     // Keep track of which actions got added or updated by the new actionData
-
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    assert(entityTree);
-    EntitySimulation* simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    EntitySimulationPointer simulation = getSimulation();
     assert(simulation);
 
     QVector<QByteArray> serializedActions;
@@ -1667,7 +1686,7 @@ void EntityItem::deserializeActionsInternal() {
             EntityItemPointer entity = shared_from_this();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
-                entity->addActionInternal(simulation, action);
+                entity->addActionInternal(action);
                 action->locallyAddedButNotYetReceived = false;
             }
         }
@@ -1702,31 +1721,26 @@ void EntityItem::deserializeActionsInternal() {
     return;
 }
 
-void EntityItem::checkWaitingToRemove(EntitySimulation* simulation) {
-    assertLocked();
+void EntityItem::checkWaitingToRemove() {
     foreach(QUuid actionID, _actionsToRemove) {
-        removeActionInternal(actionID, simulation);
+        removeActionInternal(actionID);
     }
     _actionsToRemove.clear();
 }
 
 void EntityItem::setActionData(QByteArray actionData) {
-    assertUnlocked();
     withWriteLock([&] {
         setActionDataInternal(actionData);
     });
 }
 
 void EntityItem::setActionDataInternal(QByteArray actionData) {
-    assertWriteLocked();
     checkWaitingToRemove();
     _allActionsDataCache = actionData;
     deserializeActionsInternal();
 }
 
 void EntityItem::serializeActions(bool& success, QByteArray& result) const {
-    assertLocked();
-
     if (_objectActions.size() == 0) {
         success = true;
         result.clear();
@@ -1768,7 +1782,6 @@ const QByteArray EntityItem::getActionDataInternal() const {
 
 const QByteArray EntityItem::getActionData() const {
     QByteArray result;
-    assertUnlocked();
     withReadLock([&] {
         result = getActionDataInternal();
     });
@@ -1786,4 +1799,79 @@ QVariantMap EntityItem::getActionArguments(const QUuid& actionID) const {
     });
 
     return result;
+}
+
+void EntityItem::fixupParentAndSimulation() const {
+    // considerations:
+    // 1 -- is _parentIDSet true?
+    // 2 -- is _parentID null or a non-zero uuid?
+    // 3 -- is _parentZone null or does it point to a zone?
+    // 4 -- if _parentID is non-null and _parentZone is non-null, do they agree?
+    // 5 -- if _parentZone points to a zone, does that zone have physics enabled?
+    // 6 -- is _simulation null or non-null?
+
+
+    if (!_parentIDSet) {
+        return;
+    }
+    EntityTreePointer tree = getTree();
+    EntityItemPointer unconstThis = const_cast<EntityItem*>(this)->shared_from_this();
+    if (!tree) {
+        removeFromSimulation();
+        _parentZone.reset();
+        return;
+    }
+    // if the ID has changed, clear the old pointer
+    if (_parentID != UNKNOWN_ENTITY_ID) {
+        EntityItemPointer parentEntityItem = _parentZone.lock();
+        if (parentEntityItem && parentEntityItem->getID() != _parentID) {
+            removeFromSimulation();
+            _parentZone.reset();
+        }
+    }
+    // if the ID is non-null and we don't have a pointer, find the parent entity
+    if (_parentID != UNKNOWN_ENTITY_ID && _parentZone.expired()) {
+        _parentZone = tree->findEntityByID(_parentID);
+        EntityItemPointer parentEntityItem = _parentZone.lock();
+        if (parentEntityItem) {
+            auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(parentEntityItem);
+            _simulation = zone->getSimulation();
+            if (!_simulation) {
+                return;
+            }
+            _simulation->addEntity(unconstThis);
+        }
+    }
+    // if the ID is null and we have a parent pointer, clear it
+    if (_parentID == UNKNOWN_ENTITY_ID && !_parentZone.expired()) {
+        _simulation = getTree()->getSimulation();
+        _simulation->addEntity(unconstThis);
+        _parentZone.reset();
+    }
+
+    if (_parentID == UNKNOWN_ENTITY_ID && !_simulation) {
+        _simulation = getTree()->getSimulation();
+        if (_simulation) {
+            _simulation->addEntity(unconstThis);
+        }
+    }
+}
+
+void EntityItem::removeFromSimulation() const {
+    if (_simulation) {
+        EntityItemPointer unconstThis = const_cast<EntityItem*>(this)->shared_from_this();
+        _simulation->removeEntity(unconstThis);
+        _simulation.reset();
+    }
+}
+
+void EntityItem::setParentID(const EntityItemID& parentID) {
+    _parentIDSet = true;
+    if (_parentID == parentID) {
+        return;
+    }
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    zoneTracker->setParent(_id, parentID);
+    _parentID = parentID;
+    requiresRecalcBoxes();
 }

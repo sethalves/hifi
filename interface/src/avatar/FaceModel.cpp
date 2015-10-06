@@ -29,12 +29,12 @@ void FaceModel::simulate(float deltaTime, bool fullUpdate) {
     Avatar* owningAvatar = static_cast<Avatar*>(_owningHead->_owningAvatar);
     glm::vec3 neckPosition;
     if (!owningAvatar->getSkeletonModel().getNeckPosition(neckPosition)) {
-        neckPosition = owningAvatar->getPosition();
+        neckPosition = owningAvatar->getLocalPosition();
     }
     setTranslation(neckPosition);
     glm::quat neckParentRotation;
     if (!owningAvatar->getSkeletonModel().getNeckParentRotationFromDefaultOrientation(neckParentRotation)) {
-        neckParentRotation = owningAvatar->getOrientation();
+        neckParentRotation = owningAvatar->getLocalOrientation();
     }
     setRotation(neckParentRotation);
     setScale(glm::vec3(1.0f, 1.0f, 1.0f) * _owningHead->getScale());

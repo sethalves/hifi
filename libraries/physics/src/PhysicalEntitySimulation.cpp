@@ -24,11 +24,8 @@ PhysicalEntitySimulation::~PhysicalEntitySimulation() {
 }
 
 void PhysicalEntitySimulation::init(
-        EntityTreePointer tree,
         PhysicsEnginePointer physicsEngine,
         EntityEditPacketSender* packetSender) {
-    assert(tree);
-    setEntityTree(tree);
 
     assert(physicsEngine);
     _physicsEngine = physicsEngine;
@@ -44,7 +41,7 @@ void PhysicalEntitySimulation::updateEntitiesInternal(const quint64& now) {
 
 void PhysicalEntitySimulation::addEntityInternal(EntityItemPointer entity) {
     assert(entity);
-    if (entity->shouldBePhysical()) { 
+    if (entity->shouldBePhysical()) {
         EntityMotionState* motionState = static_cast<EntityMotionState*>(entity->getPhysicsInfo());
         if (!motionState) {
             _pendingAdds.insert(entity);
@@ -272,4 +269,12 @@ void PhysicalEntitySimulation::applyActionChanges() {
         }
     }
     EntitySimulation::applyActionChanges();
+}
+
+
+uint32_t PhysicalEntitySimulation::getWorldSimulationStep() const {
+    if (_physicsEngine) {
+        return _physicsEngine->getNumSubsteps();
+    }
+    return 0;
 }

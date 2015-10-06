@@ -18,28 +18,57 @@
 #include <DependencyManager.h>
 #include <GeometryCache.h>
 #include <PerfStat.h>
+#include <ZoneTracker.h>
 
 // Sphere entities should fit inside a cube entity of the same size, so a sphere that has dimensions 1x1x1
 // is a half unit sphere.  However, the geometry cache renders a UNIT sphere, so we need to scale down.
 static const float SPHERE_ENTITY_SCALE = 0.5f;
 
 EntityItemPointer RenderableZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
-    return std::make_shared<RenderableZoneEntityItem>(entityID, properties);
+
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    EntitySimulationPointer physParentSim = zoneTracker->getDefaultTree()->getSimulation();
+
+    EntityEditPacketSender* sender =
+        std::static_pointer_cast<PhysicalEntitySimulation>(physParentSim)->getPacketSender();
+
+    auto result = std::make_shared<RenderableZoneEntityItem>(entityID, properties, sender);
+    zoneTracker->trackZone(result);
+
+    return result;
+}
+
+
+RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityItemID,
+                                                   const EntityItemProperties& properties,
+                                                   EntityEditPacketSender* sender) :
+    ZoneEntityItem(entityItemID, properties),
+    _model(nullptr),
+    _needsInitialSimulation(true),
+    _physicsEngine(new PhysicsEngine(Vectors::ZERO)) {
+    _physicsEngine->init();
+    _subEntitySimulation = EntitySimulationPointer(new PhysicalEntitySimulation());
+    std::static_pointer_cast<PhysicalEntitySimulation>(_subEntitySimulation)->init(_physicsEngine, sender);
+}
+
+
+RenderableZoneEntityItem::~RenderableZoneEntityItem() {
 }
 
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
     QString oldShapeURL = getCompoundShapeURL();
-    glm::vec3 oldPosition = getPosition(), oldDimensions = getDimensions();
+    glm::vec3 oldPosition = getPosition();
     glm::quat oldRotation = getRotation();
-    
+    glm::vec3 oldDimensions = getDimensions();
+
     setNewProperties();
-    
+
     if (oldShapeURL != getCompoundShapeURL()) {
         if (_model) {
             delete _model;
         }
-        
+
         _model = getModel();
         _needsInitialSimulation = true;
         _model->setURL(getCompoundShapeURL());
@@ -80,8 +109,8 @@ Model* RenderableZoneEntityItem::getModel() {
 void RenderableZoneEntityItem::initialSimulation() {
     _model->setScaleToFit(true, getDimensions());
     _model->setSnapModelToRegistrationPoint(true, getRegistrationPoint());
-    _model->setRotation(getRotation());
-    _model->setTranslation(getPosition());
+    _model->setRotation(getGlobalRotation());
+    _model->setTranslation(getGlobalPosition());
     _model->simulate(0.0f);
     _needsInitialSimulation = false;
 }
@@ -212,4 +241,9 @@ void RenderableZoneEntityItem::removeFromScene(EntityItemPointer self, std::shar
     if (_model) {
         _model->removeFromScene(scene, pendingChanges);
     }
+}
+
+void RenderableZoneEntityItem::setHasSubphysics(bool hasSubphysics) {
+    // XXX
+    _hasSubphysics = hasSubphysics;
 }

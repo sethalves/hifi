@@ -30,6 +30,7 @@
 #include "EntityTypes.h"
 #include "SimulationOwner.h"
 
+
 class EntitySimulation;
 class EntityTreeElement;
 class EntityTreeElementExtraEncodeData;
@@ -69,37 +70,14 @@ const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
-//#if DEBUG
-//  #define assertLocked() assert(isLocked())
-//#else
-//  #define assertLocked()
-//#endif
-//
-//#if DEBUG
-//  #define assertWriteLocked() assert(isWriteLocked())
-//#else
-//  #define assertWriteLocked()
-//#endif
-//
-//#if DEBUG
-//  #define assertUnlocked() assert(isUnlocked())
-//#else
-//  #define assertUnlocked()
-//#endif
-#define assertLocked()
-#define assertUnlocked()
-#define assertWriteLocked()
+class EntitySimulation;
+typedef std::shared_ptr<EntitySimulation> EntitySimulationPointer;
+
 
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
 /// one directly, instead you must only construct one of it's derived classes with additional features.
 class EntityItem : public std::enable_shared_from_this<EntityItem>, public ReadWriteLockable {
-    // These two classes manage lists of EntityItem pointers and must be able to cleanup pointers when an EntityItem is deleted.
-    // To make the cleanup robust each EntityItem has backpointers to its manager classes (which are only ever set/cleared by
-    // the managers themselves, hence they are fiends) whose NULL status can be used to determine which managers still need to
-    // do cleanup.
-    friend class EntityTreeElement;
-    friend class EntitySimulation;
 public:
     enum EntityDirtyFlags {
         DIRTY_POSITION = 0x0001,
@@ -214,20 +192,13 @@ public:
     EntityTypes::EntityType getType() const { return _type; }
 
     inline glm::vec3 getCenterPosition() const { return getTransformToCenter().getTranslation(); }
-    void setCenterPosition(const glm::vec3& position);
-
     const Transform getTransformToCenter() const;
-    void setTranformToCenter(const Transform& transform);
+    Transform getGlobalTransform() const;
+    Transform getParentTransform() const;
 
-    inline const Transform& getTransform() const { return _transform; }
-    inline void setTransform(const Transform& transform) { _transform = transform; requiresRecalcBoxes(); }
-
-    /// Position in meters (-TREE_SCALE - TREE_SCALE)
-    inline const glm::vec3& getPosition() const { return _transform.getTranslation(); }
-    inline void setPosition(const glm::vec3& value) { _transform.setTranslation(value); requiresRecalcBoxes(); }
-
-    inline const glm::quat& getRotation() const { return _transform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _transform.setRotation(rotation); requiresRecalcBoxes(); }
+    /// Position in meters (-TREE_SCALE TREE_SCALE)
+    glm::vec3 getGlobalPosition() const { return getGlobalTransform().getTranslation(); }
+    glm::quat getGlobalRotation() const { return getGlobalTransform().getRotation(); }
 
     inline void requiresRecalcBoxes() { _recalcAABox = true; _recalcMinAACube = true; _recalcMaxAACube = true; }
 
@@ -239,7 +210,7 @@ public:
     void setDescription(QString value) { _description = value; }
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3& getDimensions() const { return _transform.getScale(); }
+    inline const glm::vec3& getDimensions() const { return _localTransform.getScale(); }
     virtual void setDimensions(const glm::vec3& value);
 
     float getGlowLevel() const { return _glowLevel; }
@@ -395,7 +366,10 @@ public:
 
     void setPhysicsInfo(void* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
+    void setElement(EntityTreeElementPointer newElement) { _element = newElement; }
     EntityTreePointer getTree() const;
+    EntitySimulationPointer getSimulation() const;
+    void removeFromSimulation() const;
 
     static void setSendPhysicsUpdates(bool value) { _sendPhysicsUpdates = value; }
     static bool getSendPhysicsUpdates() { return _sendPhysicsUpdates; }
@@ -411,10 +385,10 @@ public:
 
     void flagForOwnership() { _dirtyFlags |= DIRTY_SIMULATOR_OWNERSHIP; }
 
-    bool addAction(EntitySimulation* simulation, EntityActionPointer action);
-    bool updateAction(EntitySimulation* simulation, const QUuid& actionID, const QVariantMap& arguments);
-    bool removeAction(EntitySimulation* simulation, const QUuid& actionID);
-    bool clearActions(EntitySimulation* simulation);
+    bool addAction(EntityActionPointer action);
+    bool updateAction(const QUuid& actionID, const QVariantMap& arguments);
+    bool removeAction(const QUuid& actionID);
+    bool clearActions();
     void setActionData(QByteArray actionData);
     const QByteArray getActionData() const;
     bool hasActions() { return !_objectActions.empty(); }
@@ -423,7 +397,28 @@ public:
     void deserializeActions();
     void setActionDataDirty(bool value) const { _actionDataDirty = value; }
 
+    virtual void setParentID(const EntityItemID& parentID);
+    virtual const EntityItemID& getParentID() const { return _parentID; }
+
+    void fixupParentAndSimulation() const;
+
+    // give physics related code access to the parent-relative coordinates
+    inline const glm::vec3& getPhysicsPosition() const { return _localTransform.getTranslation(); }
+    inline void setPhysicsPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getPhysicsRotation() const { return _localTransform.getRotation(); }
+    inline void setPhysicsRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+
+    inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
+    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
+    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+
+    bool getSimulated() const { return _simulated; }
+    void setSimulated(bool simulated) { _simulated = simulated; }
+
 protected:
+
+    bool _parentIDSet = false;
 
     const QByteArray getActionDataInternal() const;
     void setActionDataInternal(QByteArray actionData);
@@ -442,14 +437,13 @@ protected:
     quint64 _created;
     quint64 _changedOnServer;
 
-    Transform _transform;
     mutable AABox _cachedAABox;
     mutable AACube _maxAACube;
     mutable AACube _minAACube;
     mutable bool _recalcAABox = true;
     mutable bool _recalcMinAACube = true;
     mutable bool _recalcMaxAACube = true;
-    
+
     float _glowLevel;
     float _localRenderAlpha;
     float _density = ENTITY_ITEM_DEFAULT_DENSITY; // kg/m^3
@@ -501,12 +495,12 @@ protected:
     uint32_t _dirtyFlags;   // things that have changed from EXTERNAL changes (via script or packet) but NOT from simulation
 
     // these backpointers are only ever set/cleared by friends:
-    EntityTreeElementPointer _element = nullptr; // set by EntityTreeElement
+    EntityTreeElementPointer _element; // set by EntityTreeElement
     void* _physicsInfo = nullptr; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
-    bool addActionInternal(EntitySimulation* simulation, EntityActionPointer action);
-    bool removeActionInternal(const QUuid& actionID, EntitySimulation* simulation = nullptr);
+    bool addActionInternal(EntityActionPointer action);
+    bool removeActionInternal(const QUuid& actionID);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
@@ -517,9 +511,17 @@ protected:
     // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
     // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
     // are used to keep track of and work around this situation.
-    void checkWaitingToRemove(EntitySimulation* simulation = nullptr);
+    void checkWaitingToRemove();
     mutable QSet<QUuid> _actionsToRemove;
     mutable bool _actionDataDirty = false;
+
+    EntityItemID _parentID{UNKNOWN_ENTITY_ID};
+    mutable EntityItemWeakPointer _parentZone;
+
+    mutable EntitySimulationPointer _simulation;
+
+    Transform _localTransform;
+
     // _previouslyDeletedActions is used to avoid an action being re-added due to server round-trip lag
     static quint64 _rememberDeletedActionTime;
     mutable QHash<QUuid, quint64> _previouslyDeletedActions;

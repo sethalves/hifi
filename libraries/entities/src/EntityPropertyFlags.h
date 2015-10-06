@@ -143,6 +143,9 @@ enum EntityPropertyList {
     PROP_AZIMUTH_START,
     PROP_AZIMUTH_FINISH,
 
+    PROP_PARENT_ID,
+    PROP_HAS_SUBPHYSICS,
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,

@@ -267,7 +267,7 @@ OctreeElementPointer MovingEntitiesOperator::possiblyCreateChildAt(OctreeElement
     if (_foundNewCount < _lookingCount) {
 
         float childElementScale = element->getAACube().getScale() / 2.0f; // all of our children will be half our scale
-    
+
         // check against each of our entities
         foreach(const EntityToMoveDetails& details, _entitiesToMove) {
 

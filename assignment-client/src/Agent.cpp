@@ -26,9 +26,9 @@
 
 #include <WebSocketServerClass.h>
 #include <EntityScriptingInterface.h> // TODO: consider moving to scriptengine.h
+#include <ZoneTracker.h>
 
 #include "avatars/ScriptableAvatar.h"
-
 #include "Agent.h"
 
 static const int RECEIVED_AUDIO_STREAM_CAPACITY_FRAMES = 10;
@@ -200,6 +200,8 @@ void Agent::run() {
     _entityViewer.init();
     
     entityScriptingInterface->setEntityTree(_entityViewer.getTree());
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
+    zoneTracker->setDefaultTree(_entityViewer.getTree());
 
     // wire up our additional agent related processing to the update signal
     QObject::connect(_scriptEngine.get(), &ScriptEngine::update, this, &Agent::processAgentAvatarAndAudio);
@@ -328,7 +330,7 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
                 audioPacket->writePrimitive(SCRIPT_AUDIO_BUFFER_SAMPLES);
 
                 // use the orientation and position of this avatar for the source of this audio
-                audioPacket->writePrimitive(_avatarData->getPosition());
+                audioPacket->writePrimitive(_avatarData->getAbsolutePosition());
                 glm::quat headOrientation = _avatarData->getHeadOrientation();
                 audioPacket->writePrimitive(headOrientation);
 
@@ -337,7 +339,7 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
                 audioPacket->writePrimitive((quint8)0);
 
                 // use the orientation and position of this avatar for the source of this audio
-                audioPacket->writePrimitive(_avatarData->getPosition());
+                audioPacket->writePrimitive(_avatarData->getAbsolutePosition());
                 glm::quat headOrientation = _avatarData->getHeadOrientation();
                 audioPacket->writePrimitive(headOrientation);
 

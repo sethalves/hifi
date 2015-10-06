@@ -37,7 +37,7 @@ void ObjectAction::updateAction(btCollisionWorld* collisionWorld, btScalar delta
             EntityItemPointer ownerEntity = _ownerEntity.lock();
             _active = false;
             if (ownerEntity) {
-                ownerEntity->removeAction(nullptr, getID());
+                ownerEntity->removeAction(getID());
             }
         }
     }
@@ -86,7 +86,7 @@ QVariantMap ObjectAction::getArguments() {
 void ObjectAction::debugDraw(btIDebugDraw* debugDrawer) {
 }
 
-void ObjectAction::removeFromSimulation(EntitySimulation* simulation) const {
+void ObjectAction::removeFromSimulation(EntitySimulationPointer simulation) const {
     simulation->removeAction(_id);
 }
 
@@ -125,7 +125,7 @@ void ObjectAction::setPosition(glm::vec3 position) {
 glm::quat ObjectAction::getRotation() {
     auto rigidBody = getRigidBody();
     if (!rigidBody) {
-        return glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+        return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
     }
     return bulletToGLM(rigidBody->getOrientation());
 }

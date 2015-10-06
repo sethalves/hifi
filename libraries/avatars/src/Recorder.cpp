@@ -44,8 +44,8 @@ void Recorder::startRecording() {
     RecordingContext& context = _recording->getContext();
     context.globalTimestamp = usecTimestampNow();
     context.domain = DependencyManager::get<NodeList>()->getDomainHandler().getHostname();
-    context.position = _avatar->getPosition();
-    context.orientation = _avatar->getOrientation();
+    context.position = _avatar->getLocalPosition();
+    context.orientation = _avatar->getLocalOrientation();
     context.scale = _avatar->getTargetScale();
     context.headModel = _avatar->getFaceModelURL().toString();
     context.skeletonModel = _avatar->getSkeletonModelURL().toString();
@@ -101,8 +101,8 @@ void Recorder::record() {
         RecordingFrame frame;
         frame.setBlendshapeCoefficients(_avatar->getHeadData()->getBlendshapeCoefficients());
         frame.setJointRotations(_avatar->getJointRotations());
-        frame.setTranslation(context.orientationInv * (_avatar->getPosition() - context.position));
-        frame.setRotation(context.orientationInv * _avatar->getOrientation());
+        frame.setTranslation(context.orientationInv * (_avatar->getLocalPosition() - context.position));
+        frame.setRotation(context.orientationInv * _avatar->getLocalOrientation());
         frame.setScale(_avatar->getTargetScale() / context.scale);
         
         

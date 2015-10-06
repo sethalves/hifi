@@ -112,7 +112,12 @@ public:
     static const glm::vec3 DEFAULT_KEYLIGHT_DIRECTION;
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
-    
+
+    EntitySimulationPointer getSubEntitySimulation() { return _subEntitySimulation; }
+
+    virtual void setHasSubphysics(bool hasSubphysics) { _hasSubphysics = hasSubphysics; }
+    virtual bool getHasSubphysics() const { return _hasSubphysics; }
+
 protected:
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;
@@ -131,6 +136,9 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
+
+    bool _hasSubphysics = false;
+    EntitySimulationPointer _subEntitySimulation;
 };
 
 #endif // hifi_ZoneEntityItem_h

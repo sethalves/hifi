@@ -29,7 +29,7 @@ public:
     ObjectAction(EntityActionType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectAction();
 
-    virtual void removeFromSimulation(EntitySimulation* simulation) const;
+    virtual void removeFromSimulation(EntitySimulationPointer simulation) const;
     virtual EntityItemWeakPointer getOwnerEntity() const { return _ownerEntity; }
     virtual void setOwnerEntity(const EntityItemPointer ownerEntity) { _ownerEntity = ownerEntity; }
 

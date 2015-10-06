@@ -134,7 +134,7 @@ glm::vec3 RenderablePolyVoxEntityItem::getSurfacePositionAdjustment() const {
 glm::mat4 RenderablePolyVoxEntityItem::voxelToLocalMatrix() const {
     glm::vec3 scale = getDimensions() / _voxelVolumeSize; // meters / voxel-units
     glm::vec3 center = getCenterPosition();
-    glm::vec3 position = getPosition();
+    glm::vec3 position = getGlobalPosition();
     glm::vec3 positionToCenter = center - position;
     positionToCenter -= getDimensions() * Vectors::HALF - getSurfacePositionAdjustment();
     glm::mat4 centerToCorner = glm::translate(glm::mat4(), positionToCenter);
@@ -148,8 +148,8 @@ glm::mat4 RenderablePolyVoxEntityItem::localToVoxelMatrix() const {
 }
 
 glm::mat4 RenderablePolyVoxEntityItem::voxelToWorldMatrix() const {
-    glm::mat4 rotation = glm::mat4_cast(getRotation());
-    glm::mat4 translation = glm::translate(getPosition());
+    glm::mat4 rotation = glm::mat4_cast(getGlobalRotation());
+    glm::mat4 translation = glm::translate(getGlobalPosition());
     return translation * rotation * voxelToLocalMatrix();
 }
 
@@ -365,7 +365,7 @@ bool RenderablePolyVoxEntityItem::findDetailedRayIntersection(const glm::vec3& o
 
     // the PolyVox ray intersection code requires a near and far point.
     // set ray cast length to long enough to cover all of the voxel space
-    float distanceToEntity = glm::distance(origin, getPosition());
+    float distanceToEntity = glm::distance(origin, getGlobalPosition());
     float largestDimension = glm::max(getDimensions().x, getDimensions().y, getDimensions().z) * 2.0f;
     glm::vec3 farPoint = origin + normDirection * (distanceToEntity + largestDimension);
 
@@ -855,10 +855,8 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync() {
     properties.setVoxelDataDirty();
     properties.setLastEdited(now);
 
-    EntityTreeElementPointer element = getElement();
-    EntityTreePointer tree = element ? element->getTree() : nullptr;
-    EntitySimulation* simulation = tree ? tree->getSimulation() : nullptr;
-    PhysicalEntitySimulation* peSimulation = static_cast<PhysicalEntitySimulation*>(simulation);
+    EntitySimulationPointer simulation = getSimulation();
+    std::shared_ptr<PhysicalEntitySimulation> peSimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
     EntityEditPacketSender* packetSender = peSimulation ? peSimulation->getPacketSender() : nullptr;
     if (packetSender) {
         packetSender->queueEditEntityMessage(PacketType::EntityEdit, _id, properties);

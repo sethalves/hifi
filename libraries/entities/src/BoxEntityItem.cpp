@@ -100,7 +100,7 @@ void BoxEntityItem::debugDump() const {
     quint64 now = usecTimestampNow();
     qCDebug(entities) << "   BOX EntityItem id:" << getEntityItemID() << "---------------------------------------------";
     qCDebug(entities) << "               color:" << _color[0] << "," << _color[1] << "," << _color[2];
-    qCDebug(entities) << "            position:" << debugTreeVector(getPosition());
+    qCDebug(entities) << "            position:" << debugTreeVector(getGlobalPosition());
     qCDebug(entities) << "          dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
 }

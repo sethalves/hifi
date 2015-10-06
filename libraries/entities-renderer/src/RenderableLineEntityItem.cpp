@@ -46,8 +46,8 @@ void RenderableLineEntityItem::render(RenderArgs* args) {
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
     Transform transform = Transform();
-    transform.setTranslation(getPosition());
-    transform.setRotation(getRotation());
+    transform.setTranslation(getGlobalPosition());
+    transform.setRotation(getGlobalRotation());
     batch.setModelTransform(transform);
 
     if (getLinePoints().size() > 1) {

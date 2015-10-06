@@ -102,11 +102,11 @@ bool HandData::findSpherePenetration(const glm::vec3& penetratorCenter, float pe
 }
 
 glm::quat HandData::getBaseOrientation() const {
-    return _owningAvatarData->getOrientation();
+    return _owningAvatarData->getLocalOrientation();
 }
 
 glm::vec3 HandData::getBasePosition() const {
-    return _owningAvatarData->getPosition();
+    return _owningAvatarData->getLocalPosition();
 }
 
 float HandData::getBaseScale() const {

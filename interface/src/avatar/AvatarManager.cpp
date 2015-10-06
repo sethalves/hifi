@@ -151,7 +151,7 @@ void AvatarManager::simulateAvatarFades(float deltaTime) {
     while (fadingIterator != _avatarFades.end()) {
         auto avatar = std::static_pointer_cast<Avatar>(*fadingIterator);
         avatar->startUpdate();
-        avatar->setTargetScale(avatar->getScale() * SHRINK_RATE, true);
+        avatar->setTargetScale(avatar->getScale() * SHRINK_RATE);
         if (avatar->getTargetScale() < MIN_FADE_SCALE) {
             avatar->removeFromScene(*fadingIterator, scene, pendingChanges);
             fadingIterator = _avatarFades.erase(fadingIterator);
@@ -296,7 +296,8 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
                 // but most avatars are roughly the same size, so let's not be so fancy yet.
                 const float AVATAR_STRETCH_FACTOR = 1.0f;
 
-                AudioInjector::playSound(collisionSoundURL, energyFactorOfFull, AVATAR_STRETCH_FACTOR, myAvatar->getPosition());
+                AudioInjector::playSound(collisionSoundURL, energyFactorOfFull, AVATAR_STRETCH_FACTOR,
+                                         myAvatar->getAbsolutePosition());
                 myAvatar->collisionWithEntity(collision);
             }
         }

@@ -57,7 +57,7 @@ typedef unsigned long long quint64;
 #include "PathUtils.h"
 #include "Player.h"
 #include "Recorder.h"
-#include "Referential.h"
+#include "Transform.h"
 
 using AvatarSharedPointer = std::shared_ptr<AvatarData>;
 using AvatarWeakPointer = std::weak_ptr<AvatarData>;
@@ -138,14 +138,18 @@ class JointData;
 class AvatarData : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(glm::vec3 position READ getPosition WRITE setPosition)
+    Q_PROPERTY(glm::vec3 position READ getLocalPosition WRITE setLocalPosition)
+    Q_PROPERTY(glm::vec3 absolutePosition READ getAbsolutePosition)
+
     Q_PROPERTY(float scale READ getTargetScale WRITE setTargetScale)
     Q_PROPERTY(glm::vec3 handPosition READ getHandPosition WRITE setHandPosition)
     Q_PROPERTY(float bodyYaw READ getBodyYaw WRITE setBodyYaw)
     Q_PROPERTY(float bodyPitch READ getBodyPitch WRITE setBodyPitch)
     Q_PROPERTY(float bodyRoll READ getBodyRoll WRITE setBodyRoll)
 
-    Q_PROPERTY(glm::quat orientation READ getOrientation WRITE setOrientation)
+    Q_PROPERTY(glm::quat orientation READ getLocalOrientation WRITE setLocalOrientation)
+    Q_PROPERTY(glm::quat absoluteOrientation READ getAbsoluteOrientation)
+
     Q_PROPERTY(glm::quat headOrientation READ getHeadOrientation WRITE setHeadOrientation)
     Q_PROPERTY(float headPitch READ getHeadPitch WRITE setHeadPitch)
     Q_PROPERTY(float headYaw READ getHeadYaw WRITE setHeadYaw)
@@ -173,8 +177,15 @@ public:
 
     const QUuid& getSessionUUID() const { return _sessionUUID; }
 
-    const glm::vec3& getPosition() const;
-    virtual void setPosition(const glm::vec3 position, bool overideReferential = false);
+    virtual Transform getParentTransform() const { assert(false); return Transform(); }
+
+    const glm::vec3& getLocalPosition() const;
+    virtual const glm::vec3& getAbsolutePosition() const;
+    virtual void setLocalPosition(const glm::vec3 position);
+
+    virtual const glm::quat& getLocalOrientation() const;
+    virtual void setLocalOrientation(const glm::quat& orientation);
+    virtual const glm::quat& getAbsoluteOrientation() const;
 
     glm::vec3 getHandPosition() const;
     void setHandPosition(const glm::vec3& handPosition);
@@ -197,9 +208,6 @@ public:
     void setBodyPitch(float bodyPitch) { _bodyPitch = bodyPitch; }
     float getBodyRoll() const { return _bodyRoll; }
     void setBodyRoll(float bodyRoll) { _bodyRoll = bodyRoll; }
-
-    glm::quat getOrientation() const;
-    virtual void setOrientation(const glm::quat& orientation, bool overideReferential = false);
 
     void nextAttitude(glm::vec3 position, glm::quat orientation); // Can be safely called at any time.
     void startCapture();    // start/end of the period in which the latest values are about to be captured for camera, etc.
@@ -233,8 +241,8 @@ public:
 
     //  Scale
     float getTargetScale() const;
-    void setTargetScale(float targetScale, bool overideReferential = false);
-    void setClampedTargetScale(float targetScale, bool overideReferential = false);
+    void setTargetScale(float targetScale);
+    void setClampedTargetScale(float targetScale);
 
     //  Hand State
     Q_INVOKABLE void setHandState(char s) { _handState = s; }
@@ -317,7 +325,9 @@ public:
     void setOwningAvatarMixer(const QWeakPointer<Node>& owningAvatarMixer) { _owningAvatarMixer = owningAvatarMixer; }
     
     const AABox& getLocalAABox() const { return _localAABox; }
-    const Referential* getReferential() const { return _referential; }
+
+    Q_INVOKABLE QUuid getReferential() const { return _referential; }
+    void setReferential(QUuid referential) { _referential = referential; }
 
     int getUsecsSinceLastUpdate() const { return _averageBytesReceived.getUsecsSinceLastEvent(); }
     int getAverageBytesReceivedPerSecond() const;
@@ -337,7 +347,6 @@ public slots:
     void setBillboardFromNetworkReply();
     void setJointMappingsFromNetworkReply();
     void setSessionUUID(const QUuid& sessionUUID) { _sessionUUID = sessionUUID; }
-    bool hasReferential();
     
     bool isPlaying();
     bool isPaused();
@@ -364,10 +373,10 @@ public slots:
     
 protected:
     QUuid _sessionUUID;
-    glm::vec3 _position = START_LOCATION;
+
     glm::vec3 _handPosition;
     
-    Referential* _referential;
+    QUuid _referential;
 
     //  Body rotation
     float _bodyYaw;     // degrees
@@ -419,7 +428,6 @@ protected:
     
     /// Loads the joint indices, names from the FST file (if any)
     virtual void updateJointMappings();
-    void changeReferential(Referential* ref);
 
     glm::vec3 _velocity;
     glm::vec3 _targetVelocity;
@@ -435,6 +443,9 @@ private:
     // privatize the copy constructor and assignment operator so they cannot be called
     AvatarData(const AvatarData&);
     AvatarData& operator= (const AvatarData&);
+
+    glm::vec3 _localPosition = START_LOCATION;
+    mutable glm::quat _localOrientation; // use by getLocalOrientation to return by reference
 };
 Q_DECLARE_METATYPE(AvatarData*)
 

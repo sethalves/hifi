@@ -64,6 +64,8 @@
 #include <display-plugins/DisplayPlugin.h>
 
 #include <EntityScriptingInterface.h>
+#include <ZoneTracker.h>
+
 #include <ErrorDialog.h>
 #include <Finally.h>
 #include <FramebufferCache.h>
@@ -292,6 +294,7 @@ bool setupEssentials(int& argc, char** argv) {
     auto animationCache = DependencyManager::set<AnimationCache>();
     auto modelBlender = DependencyManager::set<ModelBlender>();
     auto avatarManager = DependencyManager::set<AvatarManager>();
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
     auto lodManager = DependencyManager::set<LODManager>();
     auto jsConsole = DependencyManager::set<StandAloneJSConsole>();
     auto dialogsManager = DependencyManager::set<DialogsManager>();
@@ -333,6 +336,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
         _frameCount(0),
         _fps(60.0f),
         _justStarted(true),
+        _entitySimulation(new PhysicalEntitySimulation()),
         _physicsEngine(new PhysicsEngine(Vectors::ZERO)),
         _entities(true, this, this),
         _entityClipboardRenderer(false, this, this),
@@ -448,7 +452,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
     connect(audioIO.data(), &AudioClient::disconnected, &audioScriptingInterface, &AudioScriptingInterface::disconnected);
     connect(audioIO.data(), &AudioClient::muteEnvironmentRequested, [](glm::vec3 position, float radius) {
         auto audioClient = DependencyManager::get<AudioClient>();
-        float distance = glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getPosition(),
+        float distance = glm::distance(DependencyManager::get<AvatarManager>()->getMyAvatar()->getAbsolutePosition(),
                                  position);
         bool shouldMute = !audioClient->isMuted() && (distance < radius);
 
@@ -741,8 +745,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer &startup_time) :
                         _keyboardFocusHighlight->setIgnoreRayIntersection(true);
                         _keyboardFocusHighlight->setDrawInFront(true);
                     }
-                    _keyboardFocusHighlight->setRotation(webEntity->getRotation());
-                    _keyboardFocusHighlight->setPosition(webEntity->getPosition());
+                    _keyboardFocusHighlight->setRotation(webEntity->getGlobalRotation());
+                    _keyboardFocusHighlight->setPosition(webEntity->getGlobalPosition());
                     _keyboardFocusHighlight->setDimensions(webEntity->getDimensions() * 1.05f);
                     _keyboardFocusHighlight->setVisible(true);
                     _keyboardFocusHighlightID = getOverlays().addOverlay(_keyboardFocusHighlight);
@@ -1141,37 +1145,37 @@ void Application::paintGL() {
                 // Ignore MenuOption::CenterPlayerInView in HMD view
                 glm::vec3 hmdOffset = extractTranslation(_myAvatar->getHMDSensorMatrix());
                 _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
-                    + _myAvatar->getOrientation() 
+                    + _myAvatar->getAbsoluteOrientation()
                     * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f) + hmdOffset));
             } else {
-                _myCamera.setRotation(_myAvatar->getHead()->getOrientation());
+                _myCamera.setRotation(_myAvatar->getHead()->getCameraOrientation());
                 if (Menu::getInstance()->isOptionChecked(MenuOption::CenterPlayerInView)) {
                     _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
                         + _myCamera.getRotation()
                         * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f)));
                 } else {
                     _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
-                        + _myAvatar->getOrientation() 
+                        + _myAvatar->getAbsoluteOrientation()
                         * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f)));
                 }
             }
         } else if (_myCamera.getMode() == CAMERA_MODE_MIRROR) {
             if (isHMDMode()) {
                 glm::quat hmdRotation = extractRotation(_myAvatar->getHMDSensorMatrix());
-                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation() 
+                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation()
                     * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f)) * hmdRotation);
                 glm::vec3 hmdOffset = extractTranslation(_myAvatar->getHMDSensorMatrix());
-                _myCamera.setPosition(_myAvatar->getDefaultEyePosition() 
-                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0) 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
-                    glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f))) * hmdOffset);
+                _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
+                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0)
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
+                    glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f))) * hmdOffset);
             } else {
-                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation() 
+                _myCamera.setRotation(_myAvatar->getWorldAlignedOrientation()
                     * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f)));
-                _myCamera.setPosition(_myAvatar->getDefaultEyePosition() 
-                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0) 
-                    + (_myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
+                _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
+                    + glm::vec3(0, _raiseMirror * _myAvatar->getScale(), 0)
+                    + (_myAvatar->getAbsoluteOrientation() * glm::quat(glm::vec3(0.0f, _rotateMirror, 0.0f))) *
                     glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror);
             }
             renderArgs._renderMode = RenderArgs::MIRROR_RENDER_MODE;
@@ -2509,17 +2513,20 @@ void Application::init() {
     _entities.init();
     _entities.setViewFrustum(getViewFrustum());
 
+    auto zoneTracker = DependencyManager::set<ZoneTracker>();
+    zoneTracker->setDefaultTree(_entities.getTree());
+
     ObjectMotionState::setShapeManager(&_shapeManager);
     _physicsEngine->init();
 
     EntityTreePointer tree = _entities.getTree();
-    _entitySimulation.init(tree, _physicsEngine, &_entityEditSender);
-    tree->setSimulation(&_entitySimulation);
+    std::static_pointer_cast<PhysicalEntitySimulation>(_entitySimulation)->init(_physicsEngine, &_entityEditSender);
+    tree->setSimulation(_entitySimulation);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
 
     // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
-    connect(&_entitySimulation, &EntitySimulation::entityCollisionWithEntity,
+    connect(_entitySimulation.get(), &EntitySimulation::entityCollisionWithEntity,
             &_entities, &EntityTreeRenderer::entityCollisionWithEntity);
 
     // connect the _entities (EntityTreeRenderer) to our script engine's EntityScriptingInterface for firing
@@ -2658,7 +2665,7 @@ void Application::updateMyAvatarLookAtPosition() {
         if (isHMD) {
             glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
             glm::quat hmdRotation = glm::quat_cast(headPose);
-            lookAtSpot = _myCamera.getPosition() + _myAvatar->getOrientation() * (hmdRotation * lookAtPosition);
+            lookAtSpot = _myCamera.getPosition() + _myAvatar->getAbsoluteOrientation() * (hmdRotation * lookAtPosition);
         } else {
             lookAtSpot = _myAvatar->getHead()->getEyePosition()
                 + (_myAvatar->getHead()->getFinalOrientationInWorldFrame() * lookAtPosition);
@@ -2701,7 +2708,7 @@ void Application::updateMyAvatarLookAtPosition() {
                 glm::mat4 headPose = _avatarUpdate->getHeadPose() ;
                 glm::quat headRotation = glm::quat_cast(headPose);
                 lookAtSpot = _myCamera.getPosition() +
-                    _myAvatar->getOrientation() * (headRotation * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
+                    _myAvatar->getAbsoluteOrientation() * (headRotation * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
             } else {
                 lookAtSpot = _myAvatar->getHead()->getEyePosition() +
                     (_myAvatar->getHead()->getFinalOrientationInWorldFrame() * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
@@ -2829,6 +2836,30 @@ void Application::setCursorVisible(bool visible) {
     _cursorVisible = visible;
 }
 
+void foreachPhysicalSimulation(std::function<void(PhysicalEntitySimulationPointer)> functor) {
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    foreach (EntitySimulationPointer simulation, zoneTracker->getAllSimulations()) {
+        PhysicalEntitySimulationPointer physicalSimulation =
+            std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+        functor(physicalSimulation);
+    }
+}
+
+PhysicsEnginePointer getPhysicsEngineFromSimulation(EntitySimulationPointer simulation) {
+    if (!simulation) {
+        return nullptr;
+    }
+    PhysicalEntitySimulationPointer physicalSimulation =
+        std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+    return physicalSimulation->getPhysicsEngine();
+}
+
+PhysicsEnginePointer getPhysicsEngineFromMotionState(ObjectMotionState* motionState) {
+    EntitySimulationPointer simulation = motionState->getSimulation();
+    return getPhysicsEngineFromSimulation(simulation);
+}
+
+
 void Application::update(float deltaTime) {
     bool showWarnings = Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings);
     PerformanceWarning warn(showWarnings, "Application::update()");
@@ -2938,57 +2969,91 @@ void Application::update(float deltaTime) {
 
     {
         PerformanceTimer perfTimer("physics");
+        VectorOfMotionStates motionStates;
+        AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
+        auto zoneTracker = DependencyManager::get<ZoneTracker>();
+
         _myAvatar->relayDriveKeysToCharacterController();
 
-        static VectorOfMotionStates motionStates;
-        _entitySimulation.getObjectsToDelete(motionStates);
-        _physicsEngine->deleteObjects(motionStates);
-
-        _entities.getTree()->withWriteLock([&] {
-            _entitySimulation.getObjectsToAdd(motionStates);
-            _physicsEngine->addObjects(motionStates);
-
-        });
-        _entities.getTree()->withWriteLock([&] {
-            _entitySimulation.getObjectsToChange(motionStates);
-            VectorOfMotionStates stillNeedChange = _physicsEngine->changeObjects(motionStates);
-            _entitySimulation.setObjectsToChange(stillNeedChange);
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            simulation->getObjectsToDelete(motionStates);
+            simulation->getPhysicsEngine()->deleteObjects(motionStates);
         });
 
-        _entitySimulation.applyActionChanges();
-
-        AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
-        avatarManager->getObjectsToDelete(motionStates);
-        _physicsEngine->deleteObjects(motionStates);
-        avatarManager->getObjectsToAdd(motionStates);
-        _physicsEngine->addObjects(motionStates);
-        avatarManager->getObjectsToChange(motionStates);
-        _physicsEngine->changeObjects(motionStates);
-
         _entities.getTree()->withWriteLock([&] {
-            _physicsEngine->stepSimulation();
-        });
-        
-        if (_physicsEngine->hasOutgoingChanges()) {
-            _entities.getTree()->withWriteLock([&] {
-                _entitySimulation.handleOutgoingChanges(_physicsEngine->getOutgoingChanges(), _physicsEngine->getSessionID());
-                avatarManager->handleOutgoingChanges(_physicsEngine->getOutgoingChanges());
+            foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+                simulation->getObjectsToAdd(motionStates);
+                simulation->getPhysicsEngine()->addObjects(motionStates);
+                simulation->getObjectsToChange(motionStates);
+                VectorOfMotionStates stillNeedChange = simulation->getPhysicsEngine()->changeObjects(motionStates);
+                simulation->setObjectsToChange(stillNeedChange);
             });
+        });
 
-            auto collisionEvents = _physicsEngine->getCollisionEvents();
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            simulation->applyActionChanges();
+        });
+
+        avatarManager->getObjectsToDelete(motionStates);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            PhysicsEnginePointer physicsEngine = getPhysicsEngineFromMotionState(motionState);
+            if (physicsEngine) {
+                physicsEngine->deleteObject(motionState);
+            }
+        }
+        avatarManager->getObjectsToAdd(motionStates);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            AvatarMotionState* avatarMotionState = static_cast<AvatarMotionState*>(motionState);
+            QUuid avatarReferential = avatarMotionState->getReferential();
+            EntitySimulationPointer simulation = zoneTracker->getSimulationByReferential(avatarReferential);
+            getPhysicsEngineFromSimulation(simulation)->addObject(motionState);
+        }
+        avatarManager->getObjectsToChange(motionStates);
+        foreach (ObjectMotionState* motionState, motionStates) {
+            getPhysicsEngineFromMotionState(motionState)->changeObject(motionState);
+        }
+
+        bool needEntitiesUpdate = false;
+        _entities.getTree()->withWriteLock([&] {
+            foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+                PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
+                if (!physicsEngine) {
+                    return;
+                }
+                PhysicalEntitySimulationPointer physicalEntitySimulation =
+                    std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+                physicsEngine->stepSimulation();
+                if (physicsEngine->hasOutgoingChanges()) {
+                    physicalEntitySimulation->handleOutgoingChanges(physicsEngine->getOutgoingChanges(),
+                                                                    physicsEngine->getSessionID());
+                    avatarManager->handleOutgoingChanges(physicsEngine->getOutgoingChanges());
+                    needEntitiesUpdate = true;
+                }
+            });
+        });
+
+        foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
+            PhysicsEnginePointer physicsEngine = simulation->getPhysicsEngine();
+            PhysicalEntitySimulationPointer physicalEntitySimulation =
+                std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+
+            auto collisionEvents = physicsEngine->getCollisionEvents();
             avatarManager->handleCollisionEvents(collisionEvents);
 
-            _physicsEngine->dumpStatsIfNecessary();
+            physicsEngine->dumpStatsIfNecessary();
 
             if (!_aboutToQuit) {
                 PerformanceTimer perfTimer("entities");
                 // Collision events (and their scripts) must not be handled when we're locked, above. (That would risk
                 // deadlock.)
-                _entitySimulation.handleCollisionEvents(collisionEvents);
+                physicalEntitySimulation->handleCollisionEvents(collisionEvents);
                 // NOTE: the _entities.update() call below will wait for lock
                 // and will simulate entity motion (the EntityTree has been given an EntitySimulation).
-                _entities.update(); // update the models...
             }
+        });
+
+        if (needEntitiesUpdate) {
+            _entities.update(); // update the models...
         }
     }
 
@@ -3716,12 +3781,14 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
     // bool eyeRelativeCamera = false;
     if (billboard) {
         fov = BILLBOARD_FIELD_OF_VIEW;  // degees
-        _mirrorCamera.setPosition(_myAvatar->getPosition() +
-                                  _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * BILLBOARD_DISTANCE * _myAvatar->getScale());
+        _mirrorCamera.setPosition(_myAvatar->getAbsolutePosition() +
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  BILLBOARD_DISTANCE * _myAvatar->getScale());
 
     } else if (!AvatarInputs::getInstance()->mirrorZoomed()) {
         _mirrorCamera.setPosition(_myAvatar->getChestPosition() +
-                                  _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_REARVIEW_BODY_DISTANCE * _myAvatar->getScale());
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  MIRROR_REARVIEW_BODY_DISTANCE * _myAvatar->getScale());
 
     } else { // HEAD zoom level
         // FIXME note that the positioing of the camera relative to the avatar can suffer limited
@@ -3741,7 +3808,8 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
         // investigated in order to adapt the technique while fixing the head rendering issue,
         // but the complexity of the hack suggests that a better approach
         _mirrorCamera.setPosition(_myAvatar->getDefaultEyePosition() +
-                                    _myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_REARVIEW_DISTANCE * _myAvatar->getScale());
+                                  _myAvatar->getAbsoluteOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) *
+                                  MIRROR_REARVIEW_DISTANCE * _myAvatar->getScale());
     }
     _mirrorCamera.setProjection(glm::perspective(glm::radians(fov), aspect, DEFAULT_NEAR_CLIP, DEFAULT_FAR_CLIP));
     _mirrorCamera.setRotation(_myAvatar->getWorldAlignedOrientation() * glm::quat(glm::vec3(0.0f, PI, 0.0f)));
@@ -4454,7 +4522,7 @@ void Application::openUrl(const QUrl& url) {
 
 void Application::updateMyAvatarTransform() {
     const float SIMULATION_OFFSET_QUANTIZATION = 16.0f; // meters
-    glm::vec3 avatarPosition = _myAvatar->getPosition();
+    glm::vec3 avatarPosition = _myAvatar->getLocalPosition();
     glm::vec3 physicsWorldOffset = _physicsEngine->getOriginOffset();
     if (glm::distance(avatarPosition, physicsWorldOffset) > SIMULATION_OFFSET_QUANTIZATION) {
         glm::vec3 newOriginOffset = avatarPosition;
@@ -5024,7 +5092,7 @@ void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float
     // transform from sensor space, to world space, to avatar model space.
     glm::mat4 poseMat = createMatFromQuatAndPos(pose.getRotation(), pose.getTranslation());
     glm::mat4 sensorToWorldMat = _myAvatar->getSensorToWorldMatrix();
-    glm::mat4 modelMat = createMatFromQuatAndPos(_myAvatar->getOrientation(), _myAvatar->getPosition());
+    glm::mat4 modelMat = createMatFromQuatAndPos(_myAvatar->getAbsoluteOrientation(), _myAvatar->getAbsolutePosition());
     glm::mat4 objectPose = glm::inverse(modelMat) * sensorToWorldMat * poseMat;
 
     glm::vec3 position = extractTranslation(objectPose);
@@ -5100,7 +5168,7 @@ void Application::emulateMouse(Hand* hand, float click, float shift, int index) 
     }
     else {
         // Get directon relative to avatar orientation
-        glm::vec3 direction = glm::inverse(_myAvatar->getOrientation()) * palm->getFingerDirection();
+        glm::vec3 direction = glm::inverse(_myAvatar->getAbsoluteOrientation()) * palm->getFingerDirection();
 
         // Get the angles, scaled between (-0.5,0.5)
         float xAngle = (atan2f(direction.z, direction.x) + (float)M_PI_2);

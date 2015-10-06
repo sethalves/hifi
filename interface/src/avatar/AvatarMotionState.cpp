@@ -120,12 +120,12 @@ float AvatarMotionState::getObjectAngularDamping() const {
 
 // virtual
 glm::vec3 AvatarMotionState::getObjectPosition() const {
-    return _avatar->getPosition();
+    return _avatar->getLocalPosition();
 }
 
 // virtual
 glm::quat AvatarMotionState::getObjectRotation() const {
-    return _avatar->getOrientation();
+    return _avatar->getLocalOrientation();
 }
 
 // virtual
@@ -150,7 +150,10 @@ const QUuid& AvatarMotionState::getObjectID() const {
 
 // virtual
 QUuid AvatarMotionState::getSimulatorID() const {
-    return _avatar->getSessionUUID();
+    if (_avatar) {
+        return _avatar->getSessionUUID();
+    }
+    return QUuid();
 }
 
 // virtual 
@@ -163,5 +166,3 @@ void AvatarMotionState::clearObjectBackPointer() {
     ObjectMotionState::clearObjectBackPointer();
     _avatar = nullptr;
 }
-
-

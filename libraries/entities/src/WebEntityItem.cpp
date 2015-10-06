@@ -104,8 +104,8 @@ bool WebEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const g
                      void** intersectedObject, bool precisionPicking) const {
     glm::vec3 dimensions = getDimensions();
     glm::vec2 xyDimensions(dimensions.x, dimensions.y);
-    glm::quat rotation = getRotation();
-    glm::vec3 position = getPosition() + rotation * 
+    glm::quat rotation = getGlobalRotation();
+    glm::vec3 position = getGlobalPosition() + rotation * 
             (dimensions * (getRegistrationPoint() - ENTITY_ITEM_DEFAULT_REGISTRATION_POINT));
     // FIXME - should set face and surfaceNormal
     return findRayRectangleIntersection(origin, direction, rotation, position, xyDimensions, distance);

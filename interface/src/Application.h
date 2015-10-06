@@ -140,8 +140,8 @@ class Application : public QApplication, public AbstractViewStateInterface, publ
 
 public:
     static Application* getInstance() { return qApp; } // TODO: replace fully by qApp
-    static const glm::vec3& getPositionForPath() { return getInstance()->_myAvatar->getPosition(); }
-    static glm::quat getOrientationForPath() { return getInstance()->_myAvatar->getOrientation(); }
+    static const glm::vec3& getPositionForPath() { return getInstance()->_myAvatar->getAbsolutePosition(); }
+    static glm::quat getOrientationForPath() { return getInstance()->_myAvatar->getAbsoluteOrientation(); }
     static glm::vec3 getPositionForAudio() { return getInstance()->_myAvatar->getPositionForAudio(); }
     static glm::quat getOrientationForAudio() { return getInstance()->_myAvatar->getOrientationForAudio(); }
     static void initPlugins();
@@ -273,7 +273,7 @@ public:
     virtual float getSizeScale() const;
     virtual int getBoundaryLevelAdjust() const;
     virtual PickRay computePickRay(float x, float y) const;
-    virtual const glm::vec3& getAvatarPosition() const { return _myAvatar->getPosition(); }
+    virtual const glm::vec3& getAvatarPosition() const { return _myAvatar->getAbsolutePosition(); }
     virtual void overrideEnvironmentData(const EnvironmentData& newData) { _environment.override(newData); }
     virtual void endOverrideEnvironmentData() { _environment.endOverride(); }
     virtual qreal getDevicePixelRatio();
@@ -537,7 +537,7 @@ private:
     bool _justStarted;
 
     ShapeManager _shapeManager;
-    PhysicalEntitySimulation _entitySimulation;
+    EntitySimulationPointer _entitySimulation;
     PhysicsEnginePointer _physicsEngine;
 
     EntityTreeRenderer _entities;

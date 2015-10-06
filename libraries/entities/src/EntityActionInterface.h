@@ -35,7 +35,7 @@ public:
     const QUuid& getID() const { return _id; }
     EntityActionType getType() const { return _type; }
 
-    virtual void removeFromSimulation(EntitySimulation* simulation) const = 0;
+    virtual void removeFromSimulation(EntitySimulationPointer simulation) const = 0;
     virtual EntityItemWeakPointer getOwnerEntity() const = 0;
     virtual void setOwnerEntity(const EntityItemPointer ownerEntity) = 0;
     virtual bool updateArguments(QVariantMap arguments) = 0;

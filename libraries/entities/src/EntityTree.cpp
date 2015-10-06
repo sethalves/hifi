@@ -24,12 +24,13 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
+#include "ZoneTracker.h"
 
 
 EntityTree::EntityTree(bool shouldReaverage) :
     Octree(shouldReaverage),
-    _fbxService(NULL),
-    _simulation(NULL)
+    _fbxService(nullptr),
+    _simulation(nullptr)
 {
     resetClientEditStats();
 }
@@ -39,6 +40,7 @@ EntityTree::~EntityTree() {
 }
 
 void EntityTree::createRootElement() {
+    assert(_rootElement == nullptr);
     _rootElement = createNewElement();
 }
 
@@ -85,9 +87,10 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
 void EntityTree::postAddEntity(EntityItemPointer entity) {
     assert(entity);
     // check to see if we need to simulate this entity..
-    if (_simulation) {
-        _simulation->addEntity(entity);
-    }
+    // we no longer do this here because the correct simulation for this entity may not yet be alloced.
+    // if (_simulation) {
+    //     _simulation->addEntity(entity);
+    // }
     _isDirty = true;
     maybeNotifyNewCollisionSoundURL("", entity->getCollisionSoundURL());
     emit addingEntity(entity->getEntityItemID());
@@ -114,6 +117,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
     }
     return updateEntityWithElement(entity, properties, containingElement, senderNode);
 }
+
 
 bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityItemProperties& origProperties,
                                          EntityTreeElementPointer containingElement, const SharedNodePointer& senderNode) {
@@ -143,8 +147,11 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
             if (!wantsLocked) {
                 EntityItemProperties tempProperties;
                 tempProperties.setLocked(wantsLocked);
-                UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, tempProperties);
+
+                BoundingBoxReleatedProperties newBBRelProperties(entity, tempProperties);
+                UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newBBRelProperties);
                 recurseTreeWithOperator(&theOperator);
+                entity->setProperties(tempProperties);
                 _isDirty = true;
             }
         }
@@ -205,9 +212,37 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         quint64 entityScriptTimestampBefore = entity->getScriptTimestamp();
         QString collisionSoundURLBefore = entity->getCollisionSoundURL();
         uint32_t preFlags = entity->getDirtyFlags();
-        UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, properties);
+
+        BoundingBoxReleatedProperties newBBRelProperties(entity, properties);
+        UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newBBRelProperties);
         recurseTreeWithOperator(&theOperator);
+        entity->setProperties(properties);
+
+        // if the entity is a zone, run UpdateEntityOperator on all its children.  If a child is a zone, recurse.
+        if (entity->getType() == EntityTypes::Zone) {
+            auto zoneTracker = DependencyManager::get<ZoneTracker>();
+            QQueue<EntityItemPointer> toProcess;
+            foreach (EntityItemPointer childEntity, zoneTracker->getChildrenOf(entity)) {
+                toProcess.enqueue(childEntity);
+            }
+
+            while (!toProcess.empty()) {
+                EntityItemPointer childEntity = toProcess.dequeue();
+                BoundingBoxReleatedProperties newChildBBRelProperties(childEntity);
+                UpdateEntityOperator theChildOperator(getThisPointer(),
+                                                      childEntity->getElement(),
+                                                      childEntity, newChildBBRelProperties);
+                recurseTreeWithOperator(&theChildOperator);
+                if (childEntity->getType() == EntityTypes::Zone) {
+                    foreach (EntityItemPointer childChildEntity, zoneTracker->getChildrenOf(childEntity)) {
+                        toProcess.enqueue(childChildEntity);
+                    }
+                }
+            }
+        }
+
         _isDirty = true;
+
 
         uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
         if (newFlags) {
@@ -294,12 +329,8 @@ void EntityTree::maybeNotifyNewCollisionSoundURL(const QString& previousCollisio
     }
 }
 
-void EntityTree::setSimulation(EntitySimulation* simulation) {
+void EntityTree::setSimulation(EntitySimulationPointer simulation) {
     this->withWriteLock([&] {
-        if (simulation) {
-            // assert that the simulation's backpointer has already been properly connected
-            assert(simulation->getEntityTree().get() == this);
-        }
         if (_simulation && _simulation != simulation) {
             // It's important to clearEntities() on the simulation since taht will update each
             // EntityItem::_simulationState correctly so as to not confuse the next _simulation.
@@ -397,8 +428,8 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
         }
 
         if (_simulation) {
-            theEntity->clearActions(_simulation);
-            _simulation->removeEntity(theEntity);
+            theEntity->clearActions();
+            theEntity->removeFromSimulation();
         }
     }
 }
@@ -427,7 +458,7 @@ bool EntityTree::findNearPointOperation(OctreeElementPointer element, void* extr
 
         // we may have gotten NULL back, meaning no entity was available
         if (thisClosestEntity) {
-            glm::vec3 entityPosition = thisClosestEntity->getPosition();
+            glm::vec3 entityPosition = thisClosestEntity->getGlobalPosition();
             float distanceFromPointToEntity = glm::distance(entityPosition, args->position);
 
             // If we're within our target radius
@@ -713,7 +744,7 @@ void EntityTree::entityChanged(EntityItemPointer entity) {
 void EntityTree::update() {
     if (_simulation) {
         withWriteLock([&] {
-            _simulation->updateEntities();
+            _simulation->updateEntities(getThisPointer());
             VectorOfEntities pendingDeletes;
             _simulation->getEntitiesToDelete(pendingDeletes);
 
@@ -1074,6 +1105,7 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         }
 
         EntityItemPointer entity = addEntity(entityItemID, properties);
+
         if (!entity) {
             qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
         }

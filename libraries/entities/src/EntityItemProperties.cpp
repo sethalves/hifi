@@ -132,7 +132,8 @@ CONSTRUCT_PROPERTY(zNNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(xPNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(yPNeighborID, UNKNOWN_ENTITY_ID),
 CONSTRUCT_PROPERTY(zPNeighborID, UNKNOWN_ENTITY_ID),
-
+CONSTRUCT_PROPERTY(parentID, UNKNOWN_ENTITY_ID),
+CONSTRUCT_PROPERTY(hasSubphysics, false),
 
 _id(UNKNOWN_ENTITY_ID),
 _idSet(false),
@@ -425,6 +426,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_X_P_NEIGHBOR_ID, xPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_Y_P_NEIGHBOR_ID, yPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_Z_P_NEIGHBOR_ID, zPNeighborID);
+    CHECK_PROPERTY_CHANGE(PROP_PARENT_ID, parentID);
+    CHECK_PROPERTY_CHANGE(PROP_HAS_SUBPHYSICS, hasSubphysics);
 
     changedProperties += _stage.getChangedProperties();
     changedProperties += _atmosphere.getChangedProperties();
@@ -567,6 +570,8 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
         _stage.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
         _atmosphere.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
         _skybox.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
+
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_HAS_SUBPHYSICS, hasSubphysics);
     }
 
     // Web only
@@ -636,6 +641,8 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     // FIXME - I don't think these properties are supported any more
     //COPY_PROPERTY_TO_QSCRIPTVALUE(glowLevel);
     //COPY_PROPERTY_TO_QSCRIPTVALUE(localRenderAlpha);
+
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_PARENT_ID, parentID);
 
     return properties;
 }
@@ -760,6 +767,9 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(xPNeighborID, EntityItemID, setXPNeighborID);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(yPNeighborID, EntityItemID, setYPNeighborID);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(zPNeighborID, EntityItemID, setZPNeighborID);
+
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(parentID, EntityItemID, setParentID);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(hasSubphysics, bool, setHasSubphysics);
 
     _lastEdited = usecTimestampNow();
 }
@@ -1070,7 +1080,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_USER_DATA, properties.getUserData());
             APPEND_ENTITY_PROPERTY(PROP_HREF, properties.getHref());
             APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, properties.getDescription());
-
+            APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, properties.getParentID());
 
             if (properties.getType() == EntityTypes::Web) {
                 APPEND_ENTITY_PROPERTY(PROP_SOURCE_URL, properties.getSourceUrl());
@@ -1155,6 +1165,8 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
                 _staticSkybox.setProperties(properties);
                 _staticSkybox.appentToEditPacket(packetData, requestedProperties, propertyFlags, propertiesDidntFit,  propertyCount, appendState );
+
+                APPEND_ENTITY_PROPERTY(PROP_HAS_SUBPHYSICS, properties.getHasSubphysics());
             }
 
             if (properties.getType() == EntityTypes::PolyVox) {
@@ -1360,7 +1372,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_USER_DATA, QString, setUserData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_HREF, QString, setHref);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_DESCRIPTION, QString, setDescription);
-
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_PARENT_ID, EntityItemID, setParentID);
 
     if (properties.getType() == EntityTypes::Web) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SOURCE_URL, QString, setSourceUrl);
@@ -1440,6 +1452,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundMode);
         properties.getAtmosphere().decodeFromEditPacket(propertyFlags, dataAt , processedBytes);
         properties.getSkybox().decodeFromEditPacket(propertyFlags, dataAt , processedBytes);
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_HAS_SUBPHYSICS, bool, setHasSubphysics);
     }
 
     if (properties.getType() == EntityTypes::PolyVox) {
@@ -1624,6 +1637,9 @@ void EntityItemProperties::markAllChanged() {
     _xPNeighborIDChanged = true;
     _yPNeighborIDChanged = true;
     _zPNeighborIDChanged = true;
+
+    _parentIDChanged = true;
+    _hasSubphysicsChanged = true;
 }
 
 /// The maximum bounding cube for the entity, independent of it's rotation.

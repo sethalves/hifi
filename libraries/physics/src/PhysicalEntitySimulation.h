@@ -25,12 +25,16 @@
 
 typedef QSet<EntityMotionState*> SetOfEntityMotionStates;
 
+class PhysicalEntitySimulation;
+typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
+
+
 class PhysicalEntitySimulation :public EntitySimulation {
 public:
     PhysicalEntitySimulation();
     ~PhysicalEntitySimulation();
 
-    void init(EntityTreePointer tree, PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
+    void init(PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
 
     virtual void addAction(EntityActionPointer action) override;
     virtual void applyActionChanges() override;
@@ -53,6 +57,8 @@ public:
     void handleCollisionEvents(const CollisionEvents& collisionEvents);
 
     EntityEditPacketSender* getPacketSender() { return _entityPacketSender; }
+    PhysicsEnginePointer getPhysicsEngine() { return _physicsEngine; }
+    virtual uint32_t getWorldSimulationStep() const;
 
 private:
     // incoming changes
@@ -70,8 +76,5 @@ private:
 
     uint32_t _lastStepSendPackets = 0;
 };
-
-
-typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
 
 #endif // hifi_PhysicalEntitySimulation_h

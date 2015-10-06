@@ -15,18 +15,7 @@
 #include "EntitiesLogging.h"
 #include "MovingEntitiesOperator.h"
 
-void EntitySimulation::setEntityTree(EntityTreePointer tree) {
-    if (_entityTree && _entityTree != tree) {
-        _mortalEntities.clear();
-        _nextExpiry = quint64(-1);
-        _entitiesToUpdate.clear();
-        _entitiesToSort.clear();
-        _simpleKinematicEntities.clear();
-    }
-    _entityTree = tree;
-}
-
-void EntitySimulation::updateEntities() {
+void EntitySimulation::updateEntities(EntityTreePointer tree) {
     QMutexLocker lock(&_mutex);
     quint64 now = usecTimestampNow();
 
@@ -35,7 +24,7 @@ void EntitySimulation::updateEntities() {
     callUpdateOnEntitiesThatNeedIt(now);
     moveSimpleKinematics(now);
     updateEntitiesInternal(now);
-    sortEntitiesThatMoved();
+    sortEntitiesThatMoved(tree);
 }
 
 void EntitySimulation::getEntitiesToDelete(VectorOfEntities& entitiesToDelete) {
@@ -79,7 +68,7 @@ void EntitySimulation::expireMortalEntities(const quint64& now) {
                 removeEntityInternal(entity);
 
                 _allEntities.remove(entity);
-                entity->_simulated = false;
+                entity->setSimulated(false);
             } else {
                 if (expiry < _nextExpiry) {
                     // remeber the smallest _nextExpiry so we know when to start the next search
@@ -109,11 +98,11 @@ void EntitySimulation::callUpdateOnEntitiesThatNeedIt(const quint64& now) {
 }
 
 // protected
-void EntitySimulation::sortEntitiesThatMoved() {
+void EntitySimulation::sortEntitiesThatMoved(EntityTreePointer tree) {
     // NOTE: this is only for entities that have been moved by THIS EntitySimulation.
     // External changes to entity position/shape are expected to be sorted outside of the EntitySimulation.
     PerformanceTimer perfTimer("sortingEntities");
-    MovingEntitiesOperator moveOperator(_entityTree);
+    MovingEntitiesOperator moveOperator(tree);
     AACube domainBounds(glm::vec3((float)-HALF_TREE_SCALE), (float)TREE_SCALE);
     SetOfEntities::iterator itemItr = _entitiesToSort.begin();
     while (itemItr != _entitiesToSort.end()) {
@@ -129,7 +118,7 @@ void EntitySimulation::sortEntitiesThatMoved() {
             removeEntityInternal(entity);
 
             _allEntities.remove(entity);
-            entity->_simulated = false;
+            entity->setSimulated(false);
 
             itemItr = _entitiesToSort.erase(itemItr);
         } else {
@@ -139,7 +128,7 @@ void EntitySimulation::sortEntitiesThatMoved() {
     }
     if (moveOperator.hasMovingEntities()) {
         PerformanceTimer perfTimer("recurseTreeWithOperator");
-        _entityTree->recurseTreeWithOperator(&moveOperator);
+        tree->recurseTreeWithOperator(&moveOperator);
     }
 
     _entitiesToSort.clear();
@@ -162,7 +151,7 @@ void EntitySimulation::addEntity(EntityItemPointer entity) {
     addEntityInternal(entity);
 
     _allEntities.insert(entity);
-    entity->_simulated = true;
+    entity->setSimulated(true);
 
     // DirtyFlags are used to signal changes to entities that have already been added, 
     // so we can clear them for this entity which has just been added.
@@ -180,13 +169,13 @@ void EntitySimulation::removeEntity(EntityItemPointer entity) {
     removeEntityInternal(entity);
 
     _allEntities.remove(entity);
-    entity->_simulated = false;
+    entity->setSimulated(false);
 }
 
 void EntitySimulation::changeEntity(EntityItemPointer entity) {
     QMutexLocker lock(&_mutex);
     assert(entity);
-    if (!entity->_simulated) {
+    if (!entity->getSimulated()) {
         // This entity was either never added to the simulation or has been removed
         // (probably for pending delete), so we don't want to keep a pointer to it 
         // on any internal lists.
@@ -209,7 +198,7 @@ void EntitySimulation::changeEntity(EntityItemPointer entity) {
             _entitiesToSort.remove(entity);
             _simpleKinematicEntities.remove(entity);
             removeEntityInternal(entity);
-            entity->_simulated = false;
+            entity->setSimulated(false);
             wasRemoved = true;
         }
     }
@@ -247,7 +236,7 @@ void EntitySimulation::clearEntities() {
     clearEntitiesInternal();
 
     for (auto entityItr : _allEntities) {
-        entityItr->_simulated = false;
+        entityItr->setSimulated(false);
     }
     _allEntities.clear();
 }

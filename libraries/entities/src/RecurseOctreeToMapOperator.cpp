@@ -10,6 +10,7 @@
 //
 
 #include "RecurseOctreeToMapOperator.h"
+#include "ZoneEntityItem.h"
 
 
 RecurseOctreeToMapOperator::RecurseOctreeToMapOperator(QVariantMap& map,

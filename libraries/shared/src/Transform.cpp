@@ -64,8 +64,3 @@ void Transform::evalRotationScale(Quat& rotation, Vec3& scale, const Mat3& rotat
    // rotation = glm::normalize(glm::quat_cast(matRot));
     rotation = (glm::quat_cast(matRot));
 }
-
-
-
-
- 

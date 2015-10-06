@@ -37,6 +37,7 @@ public:
 
     // subclass may implement these method
     virtual void beforeRun() override;
+    virtual void run() override;
     virtual bool hasSpecialPacketsToSend(const SharedNodePointer& node) override;
     virtual int sendSpecialPackets(const SharedNodePointer& node, OctreeQueryNode* queryNode, int& packetsSent) override;
 
@@ -53,7 +54,7 @@ private slots:
     void handleEntityPacket(QSharedPointer<NLPacket> packet, SharedNodePointer senderNode);
 
 private:
-    EntitySimulation* _entitySimulation;
+    EntitySimulationPointer _entitySimulation;
     QTimer* _pruneDeletedEntitiesTimer = nullptr;
 };
 

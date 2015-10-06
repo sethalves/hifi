@@ -43,6 +43,7 @@
 #include "EntitiesRendererLogging.h"
 #include "AddressManager.h"
 #include "EntityRig.h"
+#include "ZoneTracker.h"
 
 EntityTreeRenderer::EntityTreeRenderer(bool wantScripts, AbstractViewStateInterface* viewState,
                                             AbstractScriptingServicesInterface* scriptingServices) :
@@ -205,8 +206,8 @@ void EntityTreeRenderer::checkEnterLeaveEntities() {
                     }
                 }
 
+                _currentBestZone = _bestZone;
                 applyZonePropertiesToScene(_bestZone);
-
             });
             
             // Note: at this point we don't need to worry about the tree being locked, because we only deal with
