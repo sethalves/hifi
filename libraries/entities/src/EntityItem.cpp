@@ -993,6 +993,7 @@ EntityTreePointer EntityItem::getTree() const {
 }
 
 EntitySimulationPointer EntityItem::getSimulation() const {
+    fixupParentAndSimulation();
     return _simulation;
 }
 
@@ -1807,8 +1808,9 @@ void EntityItem::fixupParentAndSimulation() const {
     // 2 -- is _parentID null or a non-zero uuid?
     // 3 -- is _parentZone null or does it point to a zone?
     // 4 -- if _parentID is non-null and _parentZone is non-null, do they agree?
-    // 5 -- if _parentZone points to a zone, does that zone have physics enabled?
-    // 6 -- is _simulation null or non-null?
+    // 5 -- if _parentID points to a zone, does that zone have a simulation?
+    // 6 -- if _parentZone points to a zone, does that zone have physics enabled?
+    // 7 -- is _simulation null or non-null?
 
 
     if (!_parentIDSet) {
@@ -1835,6 +1837,7 @@ void EntityItem::fixupParentAndSimulation() const {
         EntityItemPointer parentEntityItem = _parentZone.lock();
         if (parentEntityItem) {
             auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(parentEntityItem);
+            removeFromSimulation();
             _simulation = zone->getSimulation();
             if (!_simulation) {
                 return;
@@ -1844,16 +1847,23 @@ void EntityItem::fixupParentAndSimulation() const {
     }
     // if the ID is null and we have a parent pointer, clear it
     if (_parentID == UNKNOWN_ENTITY_ID && !_parentZone.expired()) {
+        removeFromSimulation();
         _simulation = getTree()->getSimulation();
         _simulation->addEntity(unconstThis);
         _parentZone.reset();
     }
-
-    if (_parentID == UNKNOWN_ENTITY_ID && !_simulation) {
-        _simulation = getTree()->getSimulation();
-        if (_simulation) {
+    // handle the case where some ancestor's _hasSubphysics has changed
+    EntityItemPointer parentEntityItem = _parentZone.lock();
+    if (parentEntityItem) {
+        EntitySimulationPointer shouldBeInSimulation = parentEntityItem->getSimulation();
+        if (_simulation != shouldBeInSimulation) {
+            removeFromSimulation();
+            _simulation = shouldBeInSimulation;
             _simulation->addEntity(unconstThis);
         }
+    } else if (!_simulation) {
+        _simulation = getTree()->getSimulation();
+        _simulation->addEntity(unconstThis);
     }
 }
 

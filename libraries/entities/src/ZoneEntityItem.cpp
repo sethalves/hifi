@@ -267,3 +267,17 @@ bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const 
 
     return _zonesArePickable;
 }
+
+
+EntitySimulationPointer ZoneEntityItem::getSimulation() const {
+    if (_hasSubphysics && _simulation) {
+        return _simulation;
+    }
+
+    EntityItemPointer parentEntityItem = _parentZone.lock();
+    if (parentEntityItem) {
+        return parentEntityItem->getSimulation();
+    }
+
+    return getTree()->getSimulation();
+}

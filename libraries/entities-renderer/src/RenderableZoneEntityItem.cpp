@@ -45,15 +45,28 @@ RenderableZoneEntityItem::RenderableZoneEntityItem(const EntityItemID& entityIte
     ZoneEntityItem(entityItemID, properties),
     _model(nullptr),
     _needsInitialSimulation(true),
-    _physicsEngine(new PhysicsEngine(Vectors::ZERO)) {
-    _physicsEngine->init();
-    _subEntitySimulation = EntitySimulationPointer(new PhysicalEntitySimulation());
-    std::static_pointer_cast<PhysicalEntitySimulation>(_subEntitySimulation)->init(_physicsEngine, sender);
+    _physicsEngine(nullptr),
+    _entityEditPacketSender(sender) {
+    setUpSubphysics();
 }
 
 
 RenderableZoneEntityItem::~RenderableZoneEntityItem() {
 }
+
+
+void RenderableZoneEntityItem::setUpSubphysics() {
+    if (_hasSubphysics) {
+        _physicsEngine = PhysicsEnginePointer(new PhysicsEngine(Vectors::ZERO));
+        _physicsEngine->init();
+        _subEntitySimulation = EntitySimulationPointer(new PhysicalEntitySimulation());
+        std::static_pointer_cast<PhysicalEntitySimulation>(_subEntitySimulation)->init(_physicsEngine, _entityEditPacketSender);
+    } else {
+        _physicsEngine.reset();
+        _subEntitySimulation.reset();
+    }
+}
+
 
 template<typename Lambda>
 void RenderableZoneEntityItem::changeProperties(Lambda setNewProperties) {
@@ -244,6 +257,6 @@ void RenderableZoneEntityItem::removeFromScene(EntityItemPointer self, std::shar
 }
 
 void RenderableZoneEntityItem::setHasSubphysics(bool hasSubphysics) {
-    // XXX
     _hasSubphysics = hasSubphysics;
+    setUpSubphysics();
 }

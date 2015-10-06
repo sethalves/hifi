@@ -54,6 +54,8 @@ private:
     render::ItemID _myMetaItem;
 
     PhysicsEnginePointer _physicsEngine;
+    EntityEditPacketSender* _entityEditPacketSender;
+    void setUpSubphysics();
 };
 
 #endif // hifi_RenderableZoneEntityItem_h

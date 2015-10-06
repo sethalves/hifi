@@ -117,6 +117,7 @@ public:
 
     virtual void setHasSubphysics(bool hasSubphysics) { _hasSubphysics = hasSubphysics; }
     virtual bool getHasSubphysics() const { return _hasSubphysics; }
+    EntitySimulationPointer getSimulation() const;
 
 protected:
     // properties of the "sun" in the zone
