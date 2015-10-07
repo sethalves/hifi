@@ -513,8 +513,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     auto addressManager = DependencyManager::get<AddressManager>();
 
     // use our MyAvatar position and quat for address manager path
-    addressManager->setPositionGetter([this]{ return getMyAvatar()->getPosition(); });
-    addressManager->setOrientationGetter([this]{ return getMyAvatar()->getOrientation(); });
+    addressManager->setPositionGetter([this]{ return getMyAvatar()->getAbsolutePosition(); });
+    addressManager->setOrientationGetter([this]{ return getMyAvatar()->getAbsoluteOrientation(); });
 
     connect(addressManager.data(), &AddressManager::hostChanged, this, &Application::updateWindowTitle);
     connect(this, &QCoreApplication::aboutToQuit, addressManager.data(), &AddressManager::storeCurrentAddress);
@@ -1111,7 +1111,7 @@ void Application::paintGL() {
                     + myAvatar->getAbsoluteOrientation()
                     * (myAvatar->getScale() * myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f) + hmdOffset));
             } else {
-                _myCamera.setRotation(myAvatar->getHead()->getAbsoluteOrientation());
+                _myCamera.setRotation(myAvatar->getHead()->getOrientation());
                 if (Menu::getInstance()->isOptionChecked(MenuOption::CenterPlayerInView)) {
                     _myCamera.setPosition(myAvatar->getDefaultEyePosition()
                         + _myCamera.getRotation()
@@ -2803,7 +2803,7 @@ void Application::update(float deltaTime) {
         AvatarManager* avatarManager = DependencyManager::get<AvatarManager>().data();
         auto zoneTracker = DependencyManager::get<ZoneTracker>();
 
-        _myAvatar->relayDriveKeysToCharacterController();
+        getMyAvatar()->relayDriveKeysToCharacterController();
 
         foreachPhysicalSimulation([&](PhysicalEntitySimulationPointer simulation) {
             simulation->getObjectsToDelete(motionStates);

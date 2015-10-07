@@ -860,7 +860,7 @@ const glm::vec3& Avatar::getAbsoluteSkeletonPosition() const {
 Transform Avatar::getParentTransform() const {
     Transform result;
     if (!_referential.isNull()) {
-        EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+        EntityTreeRenderer* treeRenderer = qApp->getEntities();
         EntityTreePointer tree = treeRenderer->getTree();
         tree->withReadLock([&] {
             EntityItemPointer zone = tree->findEntityByEntityItemID(_referential);

@@ -228,7 +228,7 @@ PhysicsEnginePointer MyAvatar::getPhysicsEngine() {
 }
 
 void MyAvatar::handleZoneChange() {
-    EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
+    EntityTreeRenderer* treeRenderer = qApp->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
 
     if (_goToPending) {
@@ -1328,7 +1328,7 @@ glm::vec3 MyAvatar::getSkeletonPosition() const {
 }
 
 const glm::vec3& MyAvatar::getAbsoluteSkeletonPosition() const {
-    CameraMode mode = Application::getInstance()->getCamera()->getMode();
+    CameraMode mode = qApp->getCamera()->getMode();
     if (mode == CAMERA_MODE_THIRD_PERSON || mode == CAMERA_MODE_INDEPENDENT) {
         // The avatar is rotated PI about the yAxis, so we have to correct for it
         // to get the skeleton offset contribution in the world-frame.
