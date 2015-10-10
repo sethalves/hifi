@@ -179,7 +179,7 @@ void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
 }
 
 bool PhysicsEngine::changeObject(ObjectMotionState* object) {
-    // returns true if the object needs to be put bach on the to-change list
+    // returns true if the object needs to be put back on the to-change list
     uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
     if (flags & HARD_DIRTY_PHYSICS_FLAGS) {
         if (object->handleHardAndEasyChanges(flags, this)) {
