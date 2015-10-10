@@ -120,6 +120,11 @@ public:
     virtual bool getHasSubphysics() const { return _hasSubphysics; }
     EntitySimulationPointer getSimulation() const;
 
+    virtual void setPosition(const glm::vec3& value);
+    virtual void setRotation(const glm::quat& rotation);
+
+    void invalidateAllChildrenBBoxes();
+
 protected:
     // properties of the "sun" in the zone
     rgbColor _keyLightColor;
@@ -141,6 +146,9 @@ protected:
 
     bool _hasSubphysics = false;
     EntitySimulationPointer _subEntitySimulation;
+
+ private:
+    bool _constructing = false;  // are we currently running ZoneEntityItem::ZoneEntityItem() ?
 };
 
 #endif // hifi_ZoneEntityItem_h

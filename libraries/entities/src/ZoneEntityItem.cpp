@@ -53,7 +53,9 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID, const EntityIte
 
     _backgroundMode = BACKGROUND_MODE_INHERIT;
 
+    _constructing = true;
     setProperties(properties);
+    _constructing = false;
 }
 
 
@@ -283,4 +285,31 @@ EntitySimulationPointer ZoneEntityItem::getSimulation() const {
     }
 
     return getTree()->getSimulation();
+}
+
+void ZoneEntityItem::setPosition(const glm::vec3& value) {
+    _localTransform.setTranslation(value);
+    if (!_constructing) {
+        requiresRecalcBoxes();
+        invalidateAllChildrenBBoxes();
+    }
+}
+
+void ZoneEntityItem::setRotation(const glm::quat& rotation) {
+    _localTransform.setRotation(rotation);
+    if (!_constructing) {
+        requiresRecalcBoxes();
+        invalidateAllChildrenBBoxes();
+    }
+}
+
+void ZoneEntityItem::invalidateAllChildrenBBoxes() {
+    auto zoneTracker = DependencyManager::get<ZoneTracker>();
+    foreach (EntityItemPointer childEntity, zoneTracker->getChildrenOf(shared_from_this())) {
+        childEntity->requiresRecalcBoxes();
+        if (childEntity->getType() == EntityTypes::Zone) {
+            auto childZone = std::dynamic_pointer_cast<ZoneEntityItem>(childEntity);
+            childZone->invalidateAllChildrenBBoxes();
+        }
+    }
 }

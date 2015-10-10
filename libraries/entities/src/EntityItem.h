@@ -410,9 +410,9 @@ public:
     inline void setPhysicsRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 
     inline const glm::vec3& getPosition() const { return _localTransform.getTranslation(); }
-    inline void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
+    virtual void setPosition(const glm::vec3& value) { _localTransform.setTranslation(value); requiresRecalcBoxes(); }
     inline const glm::quat& getRotation() const { return _localTransform.getRotation(); }
-    inline void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
+    virtual void setRotation(const glm::quat& rotation) { _localTransform.setRotation(rotation); requiresRecalcBoxes(); }
 
     bool getSimulated() const { return _simulated; }
     void setSimulated(bool simulated) { _simulated = simulated; }
