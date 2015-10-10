@@ -281,6 +281,7 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
 
     #ifdef WANT_DEBUG
     int rotationSentCount = 0;
+    unsigned char* beforeRotations = destinationBuffer;
     #endif
 
     _lastSentJointData.resize(_jointData.size());
@@ -329,6 +330,7 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
 
     #ifdef WANT_DEBUG
     int translationSentCount = 0;
+    unsigned char* beforeTranslations = destinationBuffer;
     #endif
 
     float maxTranslationDimension = 0.0;
@@ -381,10 +383,15 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
 
     #ifdef WANT_DEBUG
     if (sendAll) {
-        qDebug() << "SENDING -- rotations:" << rotationSentCount << "translations:" << translationSentCount
+        qDebug() << "AvatarData::toByteArray" << cullSmallChanges << sendAll
+                 << "rotations:" << rotationSentCount << "translations:" << translationSentCount
                  << "largest:" << maxTranslationDimension
                  << "radix:" << translationCompressionRadix
-                 << "size:" << (int)(destinationBuffer - startPosition);
+                 << "size:"
+                 << (beforeRotations - startPosition) << "+"
+                 << (beforeTranslations - beforeRotations) << "+"
+                 << (destinationBuffer - beforeTranslations) << "="
+                 << (destinationBuffer - startPosition);
     }
     #endif
 
@@ -403,7 +410,8 @@ void AvatarData::doneEncoding(bool cullSmallChanges) {
                     _lastSentJointData[i].rotation = data.rotation;
                 }
             }
-
+        }
+        if (_lastSentJointData[i].translation != data.translation) {
             if (!cullSmallChanges ||
                 glm::distance(data.translation, _lastSentJointData[i].translation) > AVATAR_MIN_TRANSLATION) {
                 if (data.translationSet) {
