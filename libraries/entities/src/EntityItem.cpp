@@ -1628,7 +1628,8 @@ bool EntityItem::clearActions() {
             EntityActionPointer action = _objectActions[id];
             i = _objectActions.erase(i);
             action->setOwnerEntity(nullptr);
-            action->removeFromSimulation(getSimulation());
+            // don't use getSimulation() here because it calls shared_from_this and clearActions is called from destructor
+            action->removeFromSimulation(_simulation);
         }
         // empty _serializedActions means no actions for the EntityItem
         _actionsToRemove.clear();
