@@ -1071,7 +1071,7 @@ function getPositionToCreateEntity() {
     var placementPosition = Vec3.sum(Camera.position, offset);
 
     var cameraPosition = Camera.position;
-    
+
     var HALF_TREE_SCALE = 16384;
 
     var cameraOutOfBounds = Math.abs(cameraPosition.x) > HALF_TREE_SCALE
@@ -1089,7 +1089,7 @@ function getPositionToCreateEntity() {
     placementPosition.y = Math.min(HALF_TREE_SCALE, Math.max(-HALF_TREE_SCALE, placementPosition.y));
     placementPosition.z = Math.min(HALF_TREE_SCALE, Math.max(-HALF_TREE_SCALE, placementPosition.z));
 
-    return placementPosition;
+    return Entities.globalPositionToReferentialFrame(MyAvatar.getReferential(), placementPosition);
 }
 
 function importSVO(importURL) {

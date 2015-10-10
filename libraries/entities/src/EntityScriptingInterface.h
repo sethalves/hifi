@@ -151,6 +151,9 @@ public slots:
     Q_INVOKABLE glm::vec3 voxelCoordsToLocalCoords(const QUuid& entityID, glm::vec3 voxelCoords);
     Q_INVOKABLE glm::vec3 localCoordsToVoxelCoords(const QUuid& entityID, glm::vec3 localCoords);
 
+    Q_INVOKABLE glm::vec3 globalPositionToReferentialFrame(const QUuid& zoneID, glm::vec3 globalPosition);
+    Q_INVOKABLE glm::quat globalOrientationToReferentialFrame(const QUuid& zoneID, glm::quat globalOrientation);
+
 signals:
     void entityCollisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);
     void collisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);

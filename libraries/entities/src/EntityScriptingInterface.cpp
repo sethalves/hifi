@@ -23,7 +23,6 @@
 #include "ModelEntityItem.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
-#include "ZoneTracker.h"
 
 
 EntityScriptingInterface::EntityScriptingInterface() :
@@ -757,4 +756,36 @@ glm::vec3 EntityScriptingInterface::localCoordsToVoxelCoords(const QUuid& entity
 
     auto polyVoxEntity = std::dynamic_pointer_cast<PolyVoxEntityItem>(entity);
     return polyVoxEntity->localCoordsToVoxelCoords(localCoords);
+}
+
+glm::vec3 EntityScriptingInterface::globalPositionToReferentialFrame(const QUuid& zoneID, glm::vec3 globalPosition) {
+    // transform a global position to a parent-relative one
+    EntityItemPointer entity = _entityTree->findEntityByEntityItemID(zoneID);
+    if (!entity) {
+        return globalPosition;
+    }
+    if (!entity->getType() == EntityTypes::Zone) {
+        return globalPosition;
+    }
+    auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
+    Transform globalTransform = zone->getGlobalTransform();
+    glm::mat4 zoneTransInverse;
+    globalTransform.getInverseMatrix(zoneTransInverse);
+    return glm::vec3(zoneTransInverse * glm::vec4(globalPosition, 1.0f));
+}
+
+glm::quat EntityScriptingInterface::globalOrientationToReferentialFrame(const QUuid& zoneID, glm::quat globalOrientation) {
+    // transform a global orientation to a parent-relative one
+    EntityItemPointer entity = _entityTree->findEntityByEntityItemID(zoneID);
+    if (!entity) {
+        return globalOrientation;
+    }
+    if (!entity->getType() == EntityTypes::Zone) {
+        return globalOrientation;
+    }
+    auto zone = std::dynamic_pointer_cast<ZoneEntityItem>(entity);
+    Transform globalTransform = zone->getGlobalTransform();
+    glm::mat4 zoneTransInverse;
+    globalTransform.getInverseMatrix(zoneTransInverse);
+    return extractRotation(zoneTransInverse) * globalOrientation;
 }
