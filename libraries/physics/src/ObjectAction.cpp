@@ -87,7 +87,9 @@ void ObjectAction::debugDraw(btIDebugDraw* debugDrawer) {
 }
 
 void ObjectAction::removeFromSimulation(EntitySimulationPointer simulation) const {
-    simulation->removeAction(_id);
+    if (simulation) {
+        simulation->removeAction(_id);
+    }
 }
 
 btRigidBody* ObjectAction::getRigidBody() {
