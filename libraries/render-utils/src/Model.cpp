@@ -75,10 +75,17 @@ AbstractViewStateInterface* Model::_viewState = NULL;
 
 void Model::setTranslation(const glm::vec3& translation) {
     _translation = translation;
+    // mark the bounds on all the mesh parts as invalid
+    foreach (const std::shared_ptr<MeshPartPayload>& meshPartPayload, _renderItemsSet) {
+        meshPartPayload->_isBoundInvalid = true;
+    }
 }
     
 void Model::setRotation(const glm::quat& rotation) {
     _rotation = rotation;
+    foreach (const std::shared_ptr<MeshPartPayload>& meshPartPayload, _renderItemsSet) {
+        meshPartPayload->_isBoundInvalid = true;
+    }
 }   
 
 void Model::setScale(const glm::vec3& scale) {
