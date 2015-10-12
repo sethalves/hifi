@@ -106,8 +106,7 @@ MyAvatar::MyAvatar(RigPointer rig) :
     _hmdSensorOrientation(),
     _hmdSensorPosition(),
     _bodySensorMatrix(),
-    _localSensorToWorldMatrix(),
-    _globalSensorToWorldMatrix(),
+    _sensorToWorldMatrix(),
     _goToPending(false),
     _goToPosition(),
     _goToOrientation(),
@@ -169,7 +168,7 @@ void MyAvatar::reset() {
 
     // Reset body position/orientation under the head.
     auto newBodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
-    auto worldBodyMatrix = _localSensorToWorldMatrix * newBodySensorMatrix;
+    auto worldBodyMatrix = _sensorToWorldMatrix * newBodySensorMatrix;
     glm::vec3 worldBodyPos = extractTranslation(worldBodyMatrix);
     glm::quat worldBodyRot = glm::normalize(glm::quat_cast(worldBodyMatrix));
 
@@ -402,12 +401,8 @@ void MyAvatar::simulate(float deltaTime) {
     maybeUpdateBillboard();
 }
 
-glm::mat4 MyAvatar::getLocalSensorToWorldMatrix() const {
-    return _localSensorToWorldMatrix;
-}
-
-glm::mat4 MyAvatar::getGlobalSensorToWorldMatrix() const {
-    return _globalSensorToWorldMatrix;
+glm::mat4 MyAvatar::getSensorToWorldMatrix() const {
+    return _sensorToWorldMatrix;
 }
 
 // returns true if pos is OUTSIDE of the vertical capsule
@@ -465,7 +460,7 @@ void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
     } else if (_straighteningLean) {
 
         auto newBodySensorMatrix = deriveBodyFromHMDSensor();
-        auto worldBodyMatrix = _localSensorToWorldMatrix * newBodySensorMatrix;
+        auto worldBodyMatrix = _sensorToWorldMatrix * newBodySensorMatrix;
         glm::vec3 worldBodyPos = extractTranslation(worldBodyMatrix);
         glm::quat worldBodyRot = glm::normalize(glm::quat_cast(worldBodyMatrix));
 
@@ -499,11 +494,8 @@ void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
 void MyAvatar::updateSensorToWorldMatrix() {
     // update the sensor mat so that the body position will end up in the desired
     // position when driven from the head.
-    glm::mat4 localDesiredMat = createMatFromQuatAndPos(getLocalOrientation(), getLocalPosition());
-    _localSensorToWorldMatrix = localDesiredMat * glm::inverse(_bodySensorMatrix);
-
-    glm::mat4 globalDesiredMat = createMatFromQuatAndPos(getAbsoluteOrientation(), getAbsolutePosition());
-    _globalSensorToWorldMatrix = globalDesiredMat * glm::inverse(_bodySensorMatrix);
+    glm::mat4 desiredMat = createMatFromQuatAndPos(getAbsoluteOrientation(), getAbsolutePosition());
+    _sensorToWorldMatrix = desiredMat * glm::inverse(_bodySensorMatrix);
 }
 
 //  Update avatar head rotation with sensor data
@@ -1648,7 +1640,7 @@ void MyAvatar::updateOrientation(float deltaTime) {
                         glm::quat(glm::radians(glm::vec3(0.0f, _bodyYawDelta * deltaTime, 0.0f))));
 
     if (qApp->getAvatarUpdater()->isHMDMode()) {
-        glm::quat orientation = glm::quat_cast(getLocalSensorToWorldMatrix()) * getHMDSensorOrientation();
+        glm::quat orientation = glm::quat_cast(getSensorToWorldMatrix()) * getHMDSensorOrientation();
         glm::quat bodyOrientation = getWorldBodyOrientation();
         glm::quat localOrientation = glm::inverse(bodyOrientation) * orientation;
 
@@ -2038,11 +2030,11 @@ void MyAvatar::relayDriveKeysToCharacterController() {
 }
 
 glm::vec3 MyAvatar::getWorldBodyPosition() const {
-    return transformPoint(_localSensorToWorldMatrix, extractTranslation(_bodySensorMatrix));
+    return transformPoint(_sensorToWorldMatrix, extractTranslation(_bodySensorMatrix));
 }
 
 glm::quat MyAvatar::getWorldBodyOrientation() const {
-    return glm::quat_cast(_localSensorToWorldMatrix * _bodySensorMatrix);
+    return glm::quat_cast(_sensorToWorldMatrix * _bodySensorMatrix);
 }
 
 // derive avatar body position and orientation from the current HMD Sensor location.

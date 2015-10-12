@@ -1105,7 +1105,7 @@ void Application::paintGL() {
         // or with changes from the face tracker
         if (_myCamera.getMode() == CAMERA_MODE_FIRST_PERSON) {
             if (isHMDMode()) {
-                mat4 camMat = myAvatar->getGlobalSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
+                mat4 camMat = myAvatar->getSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
                 _myCamera.setPosition(extractTranslation(camMat));
                 _myCamera.setRotation(glm::quat_cast(camMat));
             } else {
@@ -2738,7 +2738,7 @@ void Application::update(float deltaTime) {
 
     auto myAvatar = getMyAvatar();
     auto userInputMapper = DependencyManager::get<UserInputMapper>();
-    userInputMapper->setSensorToWorldMat(myAvatar->getGlobalSensorToWorldMatrix());
+    userInputMapper->setSensorToWorldMat(myAvatar->getSensorToWorldMatrix());
     userInputMapper->update(deltaTime);
 
     // This needs to go after userInputMapper->update() because of the keyboard
@@ -4902,7 +4902,7 @@ void Application::setPalmData(Hand* hand, UserInputMapper::PoseValue pose, float
 
     // transform from sensor space, to world space, to avatar model space.
     glm::mat4 poseMat = createMatFromQuatAndPos(pose.getRotation(), pose.getTranslation());
-    glm::mat4 sensorToWorldMat = getMyAvatar()->getGlobalSensorToWorldMatrix();
+    glm::mat4 sensorToWorldMat = getMyAvatar()->getSensorToWorldMatrix();
     glm::mat4 modelMat = createMatFromQuatAndPos(getMyAvatar()->getAbsoluteOrientation(), getMyAvatar()->getAbsolutePosition());
     glm::mat4 objectPose = glm::inverse(modelMat) * sensorToWorldMat * poseMat;
 

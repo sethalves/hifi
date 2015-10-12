@@ -40,11 +40,11 @@ void OverlayConductor::update(float dt) {
         // So the sensorToWorldMatrix must be applied.
         MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
         Transform t;
-        t.evalFromRawMatrix(myAvatar->getGlobalSensorToWorldMatrix());
+        t.evalFromRawMatrix(myAvatar->getSensorToWorldMatrix());
         qApp->getApplicationCompositor().setCameraBaseTransform(t);
 
         // detect when head moves out side of sweet spot, or looks away.
-        mat4 headMat = myAvatar->getGlobalSensorToWorldMatrix() * qApp->getHMDSensorPose();
+        mat4 headMat = myAvatar->getSensorToWorldMatrix() * qApp->getHMDSensorPose();
         vec3 headWorldPos = extractTranslation(headMat);
         vec3 headForward = glm::quat_cast(headMat) * glm::vec3(0.0f, 0.0f, -1.0f);
         Transform modelXform = qApp->getApplicationCompositor().getModelTransform();
@@ -87,7 +87,7 @@ void OverlayConductor::updateMode() {
             // enter the STANDING state
             // place the overlay at the current hmd position in world space
             MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
-            auto camMat = cancelOutRollAndPitch(myAvatar->getGlobalSensorToWorldMatrix() * qApp->getHMDSensorPose());
+            auto camMat = cancelOutRollAndPitch(myAvatar->getSensorToWorldMatrix() * qApp->getHMDSensorPose());
             Transform t;
             t.setTranslation(extractTranslation(camMat));
             t.setRotation(glm::quat_cast(camMat));
@@ -136,7 +136,7 @@ void OverlayConductor::setEnabled(bool enabled) {
         if (_mode == STANDING) {
             // place the overlay at the current hmd position in world space
             MyAvatar* myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
-            auto camMat = cancelOutRollAndPitch(myAvatar->getGlobalSensorToWorldMatrix() * qApp->getHMDSensorPose());
+            auto camMat = cancelOutRollAndPitch(myAvatar->getSensorToWorldMatrix() * qApp->getHMDSensorPose());
             Transform t;
             t.setTranslation(extractTranslation(camMat));
             t.setRotation(glm::quat_cast(camMat));
