@@ -13,6 +13,11 @@
 #define hifi_UpdateEntityOperator_h
 
 #include "BoundingBoxRelatedProperties.h"
+#include "EntitiesLogging.h"
+#include "EntityItem.h"
+#include "EntityItemProperties.h"
+#include "EntityTree.h"
+#include "EntityTreeElement.h"
 
 class UpdateEntityOperator : public RecurseOctreeOperator {
 public:

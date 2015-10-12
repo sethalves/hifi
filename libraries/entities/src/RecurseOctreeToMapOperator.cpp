@@ -12,6 +12,7 @@
 #include "RecurseOctreeToMapOperator.h"
 #include "ZoneEntityItem.h"
 
+#include "EntityItemProperties.h"
 
 RecurseOctreeToMapOperator::RecurseOctreeToMapOperator(QVariantMap& map,
                                                        OctreeElementPointer top,

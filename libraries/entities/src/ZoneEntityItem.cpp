@@ -14,11 +14,12 @@
 
 #include <ByteCountCoding.h>
 
-#include "ZoneEntityItem.h"
-#include "EntityTree.h"
 #include "EntitiesLogging.h"
+#include "EntityItemProperties.h"
+#include "EntityTree.h"
 #include "EntityTreeElement.h"
 #include "ZoneTracker.h"
+#include "ZoneEntityItem.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
 bool ZoneEntityItem::_drawZoneBoundaries = false;
