@@ -1629,7 +1629,9 @@ bool EntityItem::clearActions() {
             i = _objectActions.erase(i);
             action->setOwnerEntity(nullptr);
             // don't use getSimulation() here because it calls shared_from_this and clearActions is called from destructor
-            action->removeFromSimulation(_simulation);
+            if (_simulation) {
+                action->removeFromSimulation(_simulation);
+            }
         }
         // empty _serializedActions means no actions for the EntityItem
         _actionsToRemove.clear();
@@ -1853,6 +1855,9 @@ void EntityItem::fixupParentAndSimulation() const {
     if (_parentID == UNKNOWN_ENTITY_ID && !_parentZone.expired()) {
         removeFromSimulation();
         _simulation = getTree()->getSimulation();
+        if (!_simulation) {
+            return;
+        }
         _simulation->addEntity(unconstThis);
         _parentZone.reset();
     }
@@ -1863,10 +1868,16 @@ void EntityItem::fixupParentAndSimulation() const {
         if (_simulation != shouldBeInSimulation) {
             removeFromSimulation();
             _simulation = shouldBeInSimulation;
+            if (!_simulation) {
+                return;
+            }
             _simulation->addEntity(unconstThis);
         }
     } else if (!_simulation) {
         _simulation = getTree()->getSimulation();
+        if (!_simulation) {
+            return;
+        }
         _simulation->addEntity(unconstThis);
     }
 }
