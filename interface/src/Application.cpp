@@ -4190,7 +4190,7 @@ void Application::assetUploadFinished(AssetUpload* upload, const QString& hash) 
     EntityItemProperties properties;
     properties.setType(EntityTypes::Model);
     properties.setModelURL(QString("%1:%2.%3").arg(ATP_SCHEME).arg(hash).arg(upload->getExtension()));
-    properties.setPosition(myAvatar->getPosition() + myAvatar->getOrientation() * Vectors::FRONT * 2.0f);
+    properties.setPosition(myAvatar->getLocalPosition() + myAvatar->getLocalOrientation() * Vectors::FRONT * 2.0f);
     properties.setName(QUrl(upload->getFilename()).fileName());
     
     entities->addEntity(properties);
