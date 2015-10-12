@@ -138,7 +138,7 @@ void SkeletonModel::updateRig(float deltaTime, glm::mat4 parentTransform) {
             // get HMD position from sensor space into world space, and back into model space
             AnimPose avatarToWorld(glm::vec3(1.0f), myAvatar->getLocalOrientation(), myAvatar->getLocalPosition());
             glm::mat4 worldToAvatar = glm::inverse((glm::mat4)avatarToWorld);
-            glm::mat4 worldHMDMat = myAvatar->getSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
+            glm::mat4 worldHMDMat = myAvatar->getLocalSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
             glm::mat4 hmdMat = worldToAvatar * worldHMDMat;
 
             // in local avatar space (i.e. relative to avatar pos/orientation.)

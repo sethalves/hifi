@@ -66,7 +66,8 @@ public:
     const glm::mat4& getHMDSensorMatrix() const { return _hmdSensorMatrix; }
     const glm::vec3& getHMDSensorPosition() const { return _hmdSensorPosition; }
     const glm::quat& getHMDSensorOrientation() const { return _hmdSensorOrientation; }
-    glm::mat4 getSensorToWorldMatrix() const;
+    glm::mat4 getLocalSensorToWorldMatrix() const;
+    glm::mat4 getGlobalSensorToWorldMatrix() const;
 
     // Pass a recent sample of the HMD to the avatar.
     // This can also update the avatar's position to follow the HMD
@@ -344,7 +345,8 @@ private:
     glm::mat4 _bodySensorMatrix;
 
     // used to transform any sensor into world space, including the _hmdSensorMat, or hand controllers.
-    glm::mat4 _sensorToWorldMatrix;
+    glm::mat4 _localSensorToWorldMatrix;
+    glm::mat4 _globalSensorToWorldMatrix;
 
     bool _goToPending;
     glm::vec3 _goToPosition;
