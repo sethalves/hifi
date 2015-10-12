@@ -1656,7 +1656,9 @@ void EntityItem::deserializeActionsInternal() {
 
     // Keep track of which actions got added or updated by the new actionData
     EntitySimulationPointer simulation = getSimulation();
-    assert(simulation);
+    if (!simulation) {
+        return;
+    }
 
     QVector<QByteArray> serializedActions;
     if (_allActionsDataCache.size() > 0) {
