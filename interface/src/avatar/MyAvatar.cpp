@@ -494,7 +494,7 @@ void MyAvatar::updateFromHMDSensorMatrix(const glm::mat4& hmdSensorMatrix) {
 void MyAvatar::updateSensorToWorldMatrix() {
     // update the sensor mat so that the body position will end up in the desired
     // position when driven from the head.
-    glm::mat4 desiredMat = createMatFromQuatAndPos(getAbsoluteOrientation(), getAbsolutePosition());
+    glm::mat4 desiredMat = createMatFromQuatAndPos(getLocalOrientation(), getLocalPosition());
     _sensorToWorldMatrix = desiredMat * glm::inverse(_bodySensorMatrix);
 }
 
