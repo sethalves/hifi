@@ -89,12 +89,14 @@ function shootDice(position, velocity) {
   if (!Entities.canRez()) {
     Window.alert(INSUFFICIENT_PERMISSIONS_ERROR_MSG);
   } else {
+    print("referential =" + MyAvatar.getReferential());
     for (var i = 0; i < NUMBER_OF_DICE; i++) {
       dice.push(Entities.addEntity(
         {
           type: "Model",
           modelURL: HIFI_PUBLIC_BUCKET + "models/props/Dice/goldDie.fbx",
           position: position,
+          parentID: MyAvatar.getReferential(),
           velocity: velocity,
           rotation: Quat.fromPitchYawRollDegrees(Math.random() * 360, Math.random() * 360, Math.random() * 360),
           angularVelocity: {
@@ -138,7 +140,7 @@ function mousePressEvent(event) {
     deleteDice();
   } else if (clickedOverlay == diceButton) {
     var HOW_HARD = 2.0;
-    var position = Vec3.sum(Camera.getPosition(), Quat.getFront(Camera.getOrientation()));
+    var position = Vec3.sum(MyAvatar.position, Quat.getFront(Camera.getOrientation()));
     var velocity = Vec3.multiply(HOW_HARD, Quat.getFront(Camera.getOrientation()));
     shootDice(position, velocity);
     madeSound = false;

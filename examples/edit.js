@@ -296,6 +296,7 @@ var toolBar = (function () {
     function addModel(url) {
         var entityID = createNewEntity({
             type: "Model",
+            parentID: MyAvatar.getReferential(),
             dimensions: DEFAULT_DIMENSIONS,
             modelURL: url
         }, false);
@@ -384,6 +385,7 @@ var toolBar = (function () {
         if (newCubeButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Box",
+                parentID: MyAvatar.getReferential(),
                 dimensions: DEFAULT_DIMENSIONS,
                 color: { red: 255, green: 0, blue: 0 }
             });
@@ -394,6 +396,7 @@ var toolBar = (function () {
         if (newSphereButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Sphere",
+                parentID: MyAvatar.getReferential(),
                 dimensions: DEFAULT_DIMENSIONS,
                 color: { red: 255, green: 0, blue: 0 }
             });
@@ -404,6 +407,7 @@ var toolBar = (function () {
         if (newLightButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Light",
+                parentID: MyAvatar.getReferential(),
                 dimensions: DEFAULT_LIGHT_DIMENSIONS,
                 isSpotlight: false,
                 color: { red: 150, green: 150, blue: 150 },
@@ -421,6 +425,7 @@ var toolBar = (function () {
         if (newTextButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Text",
+                parentID: MyAvatar.getReferential(),
                 dimensions: { x: 0.65, y: 0.3, z: 0.01 },
                 backgroundColor: { red: 64, green: 64, blue: 64 },
                 textColor: { red: 255, green: 255, blue: 255 },
@@ -434,6 +439,7 @@ var toolBar = (function () {
         if (newWebButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Web",
+                parentID: MyAvatar.getReferential(),
                 dimensions: { x: 1.6, y: 0.9, z: 0.01 },
                 sourceUrl: "https://highfidelity.com/",
             });
@@ -444,6 +450,7 @@ var toolBar = (function () {
         if (newZoneButton === toolBar.clicked(clickedOverlay)) {
             createNewEntity({
                 type: "Zone",
+                parentID: MyAvatar.getReferential(),
                 dimensions: { x: 10, y: 10, z: 10 },
             });
 
@@ -453,6 +460,7 @@ var toolBar = (function () {
         if (newPolyVoxButton === toolBar.clicked(clickedOverlay)) {
             var polyVoxId = createNewEntity({
                 type: "PolyVox",
+                parentID: MyAvatar.getReferential(),
                 dimensions: { x: 10, y: 10, z: 10 },
                 voxelVolumeSize: {x:16, y:16, z:16},
                 voxelSurfaceStyle: 2

@@ -36,6 +36,7 @@
 
 bool EntityItem::_sendPhysicsUpdates = true;
 int EntityItem::_maxActionsDataSize = 800;
+quint64 EntityItem::_rememberDeletedActionTime = 20 * USECS_PER_SECOND;
 
 EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _type(EntityTypes::Unknown),
@@ -1533,6 +1534,8 @@ bool EntityItem::addAction(EntityActionPointer action) {
         result = addActionInternal(action);
         if (!result) {
             removeActionInternal(action->getID());
+        } else {
+            action->locallyAddedButNotYetReceived = true;
         }
     });
 
@@ -1553,7 +1556,8 @@ bool EntityItem::addActionInternal(EntityActionPointer action) {
     simulation->addAction(action);
 
     bool success;
-    QByteArray newDataCache = serializeActions(success);
+    QByteArray newDataCache;
+    serializeActions(success, newDataCache);
     if (success) {
         _allActionsDataCache = newDataCache;
         _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
@@ -1574,7 +1578,7 @@ bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& argument
 
         success = action->updateArguments(arguments);
         if (success) {
-            _allActionsDataCache = serializeActions(success);
+            serializeActions(success, _allActionsDataCache);
             _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
         } else {
             qDebug() << "EntityItem::updateAction failed";
@@ -1593,7 +1597,9 @@ bool EntityItem::removeAction(const QUuid& actionID) {
     return success;
 }
 
+
 bool EntityItem::removeActionInternal(const QUuid& actionID) {
+    _previouslyDeletedActions.insert(actionID, usecTimestampNow());
     if (_objectActions.contains(actionID)) {
         EntitySimulationPointer simulation = getSimulation();
         EntityActionPointer action = _objectActions[actionID];
@@ -1605,7 +1611,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID) {
         }
 
         bool success = true;
-        _allActionsDataCache = serializeActions(success);
+        serializeActions(success, _allActionsDataCache);
         _dirtyFlags |= EntityItem::DIRTY_PHYSICS_ACTIVATION;
         return success;
     }
@@ -1639,9 +1645,8 @@ void EntityItem::deserializeActions() {
 
 
 void EntityItem::deserializeActionsInternal() {
-    if (!_simulation) {
-        return;
-    }
+    quint64 now = usecTimestampNow();
+
     if (!_element) {
         return;
     }
@@ -1664,6 +1669,10 @@ void EntityItem::deserializeActionsInternal() {
         QUuid actionID;
         serializedActionStream >> actionType;
         serializedActionStream >> actionID;
+        if (_previouslyDeletedActions.contains(actionID)) {
+            continue;
+        }
+
         updated << actionID;
 
         if (_objectActions.contains(actionID)) {
@@ -1671,12 +1680,14 @@ void EntityItem::deserializeActionsInternal() {
             // TODO: make sure types match?  there isn't currently a way to
             // change the type of an existing action.
             action->deserialize(serializedAction);
+            action->locallyAddedButNotYetReceived = false;
         } else {
             auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
             EntityItemPointer entity = shared_from_this();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
                 entity->addActionInternal(action);
+                action->locallyAddedButNotYetReceived = false;
             }
         }
     }
@@ -1686,10 +1697,26 @@ void EntityItem::deserializeActionsInternal() {
     while (i != _objectActions.end()) {
         QUuid id = i.key();
         if (!updated.contains(id)) {
-            _actionsToRemove << id;
+            EntityActionPointer action = i.value();
+            // if we've just added this action, don't remove it due to lack of mention in an incoming packet.
+            if (! action->locallyAddedButNotYetReceived) {
+                _actionsToRemove << id;
+                _previouslyDeletedActions.insert(id, now);
+            }
         }
         i++;
     }
+
+    // trim down _previouslyDeletedActions
+    QMutableHashIterator<QUuid, quint64> _previouslyDeletedIter(_previouslyDeletedActions);
+    while (_previouslyDeletedIter.hasNext()) {
+        _previouslyDeletedIter.next();
+        if (now - _previouslyDeletedIter.value() > _rememberDeletedActionTime) {
+            _previouslyDeletedActions.remove(_previouslyDeletedIter.key());
+        }
+    }
+
+    _actionDataDirty = true;
 
     return;
 }
@@ -1713,12 +1740,11 @@ void EntityItem::setActionDataInternal(QByteArray actionData) {
     deserializeActionsInternal();
 }
 
-QByteArray EntityItem::serializeActions(bool& success) const {
-    QByteArray result;
-
+void EntityItem::serializeActions(bool& success, QByteArray& result) const {
     if (_objectActions.size() == 0) {
         success = true;
-        return QByteArray();
+        result.clear();
+        return;
     }
 
     QVector<QByteArray> serializedActions;
@@ -1736,21 +1762,20 @@ QByteArray EntityItem::serializeActions(bool& success) const {
 
     if (result.size() >= _maxActionsDataSize) {
         success = false;
-        return result;
+        return;
     }
 
     success = true;
-    return result;
+    return;
 }
 
 const QByteArray EntityItem::getActionDataInternal() const {
     if (_actionDataDirty) {
         bool success;
-        QByteArray newDataCache = serializeActions(success);
+        serializeActions(success, _allActionsDataCache);
         if (success) {
-            _allActionsDataCache = newDataCache;
+            _actionDataDirty = false;
         }
-        _actionDataDirty = false;
     }
     return _allActionsDataCache;
 }

@@ -232,6 +232,9 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
                 _model->setURL(getModelURL());
             }
 
+            _model->setTranslation(getGlobalPosition());
+            _model->setRotation(getGlobalRotation());
+
             render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
 
             // check to see if when we added our models to the scene they were ready, if they were not ready, then

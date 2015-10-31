@@ -49,6 +49,9 @@
 #include "DebugDraw.h"
 #include "ZoneTracker.h"
 
+#define WANT_DEBUG 1
+
+
 using namespace std;
 
 const glm::vec3 DEFAULT_UP_DIRECTION(0.0f, 1.0f, 0.0f);
@@ -187,10 +190,6 @@ void MyAvatar::update(float deltaTime) {
             PhysicsEnginePointer physicsEngine = getPhysicsEngine();
             physicsEngine->setCharacterController(getCharacterController());
             _characterController.setEnabled(true);
-
-            // btCollisionObject* rigidBody = _characterController.getCollisionObject();
-            // TODO rotate velocity for new zone
-            // _rigidBody->setLinearVelocity(velocity);
         }
         _goToPending = false;
     }
@@ -230,10 +229,6 @@ void MyAvatar::handleZoneChange() {
     EntityTreeRenderer* treeRenderer = Application::getInstance()->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
 
-    // if (Application::getInstance()->getMyAvatar() == this)
-    //     qDebug() << "zone =" << zone.get() << "_currentZone =" << _currentZone.get() << "this =" << this
-    //              << "_position =" << _position << "_goToPending =" << _goToPending;
-
     if (_goToPending) {
         return;
     }
@@ -242,6 +237,7 @@ void MyAvatar::handleZoneChange() {
 
         _characterController.setEnabled(false);
 
+        #ifdef WANT_DEBUG
         if (!zone) {
             qDebug() << "leaving zone" << _currentZone->getName();
         } else if (!_currentZone) {
@@ -249,54 +245,57 @@ void MyAvatar::handleZoneChange() {
         } else {
             qDebug() << "leaving zone" << _currentZone->getName() << "and entering zone" << zone->getName();
         }
+        #endif
 
+        // find this avatar's rigidBody, if possible
         btCollisionObject* collisionObject = nullptr;
         btRigidBody* rigidBody = nullptr;
-
         collisionObject = _characterController.getCollisionObject();
         if (collisionObject) {
             rigidBody = static_cast<btRigidBody*>(collisionObject);
         }
 
-        glm::vec3 currentZoneRelativeVelocity;
-        glm::vec3 absoluteVelocity;
+        // convert avatar velocities to absolute frame
+        Transform zoneTransform = getParentTransform();
+        glm::mat4 rotMat;
+        zoneTransform.getRotationScaleMatrix(rotMat);
+        glm::vec3 absoluteRigidBodyVelocity;
         if (rigidBody) {
-            Transform zoneTransform = getParentTransform();
-            currentZoneRelativeVelocity = bulletToGLM(rigidBody->getLinearVelocity());
-            glm::mat4 rotMat;
-            zoneTransform.getRotationScaleMatrix(rotMat);
-            absoluteVelocity = glm::vec3(rotMat * glm::vec4(currentZoneRelativeVelocity, 0.0f));
+            glm::vec3 currentZoneRelativeVelocity = bulletToGLM(rigidBody->getLinearVelocity());
+            absoluteRigidBodyVelocity = glm::vec3(rotMat * glm::vec4(currentZoneRelativeVelocity, 0.0f));
         }
+        glm::vec3 absoluteVelocity = glm::vec3(rotMat * glm::vec4(_velocity, 0.0f));
+        glm::vec3 absoluteTargetVelocity = glm::vec3(rotMat * glm::vec4(_targetVelocity, 0.0f));
 
+        // pull avatar out of current physics engine
         _characterController.setEnabled(false);
         PhysicsEnginePointer physicsEngine = getPhysicsEngine();
         if (physicsEngine) {
             physicsEngine->setCharacterController(nullptr);
         }
 
+        // transform position, orientation, and linear-velocities to the new zone's frame
+        glm::mat4 zoneInverse;
         if (!zone) {
-            _goToPosition = getAbsolutePosition();
-            _goToOrientation = getAbsoluteOrientation();
-            if (rigidBody) {
-                qDebug() << "VELOCITY: " << currentZoneRelativeVelocity << absoluteVelocity;
-                rigidBody->setLinearVelocity(glmToBullet(absoluteVelocity));
-            }
+            // avatar is going from some zone to no zone
+            zoneInverse = glm::mat4();
         } else {
-            Transform newZoneTransform = zone->getGlobalTransform();
-            Transform descaled = newZoneTransform.setScale(1.0f);
-            glm::mat4 zoneInverse;
-            descaled.getInverseMatrix(zoneInverse);
-            _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
-            _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
-            glm::vec3 zoneRelativeVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteVelocity, 0.0f));
-            if (rigidBody) {
-                qDebug() << "VELOCITY: " << currentZoneRelativeVelocity << zoneRelativeVelocity;
-                rigidBody->setLinearVelocity(glmToBullet(zoneRelativeVelocity));
-            }
+            // avatar is either going from no zone to some zone or from some zone to another zone
+            Transform newZoneTransform = zone->getGlobalTransform().setScale(1.0f);
+            newZoneTransform.getInverseMatrix(zoneInverse);
         }
 
+        _goToPosition = glm::vec3(zoneInverse * glm::vec4(getAbsolutePosition(), 1.0f));
+        _goToOrientation = extractRotation(zoneInverse) * getAbsoluteOrientation();
         _goToZone = zone;
         _goToPending = true;
+
+        if (rigidBody) {
+            glm::vec3 zoneRelativeRBVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteRigidBodyVelocity, 0.0f));
+            rigidBody->setLinearVelocity(glmToBullet(zoneRelativeRBVelocity));
+        }
+        _velocity = glm::vec3(zoneInverse * glm::vec4(absoluteVelocity, 0.0f));
+        _targetVelocity = glm::vec3(zoneInverse * glm::vec4(absoluteTargetVelocity, 0.0f));
     }
 }
 

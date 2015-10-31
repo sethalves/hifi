@@ -1148,7 +1148,7 @@ void Application::paintGL() {
                     + _myAvatar->getAbsoluteOrientation()
                     * (_myAvatar->getScale() * _myAvatar->getBoomLength() * glm::vec3(0.0f, 0.0f, 1.0f) + hmdOffset));
             } else {
-                _myCamera.setRotation(_myAvatar->getHead()->getOrientation());
+                _myCamera.setRotation(_myAvatar->getHead()->getCameraOrientation());
                 if (Menu::getInstance()->isOptionChecked(MenuOption::CenterPlayerInView)) {
                     _myCamera.setPosition(_myAvatar->getDefaultEyePosition()
                         + _myCamera.getRotation()
