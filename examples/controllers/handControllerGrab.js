@@ -220,6 +220,7 @@ var dragEntityID = {}
 var dragOffsetPosition = {}
 var dragOffsetRotation = {}
 var HAND_TO_PALM_OFFSET = {x: 0.0, y: 0.12, z: 0.08}; // see Avatar.cpp
+var HAND_DRAG_EPSILON = 0.01;
 
 dragHand = function(hand, animationProperties) {
     var animVarName = (hand == RIGHT_HAND ? 'rightHandPosition' : 'leftHandPosition');
@@ -234,11 +235,6 @@ dragHand = function(hand, animationProperties) {
     // see AvatarActionHold::getTarget
     var relativePosition = dragOffsetPosition[hand]; // in hand-space
 
-    // print("relativePosition 0 = " + vec3toStr(relativePosition));
-    // var x = Vec3.multiplyQbyV(palmWorldRotation, HAND_TO_PALM_OFFSET);
-    // relativePosition = Vec3.sum(relativePosition, x);
-    // print("relativePosition 1 = " + vec3toStr(relativePosition));
-
     var offset = Vec3.multiplyQbyV(rotation, relativePosition);
 
     var newPalmWorldPosition = Vec3.subtract(itemWorldPosition, offset);
@@ -248,20 +244,13 @@ dragHand = function(hand, animationProperties) {
 
     var newHandModelPosition = worldToModel(newHandWorldPosition);
 
-    // print("diff = " + vec3toStr(Vec3.subtract(newHandModelPosition, oldHandModelPosition)));
-    // print("dx = " + Vec3.distance(newHandModelPosition, oldHandModelPosition));
-
     var result = {};
 
-    if (Vec3.distance(newHandModelPosition, oldHandModelPosition) > 0.06) {
+    if (Vec3.distance(newHandModelPosition, oldHandModelPosition) > HAND_DRAG_EPSILON) {
         result[animVarName] = newHandModelPosition;
     } else {
         result[animVarName] = oldHandModelPosition;
     }
-
-    // result[animVarName] = oldHandModelPosition;
-
-    // result[animVarName] = newHandModelPosition;
 
     return result;
 };

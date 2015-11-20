@@ -34,8 +34,9 @@ AvatarActionHold::~AvatarActionHold() {
     #endif
 }
 
-std::shared_ptr<Avatar> AvatarActionHold::getTarget(glm::quat& rotation, glm::vec3& position) {
+std::shared_ptr<Avatar> AvatarActionHold::getTarget(glm::quat& rotation, glm::vec3& position, bool useController) {
     std::shared_ptr<Avatar> holdingAvatar = nullptr;
+    auto myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
 
     withTryReadLock([&]{
         QSharedPointer<AvatarManager> avatarManager = DependencyManager::get<AvatarManager>();
@@ -47,16 +48,35 @@ std::shared_ptr<Avatar> AvatarActionHold::getTarget(glm::quat& rotation, glm::ve
             glm::vec3 palmPosition;
             glm::quat palmRotation;
             if (_hand == "right") {
-                palmPosition = holdingAvatar->getRightPalmPosition();
-                palmRotation = holdingAvatar->getRightPalmRotation();
+                if (useController && holdingAvatar->getSessionUUID() == myAvatar->getSessionUUID()) {
+                    palmPosition = holdingAvatar->getHand()->getCopyOfPalmData(HandData::RightHand).getPosition();
+                    palmRotation = holdingAvatar->getHand()->getCopyOfPalmData(HandData::RightHand).getRotation();
+                } else {
+                    palmPosition = holdingAvatar->getRightPalmPosition();
+                    palmRotation = holdingAvatar->getRightPalmRotation();
+                }
             } else {
-                palmPosition = holdingAvatar->getLeftPalmPosition();
-                palmRotation = holdingAvatar->getLeftPalmRotation();
+                if (useController && holdingAvatar->getSessionUUID() == myAvatar->getSessionUUID()) {
+                    palmPosition = holdingAvatar->getHand()->getCopyOfPalmData(HandData::LeftHand).getPosition();
+                    palmRotation = holdingAvatar->getHand()->getCopyOfPalmData(HandData::LeftHand).getRotation();
+                } else {
+                    palmPosition = holdingAvatar->getLeftPalmPosition();
+                    palmRotation = holdingAvatar->getLeftPalmRotation();
+                }
             }
 
             rotation = palmRotation * _relativeRotation;
             offset = rotation * _relativePosition;
             position = palmPosition + offset;
+
+            #if WANT_DEBUG
+            qDebug() << QString(".........hold -- ")
+                     + vec3ToString(palmPosition) + " "
+                     + quatToString(palmRotation) + " "
+                     + quatToString(rotation) + " "
+                     + vec3ToString(offset) + " "
+                     + vec3ToString(position);
+            #endif
         }
     });
 
@@ -74,11 +94,12 @@ void AvatarActionHold::updateActionWorker(float deltaTimeStep) {
         return;
     }
     QList<EntityActionPointer> holdActions = ownerEntity->getActionsOfType(ACTION_TYPE_HOLD);
+    bool useController = holdActions.size() > 1;
     foreach (EntityActionPointer action, holdActions) {
         std::shared_ptr<AvatarActionHold> holdAction = std::static_pointer_cast<AvatarActionHold>(action);
         glm::quat rotationForAction;
         glm::vec3 positionForAction;
-        std::shared_ptr<Avatar> holdingAvatar = holdAction->getTarget(rotationForAction, positionForAction);
+        std::shared_ptr<Avatar> holdingAvatar = holdAction->getTarget(rotationForAction, positionForAction, useController);
         if (holdingAvatar) {
             holdCount ++;
             if (holdAction.get() == this) {

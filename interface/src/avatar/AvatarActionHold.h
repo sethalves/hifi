@@ -35,7 +35,7 @@ public:
 
     virtual bool shouldSuppressLocationEdits() { return _active && !_ownerEntity.expired(); }
 
-    std::shared_ptr<Avatar> getTarget(glm::quat& rotation, glm::vec3& position);
+    std::shared_ptr<Avatar> getTarget(glm::quat& rotation, glm::vec3& position, bool useController);
 
 private:
     static const uint16_t holdVersion;
