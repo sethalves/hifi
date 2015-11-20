@@ -4,6 +4,7 @@
 //  Created by Eric Levin on  9/2/15
 //  Additions by James B. Pollack @imgntn on 9/24/2015
 //  Additions By Seth Alves on 10/20/2015
+//  Some code borrowed from Howard's shakeHands.js
 //  Copyright 2015 High Fidelity, Inc.
 //
 //  Grabs physically moveable entities with hydra-like controllers; it works for either near or far objects.
@@ -187,15 +188,103 @@ function entityIsGrabbedByOther(entityID) {
     return false;
 }
 
+function findJointIndex(avatar, jointName) { // return joint index for that name.
+    // FIXME: Currently by exact name, expected standard avatars. Should look for best match among
+    // avatar.jointNames(), or use parent structure topoloogy.
+    return avatar.getJointIndex(jointName);
+}
+
+// For transforming between world space and our avatar's model space.
+var myHipsJointIndex = findJointIndex(MyAvatar, 'Hips');
+// N.B.: Our C++ angleAxis takes radians, while our javascript angleAxis takes degrees!
+var avatarToModelRotation = Quat.angleAxis(180, {x: 0, y: 1, z: 0});
+// Flip 180 gives same result without inverse, but being explicit to track the math.
+var modelToAvatarRotation = Quat.inverse(avatarToModelRotation);
+
+var hipJointTrans = MyAvatar.getJointTranslation(myHipsJointIndex);
+
+// Just math.
+function modelToWorld(modelPoint) {
+    var avatarPoint = Vec3.subtract(Vec3.multiplyQbyV(modelToAvatarRotation, modelPoint), hipJointTrans);
+    return Vec3.sum(Vec3.multiplyQbyV(MyAvatar.orientation, avatarPoint), MyAvatar.position);
+}
+
+function worldToModel(worldPoint) {
+    var avatarPoint = Vec3.multiplyQbyV(Quat.inverse(MyAvatar.orientation), Vec3.subtract(worldPoint, MyAvatar.position));
+    var avPlusJoint = Vec3.sum(avatarPoint, hipJointTrans);
+    return Vec3.multiplyQbyV(avatarToModelRotation, avPlusJoint);
+}
+
+
+var dragEntityID = {}
+var dragOffsetPosition = {}
+var dragOffsetRotation = {}
+var HAND_TO_PALM_OFFSET = {x: 0.0, y: 0.12, z: 0.08}; // see Avatar.cpp
+
+dragHand = function(hand, animationProperties) {
+    var animVarName = (hand == RIGHT_HAND ? 'rightHandPosition' : 'leftHandPosition');
+    var grabbedProperties = Entities.getEntityProperties(dragEntityID[hand], ["position", "rotation"]);
+    var itemWorldPosition = grabbedProperties.position;
+
+    var oldHandModelPosition = animationProperties[animVarName];
+
+    var palmWorldRotation = (hand == RIGHT_HAND) ? MyAvatar.getRightPalmRotation() : MyAvatar.getLeftPalmRotation();
+    var rotation = Quat.multiply(palmWorldRotation, dragOffsetRotation[hand]);
+
+    // see AvatarActionHold::getTarget
+    var relativePosition = dragOffsetPosition[hand]; // in hand-space
+
+    // print("relativePosition 0 = " + vec3toStr(relativePosition));
+    // var x = Vec3.multiplyQbyV(palmWorldRotation, HAND_TO_PALM_OFFSET);
+    // relativePosition = Vec3.sum(relativePosition, x);
+    // print("relativePosition 1 = " + vec3toStr(relativePosition));
+
+    var offset = Vec3.multiplyQbyV(rotation, relativePosition);
+
+    var newPalmWorldPosition = Vec3.subtract(itemWorldPosition, offset);
+
+    var handToPalmWorldOffset = Vec3.multiplyQbyV(palmWorldRotation, HAND_TO_PALM_OFFSET);
+    var newHandWorldPosition = Vec3.subtract(newPalmWorldPosition, handToPalmWorldOffset);
+
+    var newHandModelPosition = worldToModel(newHandWorldPosition);
+
+    // print("diff = " + vec3toStr(Vec3.subtract(newHandModelPosition, oldHandModelPosition)));
+    // print("dx = " + Vec3.distance(newHandModelPosition, oldHandModelPosition));
+
+    var result = {};
+
+    if (Vec3.distance(newHandModelPosition, oldHandModelPosition) > 0.06) {
+        result[animVarName] = newHandModelPosition;
+    } else {
+        result[animVarName] = oldHandModelPosition;
+    }
+
+    // result[animVarName] = oldHandModelPosition;
+
+    // result[animVarName] = newHandModelPosition;
+
+    return result;
+};
+
+dragHandLeft = function(animationProperties) {
+    return dragHand(LEFT_HAND, animationProperties);
+};
+
+dragHandRight = function(animationProperties) {
+    return dragHand(RIGHT_HAND, animationProperties);
+};
+
 
 function MyController(hand) {
     this.hand = hand;
     if (this.hand === RIGHT_HAND) {
         this.getHandPosition = MyAvatar.getRightPalmPosition;
         this.getHandRotation = MyAvatar.getRightPalmRotation;
+        this.animVarName = 'rightHandPosition';
     } else {
         this.getHandPosition = MyAvatar.getLeftPalmPosition;
         this.getHandRotation = MyAvatar.getLeftPalmRotation;
+        this.animVarName = 'leftHandPosition';
     }
 
     var SPATIAL_CONTROLLERS_PER_PALM = 2;
@@ -789,6 +878,17 @@ function MyController(hand) {
             (this.hand === RIGHT_HAND) ? MyAvatar.rightHandTipPosition : MyAvatar.leftHandTipPosition;
 
         this.currentObjectTime = Date.now();
+
+        print("handler on");
+        // copy some stuff into globals where the animation state handler can get at it
+        dragEntityID[this.hand] = this.grabbedEntity;
+        dragOffsetPosition[this.hand] = this.offsetPosition;
+        dragOffsetRotation[this.hand] = this.offsetRotation;
+        if (this.hand == RIGHT_HAND) {
+            this.handlerId = MyAvatar.addAnimationStateHandler(dragHandRight, ['rightHandPosition']);
+        } else {
+            this.handlerId = MyAvatar.addAnimationStateHandler(dragHandLeft, ['leftHandPosition']);
+        }
     };
 
     this.continueNearGrabbing = function() {
@@ -1057,6 +1157,10 @@ function MyController(hand) {
         this.grabbedEntity = null;
         this.actionID = null;
         this.setState(STATE_OFF);
+
+        print("handler off");
+        MyAvatar.removeAnimationStateHandler(this.handlerId);
+        this.handlerId = null;
     };
 
     this.cleanup = function() {
