@@ -272,9 +272,9 @@ void ModelEntityItem::updateShapeType(ShapeType type) {
     // but we are now enforcing the entity properties to be consistent.  To make the possible we're
     // introducing a temporary workaround: we will ignore ShapeType updates that conflict with the
     // _compoundShapeURL.
-    if (hasCompoundShapeURL()) {
+    // if (hasCompoundShapeURL()) {
         type = SHAPE_TYPE_COMPOUND;
-    }
+    // }
     // END_TEMPORARY_WORKAROUND
 
     if (type != _shapeType) {
@@ -285,18 +285,20 @@ void ModelEntityItem::updateShapeType(ShapeType type) {
 
 // virtual
 ShapeType ModelEntityItem::getShapeType() const {
-    if (_shapeType == SHAPE_TYPE_COMPOUND) {
-        return hasCompoundShapeURL() ? SHAPE_TYPE_COMPOUND : SHAPE_TYPE_NONE;
-    } else {
-        return _shapeType;
-    }
+    // if (_shapeType == SHAPE_TYPE_COMPOUND) {
+    //     return hasCompoundShapeURL() ? SHAPE_TYPE_COMPOUND : SHAPE_TYPE_NONE;
+    // } else {
+    //     return _shapeType;
+    // }
+    return _shapeType;
 }
 
 void ModelEntityItem::setCompoundShapeURL(const QString& url) {
     if (_compoundShapeURL != url) {
         _compoundShapeURL = url;
         _dirtyFlags |= Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS;
-        _shapeType = _compoundShapeURL.isEmpty() ? SHAPE_TYPE_NONE : SHAPE_TYPE_COMPOUND;
+        // _shapeType = _compoundShapeURL.isEmpty() ? SHAPE_TYPE_NONE : SHAPE_TYPE_COMPOUND;
+        _shapeType = SHAPE_TYPE_COMPOUND;
     }
 }
 

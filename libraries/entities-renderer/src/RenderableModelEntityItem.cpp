@@ -539,17 +539,19 @@ void RenderableModelEntityItem::setCompoundShapeURL(const QString& url) {
 bool RenderableModelEntityItem::isReadyToComputeShape() {
     ShapeType type = getShapeType();
 
-    if (true || type == SHAPE_TYPE_COMPOUND) {
-        if (!_model || _model->getCollisionURL().isEmpty()) {
+    if (type == SHAPE_TYPE_COMPOUND) {
+        if (!_model /*|| _model->getCollisionURL().isEmpty()*/) {
             EntityTreePointer tree = getTree();
             if (tree) {
                 QMetaObject::invokeMethod(tree.get(), "callLoader", Qt::QueuedConnection, Q_ARG(EntityItemID, getID()));
             }
+            qDebug() << "RenderableModelEntityItem::isReadyToComputeShape" << "no model";
             return false;
         }
 
         if (_model->getURL().isEmpty()) {
             // we need a render geometry with a scale to proceed, so give up.
+            qDebug() << "RenderableModelEntityItem::isReadyToComputeShape" << "model url is empty";
             return false;
         }
 
@@ -566,18 +568,23 @@ bool RenderableModelEntityItem::isReadyToComputeShape() {
                 _model->simulate(0.0f);
                 _needsInitialSimulation = false;
             }
+            qDebug() << "RenderableModelEntityItem::isReadyToComputeShape" << "true";
             return true;
         }
 
         // the model is still being downloaded.
+        qDebug() << "RenderableModelEntityItem::isReadyToComputeShape" << "still downloading";
         return false;
     }
+    qDebug() << "RenderableModelEntityItem::isReadyToComputeShape" << "shape isn't compound";
     return true;
 }
 
 void RenderableModelEntityItem::addMeshPartToShape(const FBXMesh& mesh, const FBXMeshPart &meshPart, unsigned int& pointIndex,
                                                    glm::vec3 offset, glm::vec3 scale) {
     QVector<glm::vec3> pointsInPart;
+
+    qDebug() << "RenderableModelEntityItem::addMeshPartToShape" << offset << scale << getName();
 
     // run through all the triangles and (uniquely) add each point to the hull
     unsigned int triangleCount = meshPart.triangleIndices.size() / 3;
@@ -586,9 +593,9 @@ void RenderableModelEntityItem::addMeshPartToShape(const FBXMesh& mesh, const FB
         unsigned int p0Index = meshPart.triangleIndices[j*3];
         unsigned int p1Index = meshPart.triangleIndices[j*3+1];
         unsigned int p2Index = meshPart.triangleIndices[j*3+2];
-        glm::vec3 p0 = (mesh.vertices[p0Index] + offset) * scale;
-        glm::vec3 p1 = (mesh.vertices[p1Index] + offset) * scale;
-        glm::vec3 p2 = (mesh.vertices[p2Index] + offset) * scale;
+        glm::vec3 p0 = mesh.vertices[p0Index];
+        glm::vec3 p1 = mesh.vertices[p1Index];
+        glm::vec3 p2 = mesh.vertices[p2Index];
         if (!pointsInPart.contains(p0)) {
             pointsInPart << p0;
         }
@@ -597,6 +604,10 @@ void RenderableModelEntityItem::addMeshPartToShape(const FBXMesh& mesh, const FB
         }
         if (!pointsInPart.contains(p2)) {
             pointsInPart << p2;
+        }
+
+        if (getName() == "biplane-with-hull") {
+            qDebug() << "ADDING POINTs" << p0 << p1 << p2;
         }
     }
 
@@ -609,10 +620,10 @@ void RenderableModelEntityItem::addMeshPartToShape(const FBXMesh& mesh, const FB
         unsigned int p1Index = meshPart.quadIndices[j*4+1];
         unsigned int p2Index = meshPart.quadIndices[j*4+2];
         unsigned int p3Index = meshPart.quadIndices[j*4+3];
-        glm::vec3 p0 = (mesh.vertices[p0Index] + offset) * scale;
-        glm::vec3 p1 = (mesh.vertices[p1Index] + offset) * scale;
-        glm::vec3 p2 = (mesh.vertices[p2Index] + offset) * scale;
-        glm::vec3 p3 = (mesh.vertices[p3Index] + offset) * scale;
+        glm::vec3 p0 = mesh.vertices[p0Index];
+        glm::vec3 p1 = mesh.vertices[p1Index];
+        glm::vec3 p2 = mesh.vertices[p2Index];
+        glm::vec3 p3 = mesh.vertices[p3Index];
         if (!pointsInPart.contains(p0)) {
             pointsInPart << p0;
         }
@@ -636,16 +647,24 @@ void RenderableModelEntityItem::addMeshPartToShape(const FBXMesh& mesh, const FB
     QVector<glm::vec3> newMeshPoints;
     _points << newMeshPoints;
     // add points to the new convex hull
-    _points[pointIndex++] << pointsInPart;
+    _points[pointIndex] << pointsInPart;
+    for (int j = 0; j < _points[pointIndex].size(); j++) {
+        // compensate for registraion
+        _points[pointIndex][j] += _model->getOffset();
+        // scale so the collision points match the model points
+        _points[pointIndex][j] *= scale;
+    }
+
+    pointIndex++;
 }
 
 void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& info) {
     ShapeType type = getShapeType();
-    // if (type != SHAPE_TYPE_COMPOUND) {
-    //     ModelEntityItem::computeShapeInfo(info);
-    //     info.setParams(type, 0.5f * getDimensions());
-    //     return;
-    // }
+    if (type != SHAPE_TYPE_COMPOUND) {
+        ModelEntityItem::computeShapeInfo(info);
+        info.setParams(type, 0.5f * getDimensions());
+        return;
+    }
 
     const QSharedPointer<NetworkGeometry> collisionNetworkGeometry = _model->getCollisionGeometry();
     const QSharedPointer<NetworkGeometry> renderNetworkGeometry = _model->getGeometry();
@@ -702,7 +721,10 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& info) {
     }
 
     glm::vec3 collisionModelDimensions = box.getDimensions();
-    info.setParams(type, collisionModelDimensions, _compoundShapeURL);
+    info.setParams(type, collisionModelDimensions, _compoundShapeURL != "" ? _compoundShapeURL : _modelURL);
+    if (getName() != "") {
+        qDebug() << "_points size is" << _points.size() << getName();
+    }
     info.setConvexHulls(_points);
 }
 

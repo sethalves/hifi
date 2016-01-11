@@ -736,12 +736,14 @@ void Model::setURL(const QUrl& url) {
 
 const QSharedPointer<NetworkGeometry> Model::getCollisionGeometry(bool delayLoad)
 {
-    if (_collisionGeometry.isNull() && !_collisionUrl.isEmpty()) {
-        _collisionGeometry.reset(new NetworkGeometry(_collisionUrl, delayLoad, QVariantHash()));
-    }
+    if (_collisionGeometry) {
+        if (_collisionGeometry.isNull() && !_collisionUrl.isEmpty()) {
+            _collisionGeometry.reset(new NetworkGeometry(_collisionUrl, delayLoad, QVariantHash()));
+        }
 
-    if (_collisionGeometry && _collisionGeometry->isLoaded()) {
-        return _collisionGeometry;
+        if (_collisionGeometry && _collisionGeometry->isLoaded()) {
+            return _collisionGeometry;
+        }
     }
 
     return QSharedPointer<NetworkGeometry>();
