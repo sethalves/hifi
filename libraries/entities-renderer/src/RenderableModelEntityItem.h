@@ -64,6 +64,7 @@ public:
     virtual void setCompoundShapeURL(const QString& url) override;
 
     virtual bool isReadyToComputeShape() override;
+    void addMeshPartToShape(const FBXMesh& mesh, const FBXMeshPart &meshPart, unsigned int& pointIndex, glm::vec3 offset, glm::vec3 scale);
     virtual void computeShapeInfo(ShapeInfo& info) override;
 
     virtual bool contains(const glm::vec3& point) const override;

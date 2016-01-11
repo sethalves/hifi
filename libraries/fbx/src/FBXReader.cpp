@@ -18,6 +18,7 @@
 #include <QtDebug>
 #include <QtEndian>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -1513,8 +1514,6 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         }
         extracted.mesh.isEye = (maxJointIndex == geometry.leftEyeJointIndex || maxJointIndex == geometry.rightEyeJointIndex);
 
-        buildModelMesh(extracted.mesh, url);
-
         if (extracted.mesh.isEye) {
             if (maxJointIndex == geometry.leftEyeJointIndex) {
                 geometry.leftEyeSize = extracted.mesh.meshExtents.largestDimension() * offsetScale;
@@ -1522,10 +1521,66 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                 geometry.rightEyeSize = extracted.mesh.meshExtents.largestDimension() * offsetScale;
             }
         }
+    }
+
+    QRegularExpression VHACDHullRe(".*_ACD.*"); // match against the way Blender names meshes added during v-hacd
+    QRegularExpression VHACDIgnoreRe(".*_GM.*"); // match against the way Blender names meshes added during v-hacd
+    for (QMap<QString, ExtractedMesh>::iterator it = meshes.begin(); it != meshes.end(); it++) {
+        ExtractedMesh& extracted = it.value();
+        int meshIndex = geometry.meshes.size();
+        const QString& meshID = it.key();
+        bool isForCollisions = false;
+        bool isForDrawing = true;
+
+        if (ooChildToParent.contains(meshID)) {
+            // attempt to map any meshes to a named model
+            const QString& modelID = ooChildToParent.value(meshID);
+            if (modelIDsToNames.contains(modelID)) {
+                const QString& modelName = modelIDsToNames.value(modelID);
+                geometry.meshIndicesToModelNames.insert(meshIndex, modelName);
+
+                // if we can figure out the intended use of the mesh from the name, flag it, here.
+                QRegularExpressionMatch blenderVHACDMatch = VHACDHullRe.match(modelName);
+                if (blenderVHACDMatch.hasMatch()) {
+                    isForCollisions = true;
+                    isForDrawing = false;
+                }
+                QRegularExpressionMatch ignoreVHACDMatch = VHACDIgnoreRe.match(modelName);
+                if (ignoreVHACDMatch.hasMatch()) {
+                    isForDrawing = false;
+                }
+            }
+        }
+
+        // if (isForCollisions) {
+        //     model::MeshPointer meshPtr(new model::Mesh());
+        //     auto vb = std::make_shared<gpu::Buffer>();
+        //     gpu::BufferView vbv(vb, gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ));
+        //     meshPtr->setVertexBuffer(vbv);
+
+        //     auto indexBuffer = std::make_shared<gpu::Buffer>();
+        //     gpu::BufferView indexBufferView(indexBuffer, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::XYZ));
+        //     meshPtr->setIndexBuffer(indexBufferView);
+
+        //     meshPtr->evalPartBound(0);
+        //     extracted.mesh._mesh = meshPtr;
+        // } else {
+        //     buildModelMesh(extracted.mesh, url);
+        // }
+
+        buildModelMesh(extracted.mesh, url);
+        extracted.mesh.isForCollisions = isForCollisions;
+        extracted.mesh._mesh->isForCollisions = isForCollisions;
+        extracted.mesh.isForDrawing = isForDrawing;
+        extracted.mesh._mesh->isForDrawing = isForDrawing;
 
         geometry.meshes.append(extracted.mesh);
-        int meshIndex = geometry.meshes.size() - 1;
         meshIDsToMeshIndices.insert(it.key(), meshIndex);
+    }
+
+    qDebug() << "----------------++++++++++++++---------------++++++++++++++---------------";
+    for (int i = 0; i < geometryPtr->meshIndicesToModelNames.size(); i ++) {
+        qDebug() << i << geometryPtr->getModelNameOfMesh(i) << geometryPtr->meshes[i].isForCollisions << geometryPtr->meshes[i].isForDrawing;
     }
 
     const float INV_SQRT_3 = 0.57735026918f;
@@ -1585,22 +1640,6 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         sittingPoint.rotation = glm::quat(glm::radians(parseVec3(properties.at(1).toString())));
 
         geometry.sittingPoints.append(sittingPoint);
-    }
-
-    // attempt to map any meshes to a named model
-    for (QHash<QString, int>::const_iterator m = meshIDsToMeshIndices.constBegin();
-            m != meshIDsToMeshIndices.constEnd(); m++) {
-
-        const QString& meshID = m.key();
-        int meshIndex = m.value();
-
-        if (ooChildToParent.contains(meshID)) {
-            const QString& modelID = ooChildToParent.value(meshID);
-            if (modelIDsToNames.contains(modelID)) {
-                const QString& modelName = modelIDsToNames.value(modelID);
-                geometry.meshIndicesToModelNames.insert(meshIndex, modelName);
-            }
-        }
     }
 
     return geometryPtr;

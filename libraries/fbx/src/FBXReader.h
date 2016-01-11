@@ -163,9 +163,9 @@ public:
 /// A single mesh (with optional blendshapes) extracted from an FBX document.
 class FBXMesh {
 public:
-    
+
     QVector<FBXMeshPart> parts;
-    
+
     QVector<glm::vec3> vertices;
     QVector<glm::vec3> normals;
     QVector<glm::vec3> tangents;
@@ -174,14 +174,16 @@ public:
     QVector<glm::vec2> texCoords1;
     QVector<glm::vec4> clusterIndices;
     QVector<glm::vec4> clusterWeights;
-    
+
     QVector<FBXCluster> clusters;
 
     Extents meshExtents;
     glm::mat4 modelTransform;
 
     bool isEye;
-    
+    bool isForCollisions { false };
+    bool isForDrawing { true };
+
     QVector<FBXBlendshape> blendshapes;
 
     unsigned int meshIndex; // the order the meshes appeared in the object file
@@ -196,6 +198,7 @@ public:
     QVector<QHash<int, int> > blendshapeIndexMaps;
     QVector<QPair<int, int> > partMaterialTextures;
     QHash<QString, size_t> texcoordSetMap;
+    bool isForCollisions {false};
 };
 
 /// A single animation frame extracted from an FBX document.

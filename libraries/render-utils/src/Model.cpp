@@ -1189,6 +1189,9 @@ void Model::segregateMeshGroups() {
         const FBXMesh& mesh = geometry.meshes.at(i);
         const NetworkMesh& networkMesh = *(networkMeshes.at(i).get());
 
+        if (!mesh.isForDrawing) {
+            continue;
+        }
         // Create the render payloads
         int totalParts = mesh.parts.size();
         for (int partIndex = 0; partIndex < totalParts; partIndex++) {

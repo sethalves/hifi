@@ -114,6 +114,9 @@ public:
 
     static gpu::Primitive topologyToPrimitive(Topology topo) { return static_cast<gpu::Primitive>(topo); }
 
+    bool isForCollisions { false };
+    bool isForDrawing { true };
+
 protected:
 
     gpu::Stream::FormatPointer _vertexFormat;
