@@ -40,7 +40,7 @@ if (SHOW_TOOL_BAR) {
     var saveButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: ".../save.png",
+        imageURL: "http://headache.hungry.com/~seth/hifi/save.png",
         color: {
             red: 255,
             green: 255,
@@ -51,7 +51,29 @@ if (SHOW_TOOL_BAR) {
     var loadButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: ".../load.png",
+        imageURL: "http://headache.hungry.com/~seth/hifi/load.png",
+        color: {
+            red: 255,
+            green: 255,
+            blue: 255
+        },
+        alpha: 1
+    });
+    var wearButton = toolBar.addOverlay("image", {
+        width: BUTTON_SIZE,
+        height: BUTTON_SIZE,
+        imageURL: "http://headache.hungry.com/~seth/hifi/wear.png",
+        color: {
+            red: 255,
+            green: 255,
+            blue: 255
+        },
+        alpha: 1
+    });
+    var unwearButton = toolBar.addOverlay("image", {
+        width: BUTTON_SIZE,
+        height: BUTTON_SIZE,
+        imageURL: "http://headache.hungry.com/~seth/hifi/unwear.png",
         color: {
             red: 255,
             green: 255,
@@ -72,6 +94,10 @@ function mousePressEvent(event) {
         manager.saveAttachedEntities();
     } else if (clickedOverlay == loadButton) {
         manager.loadAttachedEntities();
+    } else if (clickedOverlay == wearButton) {
+        manager.wearAttachedEntities();
+    } else if (clickedOverlay == unwearButton) {
+        manager.unwearAttachedEntities();
     }
 }
 
@@ -283,6 +309,14 @@ function AttachedEntitiesManager() {
                 grabbedEntity: loadedEntityID
             }));
         }
+    }
+
+    this.wearAttachedEntities = function(grabbedEntity) {
+        print("wear");
+    }
+
+    this.unwearAttachedEntities = function(grabbedEntity) {
+        print("unwear");
     }
 }
 

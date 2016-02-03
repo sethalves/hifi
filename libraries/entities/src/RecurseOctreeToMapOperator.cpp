@@ -52,6 +52,7 @@ bool RecurseOctreeToMapOperator::postRecursion(OctreeElementPointer element) {
         if (_skipThoseWithBadParents && !entityItem->isParentIDValid()) {
             return;  // we weren't able to resolve a parent from _parentID, so don't save this entity.
         }
+
         EntityItemProperties properties = entityItem->getProperties();
         QScriptValue qScriptValues;
         if (_skipDefaultValues) {
