@@ -23,8 +23,8 @@ class EntityEditPacketSender :  public OctreeEditPacketSender {
 public:
     EntityEditPacketSender();
 
-    void setMyAvatar(AvatarSharedPointer myAvatar) { _myAvatar = myAvatar; }
-    AvatarSharedPointer getMyAvatar() { return _myAvatar; }
+    void setMyAvatar(AvatarData* myAvatar) { _myAvatar = myAvatar; }
+    AvatarData* getMyAvatar() { return _myAvatar; }
 
     /// Queues an array of several voxel edit messages. Will potentially send a pending multi-command packet. Determines
     /// which voxel-server node or nodes the packet should be sent to. Can be called even before voxel servers are known, in
@@ -44,7 +44,7 @@ public slots:
 
 private:
     bool _shouldProcessNack = true;
-    AvatarSharedPointer _myAvatar;
+    AvatarData* _myAvatar;
     QScriptEngine _scriptEngine;
 };
 #endif // hifi_EntityEditPacketSender_h
