@@ -13,7 +13,6 @@
 #define hifi_SpatiallyNestable_h
 
 #include <QUuid>
-#include <QtScript/QScriptEngine>
 
 #include "Transform.h"
 #include "AACube.h"
@@ -120,8 +119,6 @@ public:
     bool isDead() const { return _isDead; }
 
     bool isParentIDValid() const { bool success = false; getParentPointer(success); return success; }
-
-    virtual QVariant toVariant(bool skipDefaultValues = true, QScriptEngine* engine = nullptr) const { return QVariant(false); }
 
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData

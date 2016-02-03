@@ -52,7 +52,14 @@ bool RecurseOctreeToMapOperator::postRecursion(OctreeElementPointer element) {
         if (_skipThoseWithBadParents && !entityItem->isParentIDValid()) {
             return;  // we weren't able to resolve a parent from _parentID, so don't save this entity.
         }
-        entitiesQList << entityItem->toVariant(_skipDefaultValues, _engine);
+        EntityItemProperties properties = entityItem->getProperties();
+        QScriptValue qScriptValues;
+        if (_skipDefaultValues) {
+            qScriptValues = EntityItemNonDefaultPropertiesToScriptValue(_engine, properties);
+        } else {
+            qScriptValues = EntityItemPropertiesToScriptValue(_engine, properties);
+        }
+        entitiesQList << qScriptValues.toVariant();
     });
 
     _map["Entities"] = entitiesQList;

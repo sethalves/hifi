@@ -1908,25 +1908,3 @@ void EntityItem::locationChanged() {
     requiresRecalcBoxes();
     SpatiallyNestable::locationChanged(); // tell all the children, also
 }
-
-// QVariant EntityItem::toVariant(bool skipDefaultValues, QScriptEngine* engine) const {
-//     EntityItemProperties properties = getProperties();
-//     QScriptValue qScriptValues;
-//     bool freeEngine;
-//     if (!engine) {
-//         engine = new QScriptEngine();
-//         freeEngine = true;
-//     }
-
-//     if (skipDefaultValues) {
-//         qScriptValues = EntityItemNonDefaultPropertiesToScriptValue(engine, properties);
-//     } else {
-//         qScriptValues = EntityItemPropertiesToScriptValue(engine, properties);
-//     }
-
-//     if (freeEngine) {
-//         delete engine;
-//     }
-
-//     return qScriptValues.toVariant();
-// }

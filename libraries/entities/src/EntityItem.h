@@ -401,8 +401,6 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
-    // virtual QVariant toVariant(bool skipDefaultValues = true, QScriptEngine* engine = nullptr) const override;
-
     bool getClientOnly() const { return _clientOnly; }
     void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
 
