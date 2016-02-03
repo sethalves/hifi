@@ -1324,13 +1324,14 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         EntityItemPropertiesFromScriptValueIgnoreReadOnly(entityScriptValue, properties);
 
         EntityItemID entityItemID;
+        EntityItemPointer entity = nullptr;
         if (entityMap.contains("id")) {
             entityItemID = EntityItemID(QUuid(entityMap["id"].toString()));
+            entity = findEntityByEntityItemID(entityItemID);
         } else {
             entityItemID = EntityItemID(QUuid::createUuid());
         }
 
-        EntityItemPointer entity = findEntityByEntityItemID(entityItemID);
         if (entity) {
             updateEntity(entityItemID, properties, SharedNodePointer(nullptr));
         } else {
