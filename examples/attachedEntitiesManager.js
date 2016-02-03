@@ -312,11 +312,23 @@ function AttachedEntitiesManager() {
     }
 
     this.wearAttachedEntities = function(grabbedEntity) {
-        print("wear");
+        var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
+        for (i = 0; i < nearbyEntities.length; i++) {
+            var entityID = nearbyEntities[i];
+            var props = Entities.getEntityProperties(entityID, ["parentID", "name"]);
+            if (props.parentID == MyAvatar.sessionUUID) {
+                var attachResult = Entities.attachEntityToMyAvatar(entityID);
+                print("attach " + props.name + " " + attachResult);
+            }
+        }
     }
 
     this.unwearAttachedEntities = function(grabbedEntity) {
-        print("unwear");
+        var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
+        for (i = 0; i < nearbyEntities.length; i++) {
+            var entityID = nearbyEntities[i];
+            Entities.detachEntityFromMyAvatar(entityID);
+        }
     }
 }
 
