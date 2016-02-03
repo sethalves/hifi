@@ -174,11 +174,12 @@ function AttachedEntitiesManager() {
                     parentJointIndex: bestJointIndex
                 };
 
-                if (bestJointOffset && bestJointOffset.constructor === Array && bestJointOffset.length > 1) {
-                    if (this.avatarIsInDressingRoom()) {
+                if (bestJointOffset && bestJointOffset.constructor === Array) {
+                    if (this.avatarIsInDressingRoom() || bestJointOffset.length < 2) {
+                        // don't snap the entity to the preferred position if the avatar is in the dressing room.
                         this.updateRelativeOffsets(grabbedEntity);
                     } else {
-                        // don't snap the entity to the preferred position if the avatar is in the dressing room.
+                        // avatar isn't in the dressing-room, bring the entity back to the preferred position
                         wearProps.localPosition = bestJointOffset[0];
                         wearProps.localRotation = bestJointOffset[1];
                     }

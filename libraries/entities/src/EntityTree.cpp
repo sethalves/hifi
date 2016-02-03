@@ -1330,9 +1330,14 @@ bool EntityTree::readFromMap(QVariantMap& map) {
             entityItemID = EntityItemID(QUuid::createUuid());
         }
 
-        EntityItemPointer entity = addEntity(entityItemID, properties);
-        if (!entity) {
-            qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
+        EntityItemPointer entity = findEntityByEntityItemID(entityItemID);
+        if (entity) {
+            updateEntity(entityItemID, properties, SharedNodePointer(nullptr));
+        } else {
+            entity = addEntity(entityItemID, properties);
+            if (!entity) {
+                qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
+            }
         }
     }
 

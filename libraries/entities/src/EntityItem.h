@@ -401,6 +401,8 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
+    virtual QVariant toVariant(bool skipDefaultValues = true, QScriptEngine* engine = nullptr) const override;
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }
