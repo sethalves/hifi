@@ -992,3 +992,76 @@ QStringList EntityScriptingInterface::getJointNames(const QUuid& entityID) {
                               Q_RETURN_ARG(QStringList, result), Q_ARG(QUuid, entityID));
     return result;
 }
+
+bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
+    // change an Entity to be client-only -- updates will be sent via the avatar-mixer rather than
+    // the entity-server.
+    bool result = false;
+    if (!_entityTree) {
+        return false;
+    }
+
+    _entityTree->withWriteLock([&] {
+        EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
+        if (!entity) {
+            qDebug() << "EntityScriptingInterface::attachEntityToMyAvatar - no entity with ID" << entityID;
+            return;
+        }
+
+        if (entity->getClientOnly()) {
+            qDebug() << "EntityScriptingInterface::attachEntityToMyAvatar - entity is already client-only" << entityID;
+            return;
+        }
+
+        // const QUuid myNodeID = nodeList->getSessionUUID();
+        // if (entity->getParentID() != myNodeID) {
+        //     qDebug() << "EntityScriptingInterface::attachEntityToMyAvatar - entity isn't child of MyAvatar" << entityID;
+        //     return;
+        // }
+
+        entity->setClientOnly(true);
+        // XXX send special delete message to entity server
+        EntityPropertyFlags noSpecificProperties;
+        EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        properties.markAllChanged();
+        queueEntityMessage(PacketType::EntityAdd, entityID, properties);
+        result = true;
+    });
+
+    return result;
+}
+
+bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
+    bool result = false;
+    if (!_entityTree) {
+        return false;
+    }
+
+   _entityTree->withWriteLock([&] {
+        EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
+        if (!entity) {
+            qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - no entity with ID" << entityID;
+            return;
+        }
+
+        if (!entity->getClientOnly()) {
+            qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - entity isn't client-only" << entityID;
+            return;
+        }
+
+        // const QUuid myNodeID = nodeList->getSessionUUID();
+        // if (entity->getParentID() != myNodeID) {
+        //     qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - entity isn't child of MyAvatar" << entityID;
+        //     return;
+        // }
+
+        entity->setClientOnly(false);
+        EntityPropertyFlags noSpecificProperties;
+        EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        properties.markAllChanged();
+        queueEntityMessage(PacketType::EntityAdd, entityID, properties);
+        result = true;
+    });
+
+    return result;
+}

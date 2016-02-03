@@ -280,6 +280,8 @@ public:
     Q_INVOKABLE QVariantList getAttachmentsVariant() const;
     Q_INVOKABLE void setAttachmentsVariant(const QVariantList& variant);
 
+    void updateAvatarEntity(QUuid entityID, QByteArray entityData) { }
+
     void setForceFaceTrackerConnected(bool connected) { _forceFaceTrackerConnected = connected; }
 
     // key state

@@ -401,7 +401,10 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
-    virtual QVariant toVariant(bool skipDefaultValues = true, QScriptEngine* engine = nullptr) const override;
+    // virtual QVariant toVariant(bool skipDefaultValues = true, QScriptEngine* engine = nullptr) const override;
+
+    bool getClientOnly() const { return _clientOnly; }
+    void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
 
 protected:
 
@@ -507,6 +510,8 @@ protected:
     mutable QHash<QUuid, quint64> _previouslyDeletedActions;
 
     QUuid _sourceUUID; /// the server node UUID we came from
+
+    bool _clientOnly { false }; // true if entity-server doesn't know about this entity.
 };
 
 #endif // hifi_EntityItem_h

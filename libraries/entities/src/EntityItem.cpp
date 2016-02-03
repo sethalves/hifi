@@ -1027,6 +1027,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     properties._id = getID();
     properties._idSet = true;
     properties._created = _created;
+    properties.setClientOnly(_clientOnly);
 
     properties._type = getType();
 
@@ -1908,24 +1909,24 @@ void EntityItem::locationChanged() {
     SpatiallyNestable::locationChanged(); // tell all the children, also
 }
 
-QVariant EntityItem::toVariant(bool skipDefaultValues, QScriptEngine* engine) const {
-    EntityItemProperties properties = getProperties();
-    QScriptValue qScriptValues;
-    bool freeEngine;
-    if (!engine) {
-        engine = new QScriptEngine();
-        freeEngine = true;
-    }
+// QVariant EntityItem::toVariant(bool skipDefaultValues, QScriptEngine* engine) const {
+//     EntityItemProperties properties = getProperties();
+//     QScriptValue qScriptValues;
+//     bool freeEngine;
+//     if (!engine) {
+//         engine = new QScriptEngine();
+//         freeEngine = true;
+//     }
 
-    if (skipDefaultValues) {
-        qScriptValues = EntityItemNonDefaultPropertiesToScriptValue(engine, properties);
-    } else {
-        qScriptValues = EntityItemPropertiesToScriptValue(engine, properties);
-    }
+//     if (skipDefaultValues) {
+//         qScriptValues = EntityItemNonDefaultPropertiesToScriptValue(engine, properties);
+//     } else {
+//         qScriptValues = EntityItemPropertiesToScriptValue(engine, properties);
+//     }
 
-    if (freeEngine) {
-        delete engine;
-    }
+//     if (freeEngine) {
+//         delete engine;
+//     }
 
-    return qScriptValues.toVariant();
-}
+//     return qScriptValues.toVariant();
+// }

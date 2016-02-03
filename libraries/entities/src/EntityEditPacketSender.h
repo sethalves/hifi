@@ -15,6 +15,7 @@
 #include <OctreeEditPacketSender.h>
 
 #include "EntityItem.h"
+#include "AvatarData.h"
 
 /// Utility for processing, packing, queueing and sending of outbound edit voxel messages.
 class EntityEditPacketSender :  public OctreeEditPacketSender {
@@ -22,11 +23,14 @@ class EntityEditPacketSender :  public OctreeEditPacketSender {
 public:
     EntityEditPacketSender();
 
+    void setMyAvatar(AvatarSharedPointer myAvatar) { _myAvatar = myAvatar; }
+    AvatarSharedPointer getMyAvatar() { return _myAvatar; }
+
     /// Queues an array of several voxel edit messages. Will potentially send a pending multi-command packet. Determines
     /// which voxel-server node or nodes the packet should be sent to. Can be called even before voxel servers are known, in
     /// which case up to MaxPendingMessages will be buffered and processed when voxel servers are known.
     /// NOTE: EntityItemProperties assumes that all distances are in meter units
-    void queueEditEntityMessage(PacketType type, EntityItemID modelID, const EntityItemProperties& properties);
+    void queueEditEntityMessage(PacketType type, EntityItemID entityItemID, const EntityItemProperties& properties);
 
     void queueEraseEntityMessage(const EntityItemID& entityItemID);
 
@@ -40,5 +44,7 @@ public slots:
 
 private:
     bool _shouldProcessNack = true;
+    AvatarSharedPointer _myAvatar;
+    QScriptEngine _scriptEngine;
 };
 #endif // hifi_EntityEditPacketSender_h

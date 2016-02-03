@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include <QJsonDocument>
+
 #include <assert.h>
 #include <PerfStat.h>
 #include <OctalCode.h>
@@ -35,18 +37,27 @@ void EntityEditPacketSender::adjustEditPacketForClockSkew(PacketType type, QByte
     }
 }
 
-void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemID modelID,
-                                                                const EntityItemProperties& properties) {
+void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemID entityItemID,
+                                                    const EntityItemProperties& properties) {
     if (!_shouldSend) {
         return; // bail early
+    }
+    if (properties.getClientOnly()) {
+        // this is an avatar-based entity.  update our avatar-data rather than sending to the entity-server
+        assert(_myAvatar);
+        QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, properties);
+        QVariant variantProperties = scriptProperties.toVariant();
+        QByteArray jsonProperties = QJsonDocument::fromVariant(variantProperties).toJson();
+        _myAvatar->updateAvatarEntity(entityItemID, jsonProperties);
+        return;
     }
 
     QByteArray bufferOut(NLPacket::maxPayloadSize(type), 0);
 
-    if (EntityItemProperties::encodeEntityEditPacket(type, modelID, properties, bufferOut)) {
+    if (EntityItemProperties::encodeEntityEditPacket(type, entityItemID, properties, bufferOut)) {
         #ifdef WANT_DEBUG
             qCDebug(entities) << "calling queueOctreeEditMessage()...";
-            qCDebug(entities) << "    id:" << modelID;
+            qCDebug(entities) << "    id:" << entityItemID;
             qCDebug(entities) << "    properties:" << properties;
         #endif
         queueOctreeEditMessage(type, bufferOut);

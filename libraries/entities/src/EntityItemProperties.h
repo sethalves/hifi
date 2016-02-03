@@ -239,10 +239,10 @@ public:
 
     const glm::vec3& getNaturalDimensions() const { return _naturalDimensions; }
     void setNaturalDimensions(const glm::vec3& value) { _naturalDimensions = value; }
-    
+
     const glm::vec3& getNaturalPosition() const { return _naturalPosition; }
     void calculateNaturalPosition(const glm::vec3& min, const glm::vec3& max);
-    
+
     const QStringList& getTextureNames() const { return _textureNames; }
     void setTextureNames(const QStringList& value) { _textureNames = value; }
 
@@ -274,6 +274,9 @@ public:
     void setJointRotationsDirty() { _jointRotationsSetChanged = true; _jointRotationsChanged = true; }
     void setJointTranslationsDirty() { _jointTranslationsSetChanged = true; _jointTranslationsChanged = true; }
 
+    bool getClientOnly() const { return _clientOnly; }
+    void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
+
 protected:
     QString getCollisionMaskAsString() const;
     void setCollisionMaskFromString(const QString& maskString);
@@ -300,6 +303,7 @@ private:
     glm::vec3 _naturalPosition;
 
     EntityPropertyFlags _desiredProperties; // if set will narrow scopes of copy/to/from to just these properties
+    bool _clientOnly { false };
 };
 
 Q_DECLARE_METATYPE(EntityItemProperties);
