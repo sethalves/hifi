@@ -299,6 +299,10 @@ void MyAvatar::update(float deltaTime) {
     head->setAudioLoudness(audio->getLastInputLoudness());
     head->setAudioAverageLoudness(audio->getAudioAverageInputLoudness());
 
+    if (_avatarEntityDataLocallyEdited) {
+        sendIdentityPacket();
+    }
+
     simulate(deltaTime);
 }
 

@@ -61,6 +61,7 @@ typedef unsigned long long quint64;
 using AvatarSharedPointer = std::shared_ptr<AvatarData>;
 using AvatarWeakPointer = std::weak_ptr<AvatarData>;
 using AvatarHash = QHash<QUuid, AvatarSharedPointer>;
+using AvatarEntityMap = QMap<QUuid, QByteArray>;
 
 using AvatarDataSequenceNumber = uint16_t;
 
@@ -351,6 +352,8 @@ public:
 
     glm::vec3 getClientGlobalPosition() { return _globalPosition; }
 
+    Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
+
 public slots:
     void sendAvatarDataPacket();
     void sendIdentityPacket();
@@ -427,15 +430,15 @@ protected:
     // updates about one avatar to another.
     glm::vec3 _globalPosition;
 
+    AvatarEntityMap _avatarEntityData;
+    bool _avatarEntityDataLocallyEdited { false };
+    
 private:
     friend void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);
     static QUrl _defaultFullAvatarModelUrl;
     // privatize the copy constructor and assignment operator so they cannot be called
     AvatarData(const AvatarData&);
     AvatarData& operator= (const AvatarData&);
-
-    QMap<QUuid, QByteArray> _avatarEntityData;
-    bool _avatarEntityDataLocallyEdited { false };
 };
 Q_DECLARE_METATYPE(AvatarData*)
 

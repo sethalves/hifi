@@ -106,7 +106,7 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
 
         QUrl faceMeshURL, skeletonURL;
         QVector<AttachmentData> attachmentData;
-        QList<QByteArray> attachedEntityData;
+        AvatarEntityMap attachedEntityData;
         QString displayName;
         identityStream >> sessionUUID >> faceMeshURL >> skeletonURL >> attachmentData >> attachedEntityData >> displayName;
 

@@ -999,7 +999,7 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
     QUuid avatarUUID;
     QUrl faceModelURL, skeletonModelURL;
     QVector<AttachmentData> attachmentData;
-    QList<QByteArray> attachedEntityData;
+    AvatarEntityMap attachedEntityData;
     QString displayName;
     packetStream >> avatarUUID >> faceModelURL >> skeletonModelURL >> attachmentData >> attachedEntityData >> displayName;
 
@@ -1025,7 +1025,11 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
         hasIdentityChanged = true;
     }
 
-    // XXX attachedEntityData
+    if (attachedEntityData != _avatarEntityData) {
+        setAvatarEntityData(_avatarEntityData);
+        hasIdentityChanged = true;
+    }
+
 
     return hasIdentityChanged;
 }
@@ -1036,12 +1040,7 @@ QByteArray AvatarData::identityByteArray() {
     QUrl emptyURL("");
     const QUrl& urlToSend = (_skeletonModelURL == AvatarData::defaultFullAvatarModelUrl()) ? emptyURL : _skeletonModelURL;
 
-    QList<QByteArray> attachedEntityData;
-    for (auto entityID : _avatarEntityData.keys()) {
-        attachedEntityData << _avatarEntityData.value(entityID);
-    }
-
-    identityStream << QUuid() << _faceModelURL << urlToSend << _attachmentData << attachedEntityData << _displayName;
+    identityStream << QUuid() << _faceModelURL << urlToSend << _attachmentData << _avatarEntityData << _displayName;
 
     return identityData;
 }
@@ -1781,4 +1780,12 @@ void AvatarData::clearAvatarEntity(const QUuid& entityID) {
     }
     _avatarEntityData.remove(entityID);
     _avatarEntityDataLocallyEdited = true;
+}
+
+void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "setAvatarEntityData", Q_ARG(const AvatarEntityMap&, avatarEntityData));
+        return;
+    }
+    _avatarEntityData = avatarEntityData;
 }
