@@ -125,6 +125,10 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
             avatar->setAttachmentData(attachmentData);
         }
 
+        // if (avatar->getAvatarEntityData() != attachedEntityData) {
+            avatar->setAvatarEntityData(attachedEntityData);
+        // }
+
         if (avatar->getDisplayName() != displayName) {
             avatar->setDisplayName(displayName);
         }

@@ -1030,7 +1030,6 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
         hasIdentityChanged = true;
     }
 
-
     return hasIdentityChanged;
 }
 
@@ -1781,6 +1780,16 @@ void AvatarData::clearAvatarEntity(const QUuid& entityID) {
     _avatarEntityData.remove(entityID);
     _avatarEntityDataLocallyEdited = true;
 }
+
+// AvatarEntityMap AvatarData::getAvatarEntityData() const {
+//     if (QThread::currentThread() != thread()) {
+//         AvatarEntityMap result;
+//         QMetaObject::invokeMethod(this, "getAvatarEntityData",
+//                                   Qt::BlockingQueuedConnection, Q_RETURN_ARG(AvatarEntityMap, result));
+//         return result;
+//     }
+//     return _avatarEntityData;
+// }
 
 void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
     if (QThread::currentThread() != thread()) {

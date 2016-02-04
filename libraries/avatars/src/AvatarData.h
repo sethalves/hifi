@@ -352,6 +352,7 @@ public:
 
     glm::vec3 getClientGlobalPosition() { return _globalPosition; }
 
+    // Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
     Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
 
 public slots:
