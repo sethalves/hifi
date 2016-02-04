@@ -1013,13 +1013,16 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
             return;
         }
 
-        // const QUuid myNodeID = nodeList->getSessionUUID();
+        auto nodeList = DependencyManager::get<NodeList>();
+        const QUuid myNodeID = nodeList->getSessionUUID();
+
         // if (entity->getParentID() != myNodeID) {
         //     qDebug() << "EntityScriptingInterface::attachEntityToMyAvatar - entity isn't child of MyAvatar" << entityID;
         //     return;
         // }
 
         entity->setClientOnly(true);
+        entity->setOwningAvatarID(myNodeID);
         // XXX send special delete message to entity server
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
@@ -1056,9 +1059,11 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
         // }
 
         entity->setClientOnly(false);
+        entity->setOwningAvatarID(QUuid());
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
         properties.markAllChanged();
+        getEntityPacketSender()->clearAvatarEntity(entityID);
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);
         result = true;
     });

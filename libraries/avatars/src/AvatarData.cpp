@@ -999,8 +999,9 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
     QUuid avatarUUID;
     QUrl faceModelURL, skeletonModelURL;
     QVector<AttachmentData> attachmentData;
+    QList<QByteArray> attachedEntityData;
     QString displayName;
-    packetStream >> avatarUUID >> faceModelURL >> skeletonModelURL >> attachmentData >> displayName;
+    packetStream >> avatarUUID >> faceModelURL >> skeletonModelURL >> attachmentData >> attachedEntityData >> displayName;
 
     bool hasIdentityChanged = false;
 
@@ -1033,7 +1034,12 @@ QByteArray AvatarData::identityByteArray() {
     QUrl emptyURL("");
     const QUrl& urlToSend = (_skeletonModelURL == AvatarData::defaultFullAvatarModelUrl()) ? emptyURL : _skeletonModelURL;
 
-    identityStream << QUuid() << _faceModelURL << urlToSend << _attachmentData << _displayName;
+    QList<QByteArray> attachedEntityData;
+    for (auto entityID : _avatarEntityData.keys()) {
+        attachedEntityData << _avatarEntityData.value(entityID);
+    }
+
+    identityStream << QUuid() << _faceModelURL << urlToSend << _attachmentData << attachedEntityData << _displayName;
 
     return identityData;
 }
@@ -1242,6 +1248,7 @@ void AvatarData::sendIdentityPacket() {
     identityPacket->write(identityData);
 
     nodeList->broadcastToNodes(std::move(identityPacket), NodeSet() << NodeType::AvatarMixer);
+    _avatarEntityDataLocallyEdited = false;
 }
 
 void AvatarData::sendBillboardPacket() {
@@ -1429,6 +1436,7 @@ static const QString JSON_AVATAR_HEAD_MODEL = QStringLiteral("headModel");
 static const QString JSON_AVATAR_BODY_MODEL = QStringLiteral("bodyModel");
 static const QString JSON_AVATAR_DISPLAY_NAME = QStringLiteral("displayName");
 static const QString JSON_AVATAR_ATTACHEMENTS = QStringLiteral("attachments");
+static const QString JSON_AVATAR_ENTITIES = QStringLiteral("attachedEntities");
 static const QString JSON_AVATAR_SCALE = QStringLiteral("scale");
 
 QJsonValue toJsonValue(const JointData& joint) {
@@ -1468,6 +1476,16 @@ QJsonObject AvatarData::toJson() const {
             attachmentsJson.push_back(attachment.toJson());
         }
         root[JSON_AVATAR_ATTACHEMENTS] = attachmentsJson;
+    }
+    if (!_avatarEntityData.empty()) {
+        QJsonArray attachedEntityJson;
+        for (auto entityID : _avatarEntityData.keys()) {
+            QVariantMap entityData;
+            entityData.insert("id", entityID);
+            entityData.insert("properties", _avatarEntityData.value(entityID));
+            attachedEntityJson.push_back(QVariant(entityData).toJsonObject());
+        }
+        root[JSON_AVATAR_ENTITIES] = attachedEntityJson;
     }
 
     auto recordingBasis = getRecordingBasis();
@@ -1577,6 +1595,14 @@ void AvatarData::fromJson(const QJsonObject& json) {
         }
         setAttachmentData(attachments);
     }
+
+    // XXX
+    // if (json.contains(JSON_AVATAR_ENTITIES) && json[JSON_AVATAR_ENTITIES].isArray()) {
+    //     QJsonArray attachmentsJson = json[JSON_AVATAR_ATTACHEMENTS].toArray();
+    //     for (auto attachmentJson : attachmentsJson) {
+
+    //     }
+    // }
 
     // Joint rotations are relative to the avatar, so they require no basis correction
     if (json.contains(JSON_AVATAR_JOINT_ARRAY)) {
@@ -1730,9 +1756,27 @@ void AvatarData::setAttachmentsVariant(const QVariantList& variant) {
     QVector<AttachmentData> newAttachments;
     newAttachments.reserve(variant.size());
     for (const auto& attachmentVar : variant) {
-        AttachmentData attachment;  
+        AttachmentData attachment;
         attachment.fromVariant(attachmentVar);
         newAttachments.append(attachment);
     }
     setAttachmentData(newAttachments);
+}
+
+void AvatarData::updateAvatarEntity(const QUuid& entityID, const QByteArray& entityData) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "updateAvatarEntity", Q_ARG(const QUuid&, entityID), Q_ARG(QByteArray, entityData));
+        return;
+    }
+    _avatarEntityData.insert(entityID, entityData);
+    _avatarEntityDataLocallyEdited = true;
+}
+
+void AvatarData::clearAvatarEntity(const QUuid& entityID) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "clearAvatarEntity", Q_ARG(const QUuid&, entityID));
+        return;
+    }
+    _avatarEntityData.remove(entityID);
+    _avatarEntityDataLocallyEdited = true;
 }

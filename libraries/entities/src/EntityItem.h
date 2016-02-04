@@ -404,6 +404,10 @@ public:
     bool getClientOnly() const { return _clientOnly; }
     void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
 
+    // if this entity is client-only, which avatar is it associated with?
+    QUuid getOwningAvatarID() const { return _owningAvatarID; }
+    void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }
@@ -510,6 +514,7 @@ protected:
     QUuid _sourceUUID; /// the server node UUID we came from
 
     bool _clientOnly { false }; // true if entity-server doesn't know about this entity.
+    QUuid _owningAvatarID;
 };
 
 #endif // hifi_EntityItem_h

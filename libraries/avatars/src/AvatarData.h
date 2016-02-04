@@ -280,7 +280,8 @@ public:
     Q_INVOKABLE QVariantList getAttachmentsVariant() const;
     Q_INVOKABLE void setAttachmentsVariant(const QVariantList& variant);
 
-    void updateAvatarEntity(QUuid entityID, QByteArray entityData) { }
+    Q_INVOKABLE void updateAvatarEntity(const QUuid& entityID, const QByteArray& entityData);
+    Q_INVOKABLE void clearAvatarEntity(const QUuid& entityID);
 
     void setForceFaceTrackerConnected(bool connected) { _forceFaceTrackerConnected = connected; }
 
@@ -432,6 +433,9 @@ private:
     // privatize the copy constructor and assignment operator so they cannot be called
     AvatarData(const AvatarData&);
     AvatarData& operator= (const AvatarData&);
+
+    QMap<QUuid, QByteArray> _avatarEntityData;
+    bool _avatarEntityDataLocallyEdited { false };
 };
 Q_DECLARE_METATYPE(AvatarData*)
 
