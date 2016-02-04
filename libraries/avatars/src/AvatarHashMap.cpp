@@ -106,8 +106,9 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
 
         QUrl faceMeshURL, skeletonURL;
         QVector<AttachmentData> attachmentData;
+        QList<QByteArray> attachedEntityData;
         QString displayName;
-        identityStream >> sessionUUID >> faceMeshURL >> skeletonURL >> attachmentData >> displayName;
+        identityStream >> sessionUUID >> faceMeshURL >> skeletonURL >> attachmentData >> attachedEntityData >> displayName;
 
         // mesh URL for a UUID, find avatar in our list
         auto avatar = newOrExistingAvatar(sessionUUID, sendingNode);

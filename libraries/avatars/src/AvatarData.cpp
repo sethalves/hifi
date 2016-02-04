@@ -1025,6 +1025,8 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
         hasIdentityChanged = true;
     }
 
+    // XXX attachedEntityData
+
     return hasIdentityChanged;
 }
 
