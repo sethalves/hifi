@@ -34,6 +34,7 @@ public:
     void queueEditEntityMessage(PacketType type, EntityItemID entityItemID, const EntityItemProperties& properties);
 
     void queueEraseEntityMessage(const EntityItemID& entityItemID);
+    void queueForgetEntityMessage(const EntityItemID& entityItemID);
 
     // My server type is the model server
     virtual char getMyNodeType() const { return NodeType::EntityServer; }

@@ -369,7 +369,7 @@ void EntityTree::setSimulation(EntitySimulation* simulation) {
     });
 }
 
-void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings) {
+void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ignoreWarnings, bool entityGoingClientOnly) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         if (!ignoreWarnings) {
@@ -393,6 +393,7 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
         }
         return;
     }
+    existingEntity->setClientOnly(entityGoingClientOnly);
 
     emit deletingEntity(entityID);
 
@@ -403,7 +404,7 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
     _isDirty = true;
 }
 
-void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings) {
+void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings, bool entityGoingClientOnly) {
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer());
     foreach(const EntityItemID& entityID, entityIDs) {
@@ -430,6 +431,7 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
             }
             continue;
         }
+        existingEntity->setClientOnly(entityGoingClientOnly);
 
         // tell our delete operator about this entityID
         theOperator.addEntityIDToDeleteList(entityID);
@@ -453,7 +455,9 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
         if (getIsServer()) {
             // set up the deleted entities ID
             QWriteLocker locker(&_recentlyDeletedEntitiesLock);
-            _recentlyDeletedEntityItemIDs.insert(deletedAt, theEntity->getEntityItemID());
+            if (!getIsServer() || !theEntity->getClientOnly()) {
+                _recentlyDeletedEntityItemIDs.insert(deletedAt, theEntity->getEntityItemID());
+            }
         } else {
             // on the client side, we also remember that we deleted this entity, we don't care about the time
             trackDeletedEntity(theEntity->getEntityItemID());
@@ -830,7 +834,12 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
     switch (message.getType()) {
         case PacketType::EntityErase: {
             QByteArray dataByteArray = QByteArray::fromRawData(reinterpret_cast<const char*>(editData), maxLength);
-            processedBytes = processEraseMessageDetails(dataByteArray, senderNode);
+            processedBytes = processEraseMessageDetails(dataByteArray, senderNode, false);
+            break;
+        }
+        case PacketType::EntityForget: {
+            QByteArray dataByteArray = QByteArray::fromRawData(reinterpret_cast<const char*>(editData), maxLength);
+            processedBytes = processEraseMessageDetails(dataByteArray, senderNode, true);
             break;
         }
 
@@ -847,7 +856,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             EntityItemID entityItemID;
             EntityItemProperties properties;
             startDecode = usecTimestampNow();
-           
+
             bool validEditPacket = EntityItemProperties::decodeEntityEditPacket(editData, maxLength, processedBytes,
                                                                                 entityItemID, properties);
             endDecode = usecTimestampNow();
@@ -1085,7 +1094,7 @@ void EntityTree::forgetEntitiesDeletedBefore(quint64 sinceTime) {
 
 
 // TODO: consider consolidating processEraseMessageDetails() and processEraseMessage()
-int EntityTree::processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode) {
+int EntityTree::processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode, bool entityGoingClientOnly) {
     #ifdef EXTRA_ERASE_DEBUGGING
         qDebug() << "EntityTree::processEraseMessage()";
     #endif
@@ -1118,7 +1127,7 @@ int EntityTree::processEraseMessage(ReceivedMessage& message, const SharedNodePo
                 }
 
             }
-            deleteEntities(entityItemIDsToDelete, true, true);
+            deleteEntities(entityItemIDsToDelete, true, true, entityGoingClientOnly);
         }
     });
     return message.getPosition();
@@ -1127,7 +1136,7 @@ int EntityTree::processEraseMessage(ReceivedMessage& message, const SharedNodePo
 // This version skips over the header
 // NOTE: Caller must lock the tree before calling this.
 // TODO: consider consolidating processEraseMessageDetails() and processEraseMessage()
-int EntityTree::processEraseMessageDetails(const QByteArray& dataByteArray, const SharedNodePointer& sourceNode) {
+int EntityTree::processEraseMessageDetails(const QByteArray& dataByteArray, const SharedNodePointer& sourceNode, bool entityGoingClientOnly) {
     #ifdef EXTRA_ERASE_DEBUGGING
         qDebug() << "EntityTree::processEraseMessageDetails()";
     #endif
@@ -1169,7 +1178,7 @@ int EntityTree::processEraseMessageDetails(const QByteArray& dataByteArray, cons
             }
 
         }
-        deleteEntities(entityItemIDsToDelete, true, true);
+        deleteEntities(entityItemIDsToDelete, true, true, entityGoingClientOnly);
     }
     return (int)processedBytes;
 }

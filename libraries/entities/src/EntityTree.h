@@ -114,8 +114,8 @@ public:
     // use this method if you have a pointer to the entity (avoid an extra entity lookup)
     bool updateEntity(EntityItemPointer entity, const EntityItemProperties& properties, const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
 
-    void deleteEntity(const EntityItemID& entityID, bool force = false, bool ignoreWarnings = false);
-    void deleteEntities(QSet<EntityItemID> entityIDs, bool force = false, bool ignoreWarnings = false);
+    void deleteEntity(const EntityItemID& entityID, bool force = false, bool ignoreWarnings = false, bool entityGoingClientOnly = false);
+    void deleteEntities(QSet<EntityItemID> entityIDs, bool force = false, bool ignoreWarnings = false, bool entityGoingClientOnly = false);
 
     /// \param position point of query in world-frame (meters)
     /// \param targetRadius radius of query (meters)
@@ -148,7 +148,7 @@ public:
     void addNewlyCreatedHook(NewlyCreatedEntityHook* hook);
     void removeNewlyCreatedHook(NewlyCreatedEntityHook* hook);
 
-    bool hasAnyDeletedEntities() const { 
+    bool hasAnyDeletedEntities() const {
         QReadLocker locker(&_recentlyDeletedEntitiesLock);
         return _recentlyDeletedEntityItemIDs.size() > 0;
     }
@@ -156,15 +156,15 @@ public:
     bool hasEntitiesDeletedSince(quint64 sinceTime);
     static quint64 getAdjustedConsiderSince(quint64 sinceTime);
 
-    QMultiMap<quint64, QUuid> getRecentlyDeletedEntityIDs() const { 
+    QMultiMap<quint64, QUuid> getRecentlyDeletedEntityIDs() const {
         QReadLocker locker(&_recentlyDeletedEntitiesLock);
         return _recentlyDeletedEntityItemIDs;
     }
 
     void forgetEntitiesDeletedBefore(quint64 sinceTime);
 
-    int processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode);
-    int processEraseMessageDetails(const QByteArray& buffer, const SharedNodePointer& sourceNode);
+    int processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode, bool entityGoingClientOnly);
+    int processEraseMessageDetails(const QByteArray& buffer, const SharedNodePointer& sourceNode, bool entityGoingClientOnly);
 
     EntityItemFBXService* getFBXService() const { return _fbxService; }
     void setFBXService(EntityItemFBXService* service) { _fbxService = service; }

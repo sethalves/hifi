@@ -75,3 +75,15 @@ void EntityEditPacketSender::queueEraseEntityMessage(const EntityItemID& entityI
         queueOctreeEditMessage(PacketType::EntityErase, bufferOut);
     }
 }
+
+void EntityEditPacketSender::queueForgetEntityMessage(const EntityItemID& entityItemID) {
+    if (!_shouldSend) {
+        return; // bail early
+    }
+
+    QByteArray bufferOut(NLPacket::maxPayloadSize(PacketType::EntityForget), 0);
+
+    if (EntityItemProperties::encodeEraseEntityMessage(entityItemID, bufferOut)) {
+        queueOctreeEditMessage(PacketType::EntityForget, bufferOut);
+    }
+}

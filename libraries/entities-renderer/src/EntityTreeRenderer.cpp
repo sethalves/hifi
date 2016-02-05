@@ -395,7 +395,7 @@ const FBXGeometry* EntityTreeRenderer::getCollisionGeometryForEntity(EntityItemP
 }
 
 void EntityTreeRenderer::processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode) {
-    std::static_pointer_cast<EntityTree>(_tree)->processEraseMessage(message, sourceNode);
+    std::static_pointer_cast<EntityTree>(_tree)->processEraseMessage(message, sourceNode, false);
 }
 
 Model* EntityTreeRenderer::allocateModel(const QString& url, const QString& collisionUrl) {

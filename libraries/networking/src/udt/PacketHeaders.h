@@ -90,7 +90,8 @@ public:
         DomainServerRemovedNode,
         MessagesData,
         MessagesSubscribe,
-        MessagesUnsubscribe
+        MessagesUnsubscribe,
+        EntityForget
     };
 };
 
@@ -166,10 +167,12 @@ const PacketVersion VERSION_MODEL_ENTITIES_JOINTS_ON_WIRE = 53;
 const PacketVersion VERSION_ENTITITES_HAVE_QUERY_BOX = 54;
 const PacketVersion VERSION_ENTITITES_HAVE_COLLISION_MASK = 55;
 const PacketVersion VERSION_ATMOSPHERE_REMOVED = 56;
+const PacketVersion VERSION_ENTITIES_FORGET = 56;
 
 enum class AvatarMixerPacketVersion : PacketVersion {
     TranslationSupport = 17,
-    SoftAttachmentSupport
+    SoftAttachmentSupport,
+    AvatarEntites
 };
 
 #endif // hifi_PacketHeaders_h

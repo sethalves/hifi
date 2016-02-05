@@ -1027,7 +1027,7 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
 
         entity->setClientOnly(true);
         entity->setOwningAvatarID(myNodeID);
-        // XXX send special delete message to entity server
+        getEntityPacketSender()->queueForgetEntityMessage(entityID);
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
         properties.markAllChanged();

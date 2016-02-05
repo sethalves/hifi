@@ -41,10 +41,10 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityData:
-            return VERSION_ATMOSPHERE_REMOVED;
+            return VERSION_ENTITIES_FORGET;
         case PacketType::AvatarData:
         case PacketType::BulkAvatarData:
-            return static_cast<PacketVersion>(AvatarMixerPacketVersion::SoftAttachmentSupport);
+            return static_cast<PacketVersion>(AvatarMixerPacketVersion::AvatarEntites);
         default:
             return 17;
     }
