@@ -101,7 +101,7 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
     QDataStream identityStream(message->getMessage());
 
     QUuid sessionUUID;
-    
+
     while (!identityStream.atEnd()) {
 
         QUrl faceMeshURL, skeletonURL;
@@ -112,7 +112,7 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
 
         // mesh URL for a UUID, find avatar in our list
         auto avatar = newOrExistingAvatar(sessionUUID, sendingNode);
-        
+
         if (avatar->getFaceModelURL() != faceMeshURL) {
             avatar->setFaceModelURL(faceMeshURL);
         }
@@ -125,9 +125,7 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
             avatar->setAttachmentData(attachmentData);
         }
 
-        // if (avatar->getAvatarEntityData() != attachedEntityData) {
-            avatar->setAvatarEntityData(attachedEntityData);
-        // }
+        avatar->setAvatarEntityData(attachedEntityData);
 
         if (avatar->getDisplayName() != displayName) {
             avatar->setDisplayName(displayName);

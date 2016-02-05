@@ -1026,7 +1026,7 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
     }
 
     if (attachedEntityData != _avatarEntityData) {
-        setAvatarEntityData(_avatarEntityData);
+        setAvatarEntityData(attachedEntityData);
         hasIdentityChanged = true;
     }
 
