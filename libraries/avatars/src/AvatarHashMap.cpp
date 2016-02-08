@@ -139,6 +139,8 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
 
         if (attachmentData.size() > 0) { // XXX
             qDebug() << "AVATAR-ENTITES -- AvatarHashMap::processAvatarIdentityPacket saw attached entities" << attachmentData.size();
+        } else { // XXX
+            qDebug() << "AVATAR-ENTITES -- AvatarHashMap::processAvatarIdentityPacket got ID packet";
         } // XXX
 
         if (avatar->getDisplayName() != displayName) {
