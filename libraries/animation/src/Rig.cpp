@@ -120,7 +120,7 @@ void Rig::overrideRoleAnimation(const QString& role, const QString& url, float f
             _origRoleAnimations[role] = node;
             const float REFERENCE_FRAMES_PER_SECOND = 30.0f;
             float timeScale = fps / REFERENCE_FRAMES_PER_SECOND;
-            auto clipNode = std::make_shared<AnimClip>(role, url, firstFrame, lastFrame, timeScale, loop);
+            auto clipNode = std::make_shared<AnimClip>(role, url, firstFrame, lastFrame, timeScale, loop, false);
             AnimNode::Pointer parent = node->getParent();
             parent->replaceChild(node, clipNode);
         } else {
@@ -152,7 +152,7 @@ void Rig::prefetchAnimation(const QString& url) {
 
     // This will begin loading the NetworkGeometry for the given URL.
     // which should speed us up if we request it later via overrideAnimation.
-    auto clipNode = std::make_shared<AnimClip>("prefetch", url, 0, 0, 1.0, false);
+    auto clipNode = std::make_shared<AnimClip>("prefetch", url, 0, 0, 1.0, false, false);
     _prefetchedAnimations.push_back(clipNode);
 }
 
@@ -627,6 +627,8 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
         // Skip hystersis timer for jump transitions.
         if (_desiredState == RigRole::Takeoff) {
             _desiredStateAge = STATE_CHANGE_HYSTERESIS_TIMER;
+        } else if (_state == RigRole::Takeoff && _desiredState == RigRole::InAir) {
+            _desiredStateAge = STATE_CHANGE_HYSTERESIS_TIMER;
         } else if (_state == RigRole::InAir && _desiredState != RigRole::InAir) {
             _desiredStateAge = STATE_CHANGE_HYSTERESIS_TIMER;
         }
@@ -679,9 +681,11 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
                 _animVars.set("isNotTurning", true);
                 _animVars.set("isFlying", false);
                 _animVars.set("isNotFlying", true);
-                _animVars.set("isTakeoff", false);
+                _animVars.set("isTakeoffStand", false);
+                _animVars.set("isTakeoffRun", false);
                 _animVars.set("isNotTakeoff", true);
-                _animVars.set("isInAir", false);
+                _animVars.set("isInAirStand", false);
+                _animVars.set("isInAirRun", false);
                 _animVars.set("isNotInAir", true);
             }
         } else if (_state == RigRole::Turn) {
@@ -703,9 +707,11 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("isNotMoving", true);
             _animVars.set("isFlying", false);
             _animVars.set("isNotFlying", true);
-            _animVars.set("isTakeoff", false);
+            _animVars.set("isTakeoffStand", false);
+            _animVars.set("isTakeoffRun", false);
             _animVars.set("isNotTakeoff", true);
-            _animVars.set("isInAir", false);
+            _animVars.set("isInAirStand", false);
+            _animVars.set("isInAirRun", false);
             _animVars.set("isNotInAir", true);
 
         } else if (_state == RigRole::Idle ) {
@@ -720,9 +726,11 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("isNotTurning", true);
             _animVars.set("isFlying", false);
             _animVars.set("isNotFlying", true);
-            _animVars.set("isTakeoff", false);
+            _animVars.set("isTakeoffStand", false);
+            _animVars.set("isTakeoffRun", false);
             _animVars.set("isNotTakeoff", true);
-            _animVars.set("isInAir", false);
+            _animVars.set("isInAirStand", false);
+            _animVars.set("isInAirRun", false);
             _animVars.set("isNotInAir", true);
 
         } else if (_state == RigRole::Hover) {
@@ -737,9 +745,11 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("isNotTurning", true);
             _animVars.set("isFlying", true);
             _animVars.set("isNotFlying", false);
-            _animVars.set("isTakeoff", false);
+            _animVars.set("isTakeoffStand", false);
+            _animVars.set("isTakeoffRun", false);
             _animVars.set("isNotTakeoff", true);
-            _animVars.set("isInAir", false);
+            _animVars.set("isInAirStand", false);
+            _animVars.set("isInAirRun", false);
             _animVars.set("isNotInAir", true);
 
         } else if (_state == RigRole::Takeoff) {
@@ -754,9 +764,19 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("isNotTurning", true);
             _animVars.set("isFlying", false);
             _animVars.set("isNotFlying", true);
-            _animVars.set("isTakeoff", true);
+
+            bool takeOffRun = forwardSpeed > 0.1f;
+            if (takeOffRun) {
+                _animVars.set("isTakeoffStand", false);
+                _animVars.set("isTakeoffRun", true);
+            } else {
+                _animVars.set("isTakeoffStand", true);
+                _animVars.set("isTakeoffRun", false);
+            }
+
             _animVars.set("isNotTakeoff", false);
-            _animVars.set("isInAir", true);
+            _animVars.set("isInAirStand", false);
+            _animVars.set("isInAirRun", false);
             _animVars.set("isNotInAir", false);
 
         } else if (_state == RigRole::InAir) {
@@ -771,9 +791,18 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
             _animVars.set("isNotTurning", true);
             _animVars.set("isFlying", false);
             _animVars.set("isNotFlying", true);
-            _animVars.set("isTakeoff", false);
+            _animVars.set("isTakeoffStand", false);
+            _animVars.set("isTakeoffRun", false);
             _animVars.set("isNotTakeoff", true);
-            _animVars.set("isInAir", true);
+
+            bool inAirRun = forwardSpeed > 0.1f;
+            if (inAirRun) {
+                _animVars.set("isInAirStand", false);
+                _animVars.set("isInAirRun", true);
+            } else {
+                _animVars.set("isInAirStand", true);
+                _animVars.set("isInAirRun", false);
+            }
             _animVars.set("isNotInAir", false);
 
             // compute blend based on velocity

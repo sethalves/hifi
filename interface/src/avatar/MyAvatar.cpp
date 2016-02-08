@@ -304,6 +304,16 @@ void MyAvatar::update(float deltaTime) {
     }
 
     simulate(deltaTime);
+
+    currentEnergy += energyChargeRate;
+    currentEnergy -= getAccelerationEnergy();
+    currentEnergy -= getAudioEnergy();
+
+    if (didTeleport()) {
+        currentEnergy = 0.0f;
+    }
+    currentEnergy = max(0.0f, min(currentEnergy, 1.0f));
+    emit energyChanged(currentEnergy);
 }
 
 extern QByteArray avatarStateToFrame(const AvatarData* _avatar);
@@ -1894,5 +1904,33 @@ glm::mat4 MyAvatar::FollowHelper::postPhysicsUpdate(const MyAvatar& myAvatar, co
     } else {
         return currentBodyMatrix;
     }
+}
+
+float MyAvatar::getAccelerationEnergy() {
+    glm::vec3 velocity = getVelocity();
+    int changeInVelocity = abs(velocity.length() - priorVelocity.length());
+    float changeInEnergy = priorVelocity.length() * changeInVelocity * AVATAR_MOVEMENT_ENERGY_CONSTANT;
+    priorVelocity = velocity;
+    
+    return changeInEnergy;
+}
+
+float MyAvatar::getEnergy() {
+    return currentEnergy;
+}
+
+void MyAvatar::setEnergy(float value) {
+    currentEnergy = value;
+}
+
+float MyAvatar::getAudioEnergy() {
+    return getAudioLoudness() * AUDIO_ENERGY_CONSTANT;
+}
+
+bool MyAvatar::didTeleport() {
+    glm::vec3 pos = getPosition();
+    glm::vec3 changeInPosition = pos - lastPosition;
+    lastPosition = pos;
+    return (changeInPosition.length() > MAX_AVATAR_MOVEMENT_PER_FRAME);
 }
 
