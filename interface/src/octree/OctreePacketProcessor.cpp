@@ -19,8 +19,11 @@
 OctreePacketProcessor::OctreePacketProcessor() {
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
     
-    packetReceiver.registerDirectListenerForTypes({ PacketType::OctreeStats, PacketType::EntityData, PacketType::EntityErase },
-                                                  this, "handleOctreePacket");
+    packetReceiver.registerDirectListenerForTypes({ PacketType::OctreeStats,
+                                                    PacketType::EntityData,
+                                                    PacketType::EntityErase,
+                                                    PacketType::EntityForget },
+        this, "handleOctreePacket");
 }
 
 void OctreePacketProcessor::handleOctreePacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode) {
@@ -92,7 +95,13 @@ void OctreePacketProcessor::processPacket(QSharedPointer<ReceivedMessage> messag
     switch(packetType) {
         case PacketType::EntityErase: {
             if (DependencyManager::get<SceneScriptingInterface>()->shouldRenderEntities()) {
-                qApp->getEntities()->processEraseMessage(*message, sendingNode);
+                qApp->getEntities()->processEraseMessage(*message, sendingNode, false);
+            }
+        } break;
+
+        case PacketType::EntityForget: {
+            if (DependencyManager::get<SceneScriptingInterface>()->shouldRenderEntities()) {
+                qApp->getEntities()->processEraseMessage(*message, sendingNode, true);
             }
         } break;
 

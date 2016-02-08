@@ -73,6 +73,7 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityErase:
+        case PacketType::EntityForget:
             return true;
         default:
             return false;
@@ -406,6 +407,11 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
 
 void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool ignoreWarnings, bool entityGoingClientOnly) {
     // NOTE: callers must lock the tree before using this method
+
+    if (entityGoingClientOnly) { // XXX
+        qDebug() << "AVATAR-ENTITES -- EntityTree::deleteEntities with forget flag: " << entityIDs.size(); // XXX
+    } // XXX
+
     DeleteEntityOperator theOperator(getThisPointer());
     foreach(const EntityItemID& entityID, entityIDs) {
         EntityTreeElementPointer containingElement = getContainingElement(entityID);
