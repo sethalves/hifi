@@ -12,13 +12,13 @@
 #include "Application.h"
 
 #include <gl/Config.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtx/component_wise.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <Qt>
 #include <QtCore/QDebug>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -27,6 +27,7 @@
 #include <QtCore/QTimer>
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QMimeData>
+#include <QtCore/QThreadPool>
 
 #include <QtGui/QScreen>
 #include <QtGui/QImage>
@@ -56,6 +57,8 @@
 
 #include <gl/Config.h>
 #include <gl/QOpenGLContextWrapper.h>
+
+#include <shared/JSONHelpers.h>
 
 #include <ResourceScriptingInterface.h>
 #include <AccountManager.h>
@@ -417,6 +420,14 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     _maxOctreePPS(maxOctreePacketsPerSecond.get()),
     _lastFaceTrackerUpdate(0)
 {
+    // FIXME this may be excessivly conservative.  On the other hand 
+    // maybe I'm used to having an 8-core machine
+    // Perhaps find the ideal thread count  and subtract 2 or 3 
+    // (main thread, present thread, random OS load)
+    // More threads == faster concurrent loads, but also more concurrent 
+    // load on the GPU until we can serialize GPU transfers (off the main thread)
+    QThreadPool::globalInstance()->setMaxThreadCount(2);
+    thread()->setPriority(QThread::HighPriority);
     thread()->setObjectName("Main Thread");
 
     setInstance(this);
@@ -1265,7 +1276,7 @@ void Application::initializeUi() {
             auto resultVec = _compositor.screenToOverlay(toGlm(pt));
             result = QPointF(resultVec.x, resultVec.y);
         }
-        return result;
+        return result.toPoint();
     });
     offscreenUi->resume();
     connect(_window, &MainWindow::windowGeometryChanged, [this](const QRect& r){
@@ -1290,6 +1301,9 @@ void Application::initializeUi() {
 }
 
 void Application::paintGL() {
+
+
+
     // paintGL uses a queued connection, so we can get messages from the queue even after we've quit
     // and the plugins have shutdown
     if (_aboutToQuit) {
@@ -3149,8 +3163,9 @@ void Application::update(float deltaTime) {
             PerformanceTimer perfTimer("havestChanges");
             if (_physicsEngine->hasOutgoingChanges()) {
                 getEntities()->getTree()->withWriteLock([&] {
-                    _entitySimulation.handleOutgoingChanges(_physicsEngine->getOutgoingChanges(), Physics::getSessionUUID());
-                    avatarManager->handleOutgoingChanges(_physicsEngine->getOutgoingChanges());
+                    const VectorOfMotionStates& outgoingChanges = _physicsEngine->getOutgoingChanges();
+                    _entitySimulation.handleOutgoingChanges(outgoingChanges, Physics::getSessionUUID());
+                    avatarManager->handleOutgoingChanges(outgoingChanges);
                 });
 
                 auto collisionEvents = _physicsEngine->getCollisionEvents();
@@ -3868,6 +3883,8 @@ void Application::clearDomainOctreeDetails() {
     qCDebug(interfaceapp) << "Clearing domain octree details...";
     // reset the environment so that we don't erroneously end up with multiple
 
+    _physicsEnabled = false;
+
     // reset our node to stats and node to jurisdiction maps... since these must be changing...
     _entityServerJurisdictions.withWriteLock([&] {
         _entityServerJurisdictions.clear();
@@ -4321,8 +4338,8 @@ void Application::modelUploadFinished(AssetUpload* upload, const QString& hash) 
     auto filename = QFileInfo(upload->getFilename()).fileName();
 
     if ((upload->getError() == AssetUpload::NoError) &&
-        (upload->getExtension().endsWith(FBX_EXTENSION, Qt::CaseInsensitive) ||
-         upload->getExtension().endsWith(OBJ_EXTENSION, Qt::CaseInsensitive))) {
+        (FBX_EXTENSION.endsWith(upload->getExtension(), Qt::CaseInsensitive) ||
+         OBJ_EXTENSION.endsWith(upload->getExtension(), Qt::CaseInsensitive))) {
 
         auto entities = DependencyManager::get<EntityScriptingInterface>();
 
@@ -4423,7 +4440,7 @@ bool Application::displayAvatarAttachmentConfirmationDialog(const QString& name)
 }
 
 void Application::toggleRunningScriptsWidget() {
-    static const QUrl url("dialogs/RunningScripts.qml");
+    static const QUrl url("hifi/dialogs/RunningScripts.qml");
     DependencyManager::get<OffscreenUi>()->show(url, "RunningScripts");
     //if (_runningScriptsWidget->isVisible()) {
     //    if (_runningScriptsWidget->hasFocus()) {
@@ -4765,8 +4782,11 @@ void Application::updateDisplayMode() {
         foreach(auto displayPlugin, standard) {
             addDisplayPluginToMenu(displayPlugin, first);
             // This must be a queued connection to avoid a deadlock
-            QObject::connect(displayPlugin.get(), &DisplayPlugin::requestRender,
-                this, &Application::paintGL, Qt::QueuedConnection);
+            QObject::connect(displayPlugin.get(), &DisplayPlugin::requestRender, [=] {
+                postEvent(this, new LambdaEvent([=] {
+                    paintGL(); 
+                }), Qt::HighEventPriority);
+            });
 
             QObject::connect(displayPlugin.get(), &DisplayPlugin::recommendedFramebufferSizeChanged, [this](const QSize & size) {
                 resizeGL();
