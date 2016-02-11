@@ -170,9 +170,9 @@ function AttachedEntitiesManager() {
 
     this.handleEntityRelease = function(grabbedEntity, releasedFromJoint) {
         // if this is still equipped, just rewrite the position information.
-        var grabData = getEntityCustomData('grabKey', entityID, {});
+        var grabData = getEntityCustomData('grabKey', grabbedEntity, {});
         if ("refCount" in grabData && grabData.refCount > 0) {
-            manager.updateRelativeOffsets(parsedMessage.grabbedEntity);
+            manager.updateRelativeOffsets(grabbedEntity);
             return;
         }
 
