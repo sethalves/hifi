@@ -330,7 +330,6 @@ function AttachedEntitiesManager() {
             if (props.parentID == MyAvatar.sessionUUID) {
                 if (!isAttached) {
                     var attachResult = Entities.attachEntityToMyAvatar(entityID);
-                    print("attach " + props.name + " " + attachResult);
                 }
             } else {
                 if (isAttached) {

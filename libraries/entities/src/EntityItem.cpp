@@ -1184,6 +1184,8 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         _created = timestamp;
     }
 
+    setClientOnly(properties.getClientOnly());
+
     return somethingChanged;
 }
 
