@@ -653,6 +653,15 @@ void MyAvatar::saveData() {
     }
     settings.endArray();
 
+    settings.beginWriteArray("avatarEntityData");
+    int avatarEntityIndex = 0;
+    for (auto entityID : _avatarEntityData.keys()) {
+        settings.setArrayIndex(avatarEntityIndex);
+        settings.setValue("id", entityID);
+        settings.setValue("properties", _avatarEntityData.value(entityID));
+    }
+    settings.endArray();
+
     settings.setValue("displayName", _displayName);
     settings.setValue("collisionSoundURL", _collisionSoundURL);
 
@@ -745,6 +754,17 @@ void MyAvatar::loadData() {
     }
     settings.endArray();
     setAttachmentData(attachmentData);
+
+    AvatarEntityMap avatarEntities;
+    int avatarEntityCount = settings.beginReadArray("avatarEntityData");
+    for (int i = 0; i < avatarEntityCount; i++) {
+        settings.setArrayIndex(i);
+        QUuid entityID = settings.value("id").toUuid();
+        QByteArray properties = settings.value("properties").toByteArray();
+        avatarEntities[entityID] = properties;
+    }
+    settings.endArray();
+    setAvatarEntityData(avatarEntities);
 
     setDisplayName(settings.value("displayName").toString());
     setCollisionSoundURL(settings.value("collisionSoundURL", DEFAULT_AVATAR_COLLISION_SOUND_URL).toString());

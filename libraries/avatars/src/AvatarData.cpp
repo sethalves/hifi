@@ -998,9 +998,9 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
     QUuid avatarUUID;
     QUrl faceModelURL, skeletonModelURL;
     QVector<AttachmentData> attachmentData;
-    AvatarEntityMap attachedEntityData;
+    AvatarEntityMap avatarEntityData;
     QString displayName;
-    packetStream >> avatarUUID >> faceModelURL >> skeletonModelURL >> attachmentData >> attachedEntityData >> displayName;
+    packetStream >> avatarUUID >> faceModelURL >> skeletonModelURL >> attachmentData >> avatarEntityData >> displayName;
 
     bool hasIdentityChanged = false;
 
@@ -1024,12 +1024,8 @@ bool AvatarData::hasIdentityChangedAfterParsing(const QByteArray& data) {
         hasIdentityChanged = true;
     }
 
-    if (attachmentData.size() > 0) { // XXX
-        qDebug() << "AVATAR-ENTITES -- AvatarData::hasIdentityChangedAfterParsing saw attached entities" << attachmentData.size();
-    } // XXX
-
-    if (attachedEntityData != _avatarEntityData) {
-        setAvatarEntityData(attachedEntityData);
+    if (avatarEntityData != _avatarEntityData) {
+        setAvatarEntityData(avatarEntityData);
         hasIdentityChanged = true;
     }
 
@@ -1486,14 +1482,14 @@ QJsonObject AvatarData::toJson() const {
         root[JSON_AVATAR_ATTACHEMENTS] = attachmentsJson;
     }
     if (!_avatarEntityData.empty()) {
-        QJsonArray attachedEntityJson;
+        QJsonArray avatarEntityJson;
         for (auto entityID : _avatarEntityData.keys()) {
             QVariantMap entityData;
             entityData.insert("id", entityID);
             entityData.insert("properties", _avatarEntityData.value(entityID));
-            attachedEntityJson.push_back(QVariant(entityData).toJsonObject());
+            avatarEntityJson.push_back(QVariant(entityData).toJsonObject());
         }
-        root[JSON_AVATAR_ENTITIES] = attachedEntityJson;
+        root[JSON_AVATAR_ENTITIES] = avatarEntityJson;
     }
 
     auto recordingBasis = getRecordingBasis();
@@ -1604,11 +1600,10 @@ void AvatarData::fromJson(const QJsonObject& json) {
         setAttachmentData(attachments);
     }
 
-    // XXX
     // if (json.contains(JSON_AVATAR_ENTITIES) && json[JSON_AVATAR_ENTITIES].isArray()) {
     //     QJsonArray attachmentsJson = json[JSON_AVATAR_ATTACHEMENTS].toArray();
     //     for (auto attachmentJson : attachmentsJson) {
-
+    //         // TODO -- something
     //     }
     // }
 
