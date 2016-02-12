@@ -353,7 +353,7 @@ public:
 
     glm::vec3 getClientGlobalPosition() { return _globalPosition; }
 
-    // Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
+    Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
     Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
 
 public slots:
@@ -433,7 +433,8 @@ protected:
 
     AvatarEntityMap _avatarEntityData;
     bool _avatarEntityDataLocallyEdited { false };
-    
+    bool _avatarEntityDataChanged { false };
+
 private:
     friend void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);
     static QUrl _defaultFullAvatarModelUrl;

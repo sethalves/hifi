@@ -1789,20 +1789,23 @@ void AvatarData::clearAvatarEntity(const QUuid& entityID) {
     _avatarEntityDataLocallyEdited = true;
 }
 
-// AvatarEntityMap AvatarData::getAvatarEntityData() const {
-//     if (QThread::currentThread() != thread()) {
-//         AvatarEntityMap result;
-//         QMetaObject::invokeMethod(this, "getAvatarEntityData",
-//                                   Qt::BlockingQueuedConnection, Q_RETURN_ARG(AvatarEntityMap, result));
-//         return result;
-//     }
-//     return _avatarEntityData;
-// }
+AvatarEntityMap AvatarData::getAvatarEntityData() const {
+    if (QThread::currentThread() != thread()) {
+        AvatarEntityMap result;
+        QMetaObject::invokeMethod(const_cast<AvatarData*>(this), "getAvatarEntityData", Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(AvatarEntityMap, result));
+        return result;
+    }
+    return _avatarEntityData;
+}
 
 void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "setAvatarEntityData", Q_ARG(const AvatarEntityMap&, avatarEntityData));
         return;
     }
-    _avatarEntityData = avatarEntityData;
+    if (_avatarEntityData != avatarEntityData) {
+        _avatarEntityData = avatarEntityData;
+        _avatarEntityDataChanged = true;
+    }
 }
