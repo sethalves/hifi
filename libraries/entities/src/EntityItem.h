@@ -411,6 +411,20 @@ public:
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
 
+    /// Has the entity been added to an entity tree? This is useful in some state decisions
+    /// for example whether or not to send out a scriptChanging signal.
+    void markAsAddedToTree() { _isAddedToTree = true; }
+    bool isAddedToTree() const { return _isAddedToTree; }
+
+    /// Should the external entity script mechanism call a preload for this entity.
+    /// Due to the asyncronous nature of signals for add entity and script changing
+    /// it's possible for two similar signals to cross paths. This method allows the
+    /// entity to definitively state if the preload signal should be sent.
+    bool shouldPreloadScript() const { return !_script.isEmpty() &&  
+                                _loadedScript != _script && _loadedScriptTimestamp != _scriptTimestamp; }
+
+    void scriptHasPreloaded() { _loadedScript = _script; _loadedScriptTimestamp = _scriptTimestamp; }
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }
@@ -516,6 +530,11 @@ protected:
 
     bool _clientOnly { false }; // true if entity-server doesn't know about this entity.
     QUuid _owningAvatarID;
+
+    bool _isAddedToTree { false }; /// this is false until the entity has been added to an entity tree
+
+    QString _loadedScript; /// the value of _script when the last preload signal was sent
+    quint64 _loadedScriptTimestamp { 0 };  /// the value of _scriptTimestamp when the last preload signal was sent
 };
 
 #endif // hifi_EntityItem_h
