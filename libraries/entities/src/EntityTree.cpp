@@ -88,13 +88,13 @@ void EntityTree::postAddEntity(EntityItemPointer entity) {
     }
     _isDirty = true;
     maybeNotifyNewCollisionSoundURL("", entity->getCollisionSoundURL());
-    emit addingEntity(entity->getEntityItemID());
 
     // find and hook up any entities with this entity as a (previously) missing parent
     fixupMissingParents();
 
     // indicate that the entity has been added to the tree
     entity->markAsAddedToTree();
+    emit addingEntity(entity->getEntityItemID());
 }
 
 bool EntityTree::updateEntity(const EntityItemID& entityID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
