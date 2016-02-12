@@ -172,6 +172,7 @@ public slots:
 
     Q_INVOKABLE bool attachEntityToMyAvatar(const QUuid& entityID);
     Q_INVOKABLE bool detachEntityFromMyAvatar(const QUuid& entityID);
+    Q_INVOKABLE bool isAttachedToMyAvatar(const QUuid& entityID);
 
 signals:
     void collisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);

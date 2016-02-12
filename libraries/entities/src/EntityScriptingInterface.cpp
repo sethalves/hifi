@@ -1131,6 +1131,7 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
         entity->setOwningAvatarID(QUuid());
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        properties.setClientOnly(false);
         properties.markAllChanged();
         getEntityPacketSender()->clearAvatarEntity(entityID);
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);
@@ -1139,6 +1140,26 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
 
     return result;
 }
+
+bool EntityScriptingInterface::isAttachedToMyAvatar(const QUuid& entityID) {
+    bool result = false;
+    if (!_entityTree) {
+        return false;
+    }
+
+   _entityTree->withReadLock([&] {
+        EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
+        if (!entity) {
+            qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - no entity with ID" << entityID;
+            return false;
+        }
+
+        auto nodeList = DependencyManager::get<NodeList>();
+        result = entity->getClientOnly() && entity->getOwningAvatarID() == nodeList->getSessionUUID();
+   });
+   return result;
+}
+
 
 float EntityScriptingInterface::calculateCost(float mass, float oldVelocity, float newVelocity) {
     return std::abs(mass * (newVelocity - oldVelocity));

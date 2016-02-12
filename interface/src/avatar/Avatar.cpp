@@ -208,6 +208,7 @@ void Avatar::updateAvatarEntities() {
 
                     if (entity) {
                         entity->setClientOnly(true);
+                        entity->setOwningAvatarID(getSessionUUID());
                         if (!entityTree->updateEntity(entityID, properties)) {
                             qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
                             success = false;
@@ -216,6 +217,7 @@ void Avatar::updateAvatarEntities() {
                         entity = entityTree->addEntity(entityID, properties);
                         if (entity) {
                             entity->setClientOnly(true);
+                            entity->setOwningAvatarID(getSessionUUID());
                         } else {
                             qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
                             success = false;
@@ -224,7 +226,7 @@ void Avatar::updateAvatarEntities() {
                 }
             });
             if (success) {
-                // _avatarEntityDataChanged = false;
+                _avatarEntityDataChanged = false;
             }
         }
     }

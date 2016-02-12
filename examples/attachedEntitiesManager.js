@@ -91,9 +91,9 @@ function mousePressEvent(event) {
     });
 
     if (clickedOverlay == saveButton) {
-        manager.saveAttachedEntities();
+        // manager.saveAttachedEntities();
     } else if (clickedOverlay == loadButton) {
-        manager.loadAttachedEntities();
+        // manager.loadAttachedEntities();
     } else if (clickedOverlay == wearButton) {
         manager.wearAttachedEntities();
     } else if (clickedOverlay == unwearButton) {
@@ -148,8 +148,10 @@ function AttachedEntitiesManager() {
         } else if (parsedMessage.action === 'release') {
             manager.handleEntityRelease(parsedMessage.grabbedEntity, parsedMessage.joint)
             // manager.saveAttachedEntities();
+            manager.wearAttachedEntities();
         } else if (parsedMessage.action === 'equip') {
             // manager.saveAttachedEntities();
+            manager.wearAttachedEntities();
         } else {
             print('attachedEntitiesManager -- unknown actions: ' + parsedMessage.action);
         }
@@ -250,20 +252,20 @@ function AttachedEntitiesManager() {
         return false;
     }
 
-    this.saveAttachedEntities = function() {
-        print("--- saving attached entities ---");
-        saveData = [];
-        var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
-        for (i = 0; i < nearbyEntities.length; i++) {
-            var entityID = nearbyEntities[i];
-            if (this.updateRelativeOffsets(entityID)) {
-                var props = Entities.getEntityProperties(entityID); // refresh, because updateRelativeOffsets changed them
-                this.scrubProperties(props);
-                saveData.push(props);
-            }
-        }
-        Settings.setValue(ATTACHED_ENTITIES_SETTINGS_KEY, JSON.stringify(saveData));
-    }
+    // this.saveAttachedEntities = function() {
+    //     print("--- saving attached entities ---");
+    //     saveData = [];
+    //     var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
+    //     for (i = 0; i < nearbyEntities.length; i++) {
+    //         var entityID = nearbyEntities[i];
+    //         if (this.updateRelativeOffsets(entityID)) {
+    //             var props = Entities.getEntityProperties(entityID); // refresh, because updateRelativeOffsets changed them
+    //             this.scrubProperties(props);
+    //             saveData.push(props);
+    //         }
+    //     }
+    //     Settings.setValue(ATTACHED_ENTITIES_SETTINGS_KEY, JSON.stringify(saveData));
+    // }
 
     this.scrubProperties = function(props) {
         var toScrub = ["queryAACube", "position", "rotation",
@@ -287,46 +289,53 @@ function AttachedEntitiesManager() {
         }
     }
 
-    this.loadAttachedEntities = function(grabbedEntity) {
-        print("--- loading attached entities ---");
-        jsonAttachmentData = Settings.getValue(ATTACHED_ENTITIES_SETTINGS_KEY);
-        var loadData = [];
-        try {
-            loadData = JSON.parse(jsonAttachmentData);
-        } catch (e) {
-            print('error parsing saved attachment data');
-            return;
-        }
+    // this.loadAttachedEntities = function(grabbedEntity) {
+    //     print("--- loading attached entities ---");
+    //     jsonAttachmentData = Settings.getValue(ATTACHED_ENTITIES_SETTINGS_KEY);
+    //     var loadData = [];
+    //     try {
+    //         loadData = JSON.parse(jsonAttachmentData);
+    //     } catch (e) {
+    //         print('error parsing saved attachment data');
+    //         return;
+    //     }
 
-        for (i = 0; i < loadData.length; i ++) {
-            var savedProps = loadData[ i ];
-            var currentProps = Entities.getEntityProperties(savedProps.id);
-            if (currentProps.id == savedProps.id &&
-                // TODO -- also check that parentJointIndex matches?
-                currentProps.parentID == MyAvatar.sessionUUID) {
-                // entity is already in-world.  TODO -- patch it up?
-                continue;
-            }
-            this.scrubProperties(savedProps);
-            delete savedProps["id"];
-            savedProps.parentID = MyAvatar.sessionUUID; // this will change between sessions
-            var loadedEntityID = Entities.addEntity(savedProps);
+    //     for (i = 0; i < loadData.length; i ++) {
+    //         var savedProps = loadData[ i ];
+    //         var currentProps = Entities.getEntityProperties(savedProps.id);
+    //         if (currentProps.id == savedProps.id &&
+    //             // TODO -- also check that parentJointIndex matches?
+    //             currentProps.parentID == MyAvatar.sessionUUID) {
+    //             // entity is already in-world.  TODO -- patch it up?
+    //             continue;
+    //         }
+    //         this.scrubProperties(savedProps);
+    //         delete savedProps["id"];
+    //         savedProps.parentID = MyAvatar.sessionUUID; // this will change between sessions
+    //         var loadedEntityID = Entities.addEntity(savedProps);
 
-            Messages.sendMessage('Hifi-Object-Manipulation', JSON.stringify({
-                action: 'loaded',
-                grabbedEntity: loadedEntityID
-            }));
-        }
-    }
+    //         Messages.sendMessage('Hifi-Object-Manipulation', JSON.stringify({
+    //             action: 'loaded',
+    //             grabbedEntity: loadedEntityID
+    //         }));
+    //     }
+    // }
 
-    this.wearAttachedEntities = function(grabbedEntity) {
+    this.wearAttachedEntities = function() {
         var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
         for (i = 0; i < nearbyEntities.length; i++) {
             var entityID = nearbyEntities[i];
             var props = Entities.getEntityProperties(entityID, ["parentID", "name"]);
+            var isAttached = Entities.isAttachedToMyAvatar(entityID);
             if (props.parentID == MyAvatar.sessionUUID) {
-                var attachResult = Entities.attachEntityToMyAvatar(entityID);
-                print("attach " + props.name + " " + attachResult);
+                if (!isAttached) {
+                    var attachResult = Entities.attachEntityToMyAvatar(entityID);
+                    print("attach " + props.name + " " + attachResult);
+                }
+            } else {
+                if (isAttached) {
+                    Entites.detachEntityFromMyAvatar(entityID);
+                }
             }
         }
     }
@@ -335,7 +344,10 @@ function AttachedEntitiesManager() {
         var nearbyEntities = Entities.findEntities(MyAvatar.position, ATTACHED_ENTITY_SEARCH_DISTANCE);
         for (i = 0; i < nearbyEntities.length; i++) {
             var entityID = nearbyEntities[i];
-            Entities.detachEntityFromMyAvatar(entityID);
+            var isAttached = Entities.isAttachedToMyAvatar(entityID);
+            if (isAttached) {
+                Entities.detachEntityFromMyAvatar(entityID);
+            }
         }
     }
 }

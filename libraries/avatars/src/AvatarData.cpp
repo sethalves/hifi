@@ -1037,14 +1037,7 @@ QByteArray AvatarData::identityByteArray() {
     QDataStream identityStream(&identityData, QIODevice::Append);
     QUrl emptyURL("");
     const QUrl& urlToSend = (_skeletonModelURL == AvatarData::defaultFullAvatarModelUrl()) ? emptyURL : _skeletonModelURL;
-
-    if (_avatarEntityData.size() > 0) { // XXX
-        qDebug() << "AVATAR-ENTITES -- AvatarData::identityByteArray sending ID packet with avatar-entities" <<
-            _avatarEntityData.size();
-    }
-
     identityStream << QUuid() << _faceModelURL << urlToSend << _attachmentData << _avatarEntityData << _displayName;
-
     return identityData;
 }
 
