@@ -412,6 +412,8 @@ void MyAvatar::simulate(float deltaTime) {
             entityTree->recurseTreeWithOperator(&moveOperator);
         }
     }
+
+    updateAvatarEntities();
 }
 
 glm::mat4 MyAvatar::getSensorToWorldMatrix() const {

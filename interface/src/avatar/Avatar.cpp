@@ -165,6 +165,71 @@ void Avatar::animateScaleChanges(float deltaTime) {
     }
 }
 
+void Avatar::updateAvatarEntities() {
+    if (_avatarEntityDataChanged) {
+        // Entites that are attached to avatars:
+        // - EntityScriptingInterface::attachEntityToMyAvatar does entity->setClientOnly(true) and queueEditEntityMessage(),
+        //   as well as telling the entity-server to "forget" this entity.  The entity will generally already be in
+        //   the local trees of other interfaces.
+        // - queueEditEntityMessage notices clientOnly flag and does _myAvatar->updateAvatarEntity()
+        // - updateAvatarEntity saves the bytes and sets _avatarEntityDataLocallyEdited
+        // - MyAvatar::update notices _avatarEntityDataLocallyEdited and calls sendIdentityPacket
+        // - sendIdentityPacket sends the entity bytes to the server which relays them to other interfaces
+        // - AvatarHashMap::processAvatarIdentityPacket's on other interfaces call avatar->setAvatarEntityData()
+        // - setAvatarEntityData saves the bytes and sets _avatarEntityDataChanged = true
+        // - (My)Avatar::simulate notices _avatarEntityDataChanged and here we are...
+
+        EntityTreeRenderer* treeRenderer = qApp->getEntities();
+        EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
+        if (entityTree) {
+            bool success = true;
+            entityTree->withWriteLock([&] {
+                AvatarEntityMap avatarEntities = getAvatarEntityData();
+                for (auto entityID : avatarEntities.keys()) {
+                    // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
+                    // and either add or update the entity.
+                    QScriptEngine scriptEngine;
+                    QByteArray jsonByteArray = avatarEntities.value(entityID);
+                    QJsonDocument jsonProperties = QJsonDocument::fromJson(jsonByteArray);
+                    if (!jsonProperties.isObject()) {
+                        qDebug() << "got bad avatarEntity json";
+                        continue;
+                    }
+                    QJsonObject obj = jsonProperties.object();
+                    QVariant variantProperties = jsonProperties.toVariant();
+                    QVariantMap asMap = variantProperties.toMap();
+                    QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
+                    EntityItemProperties properties;
+                    EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
+                    properties.setClientOnly(true);
+                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
+
+                    properties.setParentID(getSessionUUID()); // XXX
+
+                    if (entity) {
+                        entity->setClientOnly(true);
+                        if (!entityTree->updateEntity(entityID, properties)) {
+                            qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
+                            success = false;
+                        }
+                    } else {
+                        entity = entityTree->addEntity(entityID, properties);
+                        if (entity) {
+                            entity->setClientOnly(true);
+                        } else {
+                            qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
+                            success = false;
+                        }
+                    }
+                }
+            });
+            if (success) {
+                // _avatarEntityDataChanged = false;
+            }
+        }
+    }
+}
+
 void Avatar::simulate(float deltaTime) {
     PerformanceTimer perfTimer("simulate");
 
@@ -239,61 +304,7 @@ void Avatar::simulate(float deltaTime) {
 
     simulateAttachments(deltaTime);
     updatePalms();
-
-    if (_avatarEntityDataChanged) {
-        // Entites that are attached to avatars:
-        // - EntityScriptingInterface::attachEntityToMyAvatar does entity->setClientOnly(true) and queueEditEntityMessage(),
-        //   as well as telling the entity-server to "forget" this entity.  The entity will generally already be in
-        //   the local trees of other interfaces.
-        // - queueEditEntityMessage notices clientOnly flag and does _myAvatar->updateAvatarEntity()
-        // - updateAvatarEntity saves the bytes and sets _avatarEntityDataLocallyEdited
-        // - MyAvatar::update notices _avatarEntityDataLocallyEdited and calls sendIdentityPacket
-        // - sendIdentityPacket sends the entity bytes to the server which relays them to other interfaces
-        // - AvatarHashMap::processAvatarIdentityPacket's on other interfaces call avatar->setAvatarEntityData()
-        // - setAvatarEntityData saves the bytes and sets _avatarEntityDataChanged = true
-        // - Avatar::simulate notices _avatarEntityDataChanged and here we are...
-
-        EntityTreeRenderer* treeRenderer = qApp->getEntities();
-        EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
-        if (entityTree) {
-            bool success = true;
-            entityTree->withWriteLock([&] {
-                AvatarEntityMap avatarEntities = getAvatarEntityData();
-                for (auto entityID : avatarEntities.keys()) {
-                    // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
-                    // and either add or update the entity.
-                    QScriptEngine scriptEngine;
-                    QByteArray jsonByteArray = avatarEntities.value(entityID);
-                    QJsonDocument jsonProperties = QJsonDocument::fromJson(jsonByteArray);
-                    if (!jsonProperties.isObject()) {
-                        qDebug() << "got bad avatarEntity json";
-                        continue;
-                    }
-                    QJsonObject obj = jsonProperties.object();
-                    QVariant variantProperties = jsonProperties.toVariant();
-                    QVariantMap asMap = variantProperties.toMap();
-                    QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
-                    EntityItemProperties properties;
-                    EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
-                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-                    if (entity) {
-                        if (!entityTree->updateEntity(entityID, properties)) {
-                            success = false;
-                        }
-                    } else {
-                        entity = entityTree->addEntity(entityID, properties);
-                        if (!entity) {
-                            qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
-                            success = false;
-                        }
-                    }
-                }
-            });
-            if (success) {
-                _avatarEntityDataChanged = false;
-            }
-        }
-    }
+    updateAvatarEntities();
 }
 
 bool Avatar::isLookingAtMe(AvatarSharedPointer avatar) const {
