@@ -1161,6 +1161,7 @@ void Application::initializeGL() {
     render::CullFunctor cullFunctor = LODManager::shouldRender;
     _renderEngine->addJob<RenderShadowTask>("RenderShadowTask", cullFunctor);
     _renderEngine->addJob<RenderDeferredTask>("RenderDeferredTask", cullFunctor);
+    _renderEngine->load();
     _renderEngine->registerScene(_main3DScene);
     // TODO: Load a cached config file
 
