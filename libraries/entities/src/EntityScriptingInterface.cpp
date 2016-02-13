@@ -260,13 +260,13 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
     bool updatedEntity = false;
     _entityTree->withWriteLock([&] {
+        EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
+        if (!entity) {
+            return;
+        }
         if (scriptSideProperties.parentRelatedPropertyChanged()) {
             // All of parentID, parentJointIndex, position, rotation are needed to make sense of any of them.
             // If any of these changed, pull any missing properties from the entity.
-            EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
-            if (!entity) {
-                return;
-            }
             //existing entity, retrieve old velocity for check down below
             oldVelocity = entity->getVelocity().length();            
             
@@ -284,6 +284,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             }
         }
         properties = convertLocationFromScriptSemantics(properties);
+        properties.setClientOnly(entity->getClientOnly());
         updatedEntity = _entityTree->updateEntity(entityID, properties);
 
         float cost = calculateCost(density * volume, oldVelocity, newVelocity);
