@@ -1135,7 +1135,9 @@ int EntityTree::processEraseMessage(ReceivedMessage& message, const SharedNodePo
                 entityItemIDsToDelete << entityItemID;
 
                 if (wantEditLogging() || wantTerseEditLogging()) {
-                    qCDebug(entities) << "User [" << sourceNode->getUUID() << "] deleting entity. ID:" << entityItemID;
+                    qCDebug(entities) << "User [" << sourceNode->getUUID() << "] "
+                                      << (entityGoingClientOnly ? "forgetting entity" : "deleting entity")
+                                      << ". ID:" << entityItemID;
                 }
 
             }
@@ -1186,7 +1188,9 @@ int EntityTree::processEraseMessageDetails(const QByteArray& dataByteArray, cons
             entityItemIDsToDelete << entityItemID;
 
             if (wantEditLogging() || wantTerseEditLogging()) {
-                qCDebug(entities) << "User [" << sourceNode->getUUID() << "] deleting entity. ID:" << entityItemID;
+                qCDebug(entities) << "User [" << sourceNode->getUUID() << "] "
+                                  << (entityGoingClientOnly ? "forgetting entity" : "deleting entity")
+                                  << ". ID:" << entityItemID;
             }
 
         }
