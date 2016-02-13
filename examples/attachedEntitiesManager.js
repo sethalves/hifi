@@ -333,7 +333,7 @@ function AttachedEntitiesManager() {
                 }
             } else {
                 if (isAttached) {
-                    Entites.detachEntityFromMyAvatar(entityID);
+                    Entities.detachEntityFromMyAvatar(entityID);
                 }
             }
         }
