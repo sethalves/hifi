@@ -1245,7 +1245,7 @@ void AvatarData::sendIdentityPacket() {
  // identityPacket->write(identityData);
  // nodeList->broadcastToNodes(std::move(identityPacket), NodeSet() << NodeType::AvatarMixer);
 
-    auto packetList = NLPacketList::create(PacketType::MessagesData, QByteArray(), true, true);
+    auto packetList = NLPacketList::create(PacketType::AvatarIdentity, QByteArray(), true, true);
     packetList->write(identityData);
     nodeList->eachMatchingNode(
         [&](const SharedNodePointer& node)->bool {
