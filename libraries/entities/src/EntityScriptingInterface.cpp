@@ -1152,7 +1152,7 @@ bool EntityScriptingInterface::isAttachedToMyAvatar(const QUuid& entityID) {
         EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
         if (!entity) {
             qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - no entity with ID" << entityID;
-            return false;
+            return;
         }
 
         auto nodeList = DependencyManager::get<NodeList>();
