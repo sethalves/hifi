@@ -404,7 +404,6 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
-<<<<<<< HEAD
     bool getClientOnly() const { return _clientOnly; }
     void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
 
@@ -412,13 +411,6 @@ public:
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
 
-    /// Has the entity been added to an entity tree? This is useful in some state decisions
-    /// for example whether or not to send out a scriptChanging signal.
-    void markAsAddedToTree() { _isAddedToTree = true; }
-    bool isAddedToTree() const { return _isAddedToTree; }
-
-=======
->>>>>>> 33d49fecaf4d78fc3d315190bb766ded16a64bed
     /// Should the external entity script mechanism call a preload for this entity.
     /// Due to the asyncronous nature of signals for add entity and script changing
     /// it's possible for two similar signals to cross paths. This method allows the
