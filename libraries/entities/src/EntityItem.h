@@ -534,7 +534,7 @@ protected:
     QUuid _sourceUUID; /// the server node UUID we came from
 
     bool _clientOnly { false }; // true if entity-server doesn't know about this entity.
-    QUuid _owningAvatarID;
+    QUuid _owningAvatarID; // which avatar is a client-only entity associated with?
 };
 
 #endif // hifi_EntityItem_h

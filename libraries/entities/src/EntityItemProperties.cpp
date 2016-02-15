@@ -546,6 +546,9 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_QUERY_AA_CUBE, queryAACube);
 
+    properties.setProperty("clientOnly", convertScriptValue(engine, getClientOnly()));
+    properties.setProperty("owningAvatarID", convertScriptValue(engine, getOwningAvatarID()));
+
     // FIXME - I don't think these properties are supported any more
     //COPY_PROPERTY_TO_QSCRIPTVALUE(glowLevel);
     //COPY_PROPERTY_TO_QSCRIPTVALUE(localRenderAlpha);
@@ -682,6 +685,21 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointRotations, qVectorQuat, setJointRotations);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslationsSet, qVectorBool, setJointTranslationsSet);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslations, qVectorVec3, setJointTranslations);
+
+    {
+        bool isValid;
+        bool clientOnly = bool_convertFromScriptValue(object.property("clientOnly"), isValid);
+        if (isValid) {
+            setClientOnly(clientOnly);
+        }
+    }
+    {
+        bool isValid;
+        QUuid owningAvatarID = QUuid_convertFromScriptValue(object.property("owningAvatarID"), isValid);
+        if (isValid) {
+            setOwningAvatarID(owningAvatarID);
+        }
+    }
 
     _lastEdited = usecTimestampNow();
 }

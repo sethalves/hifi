@@ -195,20 +195,25 @@ void Avatar::updateAvatarEntities() {
                         qDebug() << "got bad avatarEntity json";
                         continue;
                     }
-                    QJsonObject obj = jsonProperties.object();
+                    // QJsonObject obj = jsonProperties.object();
                     QVariant variantProperties = jsonProperties.toVariant();
                     QVariantMap asMap = variantProperties.toMap();
                     QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
                     EntityItemProperties properties;
                     EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
+					// QUuid owningAvatarID = obj["owningAvatarID"].toQUuid();
                     properties.setClientOnly(true);
+                    // properties.setOwningAvatarID(owningAvatarID);
+
                     EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
 
-                    properties.setParentID(getSessionUUID()); // XXX
+                    // if (!properties.getParentID().isNull()) {
+                    //     properties.setParentID(owningAvatarID);
+                    // }
 
                     if (entity) {
-                        entity->setClientOnly(true);
-                        entity->setOwningAvatarID(getSessionUUID());
+                        // entity->setClientOnly(true);
+                        // entity->setOwningAvatarID(owningAvatarID);
                         if (!entityTree->updateEntity(entityID, properties)) {
                             qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
                             success = false;
@@ -216,8 +221,8 @@ void Avatar::updateAvatarEntities() {
                     } else {
                         entity = entityTree->addEntity(entityID, properties);
                         if (entity) {
-                            entity->setClientOnly(true);
-                            entity->setOwningAvatarID(getSessionUUID());
+                            // entity->setClientOnly(true);
+                            // entity->setOwningAvatarID(getSessionUUID());
                         } else {
                             qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
                             success = false;

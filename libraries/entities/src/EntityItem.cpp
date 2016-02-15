@@ -1050,6 +1050,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     properties._idSet = true;
     properties._created = _created;
     properties.setClientOnly(_clientOnly);
+    properties.setOwningAvatarID(_owningAvatarID);
 
     properties._type = getType();
 
@@ -1091,6 +1092,8 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localPosition, getLocalPosition);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localRotation, getLocalOrientation);
 
+    properties.setClientOnly(_clientOnly);
+    properties.setOwningAvatarID(_owningAvatarID);
     properties._defaultSettings = false;
 
     return properties;
@@ -1174,6 +1177,9 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         }
     }
 
+    setClientOnly(properties.getClientOnly());
+    setOwningAvatarID(properties.getOwningAvatarID());
+
     // timestamps
     quint64 timestamp = properties.getCreated();
     if (_created == UNKNOWN_CREATED_TIME && timestamp != UNKNOWN_CREATED_TIME) {
@@ -1185,6 +1191,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     }
 
     setClientOnly(properties.getClientOnly());
+    setOwningAvatarID(properties.getOwningAvatarID());
 
     return somethingChanged;
 }
