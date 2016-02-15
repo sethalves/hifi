@@ -47,7 +47,7 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemI
         assert(_myAvatar);
         QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, properties);
         QVariant variantProperties = scriptProperties.toVariant();
-        QByteArray jsonProperties = QJsonDocument::fromVariant(variantProperties).toJson();
+        QByteArray jsonProperties = QJsonDocument::fromVariant(variantProperties).toBinaryData();
         _myAvatar->updateAvatarEntity(entityItemID, jsonProperties);
         return;
     }

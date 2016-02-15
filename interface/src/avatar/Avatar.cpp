@@ -190,7 +190,7 @@ void Avatar::updateAvatarEntities() {
                     // and either add or update the entity.
                     QScriptEngine scriptEngine;
                     QByteArray jsonByteArray = avatarEntities.value(entityID);
-                    QJsonDocument jsonProperties = QJsonDocument::fromJson(jsonByteArray);
+                    QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
                     if (!jsonProperties.isObject()) {
                         qDebug() << "got bad avatarEntity json";
                         continue;
