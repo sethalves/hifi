@@ -404,8 +404,16 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
+    void mark() { _mark = true; }
+    void unmark() { _mark = false; }
     bool getClientOnly() const { return _clientOnly; }
-    void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
+    void setClientOnly(bool clientOnly) {
+        qDebug() << "setClientOnly " << clientOnly;
+        _clientOnly = clientOnly;
+        if (_mark && _clientOnly == false) {
+            qDebug() << "HERE";
+        }
+    }
 
     // if this entity is client-only, which avatar is it associated with?
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
@@ -535,6 +543,7 @@ protected:
 
     bool _clientOnly { false }; // true if entity-server doesn't know about this entity.
     QUuid _owningAvatarID; // which avatar is a client-only entity associated with?
+    bool _mark { false };
 };
 
 #endif // hifi_EntityItem_h

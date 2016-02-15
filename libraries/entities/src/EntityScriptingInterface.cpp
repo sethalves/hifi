@@ -284,7 +284,10 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             }
         }
         properties = convertLocationFromScriptSemantics(properties);
+
         properties.setClientOnly(entity->getClientOnly());
+        properties.setOwningAvatarID(entity->getOwningAvatarID());
+
         updatedEntity = _entityTree->updateEntity(entityID, properties);
 
         float cost = calculateCost(density * volume, oldVelocity, newVelocity);
@@ -1091,7 +1094,9 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
         //     return;
         // }
 
+        qDebug() << "ATTACHING ENTITY";
         entity->setClientOnly(true);
+        entity->mark();
         entity->setOwningAvatarID(myNodeID);
         getEntityPacketSender()->queueForgetEntityMessage(entityID);
         EntityPropertyFlags noSpecificProperties;
@@ -1117,6 +1122,8 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
             return;
         }
 
+        entity->unmark();
+
         if (!entity->getClientOnly()) {
             qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - entity isn't client-only" << entityID;
             return;
@@ -1128,11 +1135,11 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
         //     return;
         // }
 
+        qDebug() << "DETACHING ENTITY";
         entity->setClientOnly(false);
         entity->setOwningAvatarID(QUuid());
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
-        properties.setClientOnly(false);
         properties.markAllChanged();
         getEntityPacketSender()->clearAvatarEntity(entityID);
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);

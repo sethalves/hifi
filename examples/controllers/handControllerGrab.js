@@ -1381,7 +1381,6 @@ function MyController(hand) {
             }
         } else {
             // grab entity via parenting
-            this.actionID = null;
             var handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
             reparentProps = {
                 parentID: MyAvatar.sessionUUID,

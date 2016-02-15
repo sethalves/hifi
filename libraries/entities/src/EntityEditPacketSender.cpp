@@ -43,6 +43,7 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemI
         return; // bail early
     }
     if (properties.getClientOnly()) {
+        qDebug() << "edit sender updating avatarEntity";
         // this is an avatar-based entity.  update our avatar-data rather than sending to the entity-server
         assert(_myAvatar);
         QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, properties);

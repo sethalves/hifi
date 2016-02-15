@@ -232,8 +232,13 @@ function AttachedEntitiesManager() {
                     // this is equipped on a hand -- don't clear the parent.
                 } else {
                     Entities.editEntity(grabbedEntity, { parentID: NULL_UUID });
+                    Entities.detachEntityFromMyAvatar(grabbedEntity);
                 }
+            } else {
+                Entities.detachEntityFromMyAvatar(grabbedEntity);
             }
+        } else {
+            print("NO");
         }
     }
 
@@ -327,6 +332,7 @@ function AttachedEntitiesManager() {
             var entityID = nearbyEntities[i];
             var props = Entities.getEntityProperties(entityID, ["parentID", "name"]);
             var isAttached = Entities.isAttachedToMyAvatar(entityID);
+
             if (props.parentID == MyAvatar.sessionUUID) {
                 if (!isAttached) {
                     var attachResult = Entities.attachEntityToMyAvatar(entityID);
