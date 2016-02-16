@@ -1089,20 +1089,16 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
         auto nodeList = DependencyManager::get<NodeList>();
         const QUuid myNodeID = nodeList->getSessionUUID();
 
-        // if (entity->getParentID() != myNodeID) {
-        //     qDebug() << "EntityScriptingInterface::attachEntityToMyAvatar - entity isn't child of MyAvatar" << entityID;
-        //     return;
-        // }
-
         qDebug() << "ATTACHING ENTITY";
         auto now = usecTimestampNow();
-        entity->setLastEdited(now);
         entity->setClientOnly(true);
         entity->mark();
         entity->setOwningAvatarID(myNodeID);
-        getEntityPacketSender()->queueForgetEntityMessage(entityID);
+        entity->setLastEdited(now);
+        entity->setLastBroadcast(now);
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        getEntityPacketSender()->queueForgetEntityMessage(entityID);
         properties.setLastEdited(now);
         properties.markAllChanged();
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);
@@ -1132,17 +1128,12 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
             return;
         }
 
-        // const QUuid myNodeID = nodeList->getSessionUUID();
-        // if (entity->getParentID() != myNodeID) {
-        //     qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - entity isn't child of MyAvatar" << entityID;
-        //     return;
-        // }
-
         auto now = usecTimestampNow();
         qDebug() << "DETACHING ENTITY";
-        entity->setLastEdited(now);
         entity->setClientOnly(false);
         entity->setOwningAvatarID(QUuid());
+        entity->setLastEdited(now);
+        entity->setLastBroadcast(now);
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
         properties.setLastEdited(now);
