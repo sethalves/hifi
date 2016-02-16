@@ -1092,7 +1092,6 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
         qDebug() << "ATTACHING ENTITY";
         auto now = usecTimestampNow();
         entity->setClientOnly(true);
-        entity->mark();
         entity->setOwningAvatarID(myNodeID);
         entity->setLastEdited(now);
         entity->setLastBroadcast(now);
@@ -1120,8 +1119,6 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
             qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - no entity with ID" << entityID;
             return;
         }
-
-        entity->unmark();
 
         if (!entity->getClientOnly()) {
             qDebug() << "EntityScriptingInterface::detachEntityFromMyAvatar - entity isn't client-only" << entityID;
