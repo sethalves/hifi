@@ -1799,7 +1799,28 @@ void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
         return;
     }
     if (_avatarEntityData != avatarEntityData) {
+        // keep track of entities that were attached to this avatar but no longer are
+        AvatarEntityIDs previousAvatarEntityIDs = QSet<QUuid>::fromList(_avatarEntityData.keys());
+
         _avatarEntityData = avatarEntityData;
         _avatarEntityDataChanged = true;
+
+        foreach (auto entityID, previousAvatarEntityIDs) {
+            if (!_avatarEntityData.contains(entityID)) {
+                _avatarEntityDetached.insert(entityID);
+            }
+        }
     }
+}
+
+AvatarEntityIDs AvatarData::getAndClearRecentlyDetachedIDs() {
+    if (QThread::currentThread() != thread()) {
+        AvatarEntityIDs result;
+        QMetaObject::invokeMethod(const_cast<AvatarData*>(this), "getRecentlyDetachedIDs", Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(AvatarEntityIDs, result));
+        return result;
+    }
+    AvatarEntityIDs result = _avatarEntityDetached;
+    _avatarEntityDetached.clear();
+    return result;
 }

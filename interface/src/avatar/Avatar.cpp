@@ -166,73 +166,87 @@ void Avatar::animateScaleChanges(float deltaTime) {
 }
 
 void Avatar::updateAvatarEntities() {
-    if (_avatarEntityDataChanged) {
-        // Entites that are attached to avatars:
-        // - EntityScriptingInterface::attachEntityToMyAvatar does entity->setClientOnly(true) and queueEditEntityMessage(),
-        //   as well as telling the entity-server to "forget" this entity.  The entity will generally already be in
-        //   the local trees of other interfaces.
-        // - queueEditEntityMessage notices clientOnly flag and does _myAvatar->updateAvatarEntity()
-        // - updateAvatarEntity saves the bytes and sets _avatarEntityDataLocallyEdited
-        // - MyAvatar::update notices _avatarEntityDataLocallyEdited and calls sendIdentityPacket
-        // - sendIdentityPacket sends the entity bytes to the server which relays them to other interfaces
-        // - AvatarHashMap::processAvatarIdentityPacket's on other interfaces call avatar->setAvatarEntityData()
-        // - setAvatarEntityData saves the bytes and sets _avatarEntityDataChanged = true
-        // - (My)Avatar::simulate notices _avatarEntityDataChanged and here we are...
+    // Entites that are attached to avatars:
+    // - EntityScriptingInterface::attachEntityToMyAvatar does entity->setClientOnly(true) and queueEditEntityMessage(),
+    //   as well as telling the entity-server to "forget" this entity.  The entity will generally already be in
+    //   the local trees of other interfaces.
+    // - queueEditEntityMessage notices clientOnly flag and does _myAvatar->updateAvatarEntity()
+    // - updateAvatarEntity saves the bytes and sets _avatarEntityDataLocallyEdited
+    // - MyAvatar::update notices _avatarEntityDataLocallyEdited and calls sendIdentityPacket
+    // - sendIdentityPacket sends the entity bytes to the server which relays them to other interfaces
+    // - AvatarHashMap::processAvatarIdentityPacket's on other interfaces call avatar->setAvatarEntityData()
+    // - setAvatarEntityData saves the bytes and sets _avatarEntityDataChanged = true
+    // - (My)Avatar::simulate notices _avatarEntityDataChanged and here we are...
 
-        EntityTreeRenderer* treeRenderer = qApp->getEntities();
-        EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
-        if (entityTree) {
-            bool success = true;
-            entityTree->withWriteLock([&] {
-                AvatarEntityMap avatarEntities = getAvatarEntityData();
-                for (auto entityID : avatarEntities.keys()) {
-                    // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
-                    // and either add or update the entity.
-                    QScriptEngine scriptEngine;
-                    QByteArray jsonByteArray = avatarEntities.value(entityID);
-                    QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
-                    if (!jsonProperties.isObject()) {
-                        qDebug() << "got bad avatarEntity json";
-                        continue;
+    if (!_avatarEntityDataChanged) {
+        return;
+    }
+
+    EntityTreeRenderer* treeRenderer = qApp->getEntities();
+    EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
+    if (entityTree) {
+        bool success = true;
+        entityTree->withWriteLock([&] {
+            AvatarEntityMap avatarEntities = getAvatarEntityData();
+            for (auto entityID : avatarEntities.keys()) {
+                // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
+                // and either add or update the entity.
+                QScriptEngine scriptEngine;
+                QByteArray jsonByteArray = avatarEntities.value(entityID);
+                QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
+                if (!jsonProperties.isObject()) {
+                    qDebug() << "got bad avatarEntity json";
+                    continue;
+                }
+                // QJsonObject obj = jsonProperties.object();
+                QVariant variantProperties = jsonProperties.toVariant();
+                QVariantMap asMap = variantProperties.toMap();
+                QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
+                EntityItemProperties properties;
+                EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
+                // QUuid owningAvatarID = obj["owningAvatarID"].toQUuid();
+                properties.setClientOnly(true);
+                // properties.setOwningAvatarID(owningAvatarID);
+
+                EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
+
+                // if (!properties.getParentID().isNull()) {
+                //     properties.setParentID(owningAvatarID);
+                // }
+
+                if (entity) {
+                    // entity->setClientOnly(true);
+                    // entity->setOwningAvatarID(owningAvatarID);
+                    if (!entityTree->updateEntity(entityID, properties)) {
+                        qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
+                        success = false;
                     }
-                    // QJsonObject obj = jsonProperties.object();
-                    QVariant variantProperties = jsonProperties.toVariant();
-                    QVariantMap asMap = variantProperties.toMap();
-                    QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
-                    EntityItemProperties properties;
-                    EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
-					// QUuid owningAvatarID = obj["owningAvatarID"].toQUuid();
-                    properties.setClientOnly(true);
-                    // properties.setOwningAvatarID(owningAvatarID);
-
-                    EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-
-                    // if (!properties.getParentID().isNull()) {
-                    //     properties.setParentID(owningAvatarID);
-                    // }
-
+                } else {
+                    entity = entityTree->addEntity(entityID, properties);
                     if (entity) {
                         // entity->setClientOnly(true);
-                        // entity->setOwningAvatarID(owningAvatarID);
-                        if (!entityTree->updateEntity(entityID, properties)) {
-                            qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
-                            success = false;
-                        }
+                        // entity->setOwningAvatarID(getSessionUUID());
                     } else {
-                        entity = entityTree->addEntity(entityID, properties);
-                        if (entity) {
-                            // entity->setClientOnly(true);
-                            // entity->setOwningAvatarID(getSessionUUID());
-                        } else {
-                            qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
-                            success = false;
-                        }
+                        qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
+                        success = false;
                     }
                 }
-            });
-            if (success) {
-                _avatarEntityDataChanged = false;
             }
+        });
+
+        AvatarEntityIDs recentlyDettachedAvatarEntities = getAndClearRecentlyDetachedIDs();
+        foreach (auto entityID, recentlyDettachedAvatarEntities) {
+            if (!_avatarEntityData.contains(entityID)) {
+                EntityItemPointer dettachedEntity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
+                if (dettachedEntity) {
+                    // this will cause this interface to listen to data from the entity-server about this entity.
+                    dettachedEntity->setClientOnly(false);
+                }
+            }
+        }
+
+        if (success) {
+            _avatarEntityDataChanged = false;
         }
     }
 }

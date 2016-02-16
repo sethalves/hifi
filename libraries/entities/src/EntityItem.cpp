@@ -513,6 +513,11 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         }
     }
 
+    if (getClientOnly()) {
+        // if this entity is being udpated via the avatar-mixer, ignore anything the entity-server says about it.
+        ignoreServerPacket = true;
+    }
+
     // before proceeding, check to see if this is an entity that we know has been deleted, which
     // might happen in the case of out-of-order and/or recorvered packets, if we've deleted the entity
     // we can confidently ignore this packet
@@ -750,8 +755,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     }
 
     // if the entity-server is telling us about the entity, it's not client-only.
-    setClientOnly(false);
-    setOwningAvatarID(QUuid());
+    // setClientOnly(false);
+    // setOwningAvatarID(QUuid());
 
     return bytesRead;
 }

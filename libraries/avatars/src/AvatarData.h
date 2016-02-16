@@ -62,6 +62,7 @@ using AvatarSharedPointer = std::shared_ptr<AvatarData>;
 using AvatarWeakPointer = std::weak_ptr<AvatarData>;
 using AvatarHash = QHash<QUuid, AvatarSharedPointer>;
 using AvatarEntityMap = QMap<QUuid, QByteArray>;
+using AvatarEntityIDs = QSet<QUuid>;
 
 using AvatarDataSequenceNumber = uint16_t;
 
@@ -356,6 +357,7 @@ public:
     Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
     Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
     void setAvatarEntityDataChanged(bool value) { _avatarEntityDataChanged = value; }
+    AvatarEntityIDs getAndClearRecentlyDetachedIDs();
 
 public slots:
     void sendAvatarDataPacket();
@@ -432,6 +434,7 @@ protected:
     // updates about one avatar to another.
     glm::vec3 _globalPosition;
 
+    AvatarEntityIDs _avatarEntityDetached; // recently detached from this avatar
     AvatarEntityMap _avatarEntityData;
     bool _avatarEntityDataLocallyEdited { false };
     bool _avatarEntityDataChanged { false };
