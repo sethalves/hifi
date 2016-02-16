@@ -251,31 +251,46 @@ void OctreePersistThread::persist() {
     if (_tree->isDirty() && _initialLoadComplete) {
 
         _tree->withWriteLock([&] {
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "pruning Octree before saving...";
+            #endif
             _tree->pruneTree();
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "DONE pruning Octree before saving...";
+            #endif
         });
 
+        #ifdef WANT_DEBUG
         qCDebug(octree) << "persist operation calling backup...";
-        backup(); // handle backup if requested        
+        #endif
+        backup(); // handle backup if requested
+        #ifdef WANT_DEBUG
         qCDebug(octree) << "persist operation DONE with backup...";
-
+        #endif
 
         // create our "lock" file to indicate we're saving.
         QString lockFileName = _filename + ".lock";
         std::ofstream lockFile(qPrintable(lockFileName), std::ios::out|std::ios::binary);
         if(lockFile.is_open()) {
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "saving Octree lock file created at:" << lockFileName;
+            #endif
 
             _tree->writeToFile(qPrintable(_filename), NULL, _persistAsFileType);
             time(&_lastPersistTime);
             _tree->clearDirtyBit(); // tree is clean after saving
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "DONE saving Octree to file...";
+            #endif
 
             lockFile.close();
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "saving Octree lock file closed:" << lockFileName;
+            #endif
             remove(qPrintable(lockFileName));
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "saving Octree lock file removed:" << lockFileName;
+            #endif
         }
     }
 }
@@ -411,7 +426,9 @@ void OctreePersistThread::rollOldBackupVersions(const BackupRule& rule) {
 
 
 void OctreePersistThread::backup() {
+    #ifdef WANT_DEBUG
     qCDebug(octree) << "backup operation wantBackup:" << _wantBackup;
+    #endif
     if (_wantBackup) {
         quint64 now = usecTimestampNow();
         
@@ -422,12 +439,16 @@ void OctreePersistThread::backup() {
             quint64 SECS_TO_USECS = 1000 * 1000;
             quint64 intervalToBackup = rule.interval * SECS_TO_USECS;
 
+            #ifdef WANT_DEBUG
             qCDebug(octree) << "Checking [" << rule.name << "] - Time since last backup [" << sinceLastBackup << "] " << 
                         "compared to backup interval [" << intervalToBackup << "]...";
+            #endif
 
             if (sinceLastBackup > intervalToBackup) {
+                #ifdef WANT_DEBUG
                 qCDebug(octree) << "Time since last backup [" << sinceLastBackup << "] for rule [" << rule.name 
                                         << "] exceeds backup interval [" << intervalToBackup << "] doing backup now...";
+                #endif
 
                 struct tm* localTime = localtime(&_lastPersistTime);
 
@@ -449,10 +470,14 @@ void OctreePersistThread::backup() {
                 if (rule.maxBackupVersions > 0) {
                     QFile persistFile(_filename);
                     if (persistFile.exists()) {
+                        #ifdef WANT_DEBUG
                         qCDebug(octree) << "backing up persist file " << _filename << "to" << backupFileName << "...";
+                        #endif
                         bool result = QFile::copy(_filename, backupFileName);
                         if (result) {
+                            #ifdef WANT_DEBUG
                             qCDebug(octree) << "DONE backing up persist file...";
+                            #endif
                             rule.lastBackup = now; // only record successful backup in this case.
                         } else {
                             qCDebug(octree) << "ERROR in backing up persist file...";
@@ -468,7 +493,9 @@ void OctreePersistThread::backup() {
                              << " There are no backups to be done...";
                 }
             } else {
+                #ifdef WANT_DEBUG
                 qCDebug(octree) << "Backup not needed for this rule ["<< rule.name << "]...";
+                #endif
             }
         }
     }
