@@ -1095,12 +1095,15 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
         // }
 
         qDebug() << "ATTACHING ENTITY";
+        auto now = usecTimestampNow();
+        entity->setLastEdited(now);
         entity->setClientOnly(true);
         entity->mark();
         entity->setOwningAvatarID(myNodeID);
         getEntityPacketSender()->queueForgetEntityMessage(entityID);
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        properties.setLastEdited(now);
         properties.markAllChanged();
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);
         result = true;
@@ -1135,11 +1138,14 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
         //     return;
         // }
 
+        auto now = usecTimestampNow();
         qDebug() << "DETACHING ENTITY";
+        entity->setLastEdited(now);
         entity->setClientOnly(false);
         entity->setOwningAvatarID(QUuid());
         EntityPropertyFlags noSpecificProperties;
         EntityItemProperties properties = entity->getProperties(noSpecificProperties);
+        properties.setLastEdited(now);
         properties.markAllChanged();
         getEntityPacketSender()->clearAvatarEntity(entityID);
         queueEntityMessage(PacketType::EntityAdd, entityID, properties);

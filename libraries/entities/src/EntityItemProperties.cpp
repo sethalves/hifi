@@ -308,6 +308,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_QUERY_AA_CUBE, queryAACube);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_POSITION, localPosition);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_ROTATION, localRotation);
+    CHECK_PROPERTY_CHANGE(PROP_CLIENT_ONLY, clientOnly);
+    CHECK_PROPERTY_CHANGE(PROP_OWNING_AVATAR_ID, owningAvatarID);
 
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
@@ -544,7 +546,8 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_JOINT_TRANSLATIONS_SET, jointTranslationsSet);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_JOINT_TRANSLATIONS, jointTranslations);
 
-    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_QUERY_AA_CUBE, queryAACube);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_CLIENT_ONLY, clientOnly);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_OWNING_AVATAR_ID, owningAvatarID);
 
     properties.setProperty("clientOnly", convertScriptValue(engine, getClientOnly()));
     properties.setProperty("owningAvatarID", convertScriptValue(engine, getOwningAvatarID()));
@@ -686,20 +689,8 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslationsSet, qVectorBool, setJointTranslationsSet);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslations, qVectorVec3, setJointTranslations);
 
-    {
-        bool isValid;
-        bool clientOnly = bool_convertFromScriptValue(object.property("clientOnly"), isValid);
-        if (isValid) {
-            setClientOnly(clientOnly);
-        }
-    }
-    {
-        bool isValid;
-        QUuid owningAvatarID = QUuid_convertFromScriptValue(object.property("owningAvatarID"), isValid);
-        if (isValid) {
-            setOwningAvatarID(owningAvatarID);
-        }
-    }
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(clientOnly, bool, setClientOnly);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(owningAvatarID, QUuid, setOwningAvatarID);
 
     _lastEdited = usecTimestampNow();
 }
@@ -1144,6 +1135,9 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
+
+            APPEND_ENTITY_PROPERTY(PROP_CLIENT_ONLY, properties.getClientOnly());
+            APPEND_ENTITY_PROPERTY(PROP_OWNING_AVATAR_ID, properties.getOwningAvatarID());
         }
 
         if (propertyCount > 0) {
@@ -1429,6 +1423,9 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ACTION_DATA, QByteArray, setActionData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ALPHA, float, setAlpha);
 
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_CLIENT_ONLY, bool, setClientOnly);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_OWNING_AVATAR_ID, QUuid, setOwningAvatarID);
+
     return valid;
 }
 
@@ -1582,6 +1579,9 @@ void EntityItemProperties::markAllChanged() {
     _jointTranslationsChanged = true;
 
     _queryAACubeChanged = true;
+
+    _clientOnlyChanged = true;
+    _owningAvatarIDChanged = true;
 }
 
 // The minimum bounding box for the entity.
@@ -1898,6 +1898,12 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     }
     if (queryAACubeChanged()) {
         out += "queryAACube";
+    }
+    if (clientOnlyChanged()) {
+        out += "clientOnly";
+    }
+    if (owningAvatarIDChanged()) {
+        out += "owningAvatarID";
     }
 
     getAnimation().listChangedProperties(out);
