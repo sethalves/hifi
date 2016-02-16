@@ -1228,7 +1228,6 @@ void EntityItem::setDimensions(const glm::vec3& value) {
         return;
     }
     setScale(value);
-    requiresRecalcBoxes();
 }
 
 /// The maximum bounding cube for the entity, independent of it's rotation.
@@ -1967,4 +1966,9 @@ QList<EntityActionPointer> EntityItem::getActionsOfType(EntityActionType typeToG
 void EntityItem::locationChanged() {
     requiresRecalcBoxes();
     SpatiallyNestable::locationChanged(); // tell all the children, also
+}
+
+void EntityItem::dimensionsChanged() {
+    requiresRecalcBoxes();
+    SpatiallyNestable::dimensionsChanged(); // Do what you have to do
 }
