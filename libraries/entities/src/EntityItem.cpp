@@ -1191,9 +1191,6 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         }
     }
 
-    setClientOnly(properties.getClientOnly());
-    setOwningAvatarID(properties.getOwningAvatarID());
-
     // timestamps
     quint64 timestamp = properties.getCreated();
     if (_created == UNKNOWN_CREATED_TIME && timestamp != UNKNOWN_CREATED_TIME) {
@@ -1203,9 +1200,6 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         }
         _created = timestamp;
     }
-
-    setClientOnly(properties.getClientOnly());
-    setOwningAvatarID(properties.getOwningAvatarID());
 
     return somethingChanged;
 }
