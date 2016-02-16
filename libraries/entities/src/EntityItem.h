@@ -404,16 +404,8 @@ public:
 
     virtual void loader() {} // called indirectly when urls for geometry are updated
 
-    void mark() { _mark = true; }
-    void unmark() { _mark = false; }
     bool getClientOnly() const { return _clientOnly; }
-    void setClientOnly(bool clientOnly) {
-        qDebug() << "setClientOnly " << clientOnly;
-        _clientOnly = clientOnly;
-        if (_mark && _clientOnly == false) {
-            qDebug() << "HERE";
-        }
-    }
+    void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
     // if this entity is client-only, which avatar is it associated with?
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
