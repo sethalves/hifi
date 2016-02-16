@@ -1904,7 +1904,9 @@ void Octree::writeToFile(const char* fileName, OctreeElementPointer element, QSt
 void Octree::writeToJSONFile(const char* fileName, OctreeElementPointer element, bool doGzip) {
     QVariantMap entityDescription;
 
+    #ifdef WANT_DEBUG
     qCDebug(octree, "Saving JSON SVO to file %s...", fileName);
+    #endif
 
     OctreeElementPointer top;
     if (element) {
