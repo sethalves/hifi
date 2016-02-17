@@ -356,7 +356,7 @@ public:
 
     Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
     Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
-    void setAvatarEntityDataChanged(bool value) { _avatarEntityDataChanged = value; }
+    void setAvatarEntityDataChanged(bool value, bool setParentsToMe = false);
     AvatarEntityIDs getAndClearRecentlyDetachedIDs();
 
 public slots:
@@ -438,6 +438,7 @@ protected:
     AvatarEntityMap _avatarEntityData;
     bool _avatarEntityDataLocallyEdited { false };
     bool _avatarEntityDataChanged { false };
+    bool _avatarEntitiesSetParentsToMe { false };
 
 private:
     friend void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);

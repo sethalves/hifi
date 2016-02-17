@@ -204,9 +204,16 @@ void Avatar::updateAvatarEntities() {
                 QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
                 EntityItemProperties properties;
                 EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
-                // QUuid owningAvatarID = obj["owningAvatarID"].toQUuid();
                 properties.setClientOnly(true);
-                // properties.setOwningAvatarID(owningAvatarID);
+
+                if (_avatarEntitiesSetParentsToMe) {
+                    properties.setOwningAvatarID(getSessionUUID());
+                    if (!properties.getParentID().isNull()) {
+                        // XXX what if we wear something with children?
+                        properties.setParentID(getSessionUUID());
+                    }
+                    _avatarEntitiesSetParentsToMe = false;
+                }
 
                 EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
 
