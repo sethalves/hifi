@@ -37,7 +37,9 @@ void EntityEditPacketSender::adjustEditPacketForClockSkew(PacketType type, QByte
     }
 }
 
-void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemID entityItemID,
+void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
+                                                    EntityTreePointer entityTree,
+                                                    EntityItemID entityItemID,
                                                     const EntityItemProperties& properties) {
     if (!_shouldSend) {
         return; // bail early
@@ -45,7 +47,23 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type, EntityItemI
     if (properties.getClientOnly()) {
         // this is an avatar-based entity.  update our avatar-data rather than sending to the entity-server
         assert(_myAvatar);
-        QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, properties);
+
+        if (!entityTree) {
+            qDebug() << "EntityEditPacketSender::queueEditEntityMessage null entityTree.";
+            return;
+        }
+        EntityItemPointer entity = entityTree->findEntityByEntityItemID(entityItemID);
+        if (!entity) {
+            qDebug() << "EntityEditPacketSender::queueEditEntityMessage can't find entity.";
+            return;
+        }
+
+        // the properties that get serialized into the avatar identity packet should be the entire set
+        // rather than just the ones being edited.
+        entity->setProperties(properties);
+        EntityItemProperties entityProperties = entity->getProperties();
+
+        QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, entityProperties);
         QVariant variantProperties = scriptProperties.toVariant();
         QJsonDocument jsonProperties = QJsonDocument::fromVariant(variantProperties);
         QByteArray binaryProperties = jsonProperties.toBinaryData();

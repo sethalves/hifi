@@ -231,14 +231,13 @@ function AttachedEntitiesManager() {
                      props.parentJointIndex == MyAvatar.getJointIndex("LeftHand"))) {
                     // this is equipped on a hand -- don't clear the parent.
                 } else {
-                    Entities.editEntity(grabbedEntity, { parentID: NULL_UUID });
+                    Entities.editEntity(grabbedEntity, { parentID: NULL_UUID,
+                                                         parentJointIndex: -1});
                     Entities.detachEntityFromMyAvatar(grabbedEntity);
                 }
             } else {
                 Entities.detachEntityFromMyAvatar(grabbedEntity);
             }
-        } else {
-            print("NO");
         }
     }
 

@@ -31,7 +31,8 @@ public:
     /// which voxel-server node or nodes the packet should be sent to. Can be called even before voxel servers are known, in
     /// which case up to MaxPendingMessages will be buffered and processed when voxel servers are known.
     /// NOTE: EntityItemProperties assumes that all distances are in meter units
-    void queueEditEntityMessage(PacketType type, EntityItemID entityItemID, const EntityItemProperties& properties);
+    void queueEditEntityMessage(PacketType type, EntityTreePointer entityTree,
+                                EntityItemID entityItemID, const EntityItemProperties& properties);
 
     void queueEraseEntityMessage(const EntityItemID& entityItemID);
     void queueForgetEntityMessage(const EntityItemID& entityItemID);

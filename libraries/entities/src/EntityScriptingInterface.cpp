@@ -35,7 +35,7 @@ EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership
 
 void EntityScriptingInterface::queueEntityMessage(PacketType packetType,
                                                   EntityItemID entityID, const EntityItemProperties& properties) {
-    getEntityPacketSender()->queueEditEntityMessage(packetType, entityID, properties);
+    getEntityPacketSender()->queueEditEntityMessage(packetType, _entityTree, entityID, properties);
 }
 
 bool EntityScriptingInterface::canAdjustLocks() {
@@ -1089,7 +1089,6 @@ bool EntityScriptingInterface::attachEntityToMyAvatar(const QUuid& entityID) {
         auto nodeList = DependencyManager::get<NodeList>();
         const QUuid myNodeID = nodeList->getSessionUUID();
 
-        qDebug() << "ATTACHING ENTITY";
         auto now = usecTimestampNow();
         entity->setClientOnly(true);
         entity->setOwningAvatarID(myNodeID);
@@ -1126,7 +1125,6 @@ bool EntityScriptingInterface::detachEntityFromMyAvatar(const QUuid& entityID) {
         }
 
         auto now = usecTimestampNow();
-        qDebug() << "DETACHING ENTITY";
         entity->setClientOnly(false);
         entity->setOwningAvatarID(QUuid());
         entity->setLastEdited(now);

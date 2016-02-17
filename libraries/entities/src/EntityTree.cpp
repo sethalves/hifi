@@ -1301,8 +1301,11 @@ bool EntityTree::sendEntitiesOperation(OctreeElementPointer element, void* extra
         properties.setPosition(properties.getPosition() + args->root);
         properties.markAllChanged(); // so the entire property set is considered new, since we're making a new entity
 
+        EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
+        EntityTreePointer tree = entityTreeElement->getTree();
+
         // queue the packet to send to the server
-        args->packetSender->queueEditEntityMessage(PacketType::EntityAdd, newID, properties);
+        args->packetSender->queueEditEntityMessage(PacketType::EntityAdd, tree, newID, properties);
 
         // also update the local tree instantly (note: this is not our tree, but an alternate tree)
         if (args->localTree) {

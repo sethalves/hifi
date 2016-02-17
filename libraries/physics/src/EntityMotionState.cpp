@@ -516,7 +516,10 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, const Q
         qCDebug(physics) << "EntityMotionState::sendUpdate()... calling queueEditEntityMessage()...";
     #endif
 
-    entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, id, properties);
+    EntityTreeElementPointer element = _entity->getElement();
+    EntityTreePointer tree = element ? element->getTree() : nullptr;
+
+    entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, tree, id, properties);
     _entity->setLastBroadcast(now);
 
     // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
@@ -528,7 +531,8 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, const Q
                 EntityItemProperties newQueryCubeProperties;
                 newQueryCubeProperties.setQueryAACube(descendant->getQueryAACube());
                 newQueryCubeProperties.setLastEdited(properties.getLastEdited());
-                entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, descendant->getID(), newQueryCubeProperties);
+                entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, tree,
+                                                           descendant->getID(), newQueryCubeProperties);
                 entityDescendant->setLastBroadcast(now);
             }
         }
