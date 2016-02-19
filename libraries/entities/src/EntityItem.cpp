@@ -754,10 +754,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         _element->getTree()->trackIncomingEntityLastEdited(lastEditedFromBufferAdjusted, bytesRead);
     }
 
-    // if the entity-server is telling us about the entity, it's not client-only.
-    // setClientOnly(false);
-    // setOwningAvatarID(QUuid());
-
     return bytesRead;
 }
 
