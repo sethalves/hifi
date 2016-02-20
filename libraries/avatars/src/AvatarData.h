@@ -137,6 +137,9 @@ class AttachmentData;
 class Transform;
 using TransformPointer = std::shared_ptr<Transform>;
 
+
+const QUuid AVATAR_SELF_ID = QUuid("{00000000-0000-0000-0000-000000000001}");
+
 class AvatarData : public QObject, public SpatiallyNestable {
     Q_OBJECT
 
@@ -356,7 +359,7 @@ public:
 
     Q_INVOKABLE AvatarEntityMap getAvatarEntityData() const;
     Q_INVOKABLE void setAvatarEntityData(const AvatarEntityMap& avatarEntityData);
-    void setAvatarEntityDataChanged(bool value, bool setParentsToMe = false);
+    void setAvatarEntityDataChanged(bool value) { _avatarEntityDataChanged = value; }
     AvatarEntityIDs getAndClearRecentlyDetachedIDs();
 
 public slots:
@@ -438,7 +441,6 @@ protected:
     AvatarEntityMap _avatarEntityData;
     bool _avatarEntityDataLocallyEdited { false };
     bool _avatarEntityDataChanged { false };
-    bool _avatarEntitiesSetParentsToMe { false };
 
 private:
     friend void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);

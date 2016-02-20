@@ -764,11 +764,10 @@ void MyAvatar::loadData() {
         settings.setArrayIndex(i);
         QUuid entityID = settings.value("id").toUuid();
         QByteArray properties = settings.value("properties").toByteArray();
-        qDebug() << "LOADED AVATAR-ENTITY: " << entityID << properties.length();
         updateAvatarEntity(entityID, properties);
     }
     settings.endArray();
-    setAvatarEntityDataChanged(true, true);
+    setAvatarEntityDataChanged(true);
 
     setDisplayName(settings.value("displayName").toString());
     setCollisionSoundURL(settings.value("collisionSoundURL", DEFAULT_AVATAR_COLLISION_SOUND_URL).toString());

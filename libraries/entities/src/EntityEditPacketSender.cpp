@@ -66,6 +66,14 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
         QScriptValue scriptProperties = EntityItemNonDefaultPropertiesToScriptValue(&_scriptEngine, entityProperties);
         QVariant variantProperties = scriptProperties.toVariant();
         QJsonDocument jsonProperties = QJsonDocument::fromVariant(variantProperties);
+
+        // the ID of the parent/avatar changes from session to session.  use a special UUID to indicate the avatar
+        QJsonObject jsonObject = jsonProperties.object();
+        if (QUuid(jsonObject["parentID"].toString()) == _myAvatar->getID()) {
+            jsonObject["parentID"] = AVATAR_SELF_ID.toString();
+        }
+        jsonProperties = QJsonDocument(jsonObject);
+
         QByteArray binaryProperties = jsonProperties.toBinaryData();
         _myAvatar->updateAvatarEntity(entityItemID, binaryProperties);
         return;

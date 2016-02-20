@@ -1813,12 +1813,6 @@ void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
     }
 }
 
-void AvatarData::setAvatarEntityDataChanged(bool value, bool setParentsToMe)
-{
-    _avatarEntityDataChanged = value;
-    _avatarEntitiesSetParentsToMe = setParentsToMe;
-}
-
 AvatarEntityIDs AvatarData::getAndClearRecentlyDetachedIDs() {
     if (QThread::currentThread() != thread()) {
         AvatarEntityIDs result;

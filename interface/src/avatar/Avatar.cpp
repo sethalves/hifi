@@ -205,21 +205,13 @@ void Avatar::updateAvatarEntities() {
                 EntityItemProperties properties;
                 EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
                 properties.setClientOnly(true);
+                properties.setOwningAvatarID(getID());
 
-                if (_avatarEntitiesSetParentsToMe) {
-                    properties.setOwningAvatarID(getSessionUUID());
-                    if (!properties.getParentID().isNull()) {
-                        // XXX what if we wear something with children?
-                        properties.setParentID(getSessionUUID());
-                    }
-                    _avatarEntitiesSetParentsToMe = false;
+                if (properties.getParentID() == AVATAR_SELF_ID) {
+                    properties.setParentID(getID());
                 }
 
                 EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-
-                // if (!properties.getParentID().isNull()) {
-                //     properties.setParentID(owningAvatarID);
-                // }
 
                 if (entity) {
                     // entity->setClientOnly(true);
@@ -230,10 +222,7 @@ void Avatar::updateAvatarEntities() {
                     }
                 } else {
                     entity = entityTree->addEntity(entityID, properties);
-                    if (entity) {
-                        // entity->setClientOnly(true);
-                        // entity->setOwningAvatarID(getSessionUUID());
-                    } else {
+                    if (!entity) {
                         qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
                         success = false;
                     }
