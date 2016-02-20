@@ -472,6 +472,10 @@ void RenderablePolyVoxEntityItem::render(RenderArgs* args) {
     assert(getType() == EntityTypes::PolyVox);
     Q_ASSERT(args->_batch);
 
+    if (_pipelineFailed) {
+        return;
+    }
+
     _volDataLock.lockForRead();
     if (_volDataDirty) {
         _volDataLock.unlock();
@@ -496,7 +500,11 @@ void RenderablePolyVoxEntityItem::render(RenderArgs* args) {
         slotBindings.insert(gpu::Shader::Binding(std::string("zMap"), 2));
 
         gpu::ShaderPointer program = gpu::Shader::createProgram(vertexShader, pixelShader);
-        gpu::Shader::makeProgram(*program, slotBindings);
+        if (!gpu::Shader::makeProgram(*program, slotBindings)) {
+            _pipelineFailed = true;
+            qDebug() << "PolyVox GL pipeline construction failed.";
+            return;
+        }
 
         auto state = std::make_shared<gpu::State>();
         state->setCullMode(gpu::State::CULL_BACK);

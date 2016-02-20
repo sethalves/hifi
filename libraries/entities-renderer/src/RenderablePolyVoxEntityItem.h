@@ -131,6 +131,7 @@ private:
     const int MATERIAL_GPU_SLOT = 3;
     render::ItemID _myItem{ render::Item::INVALID_ITEM_ID };
     static gpu::PipelinePointer _pipeline;
+    bool _pipelineFailed { false };
 
     ShapeInfo _shapeInfo;
     mutable QReadWriteLock _shapeInfoLock;
