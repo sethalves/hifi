@@ -661,7 +661,6 @@ void MyAvatar::saveData() {
         settings.setArrayIndex(avatarEntityIndex);
         settings.setValue("id", entityID);
         settings.setValue("properties", _avatarEntityData.value(entityID));
-        qDebug() << "SAVED AVATAR-ENTITY: " << entityID << _avatarEntityData.value(entityID).length();
     }
     settings.endArray();
 

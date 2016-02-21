@@ -184,66 +184,65 @@ void Avatar::updateAvatarEntities() {
 
     EntityTreeRenderer* treeRenderer = qApp->getEntities();
     EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
-    if (entityTree) {
-        bool success = true;
-        entityTree->withWriteLock([&] {
-            AvatarEntityMap avatarEntities = getAvatarEntityData();
-            for (auto entityID : avatarEntities.keys()) {
-                // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
-                // and either add or update the entity.
-                QScriptEngine scriptEngine;
-                QByteArray jsonByteArray = avatarEntities.value(entityID);
-                QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
-                if (!jsonProperties.isObject()) {
-                    qDebug() << "got bad avatarEntity json";
-                    continue;
-                }
-                // QJsonObject obj = jsonProperties.object();
-                QVariant variantProperties = jsonProperties.toVariant();
-                QVariantMap asMap = variantProperties.toMap();
-                QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
-                EntityItemProperties properties;
-                EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
-                properties.setClientOnly(true);
-                properties.setOwningAvatarID(getID());
+    if (!entityTree) {
+        return;
+    }
 
-                if (properties.getParentID() == AVATAR_SELF_ID) {
-                    properties.setParentID(getID());
-                }
-
-                EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-
-                if (entity) {
-                    // entity->setClientOnly(true);
-                    // entity->setOwningAvatarID(owningAvatarID);
-                    if (!entityTree->updateEntity(entityID, properties)) {
-                        qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
-                        success = false;
-                    }
-                } else {
-                    entity = entityTree->addEntity(entityID, properties);
-                    if (!entity) {
-                        qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
-                        success = false;
-                    }
-                }
+    bool success = true;
+    entityTree->withWriteLock([&] {
+        AvatarEntityMap avatarEntities = getAvatarEntityData();
+        for (auto entityID : avatarEntities.keys()) {
+            // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
+            // and either add or update the entity.
+            QScriptEngine scriptEngine;
+            QByteArray jsonByteArray = avatarEntities.value(entityID);
+            QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
+            if (!jsonProperties.isObject()) {
+                qDebug() << "got bad avatarEntity json";
+                continue;
             }
-        });
+            QVariant variantProperties = jsonProperties.toVariant();
+            QVariantMap asMap = variantProperties.toMap();
+            QScriptValue scriptProperties = variantMapToScriptValue(asMap, scriptEngine);
+            EntityItemProperties properties;
+            EntityItemPropertiesFromScriptValueHonorReadOnly(scriptProperties, properties);
+            properties.setClientOnly(true);
+            properties.setOwningAvatarID(getID());
 
-        AvatarEntityIDs recentlyDettachedAvatarEntities = getAndClearRecentlyDetachedIDs();
-        foreach (auto entityID, recentlyDettachedAvatarEntities) {
-            if (!_avatarEntityData.contains(entityID)) {
-                EntityItemPointer dettachedEntity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-                if (dettachedEntity) {
-                    // this will cause this interface to listen to data from the entity-server about this entity.
-                    dettachedEntity->setClientOnly(false);
+            if (properties.getParentID() == AVATAR_SELF_ID) {
+                properties.setParentID(getID());
+            }
+
+            EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
+
+            if (entity) {
+                if (!entityTree->updateEntity(entityID, properties)) {
+                    qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
+                    success = false;
+                }
+            } else {
+                entity = entityTree->addEntity(entityID, properties);
+                if (!entity) {
+                    qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
+                    success = false;
                 }
             }
         }
+    });
 
-        if (success) {
-            _avatarEntityDataChanged = false;
+    AvatarEntityIDs recentlyDettachedAvatarEntities = getAndClearRecentlyDetachedIDs();
+    foreach (auto entityID, recentlyDettachedAvatarEntities) {
+        if (!_avatarEntityData.contains(entityID)) {
+            EntityItemPointer dettachedEntity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
+            if (dettachedEntity) {
+                // this will cause this interface to listen to data from the entity-server about this entity.
+                dettachedEntity->setClientOnly(false);
+            }
         }
+    }
+
+    if (success) {
+        _avatarEntityDataChanged = false;
     }
 }
 

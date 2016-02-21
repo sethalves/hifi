@@ -40,7 +40,7 @@ if (SHOW_TOOL_BAR) {
     var saveButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: "http://headache.hungry.com/~seth/hifi/save.png",
+        imageURL: ".../save.png",
         color: {
             red: 255,
             green: 255,
@@ -51,7 +51,7 @@ if (SHOW_TOOL_BAR) {
     var loadButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: "http://headache.hungry.com/~seth/hifi/load.png",
+        imageURL: ".../load.png",
         color: {
             red: 255,
             green: 255,
@@ -62,7 +62,7 @@ if (SHOW_TOOL_BAR) {
     var wearButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: "http://headache.hungry.com/~seth/hifi/wear.png",
+        imageURL: ".../wear.png",
         color: {
             red: 255,
             green: 255,
@@ -73,7 +73,7 @@ if (SHOW_TOOL_BAR) {
     var unwearButton = toolBar.addOverlay("image", {
         width: BUTTON_SIZE,
         height: BUTTON_SIZE,
-        imageURL: "http://headache.hungry.com/~seth/hifi/unwear.png",
+        imageURL: ".../unwear.png",
         color: {
             red: 255,
             green: 255,
