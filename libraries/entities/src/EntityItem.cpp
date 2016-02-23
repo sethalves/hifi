@@ -477,19 +477,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     bool fromSameServerEdit = (lastEditedFromBuffer == _lastEditedFromRemoteInRemoteTime);
 
-    #ifdef WANT_DEBUG
-        qCDebug(entities) << "data from server **************** ";
-        qCDebug(entities) << "                           entityItemID:" << getEntityItemID();
-        qCDebug(entities) << "                                    now:" << now;
-        qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
-        qCDebug(entities) << "                   lastEditedFromBuffer:" << debugTime(lastEditedFromBuffer, now);
-        qCDebug(entities) << "                              clockSkew:" << debugTimeOnly(clockSkew);
-        qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
-        qCDebug(entities) << "                  _lastEditedFromRemote:" << debugTime(_lastEditedFromRemote, now);
-        qCDebug(entities) << "      _lastEditedFromRemoteInRemoteTime:" << debugTime(_lastEditedFromRemoteInRemoteTime, now);
-        qCDebug(entities) << "                     fromSameServerEdit:" << fromSameServerEdit;
-    #endif
-
     bool ignoreServerPacket = false; // assume we'll use this server packet
 
     // If this packet is from the same server edit as the last packet we accepted from the server
@@ -498,6 +485,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         // If this is from the same sever packet, then check against any local changes since we got
         // the most recent packet from this server time
         if (_lastEdited > _lastEditedFromRemote) {
+            qDebug() << "ignoreServerPacket = true due to fromSameServerEdit";
             ignoreServerPacket = true;
         }
     } else {
@@ -505,6 +493,8 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         // If we've changed our local tree more recently than the new data from this packet
         // then we will not be changing our values, instead we just read and skip the data
         if (_lastEdited > lastEditedFromBufferAdjusted) {
+            qDebug() << "ignoreServerPacket = true due to _lastEdited > lastEditedFromBufferAdjusted";
+            qDebug() << _lastEdited << lastEditedFromBufferAdjusted;
             ignoreServerPacket = true;
         }
     }
@@ -516,6 +506,19 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     if (tree && tree->isDeletedEntity(_id)) {
         qDebug() << "Recieved packet for previously deleted entity [" << _id << "] ignoring. (inside " << __FUNCTION__ << ")";
         ignoreServerPacket = true;
+    }
+
+    if (ignoreServerPacket) {
+        qCDebug(entities) << "data from server **************** ";
+        qCDebug(entities) << "                           entityItemID:" << getEntityItemID();
+        qCDebug(entities) << "                                    now:" << now;
+        qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
+        qCDebug(entities) << "                   lastEditedFromBuffer:" << debugTime(lastEditedFromBuffer, now);
+        qCDebug(entities) << "                              clockSkew:" << debugTimeOnly(clockSkew);
+        qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
+        qCDebug(entities) << "                  _lastEditedFromRemote:" << debugTime(_lastEditedFromRemote, now);
+        qCDebug(entities) << "      _lastEditedFromRemoteInRemoteTime:" << debugTime(_lastEditedFromRemoteInRemoteTime, now);
+        qCDebug(entities) << "                     fromSameServerEdit:" << fromSameServerEdit;
     }
 
     if (ignoreServerPacket) {
