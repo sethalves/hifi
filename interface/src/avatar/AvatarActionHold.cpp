@@ -110,6 +110,9 @@ std::shared_ptr<Avatar> AvatarActionHold::getTarget(glm::quat& rotation, glm::ve
         glm::vec3 palmAngularVelocity;
 
         PalmData palmData = holdingAvatar->getHand()->getCopyOfPalmData(isRightHand ? HandData::RightHand : HandData::LeftHand);
+        if (!palmData.isValid()) {
+            return nullptr;
+        }
 
         // TODO: adjust according to _relativePosition and _relativeRotation?
         linearVelocity = palmData.getVelocity();
