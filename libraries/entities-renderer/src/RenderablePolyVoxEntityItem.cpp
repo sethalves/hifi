@@ -580,6 +580,7 @@ void RenderablePolyVoxEntityItem::removeFromScene(EntityItemPointer self,
                                                   std::shared_ptr<render::Scene> scene,
                                                   render::PendingChanges& pendingChanges) {
     pendingChanges.removeItem(_myItem);
+    render::Item::clearID(_myItem);
 }
 
 namespace render {
