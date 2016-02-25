@@ -1708,7 +1708,7 @@ void MyAvatar::goToLocation(const QVariant& propertiesVar) {
         qCWarning(interfaceapp, "goToLocation called with invalid position variable");
         return;
     }
-    bool validOrientation;
+    bool validOrientation = false;
     glm::quat q;
     if (properties.contains("orientation")) {
         q = quatFromVariant(properties["orientation"], validOrientation);
