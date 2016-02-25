@@ -664,6 +664,7 @@ void MyAvatar::saveData() {
         settings.setArrayIndex(avatarEntityIndex);
         settings.setValue("id", entityID);
         settings.setValue("properties", _avatarEntityData.value(entityID));
+        avatarEntityIndex++;
     }
     settings.endArray();
 

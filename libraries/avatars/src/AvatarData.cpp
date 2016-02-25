@@ -1803,7 +1803,7 @@ void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
         AvatarEntityIDs previousAvatarEntityIDs = QSet<QUuid>::fromList(_avatarEntityData.keys());
 
         _avatarEntityData = avatarEntityData;
-        _avatarEntityDataChanged = true;
+        setAvatarEntityDataChanged(true);
 
         foreach (auto entityID, previousAvatarEntityIDs) {
             if (!_avatarEntityData.contains(entityID)) {

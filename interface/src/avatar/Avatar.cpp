@@ -178,7 +178,10 @@ void Avatar::updateAvatarEntities() {
     // - setAvatarEntityData saves the bytes and sets _avatarEntityDataChanged = true
     // - (My)Avatar::simulate notices _avatarEntityDataChanged and here we are...
 
-    if (!_avatarEntityDataChanged) {
+    quint64 now = usecTimestampNow();
+
+    const static quint64 refreshTime = 3 * USECS_PER_SECOND;
+    if (!_avatarEntityDataChanged && now - _avatarEntityChangedTime < refreshTime) {
         return;
     }
 
@@ -189,12 +192,12 @@ void Avatar::updateAvatarEntities() {
     }
 
     bool success = true;
+    QScriptEngine scriptEngine;
     entityTree->withWriteLock([&] {
         AvatarEntityMap avatarEntities = getAvatarEntityData();
         for (auto entityID : avatarEntities.keys()) {
             // see EntityEditPacketSender::queueEditEntityMessage for the other end of this.  unpack properties
             // and either add or update the entity.
-            QScriptEngine scriptEngine;
             QByteArray jsonByteArray = avatarEntities.value(entityID);
             QJsonDocument jsonProperties = QJsonDocument::fromBinaryData(jsonByteArray);
             if (!jsonProperties.isObject()) {
@@ -242,7 +245,8 @@ void Avatar::updateAvatarEntities() {
     }
 
     if (success) {
-        _avatarEntityDataChanged = false;
+        setAvatarEntityDataChanged(false);
+        _avatarEntityChangedTime = now;
     }
 }
 
