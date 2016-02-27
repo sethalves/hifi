@@ -12,6 +12,7 @@
 
 #include "EntityItemID.h"
 #include <VariantMapToScriptValue.h>
+#include <SpatialParentFinder.h>
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
@@ -1161,6 +1162,31 @@ bool EntityScriptingInterface::isAttachedToMyAvatar(const QUuid& entityID) {
    return result;
 }
 
+QVector<QUuid> EntityScriptingInterface::getChildrenIDsOfJoint(const QUuid& parentID, int jointIndex) {
+    QVector<QUuid> result;
+    if (!_entityTree) {
+        return result;
+    }
+    _entityTree->withReadLock([&] {
+        QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+        if (!parentFinder) {
+            return;
+        }
+        bool success;
+        SpatiallyNestableWeakPointer parentWP = parentFinder->find(parentID, success);
+        if (!success) {
+            return;
+        }
+        SpatiallyNestablePointer parent = parentWP.lock();
+        if (!parent) {
+            return;
+        }
+        parent->forEachChild([&](SpatiallyNestablePointer child) {
+            result.push_back(child->getID());
+        });
+    });
+    return result;
+}
 
 float EntityScriptingInterface::calculateCost(float mass, float oldVelocity, float newVelocity) {
     return std::abs(mass * (newVelocity - oldVelocity));

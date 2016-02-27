@@ -168,7 +168,7 @@ public slots:
 
     Q_INVOKABLE int getJointIndex(const QUuid& entityID, const QString& name);
     Q_INVOKABLE QStringList getJointNames(const QUuid& entityID);
-    
+    Q_INVOKABLE QVector<QUuid> getChildrenIDsOfJoint(const QUuid& parentID, int jointIndex);
 
     Q_INVOKABLE bool attachEntityToMyAvatar(const QUuid& entityID);
     Q_INVOKABLE bool detachEntityFromMyAvatar(const QUuid& entityID);
