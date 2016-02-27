@@ -167,6 +167,8 @@ enum EntityPropertyList {
 
     PROP_COLLISION_MASK, // one byte of collision group flags
 
+    PROP_FALLOFF_RADIUS, // for Light entity
+
     PROP_CLIENT_ONLY,
     PROP_OWNING_AVATAR_ID,
 
