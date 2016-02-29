@@ -109,7 +109,8 @@ std::shared_ptr<Avatar> AvatarActionHold::getTarget(float deltaTimeStep, glm::qu
 
         PalmData palmData = holdingAvatar->getHand()->getCopyOfPalmData(isRightHand ? HandData::RightHand : HandData::LeftHand);
         if (!palmData.isValid()) {
-            return nullptr;
+            holdingAvatar = nullptr;
+            return;
         }
 
         if (palmData.isValid()) {
