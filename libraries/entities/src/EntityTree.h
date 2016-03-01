@@ -234,10 +234,14 @@ public:
 
     EntityTreePointer getThisPointer() { return std::static_pointer_cast<EntityTree>(shared_from_this()); }
 
+    void markChildrenOrphaned(QUuid parentID);
+
     bool isDeletedEntity(const QUuid& id) {
         QReadLocker locker(&_deletedEntitiesLock);
         return _deletedEntityItemIDs.contains(id);
     }
+
+    void appendToMissingParentList(EntityItemPointer entityItem) { _missingParent.append(entityItem); }
 
     // these are used to call through to EntityItems
     Q_INVOKABLE int getJointIndex(const QUuid& entityID, const QString& name) const;

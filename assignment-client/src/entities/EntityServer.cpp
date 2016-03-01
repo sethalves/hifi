@@ -277,8 +277,7 @@ void EntityServer::nodeKilled(SharedNodePointer node) {
     // any entities that are children of the avatar will get cleaned up.
     EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
     tree->appendToRecentlyDeleted(node->getUUID());
-
-    qDebug() << "XXXXXXX ADDED NODE TO RECENTLY DELETED:" << node->getUUID();
+    tree->markChildrenOrphaned(node->getUUID());
 
     OctreeServer::nodeKilled(node);
 }

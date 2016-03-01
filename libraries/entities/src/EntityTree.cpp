@@ -25,6 +25,7 @@
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
 #include "RemapIDOperator.h"
+#include "ParentMissingOperator.h"
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 
@@ -996,6 +997,12 @@ void EntityTree::entityChanged(EntityItemPointer entity) {
     if (_simulation) {
         _simulation->changeEntity(entity);
     }
+}
+
+
+void EntityTree::markChildrenOrphaned(QUuid parentID) {
+    ParentMissingOperator parentMissingOperator(parentID);
+    recurseTreeWithOperator(&parentMissingOperator);
 }
 
 void EntityTree::fixupMissingParents() {
