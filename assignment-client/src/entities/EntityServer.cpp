@@ -272,6 +272,17 @@ void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectio
     tree->setWantTerseEditLogging(wantTerseEditLogging);
 }
 
+void EntityServer::nodeKilled(SharedNodePointer node) {
+    // insert the avatar's sessionID into the list of recently deleted objects.  This is done so that
+    // any entities that are children of the avatar will get cleaned up.
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    tree->appendToRecentlyDeleted(node->getUUID());
+
+    qDebug() << "XXXXXXX ADDED NODE TO RECENTLY DELETED:" << node->getUUID();
+
+    OctreeServer::nodeKilled(node);
+}
+
 
 // FIXME - this stats tracking is somewhat temporary to debug the Whiteboard issues. It's not a bad
 // set of stats to have, but we'd probably want a different data structure if we keep it very long.
@@ -288,11 +299,6 @@ void EntityServer::trackViewerGone(const QUuid& sessionID) {
     if (_entitySimulation) {
         _entitySimulation->clearOwnership(sessionID);
     }
-
-    // insert the avatar's sessionID into the list of recently deleted objects.  This is done so that
-    // any entities that are children of the avatar will get cleaned up.
-    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
-    tree->appendToRecentlyDeleted(sessionID);
 }
 
 QString EntityServer::serverSubclassStats() {

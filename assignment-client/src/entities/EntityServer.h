@@ -59,6 +59,7 @@ public:
 
 public slots:
     void pruneDeletedEntities();
+    virtual void nodeKilled(SharedNodePointer node);
 
 protected:
     virtual OctreePointer createTree() override;
