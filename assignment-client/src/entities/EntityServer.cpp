@@ -288,6 +288,11 @@ void EntityServer::trackViewerGone(const QUuid& sessionID) {
     if (_entitySimulation) {
         _entitySimulation->clearOwnership(sessionID);
     }
+
+    // insert the avatar's sessionID into the list of recently deleted objects.  This is done so that
+    // any entities that are children of the avatar will get cleaned up.
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    tree->appendToRecentlyDeleted(sessionID);
 }
 
 QString EntityServer::serverSubclassStats() {

@@ -153,8 +153,10 @@ public:
         return _recentlyDeletedEntityItemIDs.size() > 0;
     }
 
+    bool wasEntityRecentlyDeleted(QUuid entityID);
     bool hasEntitiesDeletedSince(quint64 sinceTime);
     static quint64 getAdjustedConsiderSince(quint64 sinceTime);
+    void appendToRecentlyDeleted(QUuid objectID);
 
     QMultiMap<quint64, QUuid> getRecentlyDeletedEntityIDs() const { 
         QReadLocker locker(&_recentlyDeletedEntitiesLock);
