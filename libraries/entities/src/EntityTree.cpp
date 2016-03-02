@@ -395,7 +395,6 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
         return;
     }
 
-    qDebug() << "DELETING" << existingEntity->getName();
     emit deletingEntity(entityID);
 
     // NOTE: callers must lock the tree before using this method
@@ -435,7 +434,6 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
 
         // tell our delete operator about this entityID
         theOperator.addEntityIDToDeleteList(entityID);
-        qDebug() << "DELETING" << existingEntity->getName();
         emit deletingEntity(entityID);
     }
 
@@ -457,9 +455,9 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
                 _missingParent.append(std::static_pointer_cast<EntityItem>(object));
                 object->forgetParent();
             } else {
-                // it's not an entity, so it's an avatar.  We could add it to the list of recently deleted IDs, but
-                // we probably don't actually want to delete avatars when their parents vanish.
-                // appendToRecentlyDeleted(object->getID());
+                // it's an avatar
+                // TODO -- should the chain-reaction of deleting children stop at an avatar?
+                markChildrenOrphaned(object->getID());
             }
         });
 
@@ -1016,7 +1014,6 @@ void EntityTree::fixupMissingParents() {
         if (entity) {
             if (wasEntityRecentlyDeleted(entity->getParentID())) {
                 deleteOperator.addEntityIDToDeleteList(entity->getID());
-                qDebug() << "DELETING" << entity->getName();
                 emit deletingEntity(entity->getID());
             } else {
                 bool success;
