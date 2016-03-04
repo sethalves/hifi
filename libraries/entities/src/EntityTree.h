@@ -235,6 +235,7 @@ public:
     EntityTreePointer getThisPointer() { return std::static_pointer_cast<EntityTree>(shared_from_this()); }
 
     void markChildrenOrphaned(QUuid parentID);
+    void deleteOrphanedChildren();
 
     bool isDeletedEntity(const QUuid& id) {
         QReadLocker locker(&_deletedEntitiesLock);
@@ -321,6 +322,7 @@ protected:
 
     void fixupMissingParents();
     QVector<EntityItemWeakPointer> _missingParent;
+    QVector<QUuid> _exParentsIDsWithOrphanedChildren;
 };
 
 #endif // hifi_EntityTree_h

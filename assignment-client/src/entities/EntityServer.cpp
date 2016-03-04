@@ -37,6 +37,11 @@ EntityServer::~EntityServer() {
         _pruneDeletedEntitiesTimer->deleteLater();
     }
 
+    if (_pruneOrphanedEntitiesTimer) {
+        _pruneOrphanedEntitiesTimer->stop();
+        _pruneOrphanedEntitiesTimer->deleteLater();
+    }
+
     EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
     tree->removeNewlyCreatedHook(this);
 }
@@ -73,6 +78,11 @@ void EntityServer::beforeRun() {
     connect(_pruneDeletedEntitiesTimer, SIGNAL(timeout()), this, SLOT(pruneDeletedEntities()));
     const int PRUNE_DELETED_MODELS_INTERVAL_MSECS = 1 * 1000; // once every second
     _pruneDeletedEntitiesTimer->start(PRUNE_DELETED_MODELS_INTERVAL_MSECS);
+
+    _pruneOrphanedEntitiesTimer = new QTimer();
+    connect(_pruneOrphanedEntitiesTimer, SIGNAL(timeout()), this, SLOT(pruneOrphanedEntities()));
+    const int PRUNE_ORPHANED_CHILDREN_INTERVAL_MSECS = 10 * 1000; // every 10 second
+    _pruneOrphanedEntitiesTimer->start(PRUNE_ORPHANED_CHILDREN_INTERVAL_MSECS);
 }
 
 void EntityServer::entityCreated(const EntityItem& newEntity, const SharedNodePointer& senderNode) {
@@ -256,6 +266,11 @@ void EntityServer::pruneDeletedEntities() {
         });
         tree->forgetEntitiesDeletedBefore(earliestLastDeletedEntitiesSent);
     }
+}
+
+void EntityServer::pruneOrphanedEntities() {
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    tree->deleteOrphanedChildren();
 }
 
 void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectionObject) {

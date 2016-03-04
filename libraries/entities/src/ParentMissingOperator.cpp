@@ -17,7 +17,7 @@ bool ParentMissingOperator::postRecursion(OctreeElementPointer element) {
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
     EntityTreePointer tree = entityTreeElement->getTree();
     entityTreeElement->forEachEntity([&](EntityItemPointer entityItem) {
-        if (entityItem->getParentID() == _goneParentID) {
+        if (_goneParentIDs.indexOf(entityItem->getParentID()) >= 0) {
             tree->appendToMissingParentList(entityItem);
             entityItem->forgetParent();
         }

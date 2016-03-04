@@ -997,10 +997,14 @@ void EntityTree::entityChanged(EntityItemPointer entity) {
     }
 }
 
-
 void EntityTree::markChildrenOrphaned(QUuid parentID) {
-    ParentMissingOperator parentMissingOperator(parentID);
+    _exParentsIDsWithOrphanedChildren.append(parentID);
+}
+
+void EntityTree::deleteOrphanedChildren() {
+    ParentMissingOperator parentMissingOperator(_exParentsIDsWithOrphanedChildren);
     recurseTreeWithOperator(&parentMissingOperator);
+    _exParentsIDsWithOrphanedChildren.clear();
 }
 
 void EntityTree::fixupMissingParents() {

@@ -59,6 +59,7 @@ public:
 
 public slots:
     void pruneDeletedEntities();
+    void pruneOrphanedEntities();
     virtual void nodeKilled(SharedNodePointer node);
 
 protected:
@@ -70,6 +71,7 @@ private slots:
 private:
     SimpleEntitySimulation* _entitySimulation;
     QTimer* _pruneDeletedEntitiesTimer = nullptr;
+    QTimer* _pruneOrphanedEntitiesTimer = nullptr;
 
     QReadWriteLock _viewerSendingStatsLock;
     QMap<QUuid, QMap<QUuid, ViewerSendingStats>> _viewerSendingStats;

@@ -16,12 +16,12 @@
 
 class ParentMissingOperator : public RecurseOctreeOperator {
 public:
-    ParentMissingOperator(QUuid goneParentID) : _goneParentID(goneParentID) { }
+    ParentMissingOperator(QVector<QUuid> goneParentID) : _goneParentIDs(goneParentID) { }
     ~ParentMissingOperator() {}
     virtual bool preRecursion(OctreeElementPointer element) { return true; }
     virtual bool postRecursion(OctreeElementPointer element);
 private:
-    QUuid _goneParentID;
+    QVector<QUuid> _goneParentIDs;
 };
 
 #endif // hifi_ParentMissingOperator_h
