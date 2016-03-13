@@ -13,13 +13,20 @@
 #include "EntityTree.h"
 #include "ParentMissingOperator.h"
 
+ParentMissingOperator::~ParentMissingOperator() {
+    if (_tree) {
+        _tree->deleteEntities(_toDelete, true, true);
+    }
+}
+
 bool ParentMissingOperator::postRecursion(OctreeElementPointer element) {
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
     EntityTreePointer tree = entityTreeElement->getTree();
+    _tree = tree;
+
     entityTreeElement->forEachEntity([&](EntityItemPointer entityItem) {
         if (_goneParentIDs.indexOf(entityItem->getParentID()) >= 0) {
-            tree->appendToMissingParentList(entityItem);
-            entityItem->forgetParent();
+            _toDelete += entityItem->getEntityItemID();
         }
     });
     return true;

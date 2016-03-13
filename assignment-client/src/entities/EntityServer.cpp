@@ -292,7 +292,6 @@ void EntityServer::nodeKilled(SharedNodePointer node) {
     // insert the avatar's sessionID into the list of recently deleted objects.  This is done so that
     // any entities that are children of the avatar will get cleaned up.
     EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
-    tree->appendToRecentlyDeleted(node->getUUID());
     tree->markChildrenOrphaned(node->getUUID());
 
     OctreeServer::nodeKilled(node);

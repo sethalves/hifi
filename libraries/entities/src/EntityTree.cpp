@@ -450,17 +450,7 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
     foreach(const EntityToDeleteDetails& details, entities) {
         EntityItemPointer theEntity = details.entity;
 
-        theEntity->forEachChild([&](SpatiallyNestablePointer object) {
-            if (object->getNestableType() == NestableType::Entity) {
-                _missingParent.append(std::static_pointer_cast<EntityItem>(object));
-                object->forgetParent();
-            } else {
-                // it's an avatar
-                // TODO -- should the chain-reaction of deleting children stop at an avatar?
-                markChildrenOrphaned(object->getID());
-            }
-        });
-
+        markChildrenOrphaned(theEntity->getID());
         theEntity->die();
 
         if (getIsServer()) {
@@ -1002,33 +992,29 @@ void EntityTree::markChildrenOrphaned(QUuid parentID) {
 }
 
 void EntityTree::deleteOrphanedChildren() {
-    ParentMissingOperator parentMissingOperator(_exParentsIDsWithOrphanedChildren);
-    recurseTreeWithOperator(&parentMissingOperator);
-    _exParentsIDsWithOrphanedChildren.clear();
+    if (!_exParentsIDsWithOrphanedChildren.isEmpty()) {
+        ParentMissingOperator parentMissingOperator(_exParentsIDsWithOrphanedChildren);
+        recurseTreeWithOperator(&parentMissingOperator);
+        _exParentsIDsWithOrphanedChildren.clear();
+    }
 }
 
 void EntityTree::fixupMissingParents() {
     MovingEntitiesOperator moveOperator(getThisPointer());
-    DeleteEntityOperator deleteOperator(getThisPointer()); // used to delete children of deleted entities
 
     QMutableVectorIterator<EntityItemWeakPointer> iter(_missingParent);
     while (iter.hasNext()) {
         EntityItemWeakPointer entityWP = iter.next();
         EntityItemPointer entity = entityWP.lock();
         if (entity) {
-            if (wasEntityRecentlyDeleted(entity->getParentID())) {
-                deleteOperator.addEntityIDToDeleteList(entity->getID());
-                emit deletingEntity(entity->getID());
-            } else {
-                bool success;
-                AACube newCube = entity->getQueryAACube(success);
-                if (success) {
-                    // this entity's parent (or ancestry) was previously not fully known, and now is.  Update its
-                    // location in the EntityTree.
-                    moveOperator.addEntityToMoveList(entity, newCube);
-                    iter.remove();
-                    entity->markAncestorMissing(false);
-                }
+            bool success;
+            AACube newCube = entity->getQueryAACube(success);
+            if (success) {
+                // this entity's parent (or ancestry) was previously not fully known, and now is.  Update its
+                // location in the EntityTree.
+                moveOperator.addEntityToMoveList(entity, newCube);
+                iter.remove();
+                entity->markAncestorMissing(false);
             }
         } else {
             // entity was deleted before we found its parent.
@@ -1039,13 +1025,6 @@ void EntityTree::fixupMissingParents() {
     if (moveOperator.hasMovingEntities()) {
         PerformanceTimer perfTimer("recurseTreeWithOperator");
         recurseTreeWithOperator(&moveOperator);
-    }
-
-    // when an entity with children is deleted, delete the children, also
-    if (deleteOperator.getEntities().size() > 0) {
-        recurseTreeWithOperator(&deleteOperator);
-        processRemovedEntities(deleteOperator);
-        _isDirty = true;
     }
 }
 
@@ -1076,18 +1055,6 @@ quint64 EntityTree::getAdjustedConsiderSince(quint64 sinceTime) {
     return (sinceTime - DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER);
 }
 
-bool EntityTree::wasEntityRecentlyDeleted(QUuid entityID) {
-    QReadLocker locker(&_recentlyDeletedEntitiesLock);
-    QMultiMap<quint64, QUuid>::const_iterator iterator = _recentlyDeletedEntityItemIDs.constBegin();
-    while (iterator != _recentlyDeletedEntityItemIDs.constEnd()) {
-        if (iterator.value() == entityID) {
-            return true;
-        }
-        ++iterator;
-    }
-    return false;
-}
-
 bool EntityTree::hasEntitiesDeletedSince(quint64 sinceTime) {
     quint64 considerEntitiesSince = getAdjustedConsiderSince(sinceTime);
 
@@ -1114,11 +1081,6 @@ bool EntityTree::hasEntitiesDeletedSince(quint64 sinceTime) {
 #endif
 
     return hasSomethingNewer;
-}
-
-void EntityTree::appendToRecentlyDeleted(QUuid objectID) {
-    QWriteLocker locker(&_recentlyDeletedEntitiesLock);
-    _recentlyDeletedEntityItemIDs.insert(usecTimestampNow(), objectID);
 }
 
 // called by the server when it knows all nodes have been sent deleted packets
