@@ -51,7 +51,6 @@
 #include "render/Engine.h"
 #include "scripting/ControllerScriptingInterface.h"
 #include "scripting/DialogsManagerScriptingInterface.h"
-#include "ui/ApplicationCompositor.h"
 #include "ui/ApplicationOverlay.h"
 #include "ui/AudioStatsDialog.h"
 #include "ui/BandwidthDialog.h"
@@ -67,6 +66,7 @@ class GLCanvas;
 class FaceTracker;
 class MainWindow;
 class AssetUpload;
+class CompositorHelper;
 
 namespace controller {
     class StateController;
@@ -125,6 +125,7 @@ public:
     bool isThrottleRendering() const;
 
     Camera* getCamera() { return &_myCamera; }
+    const Camera* getCamera() const { return &_myCamera; }
     // Represents the current view frustum of the avatar.
     ViewFrustum* getViewFrustum();
     const ViewFrustum* getViewFrustum() const;
@@ -149,8 +150,7 @@ public:
 
     ApplicationOverlay& getApplicationOverlay() { return _applicationOverlay; }
     const ApplicationOverlay& getApplicationOverlay() const { return _applicationOverlay; }
-    ApplicationCompositor& getApplicationCompositor() { return _compositor; }
-    const ApplicationCompositor& getApplicationCompositor() const { return _compositor; }
+    CompositorHelper& getApplicationCompositor() const;
 
     Overlays& getOverlays() { return _overlays; }
 
@@ -221,8 +221,6 @@ public:
 
     float getAverageSimsPerSecond();
 
-    void fakeMouseEvent(QMouseEvent* event);
-
 signals:
     void svoImportRequested(const QString& url);
 
@@ -278,6 +276,7 @@ public slots:
     void reloadResourceCaches();
 
     void crashApplication();
+    void deadlockApplication();
 
     void rotationModeChanged();
 
@@ -300,7 +299,7 @@ private slots:
 
     void loadSettings();
     void saveSettings();
-    
+
     bool acceptSnapshot(const QString& urlString);
     bool askToSetAvatarUrl(const QString& url);
     bool askToLoadScript(const QString& scriptFilenameOrURL);
@@ -327,8 +326,6 @@ private:
     void cleanupBeforeQuit();
 
     void update(float deltaTime);
-
-    void setPalmData(Hand* hand, const controller::Pose& pose, float deltaTime, HandData::Hand whichHand, float triggerValue);
 
     // Various helper functions called during update()
     void updateLOD();
@@ -390,7 +387,7 @@ private:
     InputPluginList _activeInputPlugins;
 
     bool _activatingDisplayPlugin { false };
-    QMap<uint32_t, gpu::FramebufferPointer> _lockedFramebufferMap;
+    QMap<gpu::TexturePointer, gpu::FramebufferPointer> _lockedFramebufferMap;
 
     MainWindow* _window;
 
@@ -484,7 +481,6 @@ private:
 
     Overlays _overlays;
     ApplicationOverlay _applicationOverlay;
-    ApplicationCompositor _compositor;
     OverlayConductor _overlayConductor;
 
     DialogsManagerScriptingInterface* _dialogsManagerScriptingInterface = new DialogsManagerScriptingInterface();

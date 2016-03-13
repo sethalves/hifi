@@ -101,8 +101,6 @@ private:
 /// A simple object wrapper for an OpenGL texture.
 class Texture {
 public:
-    friend class TextureCache;
-
     gpu::TexturePointer getGPUTexture() const { return _textureSource->getGPUTexture(); }
     gpu::TextureSourcePointer _textureSource;
 };
@@ -131,6 +129,8 @@ signals:
 
 
 protected:
+
+    virtual bool isCacheable() const override { return _loaded; }
 
     virtual void downloadFinished(const QByteArray& data) override;
           

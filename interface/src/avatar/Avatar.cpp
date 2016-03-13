@@ -35,7 +35,6 @@
 #include "Avatar.h"
 #include "AvatarManager.h"
 #include "AvatarMotionState.h"
-#include "Hand.h"
 #include "Head.h"
 #include "Menu.h"
 #include "Physics.h"
@@ -101,7 +100,6 @@ Avatar::Avatar(RigPointer rig) :
 
     // give the pointer to our head to inherited _headData variable from AvatarData
     _headData = static_cast<HeadData*>(new Head(this));
-    _handData = static_cast<HandData*>(new Hand(this));
 }
 
 Avatar::~Avatar() {
@@ -189,11 +187,6 @@ void Avatar::simulate(float deltaTime) {
     // simple frustum check
     float boundingRadius = getBoundingRadius();
     bool inView = qApp->getViewFrustum()->sphereIntersectsFrustum(getPosition(), boundingRadius);
-
-    {
-        PerformanceTimer perfTimer("hand");
-        getHand()->simulate(deltaTime, false);
-    }
 
     if (_shouldAnimate && !_shouldSkipRender && inView) {
         {
@@ -540,6 +533,7 @@ glm::quat Avatar::computeRotationFromBodyToWorldUp(float proportion) const {
 }
 
 void Avatar::fixupModelsInScene() {
+    _attachmentsToDelete.clear();
 
     // check to see if when we added our models to the scene they were ready, if they were not ready, then
     // fix them up in the scene
@@ -560,9 +554,11 @@ void Avatar::fixupModelsInScene() {
             attachmentModel->addToScene(scene, pendingChanges);
         }
     }
+
     for (auto& attachmentModelToRemove : _attachmentsToRemove) {
         attachmentModelToRemove->removeFromScene(scene, pendingChanges);
     }
+    _attachmentsToDelete.insert(_attachmentsToDelete.end(), _attachmentsToRemove.begin(), _attachmentsToRemove.end());
     _attachmentsToRemove.clear();
     scene->enqueuePendingChanges(pendingChanges);
 }
@@ -574,11 +570,6 @@ void Avatar::renderBody(RenderArgs* renderArgs, ViewFrustum* renderFrustum, floa
     {
         if (_skeletonModel.isRenderable() && getHead()->getFaceModel().isRenderable()) {
             getHead()->render(renderArgs, 1.0f, renderFrustum);
-        }
-
-        if (renderArgs->_renderMode != RenderArgs::SHADOW_RENDER_MODE &&
-                Menu::getInstance()->isOptionChecked(MenuOption::DisplayHandTargets)) {
-            getHand()->renderHandTargets(renderArgs, false);
         }
     }
     getHead()->renderLookAts(renderArgs);
