@@ -988,7 +988,9 @@ void EntityTree::entityChanged(EntityItemPointer entity) {
 }
 
 void EntityTree::markChildrenOrphaned(QUuid parentID) {
-    _exParentsIDsWithOrphanedChildren.append(parentID);
+    if (getIsServer()) {
+        _exParentsIDsWithOrphanedChildren.append(parentID);
+    }
 }
 
 void EntityTree::deleteOrphanedChildren() {

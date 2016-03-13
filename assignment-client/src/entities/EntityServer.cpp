@@ -253,7 +253,6 @@ int EntityServer::sendSpecialPackets(const SharedNodePointer& node, OctreeQueryN
 void EntityServer::pruneDeletedEntities() {
     EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
     if (tree->hasAnyDeletedEntities()) {
-        tree->fixupMissingParents(); // this will cause orphaned entities to be deleted
 
         quint64 earliestLastDeletedEntitiesSent = usecTimestampNow() + 1; // in the future
         DependencyManager::get<NodeList>()->eachNode([&earliestLastDeletedEntitiesSent](const SharedNodePointer& node) {
