@@ -240,8 +240,6 @@ public:
         return _deletedEntityItemIDs.contains(id);
     }
 
-    void fixupMissingParents();
-
     // these are used to call through to EntityItems
     Q_INVOKABLE int getJointIndex(const QUuid& entityID, const QString& name) const;
     Q_INVOKABLE QStringList getJointNames(const QUuid& entityID) const;
@@ -318,6 +316,7 @@ protected:
     quint64 _maxEditDelta = 0;
     quint64 _treeResetTime = 0;
 
+    void fixupMissingParents();
     QVector<EntityItemWeakPointer> _missingParent;
     QVector<QUuid> _exParentsIDsWithOrphanedChildren;
 };

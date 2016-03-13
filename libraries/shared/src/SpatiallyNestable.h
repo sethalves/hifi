@@ -140,8 +140,6 @@ public:
 
     bool isParentIDValid() const { bool success = false; getParentPointer(success); return success; }
 
-    void forgetParent() { _parentKnowsMe = false; }
-
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
     QUuid _id;
