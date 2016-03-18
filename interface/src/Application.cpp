@@ -168,7 +168,7 @@
 #include "ui/UpdateDialog.h"
 #include "Util.h"
 #include "InterfaceParentFinder.h"
-
+#include "NamedQThread.h"
 
 
 // ON WIndows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
@@ -262,6 +262,19 @@ public:
 
     void updateHeartbeat() {
         _heartbeat = usecTimestampNow();
+
+        qDebug() << "------ threads -------";
+        // QObject* mainThread = parent();
+        QObject* mainThread = qApp;
+
+        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"));
+        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>();
+        // QList<QThread*> childThreads = mainThread->findChildren();
+        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"), Qt::FindChildrenRecursively);
+        QList<NamedQThread*> childThreads = mainThread->findChildren<NamedQThread*>();
+        foreach(NamedQThread* childThread, childThreads) {
+            qDebug() << childThread->objectName() << childThread->getID();
+        }
     }
 
     void deadlockDetectionCrash() {
@@ -517,8 +530,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     _bookmarks = new Bookmarks();  // Before setting up the menu
 
     // start the nodeThread so its event loop is running
-    QThread* nodeThread = new QThread(this);
-    nodeThread->setObjectName("NodeList Thread");
+    QThread* nodeThread = new NamedQThread("NodeList Thread");
     nodeThread->start();
 
     // make sure the node thread is given highest priority
@@ -540,8 +552,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(this, &Application::checkBackgroundDownloads, modelCache, &ResourceCache::checkAsynchronousGets);
 
     // put the audio processing on a separate thread
-    QThread* audioThread = new QThread();
-    audioThread->setObjectName("Audio Thread");
+    QThread* audioThread = new NamedQThread("Audio Thread");
 
     auto audioIO = DependencyManager::get<AudioClient>();
     audioIO->setPositionGetter([this]{ return getMyAvatar()->getPositionForAudio(); });
