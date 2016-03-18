@@ -27,6 +27,7 @@
 #include "Packet.h"
 #include "PacketList.h"
 #include "Socket.h"
+#include "NamedQThread.h"
 
 using namespace udt;
 using namespace std::chrono;
@@ -61,9 +62,8 @@ std::unique_ptr<SendQueue> SendQueue::create(Socket* socket, HifiSockAddr destin
     auto queue = std::unique_ptr<SendQueue>(new SendQueue(socket, destination));
 
     // Setup queue private thread
-    QThread* thread = new QThread;
-    thread->setObjectName("Networking: SendQueue " + destination.objectName()); // Name thread for easier debug
-    
+    QThread* thread = new NamedQThread("Networking: SendQueue " + destination.objectName());
+
     connect(thread, &QThread::started, queue.get(), &SendQueue::run);
     
     connect(queue.get(), &QObject::destroyed, thread, &QThread::quit); // Thread auto cleanup

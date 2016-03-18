@@ -235,7 +235,7 @@ const QHash<QString, Application::AcceptURLMethod> Application::_acceptedExtensi
     { AVA_JSON_EXTENSION, &Application::askToWearAvatarAttachmentUrl }
 };
 
-class DeadlockWatchdogThread : public QThread {
+class DeadlockWatchdogThread : public NamedQThread {
 public:
     static const unsigned long HEARTBEAT_CHECK_INTERVAL_SECS = 1;
     static const unsigned long HEARTBEAT_UPDATE_INTERVAL_SECS = 1;
@@ -246,7 +246,7 @@ public:
 #endif
 
     // Set the heartbeat on launch
-    DeadlockWatchdogThread() {
+    DeadlockWatchdogThread() : NamedQThread("Watchdog") {
         setObjectName("Deadlock Watchdog");
         QTimer* heartbeatTimer = new QTimer();
         // Give the heartbeat an initial value
@@ -264,16 +264,10 @@ public:
         _heartbeat = usecTimestampNow();
 
         qDebug() << "------ threads -------";
-        // QObject* mainThread = parent();
-        QObject* mainThread = qApp;
-
-        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"));
-        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>();
-        // QList<QThread*> childThreads = mainThread->findChildren();
-        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"), Qt::FindChildrenRecursively);
-        QList<NamedQThread*> childThreads = mainThread->findChildren<NamedQThread*>();
+        QList<NamedQThread*> childThreads = qApp->findChildren<NamedQThread*>();
         foreach(NamedQThread* childThread, childThreads) {
-            qDebug() << childThread->objectName() << childThread->getID();
+            // qDebug() << childThread->objectName() << childThread->getID();
+            qDebug() << childThread << childThread->getID();
         }
     }
 
@@ -599,8 +593,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     // Setup MessagesClient
     auto messagesClient = DependencyManager::get<MessagesClient>();
-    QThread* messagesThread = new QThread;
-    messagesThread->setObjectName("Messages Client Thread");
+    QThread* messagesThread = new NamedQThread("Messages Client Thread");
     messagesClient->moveToThread(messagesThread);
     connect(messagesThread, &QThread::started, messagesClient.data(), &MessagesClient::init);
     messagesThread->start();

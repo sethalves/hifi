@@ -17,6 +17,7 @@
 #include <QtCore/QMutex>
 
 #include "ResourceRequest.h"
+#include "NamedQThread.h"
 
 const QString URL_SCHEME_FILE = "file";
 const QString URL_SCHEME_HTTP = "http";
@@ -36,7 +37,7 @@ public:
     static void cleanup();
 
 private:
-    static QThread _thread;
+    static NamedQThread _thread;
 
     using PrefixMap = std::map<QString, QString>;
 

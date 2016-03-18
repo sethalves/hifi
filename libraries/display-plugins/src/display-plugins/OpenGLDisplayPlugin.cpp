@@ -29,6 +29,7 @@
 #include <gpu/GLBackend.h>
 #include <CursorManager.h>
 #include "CompositorHelper.h"
+#include "NamedQThread.h"
 
 #if THREADED_PRESENT
 
@@ -36,13 +37,13 @@
 // cap the present rate at 200
 // const static unsigned int MAX_PRESENT_RATE = 200;
 
-class PresentThread : public QThread, public Dependency {
+class PresentThread : public NamedQThread, public Dependency {
     using Mutex = std::mutex;
     using Condition = std::condition_variable;
     using Lock = std::unique_lock<Mutex>;
 public:
 
-    PresentThread() {
+    PresentThread() : NamedQThread("Present") {
         connect(qApp, &QCoreApplication::aboutToQuit, [this] {
             shutdown();
         });

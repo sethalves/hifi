@@ -25,7 +25,7 @@
 
 #include "OffscreenGLCanvas.h"
 #include "GLEscrow.h"
-
+#include "NamedQThread.h"
 
 // Time between receiving a request to render the offscreen UI actually triggering
 // the render.  Could possibly be increased depending on the framerate we expect to
@@ -296,7 +296,7 @@ private:
     QQuickWindow* _quickWindow{ nullptr };
     QMyQuickRenderControl* _renderControl{ nullptr };
 
-    QThread _thread;
+    NamedQThread _thread{"OffscreenQmlSurface"};
     QMutex _mutex;
     QWaitCondition _cond;
     QMutex _quitMutex;

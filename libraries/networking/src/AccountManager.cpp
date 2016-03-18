@@ -33,6 +33,7 @@
 
 #include "AccountManager.h"
 #include "NetworkLogging.h"
+#include "NamedQThread.h"
 
 const bool VERBOSE_HTTP_REQUEST_DEBUGGING = false;
 
@@ -604,8 +605,7 @@ void AccountManager::generateNewKeypair(bool isUserKeypair, const QUuid& domainI
         _accountInfo.setPrivateKey(QByteArray());
 
         // setup a new QThread to generate the keypair on, in case it takes a while
-        QThread* generateThread = new QThread(this);
-        generateThread->setObjectName("Account Manager Generator Thread");
+        QThread* generateThread = new NamedQThread("Account Manager Generator Thread");
 
         // setup a keypair generator
         RSAKeypairGenerator* keypairGenerator = new RSAKeypairGenerator;

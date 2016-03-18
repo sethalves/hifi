@@ -18,6 +18,7 @@
 #include "SettingInterface.h"
 #include "SettingManager.h"
 #include "SharedLogging.h"
+#include "NamedQThread.h"
 
 namespace Setting {
     static Manager* privateInstance = nullptr;
@@ -60,10 +61,9 @@ namespace Setting {
     // Sets up the settings private instance. Should only be run once at startup. preInit() must be run beforehand,
     void init() {
         // Let's set up the settings Private instance on its own thread
-        QThread* thread = new QThread();
+        QThread* thread = new NamedQThread("Settings Thread");
         Q_CHECK_PTR(thread);
-        thread->setObjectName("Settings Thread");
-        
+
         privateInstance = new Manager();
         Q_CHECK_PTR(privateInstance);
 

@@ -24,7 +24,7 @@
 #include "NetworkAccessManager.h"
 
 
-QThread ResourceManager::_thread;
+NamedQThread ResourceManager::_thread{"ResourceManager"};
 ResourceManager::PrefixMap ResourceManager::_prefixMap;
 QMutex ResourceManager::_prefixMapLock;
 

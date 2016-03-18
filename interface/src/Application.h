@@ -463,7 +463,7 @@ private:
 
     bool _notifiedPacketVersionMismatchThisDomain;
 
-    QThread _settingsThread;
+    NamedQThread _settingsThread{"Settings"};
     QTimer _settingsTimer;
 
     GLCanvas* _glWidget{ nullptr };
