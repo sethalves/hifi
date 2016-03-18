@@ -513,6 +513,8 @@ private:
     mutable QMutex _changeCursorLock { QMutex::Recursive };
     QCursor _desiredCursor{ Qt::BlankCursor };
     bool _cursorNeedsChanging { false };
+
+    void updateThreadList() const;
 };
 
 #endif // hifi_Application_h

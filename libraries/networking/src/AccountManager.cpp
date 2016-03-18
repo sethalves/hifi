@@ -604,7 +604,7 @@ void AccountManager::generateNewKeypair(bool isUserKeypair, const QUuid& domainI
         _accountInfo.setPrivateKey(QByteArray());
 
         // setup a new QThread to generate the keypair on, in case it takes a while
-        QThread* generateThread = new QThread(this);
+        QThread* generateThread = new QThread(qApp);
         generateThread->setObjectName("Account Manager Generator Thread");
 
         // setup a keypair generator

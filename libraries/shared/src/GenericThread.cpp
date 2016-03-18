@@ -9,6 +9,7 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include <QApplication>
 #include <QDebug>
 
 #include "GenericThread.h"
@@ -31,7 +32,7 @@ GenericThread::~GenericThread() {
 void GenericThread::initialize(bool isThreaded, QThread::Priority priority) {
     _isThreaded = isThreaded;
     if (_isThreaded) {
-        _thread = new QThread(this);
+        _thread = new QThread(qApp);
         
         // match the thread name to our object name
         _thread->setObjectName(objectName());

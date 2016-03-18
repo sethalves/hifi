@@ -67,7 +67,7 @@ AssignmentClient::AssignmentClient(Assignment::Type requestAssignmentType, QStri
     DependencyManager::set<ResourceScriptingInterface>();
 
     // setup a thread for the NodeList and its PacketReceiver
-    QThread* nodeThread = new QThread(this);
+    QThread* nodeThread = new QThread(qApp);
     nodeThread->setObjectName("NodeList Thread");
     nodeThread->start();
 

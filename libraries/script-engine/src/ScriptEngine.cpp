@@ -159,7 +159,7 @@ void ScriptEngine::disconnectNonEssentialSignals() {
 
 void ScriptEngine::runInThread() {
     _isThreaded = true;
-    QThread* workerThread = new QThread(); // thread is not owned, so we need to manage the delete
+    QThread* workerThread = new QThread(qApp); // thread is not owned, so we need to manage the delete
     QString scriptEngineName = QString("Script Thread:") + getFilename();
     workerThread->setObjectName(scriptEngineName);
 

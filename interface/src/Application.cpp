@@ -262,6 +262,18 @@ public:
 
     void updateHeartbeat() {
         _heartbeat = usecTimestampNow();
+
+        qDebug() << "------ threads -------";
+        // QObject* mainThread = parent();
+        QObject* mainThread = qApp;
+
+        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"));
+        // QList<QThread*> childThreads = mainThread->findChildren<QThread*>();
+        // QList<QThread*> childThreads = mainThread->findChildren();
+        QList<QThread*> childThreads = mainThread->findChildren<QThread*>(QRegExp(".*"), Qt::FindChildrenRecursively);
+        foreach(QThread* childThread, childThreads) {
+            qDebug() << childThread->objectName();
+        }
     }
 
     void deadlockDetectionCrash() {
@@ -517,7 +529,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     _bookmarks = new Bookmarks();  // Before setting up the menu
 
     // start the nodeThread so its event loop is running
-    QThread* nodeThread = new QThread(this);
+    QThread* nodeThread = new QThread(qApp);
     nodeThread->setObjectName("NodeList Thread");
     nodeThread->start();
 
@@ -540,7 +552,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(this, &Application::checkBackgroundDownloads, modelCache, &ResourceCache::checkAsynchronousGets);
 
     // put the audio processing on a separate thread
-    QThread* audioThread = new QThread();
+    QThread* audioThread = new QThread(qApp);
     audioThread->setObjectName("Audio Thread");
 
     auto audioIO = DependencyManager::get<AudioClient>();
@@ -588,7 +600,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     // Setup MessagesClient
     auto messagesClient = DependencyManager::get<MessagesClient>();
-    QThread* messagesThread = new QThread;
+    QThread* messagesThread = new QThread(qApp);
     messagesThread->setObjectName("Messages Client Thread");
     messagesClient->moveToThread(messagesThread);
     connect(messagesThread, &QThread::started, messagesClient.data(), &MessagesClient::init);
@@ -2491,6 +2503,25 @@ bool Application::acceptSnapshot(const QString& urlString) {
     return true;
 }
 
+
+quint64 lastThreadListUpdate = 0;
+void Application::updateThreadList() const {
+    // uint64_t now = usecTimestampNow();
+    // if (now - lastThreadListUpdate < 2000000) {
+    //     return;
+    // }
+    // lastThreadListUpdate = now;
+
+    // // http://stackoverflow.com/questions/9757723/collecting-threads-in-qt
+    // // QList<QThread*> childs = QObject::findChildren<QThread*>();
+    // qDebug() << "------ threads -------";
+    // foreach(QThread* childThread, QObject::findChildren<QThread*>()) {
+    //     qDebug() << "ok";
+    // }
+}
+
+
+
 static uint32_t _renderedFrameIndex { INVALID_FRAME };
 
 void Application::idle(uint64_t now) {
@@ -2499,7 +2530,7 @@ void Application::idle(uint64_t now) {
         return; // bail early, nothing to do here.
     }
 
-
+    updateThreadList();
     checkChangeCursor();
 
     Stats::getInstance()->updateStats();

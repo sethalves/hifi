@@ -60,7 +60,7 @@ namespace Setting {
     // Sets up the settings private instance. Should only be run once at startup. preInit() must be run beforehand,
     void init() {
         // Let's set up the settings Private instance on its own thread
-        QThread* thread = new QThread();
+        QThread* thread = new QThread(qApp);
         Q_CHECK_PTR(thread);
         thread->setObjectName("Settings Thread");
         

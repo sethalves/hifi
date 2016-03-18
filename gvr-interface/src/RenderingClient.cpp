@@ -37,7 +37,7 @@ RenderingClient::RenderingClient(QObject *parent, const QString& launchURLString
     DependencyManager::set<AvatarHashMap>();
     
     // get our audio client setup on its own thread
-    QThread* audioThread = new QThread();
+    QThread* audioThread = new QThread(qApp);
     auto audioClient = DependencyManager::set<AudioClient>();
     
     audioClient->setPositionGetter(getPositionForAudio);
