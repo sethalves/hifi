@@ -13,7 +13,6 @@
 #include <QObject>
 #include <QByteArray>
 #include <QtConcurrent/QtConcurrentRun>
-#include <QtCore/QThread>
 #include <glm/gtx/transform.hpp>
 
 #if defined(__GNUC__) && !defined(__clang__)
