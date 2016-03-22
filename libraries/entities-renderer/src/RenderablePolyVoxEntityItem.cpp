@@ -73,9 +73,9 @@ RenderablePolyVoxEntityItem::RenderablePolyVoxEntityItem(const EntityItemID& ent
 }
 
 RenderablePolyVoxEntityItem::~RenderablePolyVoxEntityItem() {
-    _threadRunning.acquire();
+    lockThread();
     _stopping = true;
-    _threadRunning.release();
+    unlockThread();
 }
 
 void RenderablePolyVoxEntityItem::lockThread() {
