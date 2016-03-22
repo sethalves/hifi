@@ -155,11 +155,15 @@ private:
     void compressVolumeDataAndSendEditPacket();
     void compressVolumeDataAndSendEditPacketAsync();
     void getMesh();
+    void getMeshAsyncWithSemaphore();
     void getMeshAsync();
     void computeShapeInfoWorker();
     void computeShapeInfoWorkerAsync();
 
-    QSemaphore _threadRunning{1};
+    QSemaphore _threadRunning{1}; // use a QSemaphore rather than a QMutex so lock and unlock can be on different threads
+    bool _stopping{false};
+    void lockThread();
+    void unlockThread();
 
     // these are cached lookups of _xNNeighborID, _yNNeighborID, _zNNeighborID, _xPNeighborID, _yPNeighborID, _zPNeighborID
     EntityItemWeakPointer _xNNeighbor; // neighor found by going along negative X axis

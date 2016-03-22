@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QByteArray>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QtCore/QThread>
 #include <glm/gtx/transform.hpp>
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -73,8 +74,20 @@ RenderablePolyVoxEntityItem::RenderablePolyVoxEntityItem(const EntityItemID& ent
 }
 
 RenderablePolyVoxEntityItem::~RenderablePolyVoxEntityItem() {
+    _threadRunning.acquire();
+    _stopping = true;
+    _threadRunning.release();
 }
 
+void RenderablePolyVoxEntityItem::lockThread() {
+    _threadRunning.acquire(1);
+    assert(_threadRunning.available() == 0);
+}
+
+void RenderablePolyVoxEntityItem::unlockThread() {
+    _threadRunning.release(1);
+    assert(_threadRunning.available() < 2);
+}
 
 bool isEdged(PolyVoxEntityItem::PolyVoxSurfaceStyle surfaceStyle) {
     switch (surfaceStyle) {
@@ -760,7 +773,11 @@ bool RenderablePolyVoxEntityItem::updateOnCount(int x, int y, int z, uint8_t toV
 }
 
 void RenderablePolyVoxEntityItem::decompressVolumeData() {
-    _threadRunning.acquire();
+    lockThread();
+    if (_stopping) {
+        unlockThread();
+        return;
+    }
     QtConcurrent::run(this, &RenderablePolyVoxEntityItem::decompressVolumeDataAsync);
 }
 
@@ -780,7 +797,7 @@ void RenderablePolyVoxEntityItem::decompressVolumeDataAsync() {
                  << voxelXSize << voxelYSize << voxelZSize << getName() << getID();
         _voxelDataDirty = false;
         _voxelDataLock.unlock();
-        _threadRunning.release();
+        unlockThread();
         return;
     }
 
@@ -796,14 +813,14 @@ void RenderablePolyVoxEntityItem::decompressVolumeDataAsync() {
         qDebug() << "PolyVox decompress -- size is (" << voxelXSize << voxelYSize << voxelZSize << ")"
                  << "so expected uncompressed length of" << rawSize << "but length is" << uncompressedData.size()
                  << getName() << getID();
-        _threadRunning.release();
+        unlockThread();
         return;
     }
 
     _volDataLock.lockForWrite();
     if (!_volData) {
         _volDataLock.unlock();
-        _threadRunning.release();
+        unlockThread();
         return;
     }
     _volDataDirty = true;
@@ -816,11 +833,15 @@ void RenderablePolyVoxEntityItem::decompressVolumeDataAsync() {
         }
     }
     _volDataLock.unlock();
-    _threadRunning.release();
+    unlockThread();
 }
 
 void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
-    _threadRunning.acquire();
+    lockThread();
+    if (_stopping) {
+        unlockThread();
+        return;
+    }
     QtConcurrent::run(this, &RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync);
 }
 
@@ -863,7 +884,7 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync() {
         // revert the active voxel-space to the last version that fit.
         // XXX
         qDebug() << "compressed voxel data is too large" << getName() << getID();
-        _threadRunning.release();
+        unlockThread();
         return;
     }
 
@@ -888,12 +909,16 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacketAsync() {
     if (packetSender) {
         packetSender->queueEditEntityMessage(PacketType::EntityEdit, _id, properties);
     }
-    _threadRunning.release();
+    unlockThread();
 }
 
 void RenderablePolyVoxEntityItem::getMesh() {
-    _threadRunning.acquire();
-    QtConcurrent::run(this, &RenderablePolyVoxEntityItem::getMeshAsync);
+    lockThread();
+    if (_stopping) {
+        unlockThread();
+        return;
+    }
+    QtConcurrent::run(this, &RenderablePolyVoxEntityItem::getMeshAsyncWithSemaphore);
 }
 
 void RenderablePolyVoxEntityItem::clearOutOfDateNeighbors() {
@@ -1013,6 +1038,11 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
     }
 }
 
+void RenderablePolyVoxEntityItem::getMeshAsyncWithSemaphore() {
+    getMeshAsync();
+    unlockThread();
+}
+
 void RenderablePolyVoxEntityItem::getMeshAsync() {
     model::MeshPointer mesh(new model::Mesh());
 
@@ -1089,11 +1119,14 @@ void RenderablePolyVoxEntityItem::getMeshAsync() {
     _volDataDirty = false;
     _volDataLock.unlock();
     bonkNeighbors();
-    _threadRunning.release();
 }
 
 void RenderablePolyVoxEntityItem::computeShapeInfoWorker() {
-    _threadRunning.acquire();
+    lockThread();
+    if (_stopping) {
+        unlockThread();
+        return;
+    }
     QtConcurrent::run(this, &RenderablePolyVoxEntityItem::computeShapeInfoWorkerAsync);
 }
 
@@ -1226,7 +1259,7 @@ void RenderablePolyVoxEntityItem::computeShapeInfoWorkerAsync() {
         _shapeInfoLock.lockForWrite();
         EntityItem::computeShapeInfo(_shapeInfo);
         _shapeInfoLock.unlock();
-        _threadRunning.release();
+        unlockThread();
         return;
     }
 
@@ -1246,7 +1279,7 @@ void RenderablePolyVoxEntityItem::computeShapeInfoWorkerAsync() {
     _meshLock.lockForWrite();
     _meshDirty = false;
     _meshLock.unlock();
-    _threadRunning.release();
+    unlockThread();
     return;
 }
 
