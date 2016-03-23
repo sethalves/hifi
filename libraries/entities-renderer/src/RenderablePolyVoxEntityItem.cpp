@@ -76,6 +76,12 @@ RenderablePolyVoxEntityItem::~RenderablePolyVoxEntityItem() {
     lockThread();
     _stopping = true;
     unlockThread();
+
+    _volDataLock.lockForWrite();
+    if (_volData) {
+        delete _volData;
+    }
+    _volDataLock.unlock();
 }
 
 void RenderablePolyVoxEntityItem::lockThread() {
