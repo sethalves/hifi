@@ -4790,6 +4790,7 @@ DisplayPlugin* Application::getActiveDisplayPlugin() {
             updateDisplayMode();
             Q_ASSERT(_displayPlugin);
         }
+        std::unique_lock<std::mutex> lock(_displayPluginLock);
         result = _displayPlugin.get();
     } else {
         std::unique_lock<std::mutex> lock(_displayPluginLock);
