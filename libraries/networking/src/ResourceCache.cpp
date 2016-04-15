@@ -73,7 +73,20 @@ QList<QSharedPointer<Resource>> ResourceCacheSharedItems::getLoadingRequests() {
 
 void ResourceCacheSharedItems::removeRequest(QWeakPointer<Resource> resource) {
     Lock lock(_mutex);
-    _loadingRequests.removeAll(resource);
+    if (!_loadingRequests.removeAll(resource)) {
+        // resource can only be removed if it still has a ref-count, as
+        // QWeakPointer has no operator== implementation for two weak ptrs.
+        // If we get here, we have to find it ourselves, before _loadingRequests grows...
+        for (int i = 0; i < _loadingRequests.size();) {
+            // Clear any freed resources
+            auto resource = _loadingRequests.at(i).lock();
+            if (!resource) {
+                _loadingRequests.removeAt(i);
+                continue;
+            }
+            i++;
+        }
+    }
 }
 
 QSharedPointer<Resource> ResourceCacheSharedItems::getHighestPendingRequest() {
@@ -82,12 +95,16 @@ QSharedPointer<Resource> ResourceCacheSharedItems::getHighestPendingRequest() {
     int highestIndex = -1;
     float highestPriority = -FLT_MAX;
     QSharedPointer<Resource> highestResource;
+
     for (int i = 0; i < _pendingRequests.size();) {
+        // Clear any freed resources
         auto resource = _pendingRequests.at(i).lock();
         if (!resource) {
             _pendingRequests.removeAt(i);
             continue;
         }
+
+        // Check load priority
         float priority = resource->getLoadPriority();
         if (priority >= highestPriority) {
             highestPriority = priority;
@@ -96,9 +113,11 @@ QSharedPointer<Resource> ResourceCacheSharedItems::getHighestPendingRequest() {
         }
         i++;
     }
+
     if (highestIndex >= 0) {
         _pendingRequests.takeAt(highestIndex);
     }
+
     return highestResource;
 }
 
