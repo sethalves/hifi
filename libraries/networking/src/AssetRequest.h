@@ -12,6 +12,8 @@
 #ifndef hifi_AssetRequest_h
 #define hifi_AssetRequest_h
 
+#include <memory>
+
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -23,7 +25,7 @@
 class AssetRequest;
 using AssetRequestPointer = std::shared_ptr<AssetRequest>;
 
-class AssetRequest : public QObject {
+class AssetRequest : public QObject, public std::enable_shared_from_this<AssetRequest> {
    Q_OBJECT
 public:
     enum State {
@@ -52,6 +54,11 @@ public:
     const State& getState() const { return _state; }
     const Error& getError() const { return _error; }
     QUrl getUrl() const { return ::getATPUrl(_hash); }
+
+    inline AssetRequestPointer getThisPointer() const {
+        return std::static_pointer_cast<AssetRequest>(std::const_pointer_cast<AssetRequest>(shared_from_this()));
+    }
+
 
 signals:
     void finished(AssetRequestPointer thisRequest);
