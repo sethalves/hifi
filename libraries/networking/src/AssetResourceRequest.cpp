@@ -107,8 +107,8 @@ void AssetResourceRequest::requestHash(const AssetHash& hash) {
     auto assetClient = DependencyManager::get<AssetClient>();
     _assetRequest = assetClient->createRequest(hash);
 
-    connect(_assetRequest, &AssetRequest::progress, this, &AssetResourceRequest::progress);
-    connect(_assetRequest, &AssetRequest::finished, this, [this](AssetRequestPointer req) {
+    connect(_assetRequest.get(), &AssetRequest::progress, this, &AssetResourceRequest::progress);
+    connect(_assetRequest.get(), &AssetRequest::finished, this, [this](AssetRequestPointer req) {
         Q_ASSERT(_state == InProgress);
         Q_ASSERT(req == _assetRequest);
         Q_ASSERT(req->getState() == AssetRequest::Finished);

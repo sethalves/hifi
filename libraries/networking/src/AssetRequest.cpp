@@ -51,7 +51,7 @@ void AssetRequest::start() {
         _error = InvalidHash;
         _state = Finished;
 
-        emit finished(this);
+        emit finished(AssetRequestPointer(this));
         return;
     }
     
@@ -63,7 +63,7 @@ void AssetRequest::start() {
         _error = NoError;
         
         _state = Finished;
-        emit finished(this);
+        emit finished(AssetRequestPointer(this));
         return;
     }
     
@@ -93,7 +93,7 @@ void AssetRequest::start() {
         if (_error != NoError) {
             qCWarning(asset_client) << "Got error retrieving asset info for" << _hash;
             _state = Finished;
-            emit finished(this);
+            emit finished(AssetRequestPointer(this));
             
             return;
         }
@@ -147,7 +147,7 @@ void AssetRequest::start() {
             }
             
             _state = Finished;
-            emit finished(this);
+            emit finished(AssetRequestPointer(this));
         }, [this](qint64 totalReceived, qint64 total) {
             emit progress(totalReceived, total);
         });

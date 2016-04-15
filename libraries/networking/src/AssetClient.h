@@ -46,6 +46,9 @@ using GetInfoCallback = std::function<void(bool responseReceived, AssetServerErr
 using UploadResultCallback = std::function<void(bool responseReceived, AssetServerError serverError, const QString& hash)>;
 using ProgressCallback = std::function<void(qint64 totalReceived, qint64 total)>;
 
+class AssetRequest;
+using AssetRequestPointer = std::shared_ptr<AssetRequest>;
+
 class AssetClient : public QObject, public Dependency {
     Q_OBJECT
 public:

@@ -176,7 +176,7 @@ RenameMappingRequest* AssetClient::createRenameMappingRequest(const AssetPath& o
 }
 
 AssetRequestPointer AssetClient::createRequest(const AssetHash& hash) {
-    auto request = new AssetRequest(hash);
+    auto request = AssetRequestPointer(new AssetRequest(hash));
 
     // Move to the AssetClient thread in case we are not currently on that thread (which will usually be the case)
     request->moveToThread(thread());

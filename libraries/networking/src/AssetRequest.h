@@ -21,7 +21,6 @@
 #include "AssetUtils.h"
 
 class AssetRequest;
-
 using AssetRequestPointer = std::shared_ptr<AssetRequest>;
 
 class AssetRequest : public QObject {

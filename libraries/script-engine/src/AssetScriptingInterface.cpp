@@ -17,6 +17,7 @@
 #include <AssetUpload.h>
 #include <MappingRequest.h>
 #include <NetworkLogging.h>
+#include <SharedUtil.h>
 
 AssetScriptingInterface::AssetScriptingInterface(QScriptEngine* engine) :
     _engine(engine)
@@ -55,7 +56,7 @@ void AssetScriptingInterface::downloadData(QString urlString, QScriptValue callb
 
     _pendingRequests << assetRequest;
 
-    connect(assetRequest, &AssetRequest::finished, this, [this, callback](AssetRequestPointer request) mutable {
+    connect(assetRequest.get(), &AssetRequest::finished, this, [this, callback](AssetRequestPointer request) mutable {
         Q_ASSERT(request->getState() == AssetRequest::Finished);
 
         if (request->getError() == AssetRequest::Error::NoError) {
