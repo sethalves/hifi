@@ -19,10 +19,6 @@ AssetResourceRequest::~AssetResourceRequest() {
     if (_assetMappingRequest) {
         _assetMappingRequest->deleteLater();
     }
-    
-    if (_assetRequest) {
-        _assetRequest->deleteLater();
-    }
 }
 
 bool AssetResourceRequest::urlIsAssetHash() const {
@@ -107,8 +103,8 @@ void AssetResourceRequest::requestHash(const AssetHash& hash) {
     auto assetClient = DependencyManager::get<AssetClient>();
     _assetRequest = assetClient->createRequest(hash);
 
-    connect(_assetRequest.get(), &AssetRequest::progress, this, &AssetResourceRequest::progress);
-    connect(_assetRequest.get(), &AssetRequest::finished, this, [this](AssetRequestPointer req) {
+    connect(_assetRequest.data(), &AssetRequest::progress, this, &AssetResourceRequest::progress);
+    connect(_assetRequest.data(), &AssetRequest::finished, this, [this](AssetRequestPointer req) {
         Q_ASSERT(_state == InProgress);
         Q_ASSERT(req == _assetRequest);
         Q_ASSERT(req->getState() == AssetRequest::Finished);
@@ -135,8 +131,7 @@ void AssetResourceRequest::requestHash(const AssetHash& hash) {
         _state = Finished;
         emit finished();
 
-        _assetRequest->deleteLater();
-        _assetRequest = nullptr;
+        _assetRequest.clear();
     });
 
     _assetRequest->start();

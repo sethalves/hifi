@@ -56,7 +56,7 @@ void AssetScriptingInterface::downloadData(QString urlString, QScriptValue callb
 
     _pendingRequests << assetRequest;
 
-    connect(assetRequest.get(), &AssetRequest::finished, this, [this, callback](AssetRequestPointer request) mutable {
+    connect(assetRequest.data(), &AssetRequest::finished, this, [this, callback](AssetRequestPointer request) mutable {
         Q_ASSERT(request->getState() == AssetRequest::Finished);
 
         if (request->getError() == AssetRequest::Error::NoError) {
@@ -67,7 +67,6 @@ void AssetScriptingInterface::downloadData(QString urlString, QScriptValue callb
             }
         }
 
-        request->deleteLater();
         _pendingRequests.remove(request);
     });
 

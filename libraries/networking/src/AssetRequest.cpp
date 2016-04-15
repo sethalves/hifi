@@ -20,6 +20,12 @@
 #include "NodeList.h"
 #include "ResourceCache.h"
 
+AssetRequestPointer AssetRequest::factory(const QString& hash) {
+    AssetRequestPointer newAssetRequest = QSharedPointer<AssetRequest>(new AssetRequest(hash), &QObject::deleteLater);
+    newAssetRequest->setSelfPointer(newAssetRequest);
+    return newAssetRequest;
+}
+
 AssetRequest::AssetRequest(const QString& hash) :
     _hash(hash)
 {
@@ -51,7 +57,7 @@ void AssetRequest::start() {
         _error = InvalidHash;
         _state = Finished;
 
-        emit finished(getThisPointer());
+        emit finished(_selfWeakPointer);
         return;
     }
     
@@ -63,15 +69,16 @@ void AssetRequest::start() {
         _error = NoError;
         
         _state = Finished;
-        emit finished(getThisPointer());
+        emit finished(_selfWeakPointer);
         return;
     }
     
     _state = WaitingForInfo;
     
     auto assetClient = DependencyManager::get<AssetClient>();
+    auto saveMe = _selfWeakPointer.lock();
     _assetInfoRequestID = assetClient->getAssetInfo(_hash,
-            [this](bool responseReceived, AssetServerError serverError, AssetInfo info) {
+            [this, saveMe](bool responseReceived, AssetServerError serverError, AssetInfo info) {
 
         _assetInfoRequestID = AssetClient::INVALID_MESSAGE_ID;
 
@@ -93,7 +100,7 @@ void AssetRequest::start() {
         if (_error != NoError) {
             qCWarning(asset_client) << "Got error retrieving asset info for" << _hash;
             _state = Finished;
-            emit finished(getThisPointer());
+            emit finished(_selfWeakPointer);
             
             return;
         }
@@ -106,8 +113,9 @@ void AssetRequest::start() {
         int start = 0, end = _info.size;
         
         auto assetClient = DependencyManager::get<AssetClient>();
+        auto saveMe = _selfWeakPointer.lock();
         _assetRequestID = assetClient->getAsset(_hash, start, end,
-                [this, start, end](bool responseReceived, AssetServerError serverError, const QByteArray& data) {
+                [this, start, end, saveMe](bool responseReceived, AssetServerError serverError, const QByteArray& data) {
 
             _assetRequestID = AssetClient::INVALID_MESSAGE_ID;
 
@@ -147,7 +155,7 @@ void AssetRequest::start() {
             }
             
             _state = Finished;
-            emit finished(getThisPointer());
+            emit finished(_selfWeakPointer);
         }, [this](qint64 totalReceived, qint64 total) {
             emit progress(totalReceived, total);
         });

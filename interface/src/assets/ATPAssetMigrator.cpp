@@ -125,7 +125,6 @@ void ATPAssetMigrator::loadEntityServerFile() {
 
                                                 checkIfFinished();
                                             }
-                                            request->deleteLater();
                                         });
 
                                         request->send();
@@ -239,8 +238,6 @@ void ATPAssetMigrator::setMappingFinished(SetMappingRequest* request) {
     }
 
     checkIfFinished();
-
-    request->deleteLater();
 }
 
 void ATPAssetMigrator::checkIfFinished() {

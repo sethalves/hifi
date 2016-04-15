@@ -176,7 +176,7 @@ RenameMappingRequest* AssetClient::createRenameMappingRequest(const AssetPath& o
 }
 
 AssetRequestPointer AssetClient::createRequest(const AssetHash& hash) {
-    auto request = AssetRequestPointer(new AssetRequest(hash));
+    auto request = AssetRequest::factory(hash);
 
     // Move to the AssetClient thread in case we are not currently on that thread (which will usually be the case)
     request->moveToThread(thread());
@@ -228,6 +228,7 @@ MessageID AssetClient::getAsset(const QString& hash, DataOffset start, DataOffse
 
         nodeList->sendPacket(std::move(packet), *assetServer);
 
+        // fill in GetAssetRequestData
         _pendingRequests[assetServer][messageID] = { QSharedPointer<ReceivedMessage>(), callback, progressCallback };
 
         return messageID;

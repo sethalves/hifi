@@ -50,8 +50,6 @@ void AssetMappingsScriptingInterface::setMapping(QString path, QString hash, QJS
             QJSValueList args { request->getErrorString(), request->getPath() };
             callback.call(args);
         }
-
-        request->deleteLater();
     });
 
     request->start();
@@ -66,8 +64,6 @@ void AssetMappingsScriptingInterface::getMapping(QString path, QJSValue callback
             QJSValueList args { request->getErrorString() };
             callback.call(args);
         }
-
-        request->deleteLater();
     });
 
     request->start();
@@ -136,8 +132,6 @@ void AssetMappingsScriptingInterface::deleteMappings(QStringList paths, QJSValue
             QJSValueList args { request->getErrorString() };
             callback.call(args);
         }
-
-        request->deleteLater();
     });
 
     request->start();
@@ -159,8 +153,6 @@ void AssetMappingsScriptingInterface::getAllMappings(QJSValue callback) {
             QJSValueList args { request->getErrorString(), map };
             callback.call(args);
         }
-
-        request->deleteLater();
     });
 
     request->start();
@@ -175,8 +167,6 @@ void AssetMappingsScriptingInterface::renameMapping(QString oldPath, QString new
             QJSValueList args { request->getErrorString() };
             callback.call(args);
         }
-
-        request->deleteLater();
     });
 
     request->start();

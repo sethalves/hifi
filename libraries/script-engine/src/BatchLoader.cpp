@@ -51,7 +51,6 @@ void BatchLoader::start() {
                 _data.insert(url, QString());
                 qCDebug(scriptengine) << "Could not load" << url;
             }
-            request->deleteLater();
             checkFinished();
         });
 
