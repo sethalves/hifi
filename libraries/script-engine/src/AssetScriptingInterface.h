@@ -28,7 +28,7 @@ public:
     Q_INVOKABLE void downloadData(QString url, QScriptValue downloadComplete);
 
 protected:
-    QSet<AssetRequest*> _pendingRequests;
+    QSet<AssetRequestPointer> _pendingRequests;
     QScriptEngine* _engine;
 };
 

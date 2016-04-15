@@ -20,6 +20,10 @@
 
 #include "AssetUtils.h"
 
+class AssetRequest;
+
+using AssetRequestPointer = std::shared_ptr<AssetRequest>;
+
 class AssetRequest : public QObject {
    Q_OBJECT
 public:
@@ -51,7 +55,7 @@ public:
     QUrl getUrl() const { return ::getATPUrl(_hash); }
 
 signals:
-    void finished(AssetRequest* thisRequest);
+    void finished(AssetRequestPointer thisRequest);
     void progress(qint64 totalReceived, qint64 total);
 
 private:

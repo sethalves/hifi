@@ -36,7 +36,7 @@ private:
     void requestHash(const AssetHash& hash);
 
     GetMappingRequest* _assetMappingRequest { nullptr };
-    AssetRequest* _assetRequest { nullptr };
+    AssetRequestPointer _assetRequest { nullptr };
 };
 
 #endif
