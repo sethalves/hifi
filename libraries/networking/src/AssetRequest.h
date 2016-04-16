@@ -12,8 +12,6 @@
 #ifndef hifi_AssetRequest_h
 #define hifi_AssetRequest_h
 
-#include <memory>
-
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -71,8 +69,8 @@ private:
     MessageID _assetRequestID { AssetClient::INVALID_MESSAGE_ID };
     MessageID _assetInfoRequestID { AssetClient::INVALID_MESSAGE_ID };
 
-    AssetRequestWeakPointer _selfWeakPointer;
-    void setSelfPointer(AssetRequestPointer selfPointer) { _selfWeakPointer = selfPointer; }
+    AssetRequestWeakPointer _self;
+    void setSelf(AssetRequestPointer self) { _self = self; }
 };
 
 #endif

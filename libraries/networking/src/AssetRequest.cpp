@@ -22,7 +22,7 @@
 
 AssetRequestPointer AssetRequest::factory(const QString& hash) {
     AssetRequestPointer newAssetRequest = QSharedPointer<AssetRequest>(new AssetRequest(hash), &QObject::deleteLater);
-    newAssetRequest->setSelfPointer(newAssetRequest);
+    newAssetRequest->setSelf(newAssetRequest);
     return newAssetRequest;
 }
 
@@ -57,26 +57,26 @@ void AssetRequest::start() {
         _error = InvalidHash;
         _state = Finished;
 
-        emit finished(_selfWeakPointer);
+        emit finished(_self.lock());
         return;
     }
-    
+
     // Try to load from cache
     _data = loadFromCache(getUrl());
     if (!_data.isNull()) {
         _info.hash = _hash;
         _info.size = _data.size();
         _error = NoError;
-        
+
         _state = Finished;
-        emit finished(_selfWeakPointer);
+        emit finished(_self.lock());
         return;
     }
-    
+
     _state = WaitingForInfo;
-    
+
     auto assetClient = DependencyManager::get<AssetClient>();
-    auto saveMe = _selfWeakPointer.lock();
+    auto saveMe = _self.lock();
     _assetInfoRequestID = assetClient->getAssetInfo(_hash,
             [this, saveMe](bool responseReceived, AssetServerError serverError, AssetInfo info) {
 
@@ -100,20 +100,20 @@ void AssetRequest::start() {
         if (_error != NoError) {
             qCWarning(asset_client) << "Got error retrieving asset info for" << _hash;
             _state = Finished;
-            emit finished(_selfWeakPointer);
-            
+            emit finished(_self.lock());
+
             return;
         }
-        
+
         _state = WaitingForData;
         _data.resize(info.size);
-        
+
         qCDebug(asset_client) << "Got size of " << _hash << " : " << info.size << " bytes";
-        
+
         int start = 0, end = _info.size;
-        
+
         auto assetClient = DependencyManager::get<AssetClient>();
-        auto saveMe = _selfWeakPointer.lock();
+        auto saveMe = _self.lock();
         _assetRequestID = assetClient->getAsset(_hash, start, end,
                 [this, start, end, saveMe](bool responseReceived, AssetServerError serverError, const QByteArray& data) {
 
@@ -135,27 +135,27 @@ void AssetRequest::start() {
                 }
             } else {
                 Q_ASSERT(data.size() == (end - start));
-                
+
                 // we need to check the hash of the received data to make sure it matches what we expect
                 if (hashData(data).toHex() == _hash) {
                     memcpy(_data.data() + start, data.constData(), data.size());
                     _totalReceived += data.size();
                     emit progress(_totalReceived, _info.size);
-                    
+
                     saveToCache(getUrl(), data);
                 } else {
                     // hash doesn't match - we have an error
                     _error = HashVerificationFailed;
                 }
-                
+
             }
-            
+
             if (_error != NoError) {
                 qCWarning(asset_client) << "Got error retrieving asset" << _hash << "- error code" << _error;
             }
-            
+
             _state = Finished;
-            emit finished(_selfWeakPointer);
+            emit finished(_self.lock());
         }, [this](qint64 totalReceived, qint64 total) {
             emit progress(totalReceived, total);
         });
