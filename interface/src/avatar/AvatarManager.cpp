@@ -77,7 +77,6 @@ AvatarManager::AvatarManager(QObject* parent) :
 }
 
 AvatarManager::~AvatarManager() {
-    _myAvatar->die();
 }
 
 void AvatarManager::init() {
@@ -95,6 +94,12 @@ void AvatarManager::init() {
         _myAvatar->addToScene(_myAvatar, scene, pendingChanges);
     }
     scene->enqueuePendingChanges(pendingChanges);
+}
+
+void AvatarManager::clear() {
+    _myAvatar->die();
+    _myAvatar.reset();
+    _avatarHash.clear();
 }
 
 void AvatarManager::updateMyAvatar(float deltaTime) {
