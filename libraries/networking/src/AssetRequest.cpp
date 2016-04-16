@@ -76,9 +76,14 @@ void AssetRequest::start() {
     _state = WaitingForInfo;
 
     auto assetClient = DependencyManager::get<AssetClient>();
-    auto saveMe = _self.lock();
+    auto saveMe = _self;
     _assetInfoRequestID = assetClient->getAssetInfo(_hash,
             [this, saveMe](bool responseReceived, AssetServerError serverError, AssetInfo info) {
+         // lock the weak pointer to make sure this hasn't been deleted yet
+        auto thisPtr = saveMe.lock();
+        if (!thisPtr) {
+            return;
+        }
 
         _assetInfoRequestID = AssetClient::INVALID_MESSAGE_ID;
 
@@ -113,9 +118,14 @@ void AssetRequest::start() {
         int start = 0, end = _info.size;
 
         auto assetClient = DependencyManager::get<AssetClient>();
-        auto saveMe = _self.lock();
+        auto saveMe = _self;
         _assetRequestID = assetClient->getAsset(_hash, start, end,
                 [this, start, end, saveMe](bool responseReceived, AssetServerError serverError, const QByteArray& data) {
+            // lock the weak pointer to make sure this hasn't been deleted yet
+            auto thisPtr = saveMe.lock();
+            if (!thisPtr) {
+                return;
+            }
 
             _assetRequestID = AssetClient::INVALID_MESSAGE_ID;
 
