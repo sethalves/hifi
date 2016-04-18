@@ -410,7 +410,7 @@ Resource::Resource(const QUrl& url, bool delayLoad) :
 Resource::~Resource() {
     if (_request) {
         _request->disconnect(this);
-        _request = nullptr;
+        _request->deleteLater();
         ResourceCache::requestCompleted(_self);
     }
 }
@@ -462,7 +462,7 @@ void Resource::refresh() {
     }
     if (_request) {
         _request->disconnect(this);
-        _request = nullptr;
+        _request->deleteLater();
         ResourceCache::requestCompleted(_self);
     }
     
@@ -542,6 +542,7 @@ void Resource::reinsert() {
 void Resource::makeRequest() {
     if (_request) {
         _request->disconnect();
+        _request->deleteLater();
     }
 
     _request = ResourceManager::createResourceRequest(this, _activeUrl);
@@ -621,7 +622,7 @@ void Resource::handleReplyFinished() {
     }
     
     _request->disconnect(this);
-    _request = nullptr;
+    _request->deleteLater();
 }
 
 uint qHash(const QPointer<QObject>& value, uint seed) {
