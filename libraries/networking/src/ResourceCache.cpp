@@ -411,6 +411,7 @@ Resource::~Resource() {
     if (_request) {
         _request->disconnect(this);
         _request->deleteLater();
+        _request = nullptr;
         ResourceCache::requestCompleted(_self);
     }
 }
@@ -463,6 +464,7 @@ void Resource::refresh() {
     if (_request) {
         _request->disconnect(this);
         _request->deleteLater();
+        _request = nullptr;
         ResourceCache::requestCompleted(_self);
     }
     
@@ -543,6 +545,7 @@ void Resource::makeRequest() {
     if (_request) {
         _request->disconnect();
         _request->deleteLater();
+        _request = nullptr;
     }
 
     _request = ResourceManager::createResourceRequest(this, _activeUrl);
@@ -623,6 +626,7 @@ void Resource::handleReplyFinished() {
     
     _request->disconnect(this);
     _request->deleteLater();
+    _request = nullptr;
 }
 
 uint qHash(const QPointer<QObject>& value, uint seed) {
