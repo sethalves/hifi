@@ -238,6 +238,8 @@ void ATPAssetMigrator::setMappingFinished(SetMappingRequest* request) {
     }
 
     checkIfFinished();
+
+    request->deleteLater();
 }
 
 void ATPAssetMigrator::checkIfFinished() {
