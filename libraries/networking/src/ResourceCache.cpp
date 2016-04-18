@@ -545,7 +545,6 @@ void Resource::makeRequest() {
     if (_request) {
         _request->disconnect();
         _request->deleteLater();
-        _request = nullptr;
     }
 
     _request = ResourceManager::createResourceRequest(this, _activeUrl);

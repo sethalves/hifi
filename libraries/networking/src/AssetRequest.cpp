@@ -105,7 +105,7 @@ void AssetRequest::start() {
         if (_error != NoError) {
             qCWarning(asset_client) << "Got error retrieving asset info for" << _hash;
             _state = Finished;
-            emit finished(_self.lock());
+            emit finished(thisPtr);
 
             return;
         }
@@ -165,7 +165,7 @@ void AssetRequest::start() {
             }
 
             _state = Finished;
-            emit finished(_self.lock());
+            emit finished(thisPtr);
         }, [this](qint64 totalReceived, qint64 total) {
             emit progress(totalReceived, total);
         });
