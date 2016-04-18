@@ -125,6 +125,7 @@ void ATPAssetMigrator::loadEntityServerFile() {
 
                                                 checkIfFinished();
                                             }
+                                            request->deleteLater();
                                         });
 
                                         request->send();

@@ -648,6 +648,7 @@ Mapping::Pointer UserInputMapper::newMapping(const QString& mappingName) {
 //        } else {
 //            qCWarning(controllers) << "Failed to load mapping url <" << jsonUrl << ">" << endl;
 //        }
+//        request->deleteLater();
 //    }
 //    return result;
 //}
