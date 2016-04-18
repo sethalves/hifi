@@ -245,6 +245,8 @@ void Agent::scriptRequestFinished() {
 
         setFinished(true);
     }
+
+    request->deleteLater();
 }
 
 void Agent::executeScript() {
