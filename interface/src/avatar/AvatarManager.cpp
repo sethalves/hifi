@@ -96,12 +96,6 @@ void AvatarManager::init() {
     scene->enqueuePendingChanges(pendingChanges);
 }
 
-void AvatarManager::clear() {
-    _myAvatar->die();
-    _myAvatar.reset();
-    _avatarHash.clear();
-}
-
 void AvatarManager::updateMyAvatar(float deltaTime) {
     bool showWarnings = Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings);
     PerformanceWarning warn(showWarnings, "AvatarManager::updateMyAvatar()");

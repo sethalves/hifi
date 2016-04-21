@@ -19,6 +19,7 @@ AssetResourceRequest::~AssetResourceRequest() {
     if (_assetMappingRequest) {
         _assetMappingRequest->deleteLater();
     }
+    _assetRequest.clear();
 }
 
 bool AssetResourceRequest::urlIsAssetHash() const {

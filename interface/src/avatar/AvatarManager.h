@@ -37,7 +37,6 @@ public:
     virtual ~AvatarManager();
 
     void init();
-    void clear();
 
     MyAvatar* getMyAvatar() { return _myAvatar.get(); }
     AvatarSharedPointer getAvatarBySessionID(const QUuid& sessionID) override;
