@@ -205,7 +205,7 @@ int main(int argc, const char* argv[]) {
     qCDebug(interfaceapp, "Normal exit.");
 #ifndef DEBUG
     // HACK: exit immediately (don't handle shutdown callbacks) for Release build
-    // _exit(exitCode);
+    _exit(exitCode);
 #endif
     return exitCode;
 }

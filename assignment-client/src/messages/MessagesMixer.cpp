@@ -18,8 +18,6 @@
 #include <udt/PacketHeaders.h>
 #include "MessagesMixer.h"
 
-#define WANT_DEBUG 1
-
 const QString MESSAGES_MIXER_LOGGING_NAME = "messages-mixer";
 
 MessagesMixer::MessagesMixer(ReceivedMessage& message) : ThreadedAssignment(message)
