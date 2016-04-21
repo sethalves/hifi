@@ -51,6 +51,10 @@ RenderableWebEntityItem::~RenderableWebEntityItem() {
 }
 
 bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
+    #ifdef Q_OS_LINUX
+    // these don't appear to work at all, on Linux
+    return false;
+    #else
     if (_currentWebCount >= MAX_CONCURRENT_WEB_VIEWS) {
         qWarning() << "Too many concurrent web views to create new view";
         return false;
@@ -160,6 +164,7 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
         }
     });
     return true;
+    #endif // Q_OS_LINUX
 }
 
 void RenderableWebEntityItem::render(RenderArgs* args) {

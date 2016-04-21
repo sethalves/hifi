@@ -16,6 +16,7 @@
 #include <algorithm> //min max and more
 #include <bitset>
 
+#include <QMetaType>
 #include <QUrl>
 
 namespace gpu {
@@ -428,7 +429,7 @@ public:
     Stamp getSamplerStamp() const { return _samplerStamp; }
 
     // Only callable by the Backend
-    void notifyMipFaceGPULoaded(uint16 level, uint8 face) const { return _storage->notifyMipFaceGPULoaded(level, face); }
+    void notifyMipFaceGPULoaded(uint16 level, uint8 face = 0) const { return _storage->notifyMipFaceGPULoaded(level, face); }
 
     const GPUObjectPointer gpuObject {};
 
@@ -468,7 +469,6 @@ protected:
 
 typedef std::shared_ptr<Texture> TexturePointer;
 typedef std::vector< TexturePointer > Textures;
-
 
  // TODO: For now TextureView works with Texture as a place holder for the Texture.
  // The overall logic should be about the same except that the Texture will be a real GL Texture under the hood
@@ -526,7 +526,7 @@ public:
 
     void reset(const QUrl& url);
 
-    void resetTexture(gpu::Texture* texture);
+    void resetTexture(gpu::TexturePointer texture);
 
     bool isDefined() const;
 
@@ -538,5 +538,6 @@ typedef std::shared_ptr< TextureSource > TextureSourcePointer;
 
 };
 
+Q_DECLARE_METATYPE(gpu::TexturePointer)
 
 #endif

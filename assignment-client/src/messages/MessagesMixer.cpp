@@ -18,6 +18,8 @@
 #include <udt/PacketHeaders.h>
 #include "MessagesMixer.h"
 
+#define WANT_DEBUG 1
+
 const QString MESSAGES_MIXER_LOGGING_NAME = "messages-mixer";
 
 MessagesMixer::MessagesMixer(ReceivedMessage& message) : ThreadedAssignment(message)
@@ -39,6 +41,10 @@ void MessagesMixer::handleMessages(QSharedPointer<ReceivedMessage> receivedMessa
     QString channel, message;
     QUuid senderID;
     MessagesClient::decodeMessagesPacket(receivedMessage, channel, message, senderID);
+
+    #ifdef WANT_DEBUG
+    qDebug() << channel << senderID << message;
+    #endif
 
     auto nodeList = DependencyManager::get<NodeList>();
 

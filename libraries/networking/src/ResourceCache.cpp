@@ -73,19 +73,17 @@ QList<QSharedPointer<Resource>> ResourceCacheSharedItems::getLoadingRequests() {
 
 void ResourceCacheSharedItems::removeRequest(QWeakPointer<Resource> resource) {
     Lock lock(_mutex);
-    if (!_loadingRequests.removeAll(resource)) {
-        // resource can only be removed if it still has a ref-count, as
-        // QWeakPointer has no operator== implementation for two weak ptrs.
-        // If we get here, we have to find it ourselves, before _loadingRequests grows...
-        for (int i = 0; i < _loadingRequests.size();) {
-            // Clear any freed resources
-            auto resource = _loadingRequests.at(i).lock();
-            if (!resource) {
-                _loadingRequests.removeAt(i);
-                continue;
-            }
-            i++;
+    // resource can only be removed if it still has a ref-count, as
+    // QWeakPointer has no operator== implementation for two weak ptrs, so
+    // manually loop in case resource has been freed.
+    for (int i = 0; i < _loadingRequests.size();) {
+        auto request = _loadingRequests.at(i);
+        // Clear our resource and any freed resources
+        if (!request || request.data() == resource.data()) {
+            _loadingRequests.removeAt(i);
+            continue;
         }
+        i++;
     }
 }
 
@@ -157,9 +155,12 @@ void ResourceCache::clearATPAssets() {
     }
     {
         QWriteLocker locker(&_resourcesToBeGottenLock);
-        for (auto& url : _resourcesToBeGotten) {
-            if (url.scheme() == URL_SCHEME_ATP) {
-                _resourcesToBeGotten.removeAll(url);
+        auto it = _resourcesToBeGotten.begin();
+        while (it != _resourcesToBeGotten.end()) {
+            if (it->scheme() == URL_SCHEME_ATP) {
+                it = _resourcesToBeGotten.erase(it);
+            } else {
+                ++it;
             }
         }
     }
@@ -605,8 +606,9 @@ void Resource::handleReplyFinished() {
                 const int BASE_DELAY_MS = 1000;
                 if (_attempts++ < MAX_ATTEMPTS) {
                     auto waitTime = BASE_DELAY_MS * (int)pow(2.0, _attempts);
-                    qCDebug(networking).nospace() << "Retrying to load the asset in " << waitTime
-                                       << "ms, attempt " << _attempts << " of " << MAX_ATTEMPTS;
+                    qCDebug(networking) << "Server unavailable for" << _url <<
+                        "retrying in " << waitTime << "ms," <<
+                        "attempt " << _attempts + 1 << "of" << MAX_ATTEMPTS;
                     QTimer::singleShot(waitTime, this, &Resource::attemptRequest);
                     break;
                 }
