@@ -26,7 +26,7 @@ var moon = null;
 var SCRIPT_URL = Script.resolvePath("gravity.js");
 
 HIFI_PUBLIC_BUCKET = "http://s3.amazonaws.com/hifi-public/";
-Script.include(["../libraries/toolBars.js"]);
+Script.include(["/~/libraries/toolBars.js"]);
 var toolBar = new ToolBar(0, 0, ToolBar.HORIZONTAL, "highfidelity.makePlanets.js", function(screenSize) {
   return {
     x: (screenSize.x / 2 - BUTTON_SIZE * 2 + PADDING),
