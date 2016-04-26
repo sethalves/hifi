@@ -12,7 +12,6 @@
 //
 
 function Timer() {
-    Script.include("http://headache.hungry.com/~seth/hifi/baton-client.js");
     var time;
     var count = 0;
     var totalTime = 0;
@@ -42,7 +41,6 @@ function Timer() {
 
 (function () {
     var entityID,
-        _this = this,
         wantDebug = true,
         CHECK_INTERVAL = 10.00,
         SEARCH_INTERVAL = 1000,
@@ -53,59 +51,46 @@ function Timer() {
         timeSinceLastSearch = 0,
         timer = new Timer(),
         simulate = false,
-        properties,
-        spheres,
-        batonName,
-        baton,
-        batonTimeout
+        spheres;
 
-    this.printDebug = function(message) {
+    var printDebug = function(message) {
         if (wantDebug) {
             print(message);
         }
     }
 
-    this.greatestDimension = function(dimensions) {
+    var greatestDimension = function(dimensions) {
         return Math.max(Math.max(dimensions.x, dimensions.y), dimensions.z);
     }
 
-    this.mass2 = function(dimensions) {
+    var mass2 = function(dimensions) {
         return dimensions.x * dimensions.y * dimensions.z;
     }
 
-    this.findSpheres = function(position) {
+    var findSpheres = function(position) {
         spheres = Entities.findEntities(position, GRAVITY_RANGE);
+        print("FOUND " + spheres.length + " SPHERES");
     }
 
-    this.maintainOwnership = function() {
-        if (Date.now() + 5000 > batonTimeout) {
-            print("maintaining ownership");
-            baton.reclaim(null, null, function() { simulate = false; });
-            batonTimeout = Date.now() + 10000;
-        }
-    }
-
-    this.applyGravity = function() {
+    var applyGravity = function() {
         if (!simulate) {
             return;
         }
-
-        _this.maintainOwnership();
 
         var deltaTime = timer.elapsed() / 1000.0;
         if (deltaTime == 0.0) {
             return;
         }
-        properties = Entities.getEntityProperties(entityID);
+        var properties = Entities.getEntityProperties(entityID);
         timeSinceLastSearch += CHECK_INTERVAL;
         if (timeSinceLastSearch >= SEARCH_INTERVAL) {
-            _this.findSpheres(properties.position);
+            findSpheres(properties.position);
             timeSinceLastSearch = 0;
         }
         var spheres = Entities.findEntities(properties.position, GRAVITY_RANGE);
         var deltaVelocity = { x: 0, y: 0, z: 0 };
         var otherCount = 0;
-        var mass = _this.mass2(properties.dimensions);
+        var mass = mass2(properties.dimensions);
 
         for (var i = 0; i < spheres.length; i++) {
             if (entityID != spheres[i]) {
@@ -113,9 +98,9 @@ function Timer() {
                 if (otherProperties.type == "Sphere") {
                     otherCount++;
                     var radius = Vec3.distance(properties.position, otherProperties.position);
-                    var otherMass = _this.mass2(otherProperties.dimensions);
-                    var r = (_this.greatestDimension(properties.dimensions) +
-                             _this.greatestDimension(otherProperties.dimensions)) / 2;
+                    var otherMass = mass2(otherProperties.dimensions);
+                    var r = (greatestDimension(properties.dimensions) +
+                             greatestDimension(otherProperties.dimensions)) / 2;
                     if (radius > r) {
                         var n0 = Vec3.normalize(Vec3.subtract(otherProperties.position, properties.position));
                         var n1 = Vec3.multiply(deltaTime * GRAVITY_STRENGTH * otherMass / (radius * radius), n0);
@@ -126,49 +111,59 @@ function Timer() {
         }
         Entities.editEntity(entityID, { velocity: Vec3.sum(properties.velocity, deltaVelocity) });
         if (Vec3.length(properties.velocity) < MIN_VELOCITY) {
-            print("Gravity simulation stopped.");
+            print("Gravity simulation stopped due to velocity");
             simulate = false;
-            baton.release();
         } else {
             timer.start();
-            timeoutID = Script.setTimeout(_this.applyGravity, CHECK_INTERVAL);
+            timeoutID = Script.setTimeout(applyGravity, CHECK_INTERVAL);
         }
     }
+    this.applyGravity = applyGravity;
 
-    this.startNearGrab = function() {
+    var releaseGrab = function() {
+        printDebug("Gravity simulation started.");
+        var properties = Entities.getEntityProperties(entityID);
+        findSpheres(properties.position);
+        timer.start();
+        timeoutID = Script.setTimeout(applyGravity, CHECK_INTERVAL);
+        simulate = true;
     }
+    this.releaseGrab = releaseGrab;
 
-    this.releaseGrab = function() {
-        this.printDebug("Gravity simulation started.");
-        baton.claim(
-            function() {
-                properties = Entities.getEntityProperties(entityID);
-                batonTimeout = Date.now() + 10000;
-                _this.findSpheres(properties.position);
-                timer.start();
-                timeoutID = Script.setTimeout(_this.applyGravity, CHECK_INTERVAL);
-                simulate = true;
-            });
-    }
-
-    this.preload = function (givenEntityID) {
-        this.printDebug("load gravity...");
+    var preload = function (givenEntityID) {
+        printDebug("load gravity...");
         entityID = givenEntityID;
-        batonName = 'io.highfidelity.philip.gravity:' + entityID;
-        baton = acBaton({
-            batonName: batonName,
-            timeScale: 10000
-        });
     };
+    this.preload = preload;
 
-    this.unload = function () {
-        this.printDebug("Unload gravity...");
+    var unload = function () {
+        printDebug("Unload gravity...");
         if (timeoutID !== undefined) {
             Script.clearTimeout(timeoutID);
         }
         if (simulate) {
-            Entities.editEntity(entityID, { velocity: { x: 0, y: 0, z: 0 }});
+            Entities.editEntity(entityID, { velocity: { x: 0, y: 0, z: 0 } });
         }
-        baton.release();
     };
+    this.unload = unload;
+
+    var handleMessages = function(channel, message, sender) {
+        if (channel === 'Hifi-Object-Manipulation') {
+            var parsedMessage = null;
+            try {
+                parsedMessage = JSON.parse(message);
+            } catch (e) {
+                print('error parsing Hifi-Object-Manipulation message');
+                return;
+            }
+            if (parsedMessage.action === 'grab') {
+                print("Gravity simulation stopped due to grab");
+                simulate = false;
+            }
+        }
+    }
+    this.handleMessages = handleMessages;
+
+    Messages.messageReceived.connect(this.handleMessages);
+    Messages.subscribe('Hifi-Object-Manipulation');
 });
