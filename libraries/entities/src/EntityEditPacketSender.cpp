@@ -57,6 +57,8 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
             return;
         }
 
+        qDebug() << "sending edit message for client-only entity" << entity->getName() << entity->getID();
+
         // the properties that get serialized into the avatar identity packet should be the entire set
         // rather than just the ones being edited.
         entity->setProperties(properties);
@@ -77,6 +79,8 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
         _myAvatar->updateAvatarEntity(entityItemID, binaryProperties);
         return;
     }
+
+    qDebug() << "sending edit message for server entity" << properties.getName() << entityItemID;
 
     QByteArray bufferOut(NLPacket::maxPayloadSize(type), 0);
 

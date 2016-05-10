@@ -1718,6 +1718,7 @@ void AvatarData::updateAvatarEntity(const QUuid& entityID, const QByteArray& ent
         QMetaObject::invokeMethod(this, "updateAvatarEntity", Q_ARG(const QUuid&, entityID), Q_ARG(QByteArray, entityData));
         return;
     }
+    qDebug() << "updating avatar entity for" << entityID;
     _avatarEntityData.insert(entityID, entityData);
     _avatarEntityDataLocallyEdited = true;
 }
@@ -1747,6 +1748,7 @@ void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
         return;
     }
     if (_avatarEntityData != avatarEntityData) {
+        qDebug() << "new avatarEntity data.  isMyAvatar =" << isMyAvatar();
         // keep track of entities that were attached to this avatar but no longer are
         AvatarEntityIDs previousAvatarEntityIDs = QSet<QUuid>::fromList(_avatarEntityData.keys());
 

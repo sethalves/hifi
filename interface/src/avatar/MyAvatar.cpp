@@ -311,6 +311,7 @@ void MyAvatar::update(float deltaTime) {
     head->setAudioAverageLoudness(audio->getAudioAverageInputLoudness());
 
     if (_avatarEntityDataLocallyEdited) {
+        qDebug() << "MyAvatar sees _avatarEntityDataLocallyEdited, calling sendIdentityPacket";
         sendIdentityPacket();
     }
 

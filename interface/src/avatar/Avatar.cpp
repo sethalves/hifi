@@ -224,12 +224,14 @@ void Avatar::updateAvatarEntities() {
             EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
 
             if (entity) {
+                qDebug() << "Avatar::updateAvatarEntities is updating" << entity->getName() << entity->getID();
                 if (!entityTree->updateEntity(entityID, properties)) {
                     qDebug() << "AVATAR-ENTITES -- updateEntity failed: " << properties.getType();
                     success = false;
                 }
             } else {
                 entity = entityTree->addEntity(entityID, properties);
+                qDebug() << "Avatar::updateAvatarEntities added" << entity->getName() << entity->getID();
                 if (!entity) {
                     qDebug() << "AVATAR-ENTITES -- addEntity failed: " << properties.getType();
                     success = false;
