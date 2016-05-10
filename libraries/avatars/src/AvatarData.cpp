@@ -1749,6 +1749,11 @@ void AvatarData::setAvatarEntityData(const AvatarEntityMap& avatarEntityData) {
     }
     if (_avatarEntityData != avatarEntityData) {
         qDebug() << "new avatarEntity data.  isMyAvatar =" << isMyAvatar();
+        for (auto entityID : avatarEntityData.keys()) {
+            QByteArray jsonByteArray = avatarEntityData.value(entityID);
+            qDebug() << QString(jsonByteArray);
+        }
+
         // keep track of entities that were attached to this avatar but no longer are
         AvatarEntityIDs previousAvatarEntityIDs = QSet<QUuid>::fromList(_avatarEntityData.keys());
 

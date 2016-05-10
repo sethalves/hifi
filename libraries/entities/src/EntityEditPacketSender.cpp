@@ -76,6 +76,9 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
         jsonProperties = QJsonDocument(jsonObject);
 
         QByteArray binaryProperties = jsonProperties.toBinaryData();
+
+        qDebug() << "encoded entity data is: " << QString(binaryProperties);
+
         _myAvatar->updateAvatarEntity(entityItemID, binaryProperties);
         return;
     }
