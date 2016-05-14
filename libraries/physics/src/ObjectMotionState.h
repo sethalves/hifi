@@ -22,6 +22,7 @@
 
 #include "ContactInfo.h"
 #include "ShapeManager.h"
+#include "ObjectMotionStateInterface.h"
 
 enum PhysicsMotionType {
     MOTION_TYPE_STATIC,     // no motion
@@ -64,7 +65,7 @@ const uint32_t OUTGOING_DIRTY_PHYSICS_FLAGS = Simulation::DIRTY_TRANSFORM | Simu
 class OctreeEditPacketSender;
 class PhysicsEngine;
 
-class ObjectMotionState : public btMotionState {
+class ObjectMotionState : public btMotionState, public ObjectMotionStateInterface {
 public:
     // These poroperties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
     // (assuming just one PhysicsEngine).  They are cached as statics for fast calculations in the

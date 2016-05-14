@@ -57,8 +57,6 @@ public:
 
     void updateEntities();
 
-//    friend class EntityTree;
-
     virtual void addAction(EntityActionPointer action);
     virtual void removeAction(const QUuid actionID);
     virtual void removeActions(QList<QUuid> actionIDsToRemove);

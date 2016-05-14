@@ -88,11 +88,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
-    if (simulation) {
-        clearActions(simulation);
-    }
+    clearActions();
 
     // these pointers MUST be correct at delete, else we probably have a dangling backpointer
     // to this EntityItem in the corresponding data structure.
@@ -1722,6 +1718,14 @@ void EntityItem::setPendingOwnershipPriority(quint8 priority, const quint64& tim
     _simulationOwner.setPendingPriority(priority, timestamp);
 }
 
+void EntityItem::setSimulation(EntitySimulationPointer simulation) {
+    _simulation = simulation;
+}
+
+EntitySimulationPointer EntityItem::getSimulation() {
+    return _simulation.lock();
+}
+
 QString EntityItem::actionsToDebugString() {
     QString result;
     QVector<QByteArray> serializedActions;
@@ -1736,12 +1740,12 @@ QString EntityItem::actionsToDebugString() {
     return result;
 }
 
-bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPointer action) {
+bool EntityItem::addAction(EntityActionPointer action) {
     bool result;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        checkWaitingToRemove();
 
-        result = addActionInternal(simulation, action);
+        result = addActionInternal(action);
         if (result) {
             action->setIsMine(true);
             _actionDataDirty = true;
@@ -1753,12 +1757,16 @@ bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPoint
     return result;
 }
 
-bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action) {
+bool EntityItem::addActionInternal(EntityActionPointer action) {
     assert(action);
-    assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
     assert(actionOwnerEntity);
     assert(actionOwnerEntity.get() == this);
+
+    EntitySimulationPointer simulation = getSimulation();
+    if (!simulation) {
+        return false;
+    }
 
     const QUuid& actionID = action->getID();
     assert(!_objectActions.contains(actionID) || _objectActions[actionID] == action);
@@ -1777,10 +1785,10 @@ bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityAct
     return success;
 }
 
-bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments) {
+bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& arguments) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        checkWaitingToRemove();
 
         if (!_objectActions.contains(actionID)) {
             return;
@@ -1800,21 +1808,22 @@ bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& a
     return success;
 }
 
-bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& actionID) {
+bool EntityItem::removeAction(const QUuid& actionID) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove(simulation);
+        checkWaitingToRemove();
         success = removeActionInternal(actionID);
     });
     return success;
 }
 
-bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation) {
+bool EntityItem::removeActionInternal(const QUuid& actionID) {
     _previouslyDeletedActions.insert(actionID, usecTimestampNow());
     if (_objectActions.contains(actionID)) {
+
+        EntitySimulationPointer simulation = getSimulation();
         if (!simulation) {
-            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
-            simulation = entityTree ? entityTree->getSimulation() : nullptr;
+            return false;
         }
 
         EntityActionPointer action = _objectActions[actionID];
@@ -1823,9 +1832,7 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
         action->setIsMine(false);
         _objectActions.remove(actionID);
 
-        if (simulation) {
-            action->removeFromSimulation(simulation);
-        }
+        action->removeFromSimulation(simulation);
 
         bool success = true;
         serializeActions(success, _allActionsDataCache);
@@ -1836,8 +1843,16 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
     return false;
 }
 
-bool EntityItem::clearActions(EntitySimulationPointer simulation) {
+bool EntityItem::clearActions() {
+    bool result = true;
     withWriteLock([&] {
+
+        EntitySimulationPointer simulation = getSimulation();
+        if (!simulation) {
+            result = false;
+            return;
+        }
+
         QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
         while (i != _objectActions.end()) {
             const QUuid id = i.key();
@@ -1851,7 +1866,7 @@ bool EntityItem::clearActions(EntitySimulationPointer simulation) {
         _allActionsDataCache.clear();
         _dirtyFlags |= Simulation::DIRTY_PHYSICS_ACTIVATION;
     });
-    return true;
+    return result;
 }
 
 
@@ -1869,11 +1884,6 @@ void EntityItem::deserializeActionsInternal() {
         qCDebug(entities) << "EntityItem::deserializeActionsInternal -- no _element";
         return;
     }
-
-    EntityTreePointer entityTree = getTree();
-    assert(entityTree);
-    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
-    assert(simulation);
 
     QVector<QByteArray> serializedActions;
     if (_allActionsDataCache.size() > 0) {
@@ -1907,14 +1917,14 @@ void EntityItem::deserializeActionsInternal() {
             EntityItemPointer entity = getThisPointer();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
-                entity->addActionInternal(simulation, action);
+                entity->addActionInternal(action);
                 updated << actionID;
             } else {
                 static QString repeatedMessage =
                     LogHandler::getInstance().addRepeatedMessageRegex(".*action creation failed for.*");
                 qCDebug(entities) << "EntityItem::deserializeActionsInternal -- action creation failed for"
                                   << getID() << getName();
-                removeActionInternal(actionID, nullptr);
+                removeActionInternal(actionID);
             }
         }
     }
@@ -1952,9 +1962,9 @@ void EntityItem::deserializeActionsInternal() {
     return;
 }
 
-void EntityItem::checkWaitingToRemove(EntitySimulationPointer simulation) {
+void EntityItem::checkWaitingToRemove() {
     foreach(QUuid actionID, _actionsToRemove) {
-        removeActionInternal(actionID, simulation);
+        removeActionInternal(actionID);
     }
     _actionsToRemove.clear();
 }

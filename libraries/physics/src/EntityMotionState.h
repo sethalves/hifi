@@ -1,6 +1,6 @@
 //
 //  EntityMotionState.h
-//  libraries/entities/src
+//  libraries/physics/src
 //
 //  Created by Andrew Meadows on 2014.11.06
 //  Copyright 2013 High Fidelity, Inc.

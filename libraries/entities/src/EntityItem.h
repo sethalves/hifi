@@ -34,6 +34,7 @@
 #include "SimulationOwner.h"
 #include "SimulationFlags.h"
 #include "EntityActionInterface.h"
+#include "ObjectMotionStateInterface.h"
 
 class EntitySimulation;
 class EntityTreeElement;
@@ -44,7 +45,7 @@ class EntityTree;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
 typedef std::shared_ptr<EntityActionInterface> EntityActionPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
-
+typedef std::weak_ptr<EntitySimulation> EntitySimulationWeakPointer;
 
 namespace render {
     class Scene;
@@ -361,9 +362,9 @@ public:
 
     bool isSimulated() const { return _simulated; }
 
-    void* getPhysicsInfo() const { return _physicsInfo; }
+    ObjectMotionStateInterface* getPhysicsInfo() const { return _physicsInfo; }
 
-    void setPhysicsInfo(void* data) { _physicsInfo = data; }
+    void setPhysicsInfo(ObjectMotionStateInterface* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
     EntityTreePointer getTree() const;
     virtual SpatialParentTree* getParentTree() const override;
@@ -383,10 +384,10 @@ public:
     void flagForMotionStateChange() { _dirtyFlags |= Simulation::DIRTY_MOTION_TYPE; }
 
     QString actionsToDebugString();
-    bool addAction(EntitySimulationPointer simulation, EntityActionPointer action);
-    bool updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments);
-    bool removeAction(EntitySimulationPointer simulation, const QUuid& actionID);
-    bool clearActions(EntitySimulationPointer simulation);
+    bool addAction(EntityActionPointer action);
+    bool updateAction(const QUuid& actionID, const QVariantMap& arguments);
+    bool removeAction(const QUuid& actionID);
+    bool clearActions();
     void setActionData(QByteArray actionData);
     const QByteArray getActionData() const;
     bool hasActions() const { return !_objectActions.empty(); }
@@ -430,6 +431,9 @@ public:
     bool shouldPreloadScript() const { return !_script.isEmpty() && 
                                               ((_loadedScript != _script) || (_loadedScriptTimestamp != _scriptTimestamp)); }
     void scriptHasPreloaded() { _loadedScript = _script; _loadedScriptTimestamp = _scriptTimestamp; }
+
+    void setSimulation(EntitySimulationPointer simulation);
+    EntitySimulationPointer getSimulation();
 
 protected:
 
@@ -519,11 +523,11 @@ protected:
 
     // these backpointers are only ever set/cleared by friends:
     EntityTreeElementPointer _element = nullptr; // set by EntityTreeElement
-    void* _physicsInfo = nullptr; // set by EntitySimulation
+    ObjectMotionStateInterface* _physicsInfo { nullptr }; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
-    bool addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action);
-    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation = nullptr);
+    bool addActionInternal(EntityActionPointer action);
+    bool removeActionInternal(const QUuid& actionID);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
@@ -534,7 +538,7 @@ protected:
     // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
     // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
     // are used to keep track of and work around this situation.
-    void checkWaitingToRemove(EntitySimulationPointer simulation = nullptr);
+    void checkWaitingToRemove();
     mutable QSet<QUuid> _actionsToRemove;
     mutable bool _actionDataDirty = false;
     mutable bool _actionDataNeedsTransmit = false;
@@ -543,6 +547,8 @@ protected:
     mutable QHash<QUuid, quint64> _previouslyDeletedActions;
 
     QUuid _sourceUUID; /// the server node UUID we came from
+
+    EntitySimulationWeakPointer _simulation;
 };
 
 #endif // hifi_EntityItem_h

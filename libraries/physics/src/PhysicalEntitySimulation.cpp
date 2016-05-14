@@ -138,6 +138,7 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
     for (auto entity : _entitiesToDelete) {
         EntityMotionState* motionState = static_cast<EntityMotionState*>(entity->getPhysicsInfo());
         if (motionState) {
+            entity->setSimulation(nullptr);
             entity->setPhysicsInfo(nullptr);
             delete motionState;
         }
@@ -156,7 +157,7 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
 void PhysicalEntitySimulation::prepareEntityForDelete(EntityItemPointer entity) {
     assert(entity);
     assert(entity->isDead());
-    entity->clearActions(getThisPointer());
+    entity->clearActions();
     removeEntityInternal(entity);
 }
 // end EntitySimulation overrides
@@ -189,6 +190,7 @@ void PhysicalEntitySimulation::deleteObjectsRemovedFromPhysics() {
     for (auto entity: _entitiesToRelease) {
         EntityMotionState* motionState = static_cast<EntityMotionState*>(entity->getPhysicsInfo());
         assert(motionState);
+        entity->setSimulation(nullptr);
         entity->setPhysicsInfo(nullptr);
         delete motionState;
 
@@ -220,7 +222,8 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
             btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
             if (shape) {
                 EntityMotionState* motionState = new EntityMotionState(shape, entity);
-                entity->setPhysicsInfo(static_cast<void*>(motionState));
+                entity->setPhysicsInfo(motionState);
+                entity->setSimulation(getThisPointer());
                 _physicalObjects.insert(motionState);
                 result.push_back(motionState);
                 entityItr = _entitiesToAddToPhysics.erase(entityItr);
