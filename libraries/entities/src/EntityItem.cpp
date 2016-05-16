@@ -31,6 +31,7 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "EntityActionFactoryInterface.h"
+#include "SimulationTracker.h"
 
 
 int EntityItem::_maxActionsDataSize = 800;
@@ -1718,12 +1719,44 @@ void EntityItem::setPendingOwnershipPriority(quint8 priority, const quint64& tim
     _simulationOwner.setPendingPriority(priority, timestamp);
 }
 
+EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
+    // search upward through parents for a zone
+    bool success = true;
+    for (SpatiallyNestablePointer ancestor = SpatiallyNestable::findByID(parentID, success);
+         ancestor && success;
+         ancestor = ancestor->getParentPointer(success)) {
+        if (ancestor->getNestableType() == NestableType::Entity) {
+            EntityItemPointer ancestorEntity = std::static_pointer_cast<EntityItem>(ancestor);
+            if (ancestorEntity->getType() == EntityTypes::Zone) {
+                return ancestorEntity;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 void EntityItem::setSimulation(EntitySimulationPointer simulation) {
     _simulation = simulation;
 }
 
 EntitySimulationPointer EntityItem::getSimulation() {
-    return _simulation.lock();
+    // this returns the simulation that *should* contain this entity, even if it doesn't, yet.
+    EntitySimulationPointer result = _simulation.lock();
+    if (result) {
+        return result;
+    }
+
+    EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
+    if (ancestorZone) {
+        result = ancestorZone->getChildSimulation();
+        _simulation = result;
+        return result;
+    }
+
+    // no parent zones, so use the world-frame simulation
+    auto simulationTracker = DependencyManager::get<SimulationTracker>();
+    return simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
 }
 
 QString EntityItem::actionsToDebugString() {
@@ -1847,7 +1880,7 @@ bool EntityItem::clearActions() {
     bool result = true;
     withWriteLock([&] {
 
-        EntitySimulationPointer simulation = getSimulation();
+        EntitySimulationPointer simulation = _simulation.lock();
         if (!simulation) {
             result = false;
             return;

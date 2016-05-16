@@ -71,7 +71,6 @@ private slots:
     void handleEntityPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
 
 private:
-    SimpleEntitySimulationPointer _entitySimulation;
     QTimer* _pruneDeletedEntitiesTimer = nullptr;
 
     QReadWriteLock _viewerSendingStatsLock;

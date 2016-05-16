@@ -24,13 +24,13 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
+#include "SimulationTracker.h"
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 
 EntityTree::EntityTree(bool shouldReaverage) :
     Octree(shouldReaverage),
-    _fbxService(NULL),
-    _simulation(NULL)
+    _fbxService(NULL)
 {
     resetClientEditStats();
 }
@@ -53,9 +53,11 @@ void EntityTree::eraseAllOctreeElements(bool createNewRoot) {
     emit clearingEntities();
 
     // this would be a good place to clean up our entities...
-    if (_simulation) {
-        _simulation->clearEntities();
-    }
+    auto simulationTracker = DependencyManager::get<SimulationTracker>();
+    simulationTracker->forEachSimulation([](EntitySimulationPointer simulation){
+        simulation->clearEntities();
+    });
+
     {
         QWriteLocker locker(&_entityToElementLock);
         foreach(EntityTreeElementPointer element, _entityToElementMap) {
@@ -85,8 +87,9 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
 void EntityTree::postAddEntity(EntityItemPointer entity) {
     assert(entity);
     // check to see if we need to simulate this entity..
-    if (_simulation) {
-        _simulation->addEntity(entity);
+    auto simulation = entity->getSimulation();
+    if (simulation) {
+        simulation->addEntity(entity);
     }
 
     if (!entity->isParentIDValid()) {
@@ -279,12 +282,13 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
 
         uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
         if (newFlags) {
-            if (_simulation) {
+            EntitySimulationPointer simulation = entity->getSimulation();
+            if (simulation) {
                 if (newFlags & DIRTY_SIMULATION_FLAGS) {
-                    _simulation->changeEntity(entity);
+                    simulation->changeEntity(entity);
                 }
             } else {
-                // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
+                // normally the simulation clears ALL updateFlags, but since there is none we do it explicitly
                 entity->clearDirtyFlags();
             }
         }
@@ -365,18 +369,12 @@ void EntityTree::notifyNewCollisionSoundURL(const QString& newURL, const EntityI
     emit newCollisionSoundURL(QUrl(newURL), entityID);
 }
 
-void EntityTree::setSimulation(EntitySimulationPointer simulation) {
+void EntityTree::clearSimulationEntities() {
     this->withWriteLock([&] {
-        if (simulation) {
-            // assert that the simulation's backpointer has already been properly connected
-            assert(simulation->getEntityTree().get() == this);
-        }
-        if (_simulation && _simulation != simulation) {
-            // It's important to clearEntities() on the simulation since taht will update each
-            // EntityItem::_simulationState correctly so as to not confuse the next _simulation.
-            _simulation->clearEntities();
-        }
-        _simulation = simulation;
+        auto simulationTracker = DependencyManager::get<SimulationTracker>();
+        simulationTracker->forEachSimulation([](EntitySimulationPointer simulation){
+            simulation->clearEntities();
+        });
     });
 }
 
@@ -481,8 +479,9 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
             trackDeletedEntity(theEntity->getEntityItemID());
         }
 
-        if (_simulation) {
-            _simulation->prepareEntityForDelete(theEntity);
+        EntitySimulationPointer simulation = theEntity->getSimulation();
+        if (simulation) {
+            simulation->prepareEntityForDelete(theEntity);
         }
     }
 }
@@ -1009,8 +1008,9 @@ void EntityTree::releaseSceneEncodeData(OctreeElementExtraEncodeData* extraEncod
 }
 
 void EntityTree::entityChanged(EntityItemPointer entity) {
-    if (_simulation) {
-        _simulation->changeEntity(entity);
+    EntitySimulationPointer simulation = entity->getSimulation();
+    if (simulation) {
+        simulation->changeEntity(entity);
     }
 }
 
@@ -1086,11 +1086,13 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
 
 void EntityTree::update() {
     fixupMissingParents();
-    if (_simulation) {
+
+    auto simulationTracker = DependencyManager::get<SimulationTracker>();
+    simulationTracker->forEachSimulation([this](EntitySimulationPointer simulation){
         withWriteLock([&] {
-            _simulation->updateEntities();
+            simulation->updateEntities();
             VectorOfEntities pendingDeletes;
-            _simulation->takeEntitiesToDelete(pendingDeletes);
+            simulation->takeEntitiesToDelete(pendingDeletes);
 
             if (pendingDeletes.size() > 0) {
                 // translate into list of ID's
@@ -1104,7 +1106,7 @@ void EntityTree::update() {
                 deleteEntities(idsToDelete, true);
             }
         });
-    }
+    });
 }
 
 quint64 EntityTree::getAdjustedConsiderSince(quint64 sinceTime) {

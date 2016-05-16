@@ -27,6 +27,7 @@
 #include "world.h"
 #include "Rig.h"
 #include <ThreadSafeValueCache.h>
+#include "EntitySimulation.h"
 
 namespace render {
     template <> const ItemKey payloadGetKey(const AvatarSharedPointer& avatar);
@@ -173,6 +174,9 @@ public:
     glm::vec3 getUncachedRightPalmPosition() const;
     glm::quat getUncachedRightPalmRotation() const;
 
+    void setSimulation(EntitySimulationPointer simulation);
+    EntitySimulationPointer getSimulation();
+
 public slots:
 
     // FIXME - these should be migrated to use Pose data instead
@@ -259,6 +263,7 @@ private:
     int _voiceSphereID;
 
     AvatarMotionState* _motionState = nullptr;
+    EntitySimulationWeakPointer _simulation;
 };
 
 #endif // hifi_Avatar_h

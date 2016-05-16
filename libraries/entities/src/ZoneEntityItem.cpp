@@ -19,6 +19,7 @@
 #include "EntityTree.h"
 #include "EntityTreeElement.h"
 #include "ZoneEntityItem.h"
+#include "SimulationTracker.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
 bool ZoneEntityItem::_drawZoneBoundaries = false;
@@ -191,9 +192,20 @@ void ZoneEntityItem::setCompoundShapeURL(const QString& url) {
 }
 
 bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElementPointer& element, float& distance, 
+                         bool& keepSearching, OctreeElementPointer& element, float& distance,
                          BoxFace& face, glm::vec3& surfaceNormal,
                          void** intersectedObject, bool precisionPicking) const {
 
     return _zonesArePickable;
+}
+
+EntitySimulationPointer ZoneEntityItem::getChildSimulation() {
+    auto simulationTracker = DependencyManager::get<SimulationTracker>();
+    EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(getID());
+    if (!simulation) {
+        // XXX
+        qDebug() << "FIX THIS";
+        simulation = simulationTracker->getSimulationByKey(QUuid());
+    }
+    return simulation;
 }

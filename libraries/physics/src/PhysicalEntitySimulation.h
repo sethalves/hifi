@@ -60,6 +60,7 @@ public:
     void handleCollisionEvents(const CollisionEvents& collisionEvents);
 
     EntityEditPacketSender* getPacketSender() { return _entityPacketSender; }
+    PhysicsEnginePointer getPhysicsEngine() { return _physicsEngine; }
 
 private:
     SetOfEntities _entitiesToRemoveFromPhysics;

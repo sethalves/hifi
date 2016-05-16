@@ -12,7 +12,6 @@
 
 #include "EntityItemID.h"
 #include <VariantMapToScriptValue.h>
-#include <SpatialParentFinder.h>
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
@@ -773,12 +772,12 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID, std::function
     EntityItemPointer entity;
     bool doTransmit = false;
     _entityTree->withWriteLock([&] {
-        EntitySimulationPointer simulation = _entityTree->getSimulation();
         entity = _entityTree->findEntityByEntityItemID(entityID);
         if (!entity) {
             qDebug() << "actionWorker -- unknown entity" << entityID;
             return;
         }
+        EntitySimulationPointer simulation = entity->getSimulation();
 
         if (!simulation) {
             qDebug() << "actionWorker -- no simulation" << entityID;
@@ -1091,17 +1090,9 @@ QVector<QUuid> EntityScriptingInterface::getChildrenIDsOfJoint(const QUuid& pare
         return result;
     }
     _entityTree->withReadLock([&] {
-        QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
-        if (!parentFinder) {
-            return;
-        }
         bool success;
-        SpatiallyNestableWeakPointer parentWP = parentFinder->find(parentID, success);
-        if (!success) {
-            return;
-        }
-        SpatiallyNestablePointer parent = parentWP.lock();
-        if (!parent) {
+        SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
+        if (!parent || !success) {
             return;
         }
         parent->forEachChild([&](SpatiallyNestablePointer child) {

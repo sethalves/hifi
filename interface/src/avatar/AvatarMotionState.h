@@ -66,6 +66,8 @@ public:
     friend class AvatarManager;
     friend class Avatar;
 
+    Avatar* getAvatar() { return _avatar; }
+
 protected:
     // the dtor had been made protected to force the compiler to verify that it is only
     // ever called by the Avatar class dtor.

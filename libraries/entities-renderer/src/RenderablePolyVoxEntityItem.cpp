@@ -936,8 +936,9 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
 
     EntityTreeElementPointer element = getElement();
     EntityTreePointer tree = element ? element->getTree() : nullptr;
+    EntitySimulationPointer simulation = getSimulation();
 
-    QtConcurrent::run([voxelXSize, voxelYSize, voxelZSize, entity, tree] {
+    QtConcurrent::run([voxelXSize, voxelYSize, voxelZSize, entity, tree, simulation] {
         int rawSize = voxelXSize * voxelYSize * voxelZSize;
         QByteArray uncompressedData = QByteArray(rawSize, '\0');
 
@@ -977,7 +978,6 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
             properties.setVoxelDataDirty();
             properties.setLastEdited(now);
 
-            EntitySimulationPointer simulation = tree ? tree->getSimulation() : nullptr;
             PhysicalEntitySimulationPointer peSimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
             EntityEditPacketSender* packetSender = peSimulation ? peSimulation->getPacketSender() : nullptr;
             if (packetSender) {

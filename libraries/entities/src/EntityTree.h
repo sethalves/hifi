@@ -29,8 +29,6 @@ class Model;
 using ModelPointer = std::shared_ptr<Model>;
 using ModelWeakPointer = std::weak_ptr<Model>;
 
-class EntitySimulation;
-
 class NewlyCreatedEntityHook {
 public:
     virtual void entityCreated(const EntityItem& newEntity, const SharedNodePointer& senderNode) = 0;
@@ -194,8 +192,7 @@ public:
 
     void emitEntityScriptChanging(const EntityItemID& entityItemID, const bool reload);
 
-    void setSimulation(EntitySimulationPointer simulation);
-    EntitySimulationPointer getSimulation() const { return _simulation; }
+    void clearSimulationEntities();
 
     bool wantEditLogging() const { return _wantEditLogging; }
     void setWantEditLogging(bool value) { _wantEditLogging = value; }
@@ -298,8 +295,6 @@ protected:
 
     mutable QReadWriteLock _entityToElementLock;
     QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
-
-    EntitySimulationPointer _simulation;
 
     bool _wantEditLogging = false;
     bool _wantTerseEditLogging = false;

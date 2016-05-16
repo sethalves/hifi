@@ -432,8 +432,11 @@ public:
                                               ((_loadedScript != _script) || (_loadedScriptTimestamp != _scriptTimestamp)); }
     void scriptHasPreloaded() { _loadedScript = _script; _loadedScriptTimestamp = _scriptTimestamp; }
 
+    static EntityItemPointer findAncestorZone(QUuid parentID);
+
     void setSimulation(EntitySimulationPointer simulation);
     EntitySimulationPointer getSimulation();
+    virtual EntitySimulationPointer getChildSimulation() { return nullptr; }
 
 protected:
 

@@ -181,6 +181,10 @@ void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
     }
 }
 
+void PhysicsEngine::addObject(ObjectMotionState* object) {
+    addObjectToDynamicsWorld(object);
+}
+
 VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& objects) {
     VectorOfMotionStates stillNeedChange;
     for (auto object : objects) {

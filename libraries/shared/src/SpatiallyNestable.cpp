@@ -903,3 +903,15 @@ void SpatiallyNestable::setLocalTransformAndVelocities(
     });
     locationChanged(false);
 }
+
+SpatiallyNestablePointer SpatiallyNestable::findByID(QUuid id, bool& success) {
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        return nullptr;
+    }
+    SpatiallyNestableWeakPointer parentWP = parentFinder->find(id, success);
+    if (!success) {
+        return nullptr;
+    }
+    return parentWP.lock();
+}

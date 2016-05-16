@@ -20,6 +20,7 @@
 #include <ViewFrustum.h>
 
 #include "EntityTree.h"
+#include "SimulationTracker.h"
 
 class EntitySimulation;
 
@@ -50,6 +51,7 @@ protected:
     }
 
     EntitySimulationPointer _simulation;
+    SimulationTracker simulationTracker;
 };
 
 #endif // hifi_EntityTreeHeadlessViewer_h

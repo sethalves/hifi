@@ -80,7 +80,9 @@ public:
 
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
-    
+
+    virtual EntitySimulationPointer getChildSimulation() override;
+
 protected:
     KeyLightPropertyGroup _keyLightProperties;
     

@@ -17,6 +17,7 @@ EntityTreeHeadlessViewer::EntityTreeHeadlessViewer()
 }
 
 EntityTreeHeadlessViewer::~EntityTreeHeadlessViewer() {
+    simulationTracker.removeSimulation(QUuid());
 }
 
 void EntityTreeHeadlessViewer::init() {
@@ -25,7 +26,7 @@ void EntityTreeHeadlessViewer::init() {
         SimpleEntitySimulationPointer simpleSimulation { new SimpleEntitySimulation() };
         EntityTreePointer entityTree = std::static_pointer_cast<EntityTree>(_tree);
         simpleSimulation->setEntityTree(entityTree);
-        entityTree->setSimulation(simpleSimulation);
+        simulationTracker.addSimulation(QUuid(), simpleSimulation);
         _simulation = simpleSimulation;
     }
 }

@@ -143,13 +143,15 @@ public:
     virtual SpatialParentTree* getParentTree() const { return nullptr; }
 
     bool hasAncestorOfType(NestableType nestableType);
+    SpatiallyNestablePointer getParentPointer(bool& success) const;
+
+    static SpatiallyNestablePointer findByID(QUuid id, bool& success);
 
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
     QUuid _id;
     QUuid _parentID; // what is this thing's transform relative to?
     quint16 _parentJointIndex { 0 }; // which joint of the parent is this relative to?
-    SpatiallyNestablePointer getParentPointer(bool& success) const;
 
     void getLocalTransformAndVelocities(Transform& localTransform, glm::vec3& localVelocity, glm::vec3& localAngularVelocity) const;
 
