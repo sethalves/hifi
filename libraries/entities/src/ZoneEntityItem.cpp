@@ -20,6 +20,7 @@
 #include "EntityTreeElement.h"
 #include "ZoneEntityItem.h"
 #include "SimulationTracker.h"
+#include "EntitySimulation.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
 bool ZoneEntityItem::_drawZoneBoundaries = false;
@@ -202,10 +203,9 @@ bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const 
 EntitySimulationPointer ZoneEntityItem::getChildSimulation() {
     auto simulationTracker = DependencyManager::get<SimulationTracker>();
     EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(getID());
-    if (!simulation) {
-        // XXX
-        qDebug() << "FIX THIS";
-        simulation = simulationTracker->getSimulationByKey(QUuid());
+    if (simulation) {
+        return simulation;
     }
-    return simulation;
+    EntityTreePointer tree = getTree();
+    return simulationTracker->newSimulation(getID(), tree);
 }

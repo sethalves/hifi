@@ -9,16 +9,22 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "SimpleEntitySimulation.h"
 #include "SimulationTracker.h"
 
 
 const QUuid SimulationTracker::DEFAULT_SIMULATOR_ID = QUuid();
 
 
-void SimulationTracker::addSimulation(QUuid key, EntitySimulationPointer simulation) {
+EntitySimulationPointer SimulationTracker::newSimulation(QUuid key, EntityTreePointer tree) {
+    SimpleEntitySimulationPointer simulation { new SimpleEntitySimulation() };
+    simulation->setEntityTree(tree);
+
     _simulationsLock.withWriteLock([&] {
         _simulations[key] = simulation;
     });
+
+    return simulation;
 }
 
 void SimulationTracker::removeSimulation(QUuid key) {
@@ -28,10 +34,13 @@ void SimulationTracker::removeSimulation(QUuid key) {
 }
 
 EntitySimulationPointer SimulationTracker::getSimulationByKey(QUuid key) {
-    if (_simulations.count(key)) {
-        return _simulations[key];
-    }
-    return nullptr;
+    EntitySimulationPointer result;
+    _simulationsLock.withReadLock([&] {
+        if (_simulations.count(key)) {
+            result = _simulations[key];
+        }
+    });
+    return result;
 }
 
 void SimulationTracker::forEachSimulation(std::function<void(EntitySimulationPointer)> actor) {

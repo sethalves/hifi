@@ -59,11 +59,8 @@ OctreePointer EntityServer::createTree() {
     DependencyManager::set<SimulationTracker>();
     auto simulationTracker = DependencyManager::get<SimulationTracker>();
     auto simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-
     if (!simulation) {
-        SimpleEntitySimulationPointer simpleSimulation { new SimpleEntitySimulation() };
-        simulationTracker->addSimulation(QUuid(), simpleSimulation);
-        simpleSimulation->setEntityTree(tree);
+        simulation = simulationTracker->newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, tree);
     }
     tree->clearSimulationEntities();
 

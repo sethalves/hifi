@@ -14,6 +14,7 @@
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
 #include "ShapeManager.h"
+#include "SimulationTracker.h"
 
 #include "PhysicalEntitySimulation.h"
 
@@ -33,8 +34,16 @@ void PhysicalEntitySimulation::init(
     assert(physicsEngine);
     _physicsEngine = physicsEngine;
 
-    assert(packetSender);
-    _entityPacketSender = packetSender;
+    if (packetSender) {
+        _entityPacketSender = packetSender;
+    } else {
+        auto simulationTracker = DependencyManager::get<SimulationTracker>();
+        EntitySimulationPointer defaultSimulation =
+            simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+        PhysicalEntitySimulationPointer peDefaultSimulation =
+            std::static_pointer_cast<PhysicalEntitySimulation>(defaultSimulation);
+        _entityPacketSender = peDefaultSimulation->getPacketSender();
+    }
 }
 
 // begin EntitySimulation overrides

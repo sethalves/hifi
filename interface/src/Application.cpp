@@ -149,7 +149,7 @@
 #include "ui/UpdateDialog.h"
 #include "Util.h"
 #include "InterfaceParentFinder.h"
-#include "SimulationTracker.h"
+#include "PhysicalSimulationTracker.h"
 
 #include "FrameTimingsScriptingInterface.h"
 
@@ -404,6 +404,7 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::registerInheritance<AvatarHashMap, AvatarManager>();
     DependencyManager::registerInheritance<EntityActionFactoryInterface, InterfaceActionFactory>();
     DependencyManager::registerInheritance<SpatialParentFinder, InterfaceParentFinder>();
+    DependencyManager::registerInheritance<SimulationTracker, PhysicalSimulationTracker>();
 
     Setting::init();
 
@@ -459,7 +460,7 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::set<InterfaceParentFinder>();
     DependencyManager::set<EntityTreeRenderer>(true, qApp, qApp);
     DependencyManager::set<CompositorHelper>();
-    DependencyManager::set<SimulationTracker>();
+    DependencyManager::set<PhysicalSimulationTracker>();
     return previousSessionCrashed;
 }
 
@@ -2995,20 +2996,12 @@ void Application::init() {
     ObjectMotionState::setShapeManager(&_shapeManager);
 
     EntityTreePointer tree = getEntities()->getTree();
-    PhysicalEntitySimulationPointer entitySimulation { new PhysicalEntitySimulation() };
-    PhysicsEnginePointer physicsEngine { new PhysicsEngine(Vectors::ZERO) };
-    physicsEngine->init();
-    entitySimulation->init(tree, physicsEngine, &_entityEditSender);
-
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    simulationTracker->addSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, entitySimulation);
-    tree->clearSimulationEntities();
+    auto simulationTracker = DependencyManager::get<PhysicalSimulationTracker>();
+    simulationTracker->setEntityEditPacketSender(&_entityEditSender);
+    EntitySimulationPointer simulation = simulationTracker->newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, tree);
+    PhysicalEntitySimulationPointer entitySimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
-
-    // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
-    connect(entitySimulation.get(), &EntitySimulation::entityCollisionWithEntity,
-            getEntities(), &EntityTreeRenderer::entityCollisionWithEntity);
 
     // connect the _entities (EntityTreeRenderer) to our script engine's EntityScriptingInterface for firing
     // of events related clicking, hovering over, and entering entities
