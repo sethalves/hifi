@@ -14,6 +14,9 @@
 #define hifi_ObjectMotionStateInterface_h
 
 class ObjectMotionStateInterface {
+ public:
+    // include virtual destructor to force objects to be polymorphic so that dynamic_cast works
+    virtual ~ObjectMotionStateInterface() {}
 };
 
 #endif // hifi_ObjectMotionStateInterface_h

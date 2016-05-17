@@ -119,11 +119,11 @@ void ObjectActionSpring::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        void* physicsInfo = ownerEntity->getPhysicsInfo();
+        ObjectMotionStateInterface* physicsInfo = ownerEntity->getPhysicsInfo();
         if (!physicsInfo) {
             return;
         }
-        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
+        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(physicsInfo);
         btRigidBody* rigidBody = motionState->getRigidBody();
         if (!rigidBody) {
             qDebug() << "ObjectActionSpring::updateActionWorker no rigidBody";

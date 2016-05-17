@@ -153,11 +153,11 @@ btRigidBody* ObjectAction::getRigidBody() {
         if (!ownerEntity) {
             return;
         }
-        void* physicsInfo = ownerEntity->getPhysicsInfo();
+        ObjectMotionStateInterface* physicsInfo = ownerEntity->getPhysicsInfo();
         if (!physicsInfo) {
             return;
         }
-        motionState = static_cast<ObjectMotionState*>(physicsInfo);
+        motionState = dynamic_cast<ObjectMotionState*>(physicsInfo);
     });
     if (motionState) {
         return motionState->getRigidBody();
@@ -251,8 +251,8 @@ void ObjectAction::forceBodyNonStatic() {
     if (!ownerEntity) {
         return;
     }
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
+    ObjectMotionStateInterface* physicsInfo = ownerEntity->getPhysicsInfo();
+    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(physicsInfo);
     if (motionState && motionState->getMotionType() == MOTION_TYPE_STATIC) {
         ownerEntity->flagForMotionStateChange();
     }
