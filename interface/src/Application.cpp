@@ -2988,6 +2988,7 @@ void Application::init() {
     simulationTracker->setEntityEditPacketSender(&_entityEditSender);
     EntitySimulationPointer simulation = simulationTracker->newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, tree);
     PhysicalEntitySimulationPointer entitySimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+    tree->clearSimulationEntities();
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
 
@@ -4886,11 +4887,7 @@ void Application::checkSkeleton() const {
 
         getMyAvatar()->useFullAvatarURL(AvatarData::defaultFullAvatarModelUrl(), DEFAULT_FULL_AVATAR_MODEL_NAME);
     } else {
-        auto simulationTracker = DependencyManager::get<SimulationTracker>();
-        EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-        PhysicalEntitySimulationPointer peSimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-        PhysicsEnginePointer defaultPhysicsEngine = peSimulation->getPhysicsEngine();
-        defaultPhysicsEngine->setCharacterController(getMyAvatar()->getCharacterController());
+        getDefaultPhysicsEngine()->setCharacterController(getMyAvatar()->getCharacterController());
     }
 }
 
@@ -5353,4 +5350,15 @@ PhysicalEntitySimulationPointer getSimulationFromAvatarMotionState(ObjectMotionS
 PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState) {
     PhysicalEntitySimulationPointer peSimulation = getSimulationFromAvatarMotionState(motionState);
     return peSimulation ? peSimulation->getPhysicsEngine() : nullptr;
+}
+
+PhysicalEntitySimulationPointer getDefaultSimulation() {
+    auto simulationTracker = DependencyManager::get<SimulationTracker>();
+    EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+    return std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+}
+
+PhysicsEnginePointer getDefaultPhysicsEngine() {
+    PhysicalEntitySimulationPointer defaultSimulation = getDefaultSimulation();
+    return defaultSimulation ? defaultSimulation->getPhysicsEngine() : nullptr;
 }

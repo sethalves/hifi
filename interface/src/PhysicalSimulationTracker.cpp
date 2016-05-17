@@ -28,8 +28,6 @@ EntitySimulationPointer PhysicalSimulationTracker::newSimulation(QUuid key, Enti
         _simulations[key] = entitySimulation;
     });
 
-    tree->clearSimulationEntities();
-
     // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
     QObject::connect(entitySimulation.get(), SIGNAL(&EntitySimulation::entityCollisionWithEntity),
                      tree.get(), SLOT(&EntityTreeRenderer::entityCollisionWithEntity));

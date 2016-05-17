@@ -206,6 +206,9 @@ EntitySimulationPointer ZoneEntityItem::getChildSimulation() {
     if (simulation) {
         return simulation;
     }
+
+    // This doesn't get called unless this entity has a child.  If this entity has a child but no simulation,
+    // we need to create a new simulation.
     EntityTreePointer tree = getTree();
     return simulationTracker->newSimulation(getID(), tree);
 }

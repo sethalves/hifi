@@ -532,5 +532,7 @@ void forEachSimulation(std::function<void(EntitySimulationPointer)> actor);
 void forEachPhysicsEngine(std::function<void(PhysicalEntitySimulationPointer, PhysicsEnginePointer)> actor);
 PhysicalEntitySimulationPointer getSimulationFromAvatarMotionState(ObjectMotionState* motionState);
 PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState);
+PhysicalEntitySimulationPointer getDefaultSimulation();
+PhysicsEnginePointer getDefaultPhysicsEngine();
 
 #endif // hifi_Application_h
