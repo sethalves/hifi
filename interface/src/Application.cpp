@@ -4886,10 +4886,11 @@ void Application::checkSkeleton() const {
 
         getMyAvatar()->useFullAvatarURL(AvatarData::defaultFullAvatarModelUrl(), DEFAULT_FULL_AVATAR_MODEL_NAME);
     } else {
-        EntitySimulationPointer simulation = getMyAvatar()->getSimulation();
+        auto simulationTracker = DependencyManager::get<SimulationTracker>();
+        EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
         PhysicalEntitySimulationPointer peSimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-        PhysicsEnginePointer physicsEngine = peSimulation->getPhysicsEngine();
-        physicsEngine->setCharacterController(getMyAvatar()->getCharacterController());
+        PhysicsEnginePointer defaultPhysicsEngine = peSimulation->getPhysicsEngine();
+        defaultPhysicsEngine->setCharacterController(getMyAvatar()->getCharacterController());
     }
 }
 
