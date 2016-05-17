@@ -169,6 +169,8 @@ enum EntityPropertyList {
 
     PROP_FALLOFF_RADIUS, // for Light entity
 
+    PROP_LOCALIZED_SIMULATION, // does a zone localize the physics of its children?
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,

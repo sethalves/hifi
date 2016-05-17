@@ -1728,16 +1728,15 @@ EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
         if (ancestor->getNestableType() == NestableType::Entity) {
             EntityItemPointer ancestorEntity = std::static_pointer_cast<EntityItem>(ancestor);
             if (ancestorEntity->getType() == EntityTypes::Zone) {
-                return ancestorEntity;
+                EntityPropertyFlags localizedSimulationFlags { PROP_LOCALIZED_SIMULATION };
+                if (ancestorEntity->getProperties(localizedSimulationFlags).getLocalizedSimulation()) {
+                    return ancestorEntity;
+                }
             }
         }
     }
 
     return nullptr;
-}
-
-void EntityItem::setSimulation(EntitySimulationPointer simulation) {
-    _simulation = simulation;
 }
 
 EntitySimulationPointer EntityItem::getSimulation() {

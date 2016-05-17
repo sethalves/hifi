@@ -122,6 +122,6 @@ private:
     bool _hasOutgoingChanges = false;
 };
 
-typedef std::shared_ptr<PhysicsEngine> PhysicsEnginePointer;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
 
 #endif // hifi_PhysicsEngine_h

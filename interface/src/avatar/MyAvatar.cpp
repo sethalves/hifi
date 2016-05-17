@@ -323,6 +323,8 @@ void MyAvatar::update(float deltaTime) {
     emit energyChanged(currentEnergy);
 
     updateEyeContactTarget(deltaTime);
+
+    handleZoneChange();
 }
 
 void MyAvatar::updateEyeContactTarget(float deltaTime) {
@@ -2099,4 +2101,56 @@ bool MyAvatar::didTeleport() {
     glm::vec3 changeInPosition = pos - lastPosition;
     lastPosition = pos;
     return (changeInPosition.length() > MAX_AVATAR_MOVEMENT_PER_FRAME);
+}
+
+
+#define WANT_DEBUG 1
+
+void MyAvatar::handleZoneChange() {
+    EntityTreeRenderer* treeRenderer = qApp->getEntities();
+    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
+    QUuid zoneID = zone ? zone->getID() : QUuid();
+
+    if (zoneID != _currentZoneID) {
+
+        #ifdef WANT_DEBUG
+        if (zoneID == QUuid()) {
+            qDebug() << "leaving zone" << _currentZoneID;
+        } else if (_currentZoneID == QUuid()) {
+            qDebug() << "entering zone" << zoneID;
+        } else {
+            qDebug() << "leaving zone" << _currentZoneID << "and entering zone" << zoneID;
+        }
+        #endif
+
+        _currentZoneID = zoneID;
+
+        // remove character controller from old simulation
+        PhysicsEnginePointer beforePhysicsEngine = getPhysicsEngine();
+        if (beforePhysicsEngine) {
+            _characterController.setEnabled(false);
+            beforePhysicsEngine->setCharacterController(nullptr);
+        }
+
+        // adjust position and velocity for new frame
+        bool success;
+        Transform beforeTransform = getTransform(success);
+        glm::vec3 beforeVelocity = getVelocity();
+        glm::vec3 beforeAngularVelocity = getAngularVelocity();
+        if (success) {
+            setParentID(_currentZoneID);
+            // these will reset world-frame properties, which will be "backed-into" the local transform for the new parent
+            setTransform(beforeTransform, success);
+            setVelocity(beforeVelocity);
+            setAngularVelocity(beforeAngularVelocity);
+            clearSimulation(); // this will cause getSimulation to re-search for the our containing zone
+        }
+
+        // add character controller to new simulation
+        PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
+        if (afterPhysicsEngine) {
+            afterPhysicsEngine->setCharacterController(getCharacterController());
+            _characterController.setEnabled(true);
+        }
+    }
 }

@@ -35,6 +35,9 @@ namespace render {
     template <> void payloadRender(const AvatarSharedPointer& avatar, RenderArgs* args);
 }
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+
 static const float SCALING_RATIO = .05f;
 static const float SMOOTHING_RATIO = .05f; // 0 < ratio < 1
 
@@ -174,8 +177,8 @@ public:
     glm::vec3 getUncachedRightPalmPosition() const;
     glm::quat getUncachedRightPalmRotation() const;
 
-    void setSimulation(EntitySimulationPointer simulation);
-    EntitySimulationPointer getSimulation();
+    virtual EntitySimulationPointer getSimulation() override;
+    PhysicsEnginePointer getPhysicsEngine();
 
 public slots:
 
@@ -263,7 +266,6 @@ private:
     int _voiceSphereID;
 
     AvatarMotionState* _motionState = nullptr;
-    EntitySimulationWeakPointer _simulation;
 };
 
 #endif // hifi_Avatar_h

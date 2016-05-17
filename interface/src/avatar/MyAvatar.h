@@ -24,6 +24,7 @@
 #include "AtRestDetector.h"
 #include "MyCharacterController.h"
 #include <ThreadSafeValueCache.h>
+#include <ZoneEntityItem.h>
 
 class ModelItemID;
 
@@ -444,6 +445,7 @@ private:
     bool _goToPending;
     glm::vec3 _goToPosition;
     glm::quat _goToOrientation;
+    QUuid _currentZoneID;
 
     std::unordered_set<int> _headBoneSet;
     RigPointer _rig;
@@ -479,6 +481,8 @@ private:
     float getEnergy();
     void setEnergy(float value);
     bool didTeleport();
+
+    void handleZoneChange();
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);

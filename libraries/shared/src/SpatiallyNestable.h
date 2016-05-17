@@ -26,6 +26,10 @@ using SpatiallyNestableWeakConstPointer = std::weak_ptr<const SpatiallyNestable>
 using SpatiallyNestablePointer = std::shared_ptr<SpatiallyNestable>;
 using SpatiallyNestableConstPointer = std::shared_ptr<const SpatiallyNestable>;
 
+class EntitySimulation;
+using EntitySimulationPointer = std::shared_ptr<EntitySimulation>;
+using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
+
 enum class NestableType {
     Entity,
     Avatar
@@ -147,6 +151,10 @@ public:
 
     static SpatiallyNestablePointer findByID(QUuid id, bool& success);
 
+    virtual void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
+    virtual EntitySimulationPointer getSimulation() { return _simulation.lock(); }
+    virtual void clearSimulation() { _simulation.reset(); }
+
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
     QUuid _id;
@@ -177,6 +185,8 @@ protected:
 
     bool _missingAncestor { false };
 
+    EntitySimulationWeakPointer _simulation;
+
 private:
     mutable ReadWriteLockable _transformLock;
     mutable ReadWriteLockable _idLock;
@@ -187,6 +197,8 @@ private:
     glm::vec3 _angularVelocity;
     mutable bool _parentKnowsMe { false };
     bool _isDead { false };
+
+
 };
 
 

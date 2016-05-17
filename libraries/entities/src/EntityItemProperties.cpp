@@ -309,6 +309,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_QUERY_AA_CUBE, queryAACube);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_POSITION, localPosition);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_ROTATION, localRotation);
+    CHECK_PROPERTY_CHANGE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
 
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
@@ -467,6 +468,8 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
         _stage.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
         _skybox.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
+
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
     }
 
     // Web only
@@ -679,6 +682,8 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslationsSet, qVectorBool, setJointTranslationsSet);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslations, qVectorVec3, setJointTranslations);
 
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(localizedSimulation, bool, setLocalizedSimulation);
+
     _lastEdited = usecTimestampNow();
 }
 
@@ -848,6 +853,8 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_DAY, Stage, stage, Day, day);
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_HOUR, Stage, stage, Hour, hour);
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_AUTOMATIC_HOURDAY, Stage, stage, AutomaticHourDay, automaticHourDay);
+
+        ADD_PROPERTY_TO_MAP(PROP_LOCALIZED_SIMULATION, LocalizedSimulation, localizedSimulation, bool);
 
         // FIXME - these are not yet handled
         //ADD_PROPERTY_TO_MAP(PROP_CREATED, Created, created, quint64);
@@ -1089,6 +1096,8 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
                 _staticSkybox.setProperties(properties);
                 _staticSkybox.appendToEditPacket(packetData, requestedProperties, propertyFlags, propertiesDidntFit, propertyCount, appendState);
+
+                APPEND_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, properties.getLocalizedSimulation());
             }
 
             if (properties.getType() == EntityTypes::PolyVox) {
@@ -1373,6 +1382,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundMode);
         properties.getSkybox().decodeFromEditPacket(propertyFlags, dataAt , processedBytes);
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCALIZED_SIMULATION, bool, setLocalizedSimulation);
     }
 
     if (properties.getType() == EntityTypes::PolyVox) {
@@ -1564,6 +1574,8 @@ void EntityItemProperties::markAllChanged() {
     _jointTranslationsChanged = true;
 
     _queryAACubeChanged = true;
+
+    _localizedSimulationChanged = true;
 }
 
 // The minimum bounding box for the entity.
@@ -1883,6 +1895,9 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     }
     if (queryAACubeChanged()) {
         out += "queryAACube";
+    }
+    if (localizedSimulationChanged()) {
+        out += "localizedSimulation";
     }
 
     getAnimation().listChangedProperties(out);

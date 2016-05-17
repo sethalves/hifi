@@ -80,8 +80,12 @@ public:
 
     static const ShapeType DEFAULT_SHAPE_TYPE;
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
+    static const bool DEFAULT_LOCALIZED_SIMULATION;
 
     virtual EntitySimulationPointer getChildSimulation() override;
+
+    bool getLocalizedSimulation() const { return _localizedSimulation; }
+    void setLocalizedSimulation(bool value);
 
 protected:
     KeyLightPropertyGroup _keyLightProperties;
@@ -93,6 +97,8 @@ protected:
 
     StagePropertyGroup _stageProperties;
     SkyboxPropertyGroup _skyboxProperties;
+
+    bool _localizedSimulation { DEFAULT_LOCALIZED_SIMULATION };
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;

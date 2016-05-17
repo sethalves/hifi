@@ -434,9 +434,8 @@ public:
 
     static EntityItemPointer findAncestorZone(QUuid parentID);
 
-    void setSimulation(EntitySimulationPointer simulation);
-    EntitySimulationPointer getSimulation();
-    virtual EntitySimulationPointer getChildSimulation() { return nullptr; }
+    virtual EntitySimulationPointer getSimulation() override;
+    virtual EntitySimulationPointer getChildSimulation() { return nullptr; } // overridden in ZoneEntityItem
 
 protected:
 

@@ -1109,10 +1109,6 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
     }
 }
 
-void Avatar::setSimulation(EntitySimulationPointer simulation) {
-    _simulation = simulation;
-}
-
 EntitySimulationPointer Avatar::getSimulation() {
     // this returns the simulation that *should* contain this avatar, even if it doesn't, yet.
     EntitySimulationPointer result = _simulation.lock();
@@ -1130,4 +1126,10 @@ EntitySimulationPointer Avatar::getSimulation() {
     // no parent zones, so use the world-frame simulation
     auto simulationTracker = DependencyManager::get<SimulationTracker>();
     return simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+}
+
+PhysicsEnginePointer Avatar::getPhysicsEngine() {
+    EntitySimulationPointer simulation = getSimulation();
+    PhysicalEntitySimulationPointer pESimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+    return pESimulation ? pESimulation->getPhysicsEngine() : nullptr;
 }

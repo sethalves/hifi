@@ -484,7 +484,8 @@
                 var elZoneSkyboxColorGreen = document.getElementById("property-zone-skybox-color-green");
                 var elZoneSkyboxColorBlue = document.getElementById("property-zone-skybox-color-blue");
                 var elZoneSkyboxURL = document.getElementById("property-zone-skybox-url");
-    
+                var elZoneLocalizedSimulation = document.getElementById("property-zone-localized-simulation");
+
                 var elPolyVoxSections = document.querySelectorAll(".poly-vox-section");
                 allSections.push(elPolyVoxSections);
                 var elVoxelVolumeSizeX = document.getElementById("property-voxel-volume-size-x");
@@ -770,7 +771,8 @@
                                     elZoneSkyboxColorGreen.value = properties.skybox.color.green;
                                     elZoneSkyboxColorBlue.value = properties.skybox.color.blue;
                                     elZoneSkyboxURL.value = properties.skybox.url;
-    
+                                    elZoneLocalizedSimulation.checked = properties.localizedSimulation;
+
                                     showElements(document.getElementsByClassName('skybox-section'), elZoneBackgroundMode.value == 'skybox');
                                 } else if (properties.type == "PolyVox") {
                                     for (var i = 0; i < elPolyVoxSections.length; i++) {
@@ -1076,7 +1078,10 @@
                 }));
     
                 elZoneSkyboxURL.addEventListener('change', createEmitGroupTextPropertyUpdateFunction('skybox','url'));
-    
+
+                elZoneLocalizedSimulation.addEventListener('change',
+                                                           createEmitCheckedPropertyUpdateFunction('localizedSimulation'));
+
                 var voxelVolumeSizeChangeFunction = createEmitVec3PropertyUpdateFunction(
                     'voxelVolumeSize', elVoxelVolumeSizeX, elVoxelVolumeSizeY, elVoxelVolumeSizeZ);
                 elVoxelVolumeSizeX.addEventListener('change', voxelVolumeSizeChangeFunction);
@@ -1791,6 +1796,10 @@
             <input type="text" id="property-zone-skybox-url">
         </div>
 
+        <div class="zone-group zone-section property checkbox">
+          <input type="checkbox" id="property-zone-localized-simulation">
+          <label for="property-zone-localized-simulation">&nbsp;Localized Physics</label>
+        </div>
 
         <div class="section-header web-group web-section">
             <label>Web</label><span>M</span>
