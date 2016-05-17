@@ -3287,6 +3287,7 @@ void Application::update(float deltaTime) {
 
     bool showWarnings = Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings);
     PerformanceWarning warn(showWarnings, "Application::update()");
+    auto simulationTracker = DependencyManager::get<PhysicalSimulationTracker>();
 
     updateLOD();
 
@@ -3462,10 +3463,13 @@ void Application::update(float deltaTime) {
             });
             avatarManager->getObjectsToAddToPhysics(motionStates);
             foreach (ObjectMotionState* motionState, motionStates) {
+                AvatarMotionState* avMotionState = static_cast<AvatarMotionState*>(motionState);
+                Avatar* avatar = avMotionState->getAvatar();
+                avatar->setSimulation(simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID));
                 PhysicsEnginePointer physicsEngine = getPhysicsEngineFromAvatarMotionState(motionState);
                 physicsEngine->addObject(motionState);
             }
-            avatarManager->getObjectsToRemoveFromPhysics(motionStates);
+            avatarManager->getObjectsToChange(motionStates);
             forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
                 VectorOfMotionStates forThisEngine;
                 foreach (ObjectMotionState* motionState, motionStates) {
