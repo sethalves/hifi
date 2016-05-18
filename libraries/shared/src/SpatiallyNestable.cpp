@@ -1004,21 +1004,21 @@ void SpatiallyNestable::setOrientationInSimulationFrame(const glm::quat& orienta
 }
 
 glm::vec3 SpatiallyNestable::getVelocityInSimulationFrame() const {
-    #warning fix this
+    // TODO: fix this
     return getVelocity();
 }
 
 void SpatiallyNestable::setVelocityInSimulationFrame(const glm::vec3& velocity) {
-    #warning fix this
+    // TODO: fix this
     setVelocity(velocity);
 }
 
 glm::vec3 SpatiallyNestable::getAngularVelocityInSimulationFrame() const {
-    #warning fix this
+    // TODO: fix this
     return getAngularVelocity();
 }
 
 void SpatiallyNestable::setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity) {
-    #warning fix this
+    // TODO: fix this
     setAngularVelocity(angularVelocity);
 }

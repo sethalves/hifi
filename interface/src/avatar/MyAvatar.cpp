@@ -1190,6 +1190,8 @@ void MyAvatar::prepareForPhysicsSimulation() {
     if (pSuccess && tSuccess) {
         _characterController.setParentVelocity(inSimulationPVelocity);
         _characterController.setTargetVelocity(inSimulationTVelocity);
+    } else {
+        qDebug() << "MyAvatar::prepareForPhysicsSimulation failed to set _characterController velocity";
     }
 
     // convert global values to bullet position and orientation
@@ -1198,6 +1200,8 @@ void MyAvatar::prepareForPhysicsSimulation() {
     glm::quat orientation = SpatiallyNestable::worldToLocal(getOrientation(), simulation->getID(), -1, oSuccess);
     if (posSuccess && oSuccess) {
         _characterController.setPositionAndOrientation(position, orientation);
+    } else {
+        qDebug() << "MyAvatar::prepareForPhysicsSimulation failed to set _characterController position or orientation";
     }
 
     if (qApp->isHMDMode()) {
