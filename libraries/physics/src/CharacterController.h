@@ -66,7 +66,7 @@ public:
     void postSimulation();
 
     void setPositionAndOrientation( const glm::vec3& position, const glm::quat& orientation);
-    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const;
+    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const;
 
     void setTargetVelocity(const glm::vec3& velocity);
     void setParentVelocity(const glm::vec3& parentVelocity);

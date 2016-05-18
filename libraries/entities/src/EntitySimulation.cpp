@@ -241,6 +241,10 @@ void EntitySimulation::changeEntity(EntityItemPointer entity) {
     }
 }
 
+void EntitySimulation::removeEntity(EntityItemPointer entity) {
+    removeEntityInternal(entity);
+}
+
 void EntitySimulation::clearEntities() {
     QMutexLocker lock(&_mutex);
     _mortalEntities.clear();

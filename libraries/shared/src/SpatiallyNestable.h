@@ -51,25 +51,30 @@ public:
 
     static glm::vec3 worldToLocal(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::quat worldToLocal(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
+    static glm::vec3 worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
+                                          int parentJointIndex, bool& success);
 
     static glm::vec3 localToWorld(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::quat localToWorld(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
+    static glm::vec3 localToWorldVelocity(const glm::vec3& velocity,
+                                          const QUuid& parentID, int parentJointIndex, bool& success);
 
     // world frame
-    virtual const Transform getTransform(bool& success, int depth = 0) const;
+    virtual const Transform getTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
     virtual void setTransform(const Transform& transform, bool& success);
 
-    virtual Transform getParentTransform(bool& success, int depth = 0) const;
+    virtual Transform getParentTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
 
     virtual glm::vec3 getPosition(bool& success) const;
     virtual glm::vec3 getPosition() const;
-    virtual void setPosition(const glm::vec3& position, bool& success, bool tellPhysics = true);
+    virtual void setPosition(const glm::vec3& position, bool& success, bool tellPhysics = true, bool inSimulationFrame = false);
     virtual void setPosition(const glm::vec3& position);
 
     virtual glm::quat getOrientation(bool& success) const;
     virtual glm::quat getOrientation() const;
     virtual glm::quat getOrientation(int jointIndex, bool& success) const;
-    virtual void setOrientation(const glm::quat& orientation, bool& success, bool tellPhysics = true);
+    virtual void setOrientation(const glm::quat& orientation, bool& success,
+                                bool tellPhysics = true, bool inSimulationFrame = false);
     virtual void setOrientation(const glm::quat& orientation);
 
     virtual glm::vec3 getVelocity(bool& success) const;
@@ -153,7 +158,21 @@ public:
 
     virtual void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
     virtual EntitySimulationPointer getSimulation() { return _simulation.lock(); }
-    virtual void clearSimulation() { _simulation.reset(); }
+    virtual void clearSimulation() { _simulationMayHaveChanged = true; }
+
+    virtual bool isSimulationParent() { return false; }
+
+    // in the frame of the simulation for this object
+    virtual glm::vec3 getPositionInSimulationFrame() const;
+    virtual void setPositionInSimulationFrame(const glm::vec3& position);
+    virtual glm::quat getOrientationInSimulationFrame() const;
+    virtual void setOrientationInSimulationFrame(const glm::quat& orientation);
+    virtual glm::vec3 getVelocityInSimulationFrame() const;
+    virtual void setVelocityInSimulationFrame(const glm::vec3& velocity);
+    virtual glm::vec3 getAngularVelocityInSimulationFrame() const;
+    virtual void setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity);
+
+    virtual QString toString() const { return getID().toString(); }
 
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
@@ -186,6 +205,7 @@ protected:
     bool _missingAncestor { false };
 
     EntitySimulationWeakPointer _simulation;
+    bool _simulationMayHaveChanged { false };
 
 private:
     mutable ReadWriteLockable _transformLock;

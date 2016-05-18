@@ -19,7 +19,7 @@
 
 EntitySimulationPointer PhysicalSimulationTracker::newSimulation(QUuid key, EntityTreePointer tree) {
 
-    PhysicalEntitySimulationPointer entitySimulation { new PhysicalEntitySimulation() };
+    PhysicalEntitySimulationPointer entitySimulation { new PhysicalEntitySimulation(key) };
     PhysicsEnginePointer physicsEngine { new PhysicsEngine(Vectors::ZERO) };
     physicsEngine->init();
     entitySimulation->init(tree, physicsEngine, _entityEditSender);

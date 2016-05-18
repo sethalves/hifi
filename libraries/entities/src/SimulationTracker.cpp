@@ -17,7 +17,7 @@ const QUuid SimulationTracker::DEFAULT_SIMULATOR_ID = QUuid();
 
 
 EntitySimulationPointer SimulationTracker::newSimulation(QUuid key, EntityTreePointer tree) {
-    SimpleEntitySimulationPointer simulation { new SimpleEntitySimulation() };
+    SimpleEntitySimulationPointer simulation { new SimpleEntitySimulation(key) };
     simulation->setEntityTree(tree);
 
     _simulationsLock.withWriteLock([&] {

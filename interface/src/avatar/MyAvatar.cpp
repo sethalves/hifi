@@ -1171,16 +1171,35 @@ controller::Pose MyAvatar::getRightHandControllerPoseInAvatarFrame() const {
 void MyAvatar::prepareForPhysicsSimulation() {
     relayDriveKeysToCharacterController();
 
+    EntitySimulationPointer simulation = getSimulation();
+    if (!simulation) {
+        return;
+    }
     bool success;
     glm::vec3 parentVelocity = getParentVelocity(success);
     if (!success) {
         qDebug() << "Warning: getParentVelocity failed" << getID();
         parentVelocity = glm::vec3();
     }
-    _characterController.setParentVelocity(parentVelocity);
 
-    _characterController.setTargetVelocity(getTargetVelocity());
-    _characterController.setPositionAndOrientation(getPosition(), getOrientation());
+    bool pSuccess, tSuccess;
+    glm::vec3 inSimulationPVelocity =
+        SpatiallyNestable::worldToLocalVelocity(parentVelocity, simulation->getID(), -1, pSuccess);
+    glm::vec3 inSimulationTVelocity =
+        SpatiallyNestable::worldToLocalVelocity(getTargetVelocity(), simulation->getID(), -1, tSuccess);
+    if (pSuccess && tSuccess) {
+        _characterController.setParentVelocity(inSimulationPVelocity);
+        _characterController.setTargetVelocity(inSimulationTVelocity);
+    }
+
+    // convert global values to bullet position and orientation
+    bool posSuccess, oSuccess;
+    glm::vec3 position = SpatiallyNestable::worldToLocal(getPosition(), simulation->getID(), -1, posSuccess);
+    glm::quat orientation = SpatiallyNestable::worldToLocal(getOrientation(), simulation->getID(), -1, oSuccess);
+    if (posSuccess && oSuccess) {
+        _characterController.setPositionAndOrientation(position, orientation);
+    }
+
     if (qApp->isHMDMode()) {
         bool hasDriveInput = fabsf(_driveKeys[TRANSLATE_X]) > 0.0f || fabsf(_driveKeys[TRANSLATE_Z]) > 0.0f;
         _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput);
@@ -1192,11 +1211,29 @@ void MyAvatar::prepareForPhysicsSimulation() {
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     glm::vec3 position = getPosition();
     glm::quat orientation = getOrientation();
-    _characterController.getPositionAndOrientation(position, orientation);
+    bool success;
+    EntitySimulationPointer simulation = getSimulation();
+    _characterController.getPositionAndOrientation(position, orientation, success);
+    if (success) {
+        // convert bullet position and orientation to global values
+        bool positionToWorldSuccess, orientationToWorldSuccess;
+        position = SpatiallyNestable::localToWorld(position, simulation->getID(), -1, positionToWorldSuccess);
+        orientation = SpatiallyNestable::localToWorld(orientation, simulation->getID(), -1, orientationToWorldSuccess);
+        if (!positionToWorldSuccess || !orientationToWorldSuccess) {
+            qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to world coords";
+        }
+    }
     nextAttitude(position, orientation);
     _bodySensorMatrix = _follow.postPhysicsUpdate(*this, _bodySensorMatrix);
 
-    setVelocity(_characterController.getLinearVelocity() + _characterController.getFollowVelocity());
+    glm::vec3 inSimulationVelocity = _characterController.getLinearVelocity() + _characterController.getFollowVelocity();
+
+    bool velocityToWorldSuccess;
+    setVelocity(SpatiallyNestable::localToWorldVelocity(inSimulationVelocity, simulation->getID(),
+                                                        -1, velocityToWorldSuccess));
+    if (!velocityToWorldSuccess) {
+        qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to velocity from local to world";
+    }
 }
 
 QString MyAvatar::getScriptedMotorFrame() const {
@@ -2104,26 +2141,21 @@ bool MyAvatar::didTeleport() {
 }
 
 
-#define WANT_DEBUG 1
-
 void MyAvatar::handleZoneChange() {
     EntityTreeRenderer* treeRenderer = qApp->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
-    QUuid zoneID = zone ? zone->getID() : QUuid();
+    EntityItemPointer simulationZone = zone ? EntityItem::findAncestorZone(zone->getID()) : nullptr;
+    QUuid zoneID = simulationZone ? simulationZone->getID() : QUuid();
 
     if (zoneID != _currentZoneID) {
 
-        #ifdef WANT_DEBUG
-        if (zoneID == QUuid()) {
-            qDebug() << "leaving zone" << _currentZoneID;
-        } else if (_currentZoneID == QUuid()) {
-            qDebug() << "entering zone" << zoneID;
-        } else {
-            qDebug() << "leaving zone" << _currentZoneID << "and entering zone" << zoneID;
-        }
-        #endif
-
-        _currentZoneID = zoneID;
+        // #ifdef WANT_DEBUG
+        bool findSuccess;
+        SpatiallyNestablePointer beforeZone = SpatiallyNestable::findByID(_currentZoneID, findSuccess);
+        QString beforeZoneName = findSuccess && beforeZone ? beforeZone->toString() : "null";
+        QString afterZoneName = simulationZone ? simulationZone->toString() : "null";
+        qDebug() << "MyAvatar is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
+        // #endif
 
         // remove character controller from old simulation
         PhysicsEnginePointer beforePhysicsEngine = getPhysicsEngine();
@@ -2133,6 +2165,8 @@ void MyAvatar::handleZoneChange() {
         }
 
         // adjust position and velocity for new frame
+        _currentZoneID = zoneID;
+        qDebug() << "_currentZoneID =" << _currentZoneID;
         bool success;
         Transform beforeTransform = getTransform(success);
         glm::vec3 beforeVelocity = getVelocity();
@@ -2144,13 +2178,17 @@ void MyAvatar::handleZoneChange() {
             setVelocity(beforeVelocity);
             setAngularVelocity(beforeAngularVelocity);
             clearSimulation(); // this will cause getSimulation to re-search for the our containing zone
+        } else {
+            qDebug() << "MyAvatar::handleZoneChange -- unable to set new transform";
         }
 
         // add character controller to new simulation
         PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
         if (afterPhysicsEngine) {
-            afterPhysicsEngine->setCharacterController(getCharacterController());
+            afterPhysicsEngine->setCharacterController(&_characterController);
             _characterController.setEnabled(true);
+        } else {
+            qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
         }
     }
 }

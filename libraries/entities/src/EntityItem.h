@@ -437,6 +437,8 @@ public:
     virtual EntitySimulationPointer getSimulation() override;
     virtual EntitySimulationPointer getChildSimulation() { return nullptr; } // overridden in ZoneEntityItem
 
+    virtual QString toString() const override;
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

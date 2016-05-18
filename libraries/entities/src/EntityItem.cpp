@@ -98,6 +98,15 @@ EntityItem::~EntityItem() {
     assert(!_physicsInfo);
 }
 
+QString EntityItem::toString() const {
+    QString name = getName();
+    if (name == "") {
+        return getID().toString();
+    }
+    return name + ":" + getID().toString();
+}
+
+
 EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties;
 
@@ -1725,37 +1734,74 @@ EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
     for (SpatiallyNestablePointer ancestor = SpatiallyNestable::findByID(parentID, success);
          ancestor && success;
          ancestor = ancestor->getParentPointer(success)) {
-        if (ancestor->getNestableType() == NestableType::Entity) {
+        if (ancestor->isSimulationParent()) {
+            // currently must be a ZoneEntityItem
             EntityItemPointer ancestorEntity = std::static_pointer_cast<EntityItem>(ancestor);
-            if (ancestorEntity->getType() == EntityTypes::Zone) {
-                EntityPropertyFlags localizedSimulationFlags { PROP_LOCALIZED_SIMULATION };
-                if (ancestorEntity->getProperties(localizedSimulationFlags).getLocalizedSimulation()) {
-                    return ancestorEntity;
-                }
-            }
+            return ancestorEntity;
         }
     }
-
     return nullptr;
 }
 
 EntitySimulationPointer EntityItem::getSimulation() {
     // this returns the simulation that *should* contain this entity, even if it doesn't, yet.
-    EntitySimulationPointer result = _simulation.lock();
-    if (result) {
-        return result;
+    EntitySimulationPointer currentSimulation = _simulation.lock();
+
+    if (_simulationMayHaveChanged) {
+        _simulationMayHaveChanged = false;
+        EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
+        if (ancestorZone) {
+            EntitySimulationPointer nextSimulation = ancestorZone->getChildSimulation();
+            if (nextSimulation == currentSimulation) {
+                // same simulation, nothing to change
+                return currentSimulation;
+            }
+
+            //#ifdef WANT_DEBUG
+            bool success;
+            SpatiallyNestablePointer beforeZone =
+                currentSimulation ? SpatiallyNestable::findByID(currentSimulation->getID(), success) : nullptr;
+            QString beforeZoneName = success && beforeZone ? beforeZone->toString() : "null";
+            QString afterZoneName = ancestorZone->toString();
+            qDebug() << "Entity" << toString() << "is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
+            //#endif
+
+            if (currentSimulation) {
+                // we are leaving a simulation
+                clearActions();
+                currentSimulation->removeEntity(getThisPointer());
+            }
+            _simulation = nextSimulation;
+            if (nextSimulation) {
+                // we are joining a new simulation
+                nextSimulation->addEntity(getThisPointer());
+                return nextSimulation;
+            }
+        }
+        // join the default simulation
+        auto simulationTracker = DependencyManager::get<SimulationTracker>();
+        currentSimulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+        _simulation = currentSimulation;
+        currentSimulation->addEntity(getThisPointer());
+        return currentSimulation;
+    }
+
+    if (currentSimulation) {
+        return currentSimulation;
     }
 
     EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
     if (ancestorZone) {
-        result = ancestorZone->getChildSimulation();
-        _simulation = result;
-        return result;
+        currentSimulation = ancestorZone->getChildSimulation();
+    } else {
+        // no parent zones, so use the world-frame simulation
+        auto simulationTracker = DependencyManager::get<SimulationTracker>();
+        currentSimulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
     }
 
-    // no parent zones, so use the world-frame simulation
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    return simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+    _simulation = currentSimulation;
+    currentSimulation->addEntity(getThisPointer());
+    return currentSimulation;
 }
 
 QString EntityItem::actionsToDebugString() {

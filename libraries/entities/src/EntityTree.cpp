@@ -288,7 +288,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
                     simulation->changeEntity(entity);
                 }
             } else {
-                // normally the simulation clears ALL updateFlags, but since there is none we do it explicitly
+                // normally the simulation clears ALL updateFlags, but since there are none we do it explicitly
                 entity->clearDirtyFlags();
             }
         }
@@ -1054,6 +1054,9 @@ void EntityTree::fixupMissingParents() {
             if (entity->isParentIDValid()) {
                 // this entity's parent was previously not known, and now is.  Update its location in the EntityTree...
                 doMove = true;
+                // and make sure it's in the correct simulation...
+                entity->clearSimulation();
+                entity->getSimulation();
             } else if (getIsServer() && _avatarIDs.contains(entity->getParentID())) {
                 // this is a child of an avatar, which the entity server will never have
                 // a SpatiallyNestable object for.  Add it to a list for cleanup when the avatar leaves.

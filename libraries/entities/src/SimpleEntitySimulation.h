@@ -22,7 +22,7 @@ using SimpleEntitySimulationPointer = std::shared_ptr<SimpleEntitySimulation>;
 
 class SimpleEntitySimulation : public EntitySimulation {
 public:
-    SimpleEntitySimulation() : EntitySimulation() { }
+    SimpleEntitySimulation(QUuid id) : EntitySimulation(id) { }
     virtual ~SimpleEntitySimulation() { clearEntitiesInternal(); }
 
     void clearOwnership(const QUuid& ownerID);

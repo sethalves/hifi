@@ -18,7 +18,7 @@
 
 #include "PhysicalEntitySimulation.h"
 
-PhysicalEntitySimulation::PhysicalEntitySimulation() {
+PhysicalEntitySimulation::PhysicalEntitySimulation(QUuid id) : EntitySimulation(id) {
 }
 
 PhysicalEntitySimulation::~PhysicalEntitySimulation() {

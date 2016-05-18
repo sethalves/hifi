@@ -1110,17 +1110,22 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
 }
 
 EntitySimulationPointer Avatar::getSimulation() {
-    // this returns the simulation that *should* contain this avatar, even if it doesn't, yet.
-    EntitySimulationPointer result = _simulation.lock();
-    if (result) {
-        return result;
+    if (_simulationMayHaveChanged) {
+        _simulationMayHaveChanged = false;
+        _simulation.reset();
+    }
+
+    EntitySimulationPointer currentSimulation = _simulation.lock();
+
+    if (currentSimulation) {
+        return currentSimulation;
     }
 
     EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
     if (ancestorZone) {
-        result = ancestorZone->getChildSimulation();
-        _simulation = result;
-        return result;
+        currentSimulation = ancestorZone->getChildSimulation();
+        _simulation = currentSimulation;
+        return currentSimulation;
     }
 
     // no parent zones, so use the world-frame simulation

@@ -86,6 +86,7 @@ public:
 
     bool getLocalizedSimulation() const { return _localizedSimulation; }
     void setLocalizedSimulation(bool value);
+    virtual bool isSimulationParent() override;
 
 protected:
     KeyLightPropertyGroup _keyLightProperties;

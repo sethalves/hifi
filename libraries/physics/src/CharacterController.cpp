@@ -385,11 +385,14 @@ void CharacterController::setPositionAndOrientation(
     _characterBodyTransform = btTransform(bodyOrientation, bodyPosition);
 }
 
-void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const {
+void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const {
     if (_enabled && _rigidBody) {
         const btTransform& avatarTransform = _rigidBody->getWorldTransform();
         rotation = bulletToGLM(avatarTransform.getRotation());
         position = bulletToGLM(avatarTransform.getOrigin()) - rotation * _shapeLocalOffset;
+        success = true;
+    } else {
+        success = false;
     }
 }
 

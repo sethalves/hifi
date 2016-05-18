@@ -231,3 +231,7 @@ void ZoneEntityItem::setLocalizedSimulation(bool value) {
         });
     }
 }
+
+bool ZoneEntityItem::isSimulationParent() {
+    return _localizedSimulation;
+}

@@ -29,7 +29,7 @@ using SetOfEntityMotionStates = QSet<EntityMotionState*>;
 
 class PhysicalEntitySimulation : public EntitySimulation {
 public:
-    PhysicalEntitySimulation();
+    PhysicalEntitySimulation(QUuid id);
     ~PhysicalEntitySimulation();
 
     void init(EntityTreePointer tree, PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);

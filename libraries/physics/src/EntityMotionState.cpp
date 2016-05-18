@@ -200,7 +200,7 @@ void EntityMotionState::getWorldTransform(btTransform& worldTrans) const {
         _accelerationNearlyGravityCount = (uint8_t)(-1);
     }
     worldTrans.setOrigin(glmToBullet(getObjectPosition()));
-    worldTrans.setRotation(glmToBullet(_entity->getRotation()));
+    worldTrans.setRotation(glmToBullet(_entity->getOrientationInSimulationFrame()));
 }
 
 // This callback is invoked by the physics simulation at the end of each simulation step...
@@ -212,18 +212,10 @@ void EntityMotionState::setWorldTransform(const btTransform& worldTrans) {
 
     assert(entityTreeIsLocked());
     measureBodyAcceleration();
-    bool positionSuccess;
-    _entity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(), positionSuccess, false);
-    if (!positionSuccess) {
-        qDebug() << "EntityMotionState::setWorldTransform setPosition failed" << _entity->getID();
-    }
-    bool orientationSuccess;
-    _entity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false);
-    if (!orientationSuccess) {
-        qDebug() << "EntityMotionState::setWorldTransform setOrientation failed" << _entity->getID();
-    }
-    _entity->setVelocity(getBodyLinearVelocity());
-    _entity->setAngularVelocity(getBodyAngularVelocity());
+    _entity->setPositionInSimulationFrame(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
+    _entity->setOrientationInSimulationFrame(bulletToGLM(worldTrans.getRotation()));
+    _entity->setVelocityInSimulationFrame(getBodyLinearVelocity());
+    _entity->setAngularVelocityInSimulationFrame(getBodyAngularVelocity());
     _entity->setLastSimulated(usecTimestampNow());
 
     if (_entity->getSimulatorID().isNull()) {
