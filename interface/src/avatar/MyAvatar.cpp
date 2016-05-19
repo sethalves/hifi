@@ -1222,11 +1222,8 @@ void MyAvatar::prepareForPhysicsSimulation() {
     bool pSuccess, tSuccess;
     glm::vec3 inSimulationPVelocity =
         SpatiallyNestable::worldToLocalVelocity(parentVelocity, simulation->getID(), -1, pSuccess);
-    glm::vec3 inSimulationTVelocity =
-        SpatiallyNestable::worldToLocalVelocity(getTargetVelocity(), simulation->getID(), -1, tSuccess);
-    if (pSuccess && tSuccess) {
+    if (pSuccess) {
         _characterController.setParentVelocity(inSimulationPVelocity);
-        _characterController.setTargetVelocity(inSimulationTVelocity);
     } else {
         qDebug() << "MyAvatar::prepareForPhysicsSimulation failed to set _characterController velocity";
     }
@@ -1252,9 +1249,10 @@ void MyAvatar::prepareForPhysicsSimulation() {
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     glm::vec3 position = getPosition();
     glm::quat orientation = getOrientation();
+    EntitySimulationPointer simulation = getSimulation();
+
     if (_characterController.isEnabled()) {
         bool success;
-        EntitySimulationPointer simulation = getSimulation();
         _characterController.getPositionAndOrientation(position, orientation, success);
         if (success) {
             // convert bullet position and orientation to global values
@@ -1264,7 +1262,6 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
             if (!positionToWorldSuccess || !orientationToWorldSuccess) {
                 qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to world coords";
             }
-            _characterController.getPositionAndOrientation(position, orientation);
         }
     }
     nextAttitude(position, orientation);
