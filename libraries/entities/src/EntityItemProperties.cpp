@@ -309,6 +309,12 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_ROTATION, localRotation);
     CHECK_PROPERTY_CHANGE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
 
+    CHECK_PROPERTY_CHANGE(PROP_FLYING_ALLOWED, flyingAllowed);
+    CHECK_PROPERTY_CHANGE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
+
+    CHECK_PROPERTY_CHANGE(PROP_CLIENT_ONLY, clientOnly);
+    CHECK_PROPERTY_CHANGE(PROP_OWNING_AVATAR_ID, owningAvatarID);
+
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
     changedProperties += _skybox.getChangedProperties();
@@ -467,6 +473,9 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
         _stage.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
         _skybox.copyToScriptValue(_desiredProperties, properties, engine, skipDefaults, defaultEntityProperties);
 
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FLYING_ALLOWED, flyingAllowed);
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
+
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
     }
 
@@ -541,6 +550,12 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCAL_POSITION, localPosition);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCAL_ROTATION, localRotation);
+
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_CLIENT_ONLY, clientOnly);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_OWNING_AVATAR_ID, owningAvatarID);
+
+    properties.setProperty("clientOnly", convertScriptValue(engine, getClientOnly()));
+    properties.setProperty("owningAvatarID", convertScriptValue(engine, getOwningAvatarID()));
 
     // FIXME - I don't think these properties are supported any more
     //COPY_PROPERTY_TO_QSCRIPTVALUE(localRenderAlpha);
@@ -677,6 +692,12 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointRotations, qVectorQuat, setJointRotations);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslationsSet, qVectorBool, setJointTranslationsSet);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(jointTranslations, qVectorVec3, setJointTranslations);
+
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(flyingAllowed, bool, setFlyingAllowed);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(ghostingAllowed, bool, setGhostingAllowed);
+
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(clientOnly, bool, setClientOnly);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(owningAvatarID, QUuid, setOwningAvatarID);
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(localizedSimulation, bool, setLocalizedSimulation);
 
@@ -849,6 +870,9 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_DAY, Stage, stage, Day, day);
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_HOUR, Stage, stage, Hour, hour);
         ADD_GROUP_PROPERTY_TO_MAP(PROP_STAGE_AUTOMATIC_HOURDAY, Stage, stage, AutomaticHourDay, automaticHourDay);
+
+        ADD_PROPERTY_TO_MAP(PROP_FLYING_ALLOWED, FlyingAllowed, flyingAllowed, bool);
+        ADD_PROPERTY_TO_MAP(PROP_GHOSTING_ALLOWED, GhostingAllowed, ghostingAllowed, bool);
 
         ADD_PROPERTY_TO_MAP(PROP_LOCALIZED_SIMULATION, LocalizedSimulation, localizedSimulation, bool);
 
@@ -1092,6 +1116,9 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
                 _staticSkybox.setProperties(properties);
                 _staticSkybox.appendToEditPacket(packetData, requestedProperties, propertyFlags, propertiesDidntFit, propertyCount, appendState);
+
+                APPEND_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, properties.getFlyingAllowed());
+                APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, properties.getGhostingAllowed());
 
                 APPEND_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, properties.getLocalizedSimulation());
             }
@@ -1378,6 +1405,10 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COMPOUND_SHAPE_URL, QString, setCompoundShapeURL);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_BACKGROUND_MODE, BackgroundMode, setBackgroundMode);
         properties.getSkybox().decodeFromEditPacket(propertyFlags, dataAt , processedBytes);
+
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_FLYING_ALLOWED, bool, setFlyingAllowed);
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
+
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCALIZED_SIMULATION, bool, setLocalizedSimulation);
     }
 
@@ -1569,6 +1600,12 @@ void EntityItemProperties::markAllChanged() {
     _jointTranslationsChanged = true;
 
     _queryAACubeChanged = true;
+
+    _flyingAllowedChanged = true;
+    _ghostingAllowedChanged = true;
+
+    _clientOnlyChanged = true;
+    _owningAvatarIDChanged = true;
 
     _localizedSimulationChanged = true;
 }
@@ -1890,6 +1927,18 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     }
     if (queryAACubeChanged()) {
         out += "queryAACube";
+    }
+    if (clientOnlyChanged()) {
+        out += "clientOnly";
+    }
+    if (owningAvatarIDChanged()) {
+        out += "owningAvatarID";
+    }
+    if (flyingAllowedChanged()) {
+        out += "flyingAllowed";
+    }
+    if (ghostingAllowedChanged()) {
+        out += "ghostingAllowed";
     }
     if (localizedSimulationChanged()) {
         out += "localizedSimulation";

@@ -88,7 +88,7 @@ public:
     // For Scene.shouldRenderEntities
     QList<EntityItemID>& getEntitiesLastInScene() { return _entityIDsLastInScene; }
 
-    std::shared_ptr<ZoneEntityItem> getMyAvatarZone() { return _bestZone; }
+    std::shared_ptr<ZoneEntityItem> myAvatarZone() { return _bestZone; }
 
 signals:
     void mousePressOnEntity(const RayToEntityIntersectionResult& intersection, const QMouseEvent* event);

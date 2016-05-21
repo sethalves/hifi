@@ -373,6 +373,7 @@ public:
     glm::vec3 entityToWorld(const glm::vec3& point) const;
 
     quint64 getLastEditedFromRemote() const { return _lastEditedFromRemote; }
+    void updateLastEditedFromRemote() { _lastEditedFromRemote = usecTimestampNow(); }
 
     void getAllTerseUpdateProperties(EntityItemProperties& properties) const;
 
@@ -423,11 +424,17 @@ public:
     /// entity to definitively state if the preload signal should be sent.
     ///
     /// We only want to preload if:
-    ///    there is some script, and either the script value or the scriptTimestamp 
+    ///    there is some script, and either the script value or the scriptTimestamp
     ///    value have changed since our last preload
-    bool shouldPreloadScript() const { return !_script.isEmpty() && 
+    bool shouldPreloadScript() const { return !_script.isEmpty() &&
                                               ((_loadedScript != _script) || (_loadedScriptTimestamp != _scriptTimestamp)); }
     void scriptHasPreloaded() { _loadedScript = _script; _loadedScriptTimestamp = _scriptTimestamp; }
+
+    bool getClientOnly() const { return _clientOnly; }
+    void setClientOnly(bool clientOnly) { _clientOnly = clientOnly; }
+    // if this entity is client-only, which avatar is it associated with?
+    QUuid getOwningAvatarID() const { return _owningAvatarID; }
+    void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
 
     static EntityItemPointer findAncestorZone(QUuid parentID);
 
@@ -547,6 +554,9 @@ protected:
     mutable QHash<QUuid, quint64> _previouslyDeletedActions;
 
     QUuid _sourceUUID; /// the server node UUID we came from
+
+    bool _clientOnly { false };
+    QUuid _owningAvatarID;
 
     EntitySimulationWeakPointer _simulation;
 };

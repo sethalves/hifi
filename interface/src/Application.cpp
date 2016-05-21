@@ -108,7 +108,6 @@
 #include "audio/AudioScope.h"
 #include "avatar/AvatarManager.h"
 #include "CrashHandler.h"
-#include "input-plugins/SpacemouseManager.h"
 #include "devices/DdeFaceTracker.h"
 #include "devices/EyeTracker.h"
 #include "devices/Faceshift.h"
@@ -200,6 +199,7 @@ static const float PHYSICS_READY_RANGE = 3.0f; // how far from avatar to check f
 
 static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 
+static const QString INPUT_DEVICE_MENU_PREFIX = "Device: ";
 Setting::Handle<int> maxOctreePacketsPerSecond("maxOctreePPS", DEFAULT_MAX_OCTREE_PPS);
 
 const QHash<QString, Application::AcceptURLMethod> Application::_acceptedExtensions {
@@ -763,6 +763,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     // Tell our entity edit sender about our known jurisdictions
     _entityEditSender.setServerJurisdictions(&_entityServerJurisdictions);
+    _entityEditSender.setMyAvatar(getMyAvatar());
 
     // For now we're going to set the PPS for outbound packets to be super high, this is
     // probably not the right long term solution. But for now, we're going to do this to
@@ -998,7 +999,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
                 RenderableWebEntityItem* webEntity = dynamic_cast<RenderableWebEntityItem*>(entity.get());
                 if (webEntity) {
                     webEntity->setProxyWindow(_window->windowHandle());
-                    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+                    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
                         _keyboardMouseDevice->pluginFocusOutEvent();
                     }
                     _keyboardFocusedItem = entityItemID;
@@ -1050,6 +1051,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     // Make sure we don't time out during slow operations at startup
     updateHeartbeat();
+
+    OctreeEditPacketSender* packetSender = entityScriptingInterface->getPacketSender();
+    EntityEditPacketSender* entityPacketSender = static_cast<EntityEditPacketSender*>(packetSender);
+    entityPacketSender->setMyAvatar(getMyAvatar());
 
     connect(this, &Application::applicationStateChanged, this, &Application::activeChanged);
     qCDebug(interfaceapp, "Startup time: %4.2f seconds.", (double)startupTimer.elapsed() / 1000.0);
@@ -1122,7 +1127,7 @@ void Application::aboutToQuit() {
     emit beforeAboutToQuit();
 
     foreach(auto inputPlugin, PluginManager::getInstance()->getInputPlugins()) {
-        QString name = inputPlugin->getName();
+        QString name = INPUT_DEVICE_MENU_PREFIX + inputPlugin->getName();
         QAction* action = Menu::getInstance()->getActionForOption(name);
         if (action->isChecked()) {
             inputPlugin->deactivate();
@@ -1453,8 +1458,7 @@ void Application::initializeUi() {
     // This will set up the input plugins UI
     _activeInputPlugins.clear();
     foreach(auto inputPlugin, PluginManager::getInstance()->getInputPlugins()) {
-        QString name = inputPlugin->getName();
-        if (name == KeyboardMouseDevice::NAME) {
+        if (KeyboardMouseDevice::NAME == inputPlugin->getName()) {
             _keyboardMouseDevice = std::dynamic_pointer_cast<KeyboardMouseDevice>(inputPlugin);
         }
     }
@@ -1523,17 +1527,17 @@ void Application::paintGL() {
         renderArgs._context->syncCache();
     }
 
-    if (Menu::getInstance()->isOptionChecked(MenuOption::MiniMirror)) {
+    auto inputs = AvatarInputs::getInstance();
+    if (inputs->mirrorVisible()) {
         PerformanceTimer perfTimer("Mirror");
         auto primaryFbo = DependencyManager::get<FramebufferCache>()->getPrimaryFramebuffer();
 
         renderArgs._renderMode = RenderArgs::MIRROR_RENDER_MODE;
         renderArgs._blitFramebuffer = DependencyManager::get<FramebufferCache>()->getSelfieFramebuffer();
 
-        auto inputs = AvatarInputs::getInstance();
         _mirrorViewRect.moveTo(inputs->x(), inputs->y());
 
-        renderRearViewMirror(&renderArgs, _mirrorViewRect);
+        renderRearViewMirror(&renderArgs, _mirrorViewRect, inputs->mirrorZoomed());
 
         renderArgs._blitFramebuffer.reset();
         renderArgs._renderMode = RenderArgs::DEFAULT_RENDER_MODE;
@@ -1835,25 +1839,37 @@ bool Application::event(QEvent* event) {
         return false;
     }
 
-    static bool justPresented = false;
+    // Presentation/painting logic
+    // TODO: Decouple presentation and painting loops
+    static bool isPainting = false;
     if ((int)event->type() == (int)Present) {
-        if (justPresented) {
-            justPresented = false;
-
-            // If presentation is hogging the main thread, repost as low priority to avoid hanging the GUI.
+        if (isPainting) {
+            // If painting (triggered by presentation) is hogging the main thread,
+            // repost as low priority to avoid hanging the GUI.
             // This has the effect of allowing presentation to exceed the paint budget by X times and
-            // only dropping every (1/X) frames, instead of every ceil(X) frames.
+            // only dropping every (1/X) frames, instead of every ceil(X) frames
             // (e.g. at a 60FPS target, painting for 17us would fall to 58.82FPS instead of 30FPS).
             removePostedEvents(this, Present);
             postEvent(this, new QEvent(static_cast<QEvent::Type>(Present)), Qt::LowEventPriority);
+            isPainting = false;
             return true;
         }
 
         idle();
+
+        postEvent(this, new QEvent(static_cast<QEvent::Type>(Paint)), Qt::HighEventPriority);
+        isPainting = true;
+
         return true;
     } else if ((int)event->type() == (int)Paint) {
-        justPresented = true;
+        // NOTE: This must be updated as close to painting as possible,
+        //       or AvatarInputs will mysteriously move to the bottom-right
+        AvatarInputs::getInstance()->update();
+
         paintGL();
+
+        isPainting = false;
+
         return true;
     }
 
@@ -1986,7 +2002,7 @@ void Application::keyPressEvent(QKeyEvent* event) {
     }
 
     if (hasFocus()) {
-        if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+        if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
             _keyboardMouseDevice->keyPressEvent(event);
         }
 
@@ -2322,7 +2338,7 @@ void Application::keyReleaseEvent(QKeyEvent* event) {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->keyReleaseEvent(event);
     }
 
@@ -2354,7 +2370,7 @@ void Application::keyReleaseEvent(QKeyEvent* event) {
 void Application::focusOutEvent(QFocusEvent* event) {
     auto inputPlugins = PluginManager::getInstance()->getInputPlugins();
     foreach(auto inputPlugin, inputPlugins) {
-        QString name = inputPlugin->getName();
+        QString name = INPUT_DEVICE_MENU_PREFIX + inputPlugin->getName();
         QAction* action = Menu::getInstance()->getActionForOption(name);
         if (action && action->isChecked()) {
             inputPlugin->pluginFocusOutEvent();
@@ -2441,7 +2457,7 @@ void Application::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->mouseMoveEvent(event);
     }
 
@@ -2478,7 +2494,7 @@ void Application::mousePressEvent(QMouseEvent* event) {
 
 
     if (hasFocus()) {
-        if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+        if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
             _keyboardMouseDevice->mousePressEvent(event);
         }
 
@@ -2523,7 +2539,7 @@ void Application::mouseReleaseEvent(QMouseEvent* event) {
     }
 
     if (hasFocus()) {
-        if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+        if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
             _keyboardMouseDevice->mouseReleaseEvent(event);
         }
 
@@ -2550,7 +2566,7 @@ void Application::touchUpdateEvent(QTouchEvent* event) {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->touchUpdateEvent(event);
     }
 }
@@ -2568,7 +2584,7 @@ void Application::touchBeginEvent(QTouchEvent* event) {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->touchBeginEvent(event);
     }
 
@@ -2585,7 +2601,7 @@ void Application::touchEndEvent(QTouchEvent* event) {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->touchEndEvent(event);
     }
 
@@ -2601,7 +2617,7 @@ void Application::wheelEvent(QWheelEvent* event) const {
         return;
     }
 
-    if (Menu::getInstance()->isOptionChecked(KeyboardMouseDevice::NAME)) {
+    if (Menu::getInstance()->isOptionChecked(INPUT_DEVICE_MENU_PREFIX + KeyboardMouseDevice::NAME)) {
         _keyboardMouseDevice->wheelEvent(event);
     }
 }
@@ -2670,9 +2686,6 @@ void Application::idle() {
     // Sync up the _renderedFrameIndex
     _renderedFrameIndex = displayPlugin->presentCount();
 
-    // Request a paint ASAP
-    postEvent(this, new QEvent(static_cast<QEvent::Type>(Paint)), Qt::HighEventPriority + 1);
-
     // Update the deadlock watchdog
     updateHeartbeat();
 
@@ -2685,9 +2698,6 @@ void Application::idle() {
         firstIdle = false;
         connect(offscreenUi.data(), &OffscreenUi::showDesktop, this, &Application::showDesktop);
         _overlayConductor.setEnabled(Menu::getInstance()->isOptionChecked(MenuOption::Overlays));
-    } else {
-        // FIXME: AvatarInputs are positioned incorrectly if instantiated before the first paint
-        AvatarInputs::getInstance()->update();
     }
 
     PROFILE_RANGE(__FUNCTION__);
@@ -2701,8 +2711,6 @@ void Application::idle() {
     } else if (offscreenUi && offscreenUi->getWindow()->activeFocusItem() == offscreenUi->getRootItem()) {
         _keyboardDeviceHasFocus = true;
     }
-
-
 
     // We're going to execute idle processing, so restart the last idle timer
     _lastTimeUpdated.start();
@@ -2741,7 +2749,7 @@ void Application::idle() {
         getActiveDisplayPlugin()->idle();
         auto inputPlugins = PluginManager::getInstance()->getInputPlugins();
         foreach(auto inputPlugin, inputPlugins) {
-            QString name = inputPlugin->getName();
+            QString name = INPUT_DEVICE_MENU_PREFIX + inputPlugin->getName();
             QAction* action = Menu::getInstance()->getActionForOption(name);
             if (action && action->isChecked()) {
                 inputPlugin->idle();
@@ -3383,22 +3391,18 @@ void Application::update(float deltaTime) {
     };
 
     InputPluginPointer keyboardMousePlugin;
-    bool jointsCaptured = false;
     for (auto inputPlugin : PluginManager::getInstance()->getInputPlugins()) {
         if (inputPlugin->getName() == KeyboardMouseDevice::NAME) {
             keyboardMousePlugin = inputPlugin;
         } else if (inputPlugin->isActive()) {
-            inputPlugin->pluginUpdate(deltaTime, calibrationData, jointsCaptured);
-            if (inputPlugin->isJointController()) {
-                jointsCaptured = true;
-            }
+            inputPlugin->pluginUpdate(deltaTime, calibrationData);
         }
     }
 
     userInputMapper->update(deltaTime);
 
     if (keyboardMousePlugin && keyboardMousePlugin->isActive()) {
-        keyboardMousePlugin->pluginUpdate(deltaTime, calibrationData, jointsCaptured);
+        keyboardMousePlugin->pluginUpdate(deltaTime, calibrationData);
     }
 
     _controllerScriptingInterface->updateInputControllers();
@@ -3653,10 +3657,6 @@ void Application::update(float deltaTime) {
 
 
 int Application::sendNackPackets() {
-
-    if (Menu::getInstance()->isOptionChecked(MenuOption::DisableNackPackets)) {
-        return 0;
-    }
 
     // iterates through all nodes in NodeList
     auto nodeList = DependencyManager::get<NodeList>();
@@ -4165,7 +4165,7 @@ void Application::displaySide(RenderArgs* renderArgs, Camera& theCamera, bool se
     activeRenderingThread = nullptr;
 }
 
-void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& region) {
+void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& region, bool isZoomed) {
     auto originalViewport = renderArgs->_viewport;
     // Grab current viewport to reset it at the end
 
@@ -4175,7 +4175,7 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
     auto myAvatar = getMyAvatar();
 
     // bool eyeRelativeCamera = false;
-    if (!AvatarInputs::getInstance()->mirrorZoomed()) {
+    if (!isZoomed) {
         _mirrorCamera.setPosition(myAvatar->getChestPosition() +
                                   myAvatar->getOrientation() * glm::vec3(0.0f, 0.0f, -1.0f) * MIRROR_REARVIEW_BODY_DISTANCE * myAvatar->getScale());
 
@@ -4259,6 +4259,7 @@ void Application::clearDomainOctreeDetails() {
     qCDebug(interfaceapp) << "Clearing domain octree details...";
 
     resetPhysicsReadyInformation();
+    getMyAvatar()->setAvatarEntityDataChanged(true); // to recreate worn entities
 
     // reset our node to stats and node to jurisdiction maps... since these must be changing...
     _entityServerJurisdictions.withWriteLock([&] {
@@ -5210,21 +5211,23 @@ void Application::updateDisplayMode() {
     Q_ASSERT_X(_displayPlugin, "Application::updateDisplayMode", "could not find an activated display plugin");
 }
 
-static void addInputPluginToMenu(InputPluginPointer inputPlugin, bool active = false) {
+static void addInputPluginToMenu(InputPluginPointer inputPlugin) {
     auto menu = Menu::getInstance();
-    QString name = inputPlugin->getName();
+    QString name = INPUT_DEVICE_MENU_PREFIX + inputPlugin->getName();
     Q_ASSERT(!menu->menuItemExists(MenuOption::InputMenu, name));
 
     static QActionGroup* inputPluginGroup = nullptr;
     if (!inputPluginGroup) {
         inputPluginGroup = new QActionGroup(menu);
+        inputPluginGroup->setExclusive(false);
     }
+
     auto parent = menu->getMenu(MenuOption::InputMenu);
     auto action = menu->addCheckableActionToQMenuAndActionHash(parent,
-        name, 0, active, qApp,
+        name, 0, true, qApp,
         SLOT(updateInputModes()));
+
     inputPluginGroup->addAction(action);
-    inputPluginGroup->setExclusive(false);
     Q_ASSERT(menu->menuItemExists(MenuOption::InputMenu, name));
 }
 
@@ -5234,10 +5237,8 @@ void Application::updateInputModes() {
     auto inputPlugins = PluginManager::getInstance()->getInputPlugins();
     static std::once_flag once;
     std::call_once(once, [&] {
-        bool first = true;
         foreach(auto inputPlugin, inputPlugins) {
-            addInputPluginToMenu(inputPlugin, first);
-            first = false;
+            addInputPluginToMenu(inputPlugin);
         }
     });
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -5245,7 +5246,7 @@ void Application::updateInputModes() {
     InputPluginList newInputPlugins;
     InputPluginList removedInputPlugins;
     foreach(auto inputPlugin, inputPlugins) {
-        QString name = inputPlugin->getName();
+        QString name = INPUT_DEVICE_MENU_PREFIX + inputPlugin->getName();
         QAction* action = menu->getActionForOption(name);
 
         auto it = std::find(std::begin(_activeInputPlugins), std::end(_activeInputPlugins), inputPlugin);
