@@ -429,13 +429,14 @@ void SpatiallyNestable::setOrientation(const glm::quat& orientation) {
     #endif
 }
 
-glm::vec3 SpatiallyNestable::getVelocity(bool& success) const {
+glm::vec3 SpatiallyNestable::getVelocity(bool& success, bool inSimulationFrame) const {
     glm::vec3 result;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     if (!success) {
         return result;
     }
-    glm::vec3 parentVelocity = getParentVelocity(success);
+
+    glm::vec3 parentVelocity = getParentVelocity(success, inSimulationFrame);
     if (!success) {
         return result;
     }
@@ -455,9 +456,15 @@ glm::vec3 SpatiallyNestable::getVelocity() const {
     return result;
 }
 
-void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success) {
+void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame) {
     glm::vec3 parentVelocity = getParentVelocity(success);
-    Transform parentTransform = getParentTransform(success);
+    if (!success) {
+        qDebug() << "Warning -- setVelocity failed on getParentVelocity" << getID();
+    }
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
+    if (!success) {
+        qDebug() << "Warning -- setVelocity failed on getParentTransform" << getID();
+    }
     _velocityLock.withWriteLock([&] {
         // HACK: until we are treating _velocity the same way we treat _position (meaning,
         // _velocity is a vs parent value and any request for a world-frame velocity must
@@ -482,13 +489,17 @@ void SpatiallyNestable::setVelocity(const glm::vec3& velocity) {
     }
 }
 
-glm::vec3 SpatiallyNestable::getParentVelocity(bool& success) const {
+glm::vec3 SpatiallyNestable::getParentVelocity(bool& success, bool inSimulationFrame) const {
     glm::vec3 result;
+
     SpatiallyNestablePointer parent = getParentPointer(success);
     if (!success) {
         return result;
     }
     if (parent) {
+        if (inSimulationFrame && parent->isSimulationParent()) {
+            return result;
+        }
         result = parent->getVelocity(success);
     }
     return result;
@@ -1004,13 +1015,24 @@ void SpatiallyNestable::setOrientationInSimulationFrame(const glm::quat& orienta
 }
 
 glm::vec3 SpatiallyNestable::getVelocityInSimulationFrame() const {
-    // TODO: fix this
-    return getVelocity();
+    bool success;
+    glm::vec3 result = getVelocity(success, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- getVelocityInSimulationFrame failed" << getID();
+    }
+#endif
+    return result;
 }
 
 void SpatiallyNestable::setVelocityInSimulationFrame(const glm::vec3& velocity) {
-    // TODO: fix this
-    setVelocity(velocity);
+    bool success;
+    setVelocity(velocity, success, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- setVelocityInSimulationFrame failed" << getID();
+    }
+#endif
 }
 
 glm::vec3 SpatiallyNestable::getAngularVelocityInSimulationFrame() const {

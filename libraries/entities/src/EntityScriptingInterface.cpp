@@ -818,7 +818,7 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID, std::function
             return;
         }
 
-        doTransmit = actor(simulation, entity);
+        doTransmit = actor(entity);
         if (doTransmit) {
             properties.setClientOnly(entity->getClientOnly());
             properties.setOwningAvatarID(entity->getOwningAvatarID());

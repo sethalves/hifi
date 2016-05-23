@@ -1208,6 +1208,12 @@ controller::Pose MyAvatar::getRightHandControllerPoseInAvatarFrame() const {
 
 void MyAvatar::updateMotors() {
     _characterController.clearMotors();
+
+    EntitySimulationPointer simulation = getSimulation();
+    if (!simulation) {
+        return;
+    }
+
     glm::quat motorRotation;
     if (_motionBehaviors & AVATAR_MOTION_ACTION_MOTOR_ENABLED) {
         if (_characterController.getState() == CharacterController::State::Hover) {
@@ -1218,11 +1224,20 @@ void MyAvatar::updateMotors() {
         const float DEFAULT_MOTOR_TIMESCALE = 0.2f;
         const float INVALID_MOTOR_TIMESCALE = 1.0e6f;
         if (_isPushing || _isBraking || !_isBeingPushed) {
-            _characterController.addMotor(_actionMotorVelocity, motorRotation, DEFAULT_MOTOR_TIMESCALE, INVALID_MOTOR_TIMESCALE);
+            bool success;
+            _characterController.addMotor(
+                _actionMotorVelocity,
+                SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+                DEFAULT_MOTOR_TIMESCALE,
+                INVALID_MOTOR_TIMESCALE);
         } else {
             // _isBeingPushed must be true --> disable action motor by giving it a long timescale,
-            // otherwise it's attempt to "stand in in place" could defeat scripted motor/thrusts
-            _characterController.addMotor(_actionMotorVelocity, motorRotation, INVALID_MOTOR_TIMESCALE);
+            // otherwise its attempt to "stand in in place" could defeat scripted motor/thrusts
+            bool success;
+            _characterController.addMotor(
+                _actionMotorVelocity,
+                SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+                INVALID_MOTOR_TIMESCALE);
         }
     }
     if (_motionBehaviors & AVATAR_MOTION_SCRIPTED_MOTOR_ENABLED) {
@@ -1234,12 +1249,19 @@ void MyAvatar::updateMotors() {
             // world-frame
             motorRotation = glm::quat();
         }
-        _characterController.addMotor(_scriptedMotorVelocity, motorRotation, _scriptedMotorTimescale);
+        bool success;
+        _characterController.addMotor(
+            _scriptedMotorVelocity,
+            SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+            _scriptedMotorTimescale);
     }
 
     // legacy support for 'MyAvatar::applyThrust()', which has always been implemented as a
     // short-lived linearAcceleration
-    _characterController.setLinearAcceleration(_thrust);
+    // _characterController.setLinearAcceleration(_thrust);
+    bool success;
+    _characterController.setLinearAcceleration(
+        SpatiallyNestable::worldToLocalVelocity(_thrust, simulation->getID(), -1, success));
     _thrust = Vectors::ZERO;
 }
 
@@ -1256,15 +1278,6 @@ void MyAvatar::prepareForPhysicsSimulation() {
     if (!success) {
         qDebug() << "Warning: getParentVelocity failed" << getID();
         parentVelocity = glm::vec3();
-    }
-
-    bool pSuccess, tSuccess;
-    glm::vec3 inSimulationPVelocity =
-        SpatiallyNestable::worldToLocalVelocity(parentVelocity, simulation->getID(), -1, pSuccess);
-    if (pSuccess) {
-        _characterController.setParentVelocity(inSimulationPVelocity);
-    } else {
-        qDebug() << "MyAvatar::prepareForPhysicsSimulation failed to set _characterController velocity";
     }
 
     // convert global values to bullet position and orientation
@@ -1690,15 +1703,21 @@ void MyAvatar::updateActionMotor(float deltaTime) {
 }
 
 void MyAvatar::updatePosition(float deltaTime) {
+    EntitySimulationPointer simulation = getSimulation();
+    if (!simulation) {
+        return;
+    }
+
     if (_motionBehaviors & AVATAR_MOTION_ACTION_MOTOR_ENABLED) {
         updateActionMotor(deltaTime);
     }
 
-    vec3 velocity = getVelocity();
+    vec3 velocity = getVelocityInSimulationFrame();
     const float MOVING_SPEED_THRESHOLD_SQUARED = 0.0001f; // 0.01 m/s
     if (!_characterController.isEnabled()) {
         // _characterController is not in physics simulation but it can still compute its target velocity
         updateMotors();
+        bool success;
         _characterController.computeNewVelocity(deltaTime, velocity);
 
         float speed2 = glm::length2(velocity);
@@ -2175,7 +2194,7 @@ bool MyAvatar::didTeleport() {
 
 void MyAvatar::handleZoneChange() {
     EntityTreeRenderer* treeRenderer = qApp->getEntities();
-    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->getMyAvatarZone();
+    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->myAvatarZone();
     EntityItemPointer simulationZone = zone ? EntityItem::findAncestorZone(zone->getID()) : nullptr;
     QUuid zoneID = simulationZone ? simulationZone->getID() : QUuid();
 
@@ -2218,6 +2237,7 @@ void MyAvatar::handleZoneChange() {
         PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
         if (afterPhysicsEngine) {
             afterPhysicsEngine->setCharacterController(&_characterController);
+            _characterController.setVelocity(getVelocityInSimulationFrame());
             _characterController.setEnabled(true);
         } else {
             qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";

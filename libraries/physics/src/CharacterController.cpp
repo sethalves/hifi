@@ -191,9 +191,9 @@ const btScalar MIN_TARGET_SPEED = 0.001f;
 const btScalar MIN_TARGET_SPEED_SQUARED = MIN_TARGET_SPEED * MIN_TARGET_SPEED;
 
 void CharacterController::playerStep(btCollisionWorld* dynaWorld, btScalar dt) {
-    btVector3 velocity = _rigidBody->getLinearVelocity() - _parentVelocity;
+    btVector3 velocity = _rigidBody->getLinearVelocity();
     computeNewVelocity(dt, velocity);
-    _rigidBody->setLinearVelocity(velocity + _parentVelocity);
+    _rigidBody->setLinearVelocity(velocity);
 
     // Dynamicaly compute a follow velocity to move this body toward the _followDesiredBodyTransform.
     // Rather than add this velocity to velocity the RigidBody, we explicitly teleport the RigidBody towards its goal.
@@ -370,8 +370,8 @@ void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::qu
     }
 }
 
-void CharacterController::setParentVelocity(const glm::vec3& velocity) {
-    _parentVelocity = glmToBullet(velocity);
+void CharacterController::setVelocity(const glm::vec3& velocity) {
+    _rigidBody->setLinearVelocity(glmToBullet(velocity));
 }
 
 void CharacterController::setFollowParameters(const glm::mat4& desiredWorldBodyMatrix, float timeRemaining) {

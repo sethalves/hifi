@@ -77,11 +77,11 @@ public:
                                 bool tellPhysics = true, bool inSimulationFrame = false);
     virtual void setOrientation(const glm::quat& orientation);
 
-    virtual glm::vec3 getVelocity(bool& success) const;
+    virtual glm::vec3 getVelocity(bool& success, bool inSimulationFrame = false) const;
     virtual glm::vec3 getVelocity() const;
-    virtual void setVelocity(const glm::vec3& velocity, bool& success);
+    virtual void setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame = false);
     virtual void setVelocity(const glm::vec3& velocity);
-    virtual glm::vec3 getParentVelocity(bool& success) const;
+    virtual glm::vec3 getParentVelocity(bool& success, bool inSimulationFrame = false) const;
 
     virtual glm::vec3 getAngularVelocity(bool& success) const;
     virtual glm::vec3 getAngularVelocity() const;

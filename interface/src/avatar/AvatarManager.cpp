@@ -320,6 +320,7 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
             auto collisionSound = myAvatar->getCollisionSound();
             if (collisionSound) {
                 const auto characterController = myAvatar->getCharacterController();
+                // XXX local velocity to world?
                 const float avatarVelocityChange = (characterController ? glm::length(characterController->getVelocityChange()) : 0.0f);
                 const float velocityChange = glm::length(collision.velocityChange) + avatarVelocityChange;
                 const float MIN_AVATAR_COLLISION_ACCELERATION = 0.01f;
