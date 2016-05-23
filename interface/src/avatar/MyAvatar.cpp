@@ -1717,7 +1717,6 @@ void MyAvatar::updatePosition(float deltaTime) {
     if (!_characterController.isEnabled()) {
         // _characterController is not in physics simulation but it can still compute its target velocity
         updateMotors();
-        bool success;
         _characterController.computeNewVelocity(deltaTime, velocity);
 
         float speed2 = glm::length2(velocity);
