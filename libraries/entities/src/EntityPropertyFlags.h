@@ -175,6 +175,8 @@ enum EntityPropertyList {
     PROP_CLIENT_ONLY, // doesn't go over wire
     PROP_OWNING_AVATAR_ID, // doesn't go over wire
 
+    PROP_SHAPE,
+
     PROP_LOCALIZED_SIMULATION, // does a zone localize the physics of its children?
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -175,7 +175,6 @@ static const QString FBX_EXTENSION  = ".fbx";
 static const QString OBJ_EXTENSION  = ".obj";
 static const QString AVA_JSON_EXTENSION = ".ava.json";
 
-static const int MSECS_PER_SEC = 1000;
 static const int MIRROR_VIEW_TOP_PADDING = 5;
 static const int MIRROR_VIEW_LEFT_PADDING = 10;
 static const int MIRROR_VIEW_WIDTH = 265;
@@ -634,7 +633,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(&domainHandler, SIGNAL(disconnectedFromDomain()), SLOT(clearDomainOctreeDetails()));
 
     // update our location every 5 seconds in the metaverse server, assuming that we are authenticated with one
-    const qint64 DATA_SERVER_LOCATION_CHANGE_UPDATE_MSECS = 5 * MSECS_PER_SEC;
+    const qint64 DATA_SERVER_LOCATION_CHANGE_UPDATE_MSECS = 5 * MSECS_PER_SECOND;
 
     auto discoverabilityManager = DependencyManager::get<DiscoverabilityManager>();
     connect(&locationUpdateTimer, &QTimer::timeout, discoverabilityManager.data(), &DiscoverabilityManager::updateLocation);
@@ -1841,9 +1840,9 @@ bool Application::event(QEvent* event) {
 
     // Presentation/painting logic
     // TODO: Decouple presentation and painting loops
-    static bool isPainting = false;
+    static bool isPaintingThrottled = false;
     if ((int)event->type() == (int)Present) {
-        if (isPainting) {
+        if (isPaintingThrottled) {
             // If painting (triggered by presentation) is hogging the main thread,
             // repost as low priority to avoid hanging the GUI.
             // This has the effect of allowing presentation to exceed the paint budget by X times and
@@ -1851,14 +1850,17 @@ bool Application::event(QEvent* event) {
             // (e.g. at a 60FPS target, painting for 17us would fall to 58.82FPS instead of 30FPS).
             removePostedEvents(this, Present);
             postEvent(this, new QEvent(static_cast<QEvent::Type>(Present)), Qt::LowEventPriority);
-            isPainting = false;
+            isPaintingThrottled = false;
             return true;
         }
 
-        idle();
-
-        postEvent(this, new QEvent(static_cast<QEvent::Type>(Paint)), Qt::HighEventPriority);
-        isPainting = true;
+        float nsecsElapsed = (float)_lastTimeUpdated.nsecsElapsed();
+        if (shouldPaint(nsecsElapsed)) {
+            _lastTimeUpdated.start();
+            idle(nsecsElapsed);
+            postEvent(this, new QEvent(static_cast<QEvent::Type>(Paint)), Qt::HighEventPriority);
+        }
+        isPaintingThrottled = true;
 
         return true;
     } else if ((int)event->type() == (int)Paint) {
@@ -1868,7 +1870,7 @@ bool Application::event(QEvent* event) {
 
         paintGL();
 
-        isPainting = false;
+        isPaintingThrottled = false;
 
         return true;
     }
@@ -2654,10 +2656,9 @@ bool Application::acceptSnapshot(const QString& urlString) {
 
 static uint32_t _renderedFrameIndex { INVALID_FRAME };
 
-void Application::idle() {
-    // idle is called on a queued connection, so make sure we should be here.
-    if (_inPaint || _aboutToQuit) {
-        return;
+bool Application::shouldPaint(float nsecsElapsed) {
+    if (_aboutToQuit) {
+        return false;
     }
 
     auto displayPlugin = getActiveDisplayPlugin();
@@ -2676,15 +2677,20 @@ void Application::idle() {
     }
 #endif
 
-    float msecondsSinceLastUpdate = (float)_lastTimeUpdated.nsecsElapsed() / NSECS_PER_USEC / USECS_PER_MSEC;
+    float msecondsSinceLastUpdate = nsecsElapsed / NSECS_PER_USEC / USECS_PER_MSEC;
 
     // Throttle if requested
     if (displayPlugin->isThrottled() && (msecondsSinceLastUpdate < THROTTLED_SIM_FRAME_PERIOD_MS)) {
-        return;
+        return false;
     }
 
     // Sync up the _renderedFrameIndex
     _renderedFrameIndex = displayPlugin->presentCount();
+
+    return true;
+}
+
+void Application::idle(float nsecsElapsed) {
 
     // Update the deadlock watchdog
     updateHeartbeat();
@@ -2702,7 +2708,7 @@ void Application::idle() {
 
     PROFILE_RANGE(__FUNCTION__);
 
-    float secondsSinceLastUpdate = msecondsSinceLastUpdate / MSECS_PER_SECOND;
+    float secondsSinceLastUpdate = nsecsElapsed / NSECS_PER_MSEC / MSECS_PER_SECOND;
 
     // If the offscreen Ui has something active that is NOT the root, then assume it has keyboard focus.
     if (_keyboardDeviceHasFocus && offscreenUi && offscreenUi->getWindow()->activeFocusItem() != offscreenUi->getRootItem()) {
@@ -2711,9 +2717,6 @@ void Application::idle() {
     } else if (offscreenUi && offscreenUi->getWindow()->activeFocusItem() == offscreenUi->getRootItem()) {
         _keyboardDeviceHasFocus = true;
     }
-
-    // We're going to execute idle processing, so restart the last idle timer
-    _lastTimeUpdated.start();
 
     checkChangeCursor();
 
@@ -2941,7 +2944,7 @@ void Application::loadSettings() {
 }
 
 void Application::saveSettings() const {
-    sessionRunTime.set(_sessionRunTimer.elapsed() / MSECS_PER_SEC);
+    sessionRunTime.set(_sessionRunTimer.elapsed() / MSECS_PER_SECOND);
     DependencyManager::get<AudioClient>()->saveSettings();
     DependencyManager::get<LODManager>()->saveSettings();
 
