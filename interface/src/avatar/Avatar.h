@@ -243,8 +243,6 @@ protected:
     virtual bool shouldRenderHead(const RenderArgs* renderArgs) const;
     virtual void fixupModelsInScene();
 
-    virtual void updateJointMappings() override;
-
     virtual void updatePalms();
 
     render::ItemID _renderItemID{ render::Item::INVALID_ITEM_ID };
