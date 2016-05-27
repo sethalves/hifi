@@ -24,7 +24,7 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
-#include "SimulationTracker.h"
+#include "PhysicsEngineTrackerInterface.h"
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 
@@ -53,10 +53,7 @@ void EntityTree::eraseAllOctreeElements(bool createNewRoot) {
     emit clearingEntities();
 
     // this would be a good place to clean up our entities...
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    simulationTracker->forEachSimulation([](EntitySimulationPointer simulation){
-        simulation->clearEntities();
-    });
+    _simulation->clearEntities();
 
     {
         QWriteLocker locker(&_entityToElementLock);
@@ -87,10 +84,7 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
 void EntityTree::postAddEntity(EntityItemPointer entity) {
     assert(entity);
     // check to see if we need to simulate this entity..
-    auto simulation = entity->getSimulation();
-    if (simulation) {
-        simulation->addEntity(entity);
-    }
+    _simulation->addEntity(entity);
 
     if (!entity->isParentIDValid()) {
         QWriteLocker locker(&_missingParentLock);
@@ -282,10 +276,9 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
 
         uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
         if (newFlags) {
-            EntitySimulationPointer simulation = entity->getSimulation();
-            if (simulation) {
+            if (_simulation) {
                 if (newFlags & DIRTY_SIMULATION_FLAGS) {
-                    simulation->changeEntity(entity);
+                    _simulation->changeEntity(entity);
                 }
             } else {
                 // normally the simulation clears ALL updateFlags, but since there are none we do it explicitly
@@ -373,10 +366,9 @@ void EntityTree::notifyNewCollisionSoundURL(const QString& newURL, const EntityI
 
 void EntityTree::clearSimulationEntities() {
     this->withWriteLock([&] {
-        auto simulationTracker = DependencyManager::get<SimulationTracker>();
-        simulationTracker->forEachSimulation([](EntitySimulationPointer simulation){
-            simulation->clearEntities();
-        });
+        if (_simulation) {
+            _simulation->clearEntities();
+        }
     });
 }
 
@@ -481,9 +473,8 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
             trackDeletedEntity(theEntity->getEntityItemID());
         }
 
-        EntitySimulationPointer simulation = theEntity->getSimulation();
-        if (simulation) {
-            simulation->prepareEntityForDelete(theEntity);
+        if (_simulation) {
+            _simulation->prepareEntityForDelete(theEntity);
         }
     }
 }
@@ -1010,9 +1001,8 @@ void EntityTree::releaseSceneEncodeData(OctreeElementExtraEncodeData* extraEncod
 }
 
 void EntityTree::entityChanged(EntityItemPointer entity) {
-    EntitySimulationPointer simulation = entity->getSimulation();
-    if (simulation) {
-        simulation->changeEntity(entity);
+    if (_simulation) {
+        _simulation->changeEntity(entity);
     }
 }
 
@@ -1057,8 +1047,10 @@ void EntityTree::fixupMissingParents() {
                 // this entity's parent was previously not known, and now is.  Update its location in the EntityTree...
                 doMove = true;
                 // and make sure it's in the correct simulation...
-                entity->clearSimulation();
-                entity->getSimulation();
+                ObjectMotionStateInterface* physicsInfo = entity->getPhysicsInfo();
+                if (physicsInfo) {
+                    physicsInfo->maybeSwitchPhysicsEngines();
+                }
             } else if (getIsServer() && _avatarIDs.contains(entity->getParentID())) {
                 // this is a child of an avatar, which the entity server will never have
                 // a SpatiallyNestable object for.  Add it to a list for cleanup when the avatar leaves.
@@ -1092,25 +1084,22 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
 void EntityTree::update() {
     fixupMissingParents();
 
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    simulationTracker->forEachSimulation([this](EntitySimulationPointer simulation){
-        withWriteLock([&] {
-            simulation->updateEntities();
-            VectorOfEntities pendingDeletes;
-            simulation->takeEntitiesToDelete(pendingDeletes);
+    withWriteLock([&] {
+        _simulation->updateEntities();
+        VectorOfEntities pendingDeletes;
+        _simulation->takeEntitiesToDelete(pendingDeletes);
 
-            if (pendingDeletes.size() > 0) {
-                // translate into list of ID's
-                QSet<EntityItemID> idsToDelete;
+        if (pendingDeletes.size() > 0) {
+            // translate into list of ID's
+            QSet<EntityItemID> idsToDelete;
 
-                for (auto entity : pendingDeletes) {
-                    idsToDelete.insert(entity->getEntityItemID());
-                }
-
-                // delete these things the roundabout way
-                deleteEntities(idsToDelete, true);
+            for (auto entity : pendingDeletes) {
+                idsToDelete.insert(entity->getEntityItemID());
             }
-        });
+
+            // delete these things the roundabout way
+            deleteEntities(idsToDelete, true);
+        }
     });
 }
 

@@ -45,9 +45,11 @@ typedef std::vector<Collision> CollisionEvents;
 
 class PhysicsEngine {
 public:
-    PhysicsEngine(const glm::vec3& offset);
+    PhysicsEngine(QUuid id, const glm::vec3& offset);
     ~PhysicsEngine();
     void init();
+
+    QUuid getID() { return _id; }
 
     uint32_t getNumSubsteps();
 
@@ -98,6 +100,8 @@ private:
 
     void doOwnershipInfection(const btCollisionObject* objectA, const btCollisionObject* objectB);
 
+    QUuid _id; // corresponds to entityID of zone that owns this PhysicsEngine
+
     btClock _clock;
     btDefaultCollisionConfiguration* _collisionConfig = NULL;
     btCollisionDispatcher* _collisionDispatcher = NULL;
@@ -123,5 +127,6 @@ private:
 };
 
 using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 
 #endif // hifi_PhysicsEngine_h

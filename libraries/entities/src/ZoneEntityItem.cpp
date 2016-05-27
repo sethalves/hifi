@@ -19,7 +19,7 @@
 #include "EntityTree.h"
 #include "EntityTreeElement.h"
 #include "ZoneEntityItem.h"
-#include "SimulationTracker.h"
+#include "PhysicsEngineTrackerInterface.h"
 #include "EntitySimulation.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
@@ -222,24 +222,25 @@ bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const 
     return _zonesArePickable;
 }
 
-EntitySimulationPointer ZoneEntityItem::getChildSimulation() {
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(getID());
-    if (simulation) {
-        return simulation;
+PhysicsEnginePointer ZoneEntityItem::getChildPhysicsEngine() {
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    PhysicsEnginePointer physicsEngine = physicsEngineTracker->getPhysicsEngineByID(getID());
+    if (physicsEngine) {
+        return physicsEngine;
     }
 
-    // This doesn't get called unless this entity has a child.  If this entity has a child but no simulation,
-    // we need to create a new simulation.
+    // This doesn't get called unless this entity has a child.  If this entity has a child but no physicsEngine,
+    // we need to create a new physicsEngine.
     EntityTreePointer tree = getTree();
-    return simulationTracker->newSimulation(getID(), tree);
+    return physicsEngineTracker->newPhysicsEngine(getID(), glm::vec3(0.0f), tree);
 }
 
 void ZoneEntityItem::setLocalizedSimulation(bool value) {
     if (_localizedSimulation != value) {
         _localizedSimulation = value;
         forEachDescendant([&](SpatiallyNestablePointer object) {
-            object->clearSimulation(); // force all children to reconsider which simulation frame they are in
+            // cause all descendents to reevaluate which physics engine they are in
+            object->hierarchyChanged();
         });
     }
 }

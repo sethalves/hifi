@@ -18,9 +18,14 @@
 
 class Avatar;
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
+
+
 class AvatarMotionState : public ObjectMotionState {
 public:
-    AvatarMotionState(Avatar* avatar, btCollisionShape* shape);
+    AvatarMotionState(Avatar* avatar, btCollisionShape* shape, PhysicsEnginePointer physicsEngine);
 
     virtual PhysicsMotionType getMotionType() const override { return _motionType; }
 
@@ -67,6 +72,7 @@ public:
     friend class Avatar;
 
     Avatar* getAvatar() { return _avatar; }
+    PhysicsEnginePointer getPhysicsEngine() const { return _physicsEngine.lock(); }
 
 protected:
     // the dtor had been made protected to force the compiler to verify that it is only
@@ -81,6 +87,8 @@ protected:
     // In other words, it is impossible for the Avatar to be deleted out from under its MotionState.
     // In conclusion: weak pointer shennanigans would be pure overhead.
     Avatar* _avatar; // do NOT use smartpointer here, no need for weakpointer
+
+    PhysicsEngineWeakPointer _physicsEngine;
 
     uint32_t _dirtyFlags;
 };

@@ -46,7 +46,7 @@
 #include "InterfaceLogging.h"
 #include "SoftAttachmentModel.h"
 #include <Rig.h>
-#include "SimulationTracker.h"
+#include "PhysicsEngineTracker.h"
 
 using namespace std;
 
@@ -1203,32 +1203,17 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
     }
 }
 
-EntitySimulationPointer Avatar::getSimulation() {
-    if (_simulationMayHaveChanged) {
-        _simulationMayHaveChanged = false;
-        _simulation.reset();
-    }
-
-    EntitySimulationPointer currentSimulation = _simulation.lock();
-
-    if (currentSimulation) {
-        return currentSimulation;
-    }
-
+PhysicsEnginePointer Avatar::getPhysicsEngine() {
     EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
     if (ancestorZone) {
-        currentSimulation = ancestorZone->getChildSimulation();
-        _simulation = currentSimulation;
-        return currentSimulation;
+        return ancestorZone->getChildPhysicsEngine();
     }
-
-    // no parent zones, so use the world-frame simulation
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    return simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+    return nullptr;
 }
 
-PhysicsEnginePointer Avatar::getPhysicsEngine() {
-    EntitySimulationPointer simulation = getSimulation();
-    PhysicalEntitySimulationPointer pESimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-    return pESimulation ? pESimulation->getPhysicsEngine() : nullptr;
+void Avatar::hierarchyChanged() {
+    SpatiallyNestable::hierarchyChanged();
+    if (_motionState) {
+        _motionState->maybeSwitchPhysicsEngines();
+    }
 }

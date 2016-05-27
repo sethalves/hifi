@@ -31,7 +31,7 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "EntityActionFactoryInterface.h"
-#include "SimulationTracker.h"
+#include "PhysicsEngineTrackerInterface.h"
 
 
 int EntityItem::_maxActionsDataSize = 800;
@@ -88,7 +88,11 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    clearActions();
+    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
+    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    if (simulation) {
+        clearActions(simulation);
+    }
 
     // these pointers MUST be correct at delete, else we probably have a dangling backpointer
     // to this EntityItem in the corresponding data structure.
@@ -1751,65 +1755,12 @@ EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
     return nullptr;
 }
 
-EntitySimulationPointer EntityItem::getSimulation() {
-    // this returns the simulation that *should* contain this entity, even if it doesn't, yet.
-    EntitySimulationPointer currentSimulation = _simulation.lock();
-
-    if (_simulationMayHaveChanged) {
-        _simulationMayHaveChanged = false;
-        EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
-        if (ancestorZone) {
-            EntitySimulationPointer nextSimulation = ancestorZone->getChildSimulation();
-            if (nextSimulation == currentSimulation) {
-                // same simulation, nothing to change
-                return currentSimulation;
-            }
-
-            //#ifdef WANT_DEBUG
-            bool success;
-            SpatiallyNestablePointer beforeZone =
-                currentSimulation ? SpatiallyNestable::findByID(currentSimulation->getID(), success) : nullptr;
-            QString beforeZoneName = success && beforeZone ? beforeZone->toString() : "null";
-            QString afterZoneName = ancestorZone->toString();
-            qDebug() << "Entity" << toString() << "is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
-            //#endif
-
-            if (currentSimulation) {
-                // we are leaving a simulation
-                clearActions();
-                currentSimulation->removeEntity(getThisPointer());
-            }
-            _simulation = nextSimulation;
-            if (nextSimulation) {
-                // we are joining a new simulation
-                nextSimulation->addEntity(getThisPointer());
-                return nextSimulation;
-            }
-        }
-        // join the default simulation
-        auto simulationTracker = DependencyManager::get<SimulationTracker>();
-        currentSimulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-        _simulation = currentSimulation;
-        currentSimulation->addEntity(getThisPointer());
-        return currentSimulation;
-    }
-
-    if (currentSimulation) {
-        return currentSimulation;
-    }
-
+PhysicsEnginePointer EntityItem::getPhysicsEngine() {
     EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
     if (ancestorZone) {
-        currentSimulation = ancestorZone->getChildSimulation();
-    } else {
-        // no parent zones, so use the world-frame simulation
-        auto simulationTracker = DependencyManager::get<SimulationTracker>();
-        currentSimulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
+        return ancestorZone->getChildPhysicsEngine();
     }
-
-    _simulation = currentSimulation;
-    currentSimulation->addEntity(getThisPointer());
-    return currentSimulation;
+    return nullptr;
 }
 
 QString EntityItem::actionsToDebugString() {
@@ -1826,33 +1777,29 @@ QString EntityItem::actionsToDebugString() {
     return result;
 }
 
-bool EntityItem::addAction(EntityActionPointer action) {
+bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPointer action) {
     bool result;
     withWriteLock([&] {
-        checkWaitingToRemove();
+        checkWaitingToRemove(simulation);
 
-        result = addActionInternal(action);
+        result = addActionInternal(action, simulation);
         if (result) {
             action->setIsMine(true);
             _actionDataDirty = true;
         } else {
-            removeActionInternal(action->getID());
+            removeActionInternal(action->getID(), simulation);
         }
     });
 
     return result;
 }
 
-bool EntityItem::addActionInternal(EntityActionPointer action) {
+bool EntityItem::addActionInternal(EntityActionPointer action, EntitySimulationPointer simulation) {
     assert(action);
+    assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
     assert(actionOwnerEntity);
     assert(actionOwnerEntity.get() == this);
-
-    EntitySimulationPointer simulation = getSimulation();
-    if (!simulation) {
-        return false;
-    }
 
     const QUuid& actionID = action->getID();
     assert(!_objectActions.contains(actionID) || _objectActions[actionID] == action);
@@ -1871,10 +1818,10 @@ bool EntityItem::addActionInternal(EntityActionPointer action) {
     return success;
 }
 
-bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& arguments) {
+bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove();
+        checkWaitingToRemove(simulation);
 
         if (!_objectActions.contains(actionID)) {
             return;
@@ -1894,22 +1841,21 @@ bool EntityItem::updateAction(const QUuid& actionID, const QVariantMap& argument
     return success;
 }
 
-bool EntityItem::removeAction(const QUuid& actionID) {
+bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& actionID) {
     bool success = false;
     withWriteLock([&] {
-        checkWaitingToRemove();
-        success = removeActionInternal(actionID);
+        checkWaitingToRemove(simulation);
+        success = removeActionInternal(actionID, simulation);
     });
     return success;
 }
 
-bool EntityItem::removeActionInternal(const QUuid& actionID) {
+bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation) {
     _previouslyDeletedActions.insert(actionID, usecTimestampNow());
     if (_objectActions.contains(actionID)) {
-
-        EntitySimulationPointer simulation = getSimulation();
         if (!simulation) {
-            return false;
+            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
+            simulation = entityTree ? entityTree->getSimulation() : nullptr;
         }
 
         EntityActionPointer action = _objectActions[actionID];
@@ -1918,7 +1864,9 @@ bool EntityItem::removeActionInternal(const QUuid& actionID) {
         action->setIsMine(false);
         _objectActions.remove(actionID);
 
-        action->removeFromSimulation(simulation);
+        if (simulation) {
+            action->removeFromSimulation(simulation);
+        }
 
         bool success = true;
         serializeActions(success, _allActionsDataCache);
@@ -1929,16 +1877,8 @@ bool EntityItem::removeActionInternal(const QUuid& actionID) {
     return false;
 }
 
-bool EntityItem::clearActions() {
-    bool result = true;
+bool EntityItem::clearActions(EntitySimulationPointer simulation) {
     withWriteLock([&] {
-
-        EntitySimulationPointer simulation = _simulation.lock();
-        if (!simulation) {
-            result = false;
-            return;
-        }
-
         QHash<QUuid, EntityActionPointer>::iterator i = _objectActions.begin();
         while (i != _objectActions.end()) {
             const QUuid id = i.key();
@@ -1952,7 +1892,7 @@ bool EntityItem::clearActions() {
         _allActionsDataCache.clear();
         _dirtyFlags |= Simulation::DIRTY_PHYSICS_ACTIVATION;
     });
-    return result;
+    return true;
 }
 
 
@@ -1970,6 +1910,11 @@ void EntityItem::deserializeActionsInternal() {
         qCDebug(entities) << "EntityItem::deserializeActionsInternal -- no _element";
         return;
     }
+
+    EntityTreePointer entityTree = getTree();
+    assert(entityTree);
+    EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
+    assert(simulation);
 
     QVector<QByteArray> serializedActions;
     if (_allActionsDataCache.size() > 0) {
@@ -2003,14 +1948,14 @@ void EntityItem::deserializeActionsInternal() {
             EntityItemPointer entity = getThisPointer();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
-                entity->addActionInternal(action);
+                entity->addActionInternal(action, simulation);
                 updated << actionID;
             } else {
                 static QString repeatedMessage =
                     LogHandler::getInstance().addRepeatedMessageRegex(".*action creation failed for.*");
                 qCDebug(entities) << "EntityItem::deserializeActionsInternal -- action creation failed for"
                                   << getID() << getName();
-                removeActionInternal(actionID);
+                removeActionInternal(actionID, nullptr);
             }
         }
     }
@@ -2048,9 +1993,9 @@ void EntityItem::deserializeActionsInternal() {
     return;
 }
 
-void EntityItem::checkWaitingToRemove() {
+void EntityItem::checkWaitingToRemove(EntitySimulationPointer simulation) {
     foreach(QUuid actionID, _actionsToRemove) {
-        removeActionInternal(actionID);
+        removeActionInternal(actionID, simulation);
     }
     _actionsToRemove.clear();
 }
@@ -2177,6 +2122,13 @@ void EntityItem::locationChanged(bool tellPhysics) {
         }
     }
     SpatiallyNestable::locationChanged(tellPhysics); // tell all the children, also
+}
+
+void EntityItem::hierarchyChanged() {
+    SpatiallyNestable::hierarchyChanged();
+    if (_physicsInfo) {
+        _physicsInfo->maybeSwitchPhysicsEngines();
+    }
 }
 
 void EntityItem::dimensionsChanged() {

@@ -192,6 +192,9 @@ public:
 
     void emitEntityScriptChanging(const EntityItemID& entityItemID, const bool reload);
 
+    void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
+    EntitySimulationPointer getSimulation() const { return _simulation; }
+
     void clearSimulationEntities();
 
     bool wantEditLogging() const { return _wantEditLogging; }
@@ -325,6 +328,8 @@ protected:
     // we maintain a list of avatarIDs to notice when an entity is a child of one.
     QSet<QUuid> _avatarIDs; // IDs of avatars connected to entity server
     QHash<QUuid, QSet<EntityItemID>> _childrenOfAvatars;  // which entities are children of which avatars
+
+    EntitySimulationPointer _simulation;
 };
 
 #endif // hifi_EntityTree_h

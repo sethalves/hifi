@@ -40,7 +40,7 @@
 #include "entities/AssignmentParentFinder.h"
 #include "RecordingScriptingInterface.h"
 #include "AbstractAudioInterface.h"
-#include "SimulationTracker.h"
+#include "PhysicsEngineTracker.h"
 
 #include "Agent.h"
 
@@ -66,7 +66,7 @@ Agent::Agent(ReceivedMessage& message) :
     DependencyManager::set<recording::Deck>();
     DependencyManager::set<recording::Recorder>();
     DependencyManager::set<RecordingScriptingInterface>();
-    DependencyManager::set<SimulationTracker>();
+    DependencyManager::set<PhysicsEngineTracker>();
 
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
 

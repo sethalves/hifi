@@ -155,11 +155,6 @@ public:
     SpatiallyNestablePointer getParentPointer(bool& success) const;
 
     static SpatiallyNestablePointer findByID(QUuid id, bool& success);
-
-    virtual void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
-    virtual EntitySimulationPointer getSimulation() { return _simulation.lock(); }
-    virtual void clearSimulation() { _simulationMayHaveChanged = true; }
-
     virtual bool isSimulationParent() { return false; }
 
     // in the frame of the simulation for this object
@@ -173,6 +168,8 @@ public:
     virtual void setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity);
 
     virtual QString toString() const { return getID().toString(); }
+
+    virtual void hierarchyChanged(); // path through ancestors to root has changed
 
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
@@ -190,7 +187,7 @@ protected:
     mutable SpatiallyNestableWeakPointer _parent;
 
     virtual void beParentOfChild(SpatiallyNestablePointer newChild) const;
-    virtual void forgetChild(SpatiallyNestablePointer newChild) const;
+    virtual void forgetChild(SpatiallyNestablePointer noLongerChild) const;
 
     mutable ReadWriteLockable _childrenLock;
     mutable QHash<QUuid, SpatiallyNestableWeakPointer> _children;

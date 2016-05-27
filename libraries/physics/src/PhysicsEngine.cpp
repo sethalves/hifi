@@ -18,9 +18,10 @@
 #include "ThreadSafeDynamicsWorld.h"
 #include "PhysicsLogging.h"
 
-PhysicsEngine::PhysicsEngine(const glm::vec3& offset) :
-        _originOffset(offset),
-        _myAvatarController(nullptr) {
+PhysicsEngine::PhysicsEngine(QUuid id, const glm::vec3& offset) :
+    _id(id),
+    _originOffset(offset),
+    _myAvatarController(nullptr) {
 }
 
 PhysicsEngine::~PhysicsEngine() {

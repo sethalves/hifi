@@ -117,6 +117,8 @@ SpatiallyNestablePointer SpatiallyNestable::getParentPointer(bool& success) cons
         _parentKnowsMe = true;
     }
 
+    getThisPointer()->hierarchyChanged();
+
     success = (parent || parentID.isNull());
     return parent;
 }
@@ -125,15 +127,11 @@ void SpatiallyNestable::beParentOfChild(SpatiallyNestablePointer newChild) const
     _childrenLock.withWriteLock([&] {
         _children[newChild->getID()] = newChild;
     });
-    newChild->clearSimulation();
-    newChild->forEachDescendant([&](SpatiallyNestablePointer descendant) {
-        descendant->clearSimulation();
-    });
 }
 
-void SpatiallyNestable::forgetChild(SpatiallyNestablePointer newChild) const {
+void SpatiallyNestable::forgetChild(SpatiallyNestablePointer noLongerChild) const {
     _childrenLock.withWriteLock([&] {
-        _children.remove(newChild->getID());
+        _children.remove(noLongerChild->getID());
     });
 }
 
@@ -814,6 +812,13 @@ void SpatiallyNestable::locationChanged(bool tellPhysics) {
         object->locationChanged(tellPhysics);
     });
 }
+
+void SpatiallyNestable::hierarchyChanged() {
+    forEachChild([&](SpatiallyNestablePointer object) {
+        object->hierarchyChanged();
+    });
+}
+
 
 AACube SpatiallyNestable::getMaximumAACube(bool& success) const {
     return AACube(getPosition(success) - glm::vec3(defaultAACubeSize / 2.0f), defaultAACubeSize);

@@ -413,6 +413,7 @@ private:
     QElapsedTimer _lastTimeUpdated;
 
     ShapeManager _shapeManager;
+    PhysicalEntitySimulationPointer _entitySimulation;
 
     EntityTreeRenderer _entityClipboardRenderer;
     EntityTreePointer _entityClipboard;
@@ -532,11 +533,8 @@ private:
     QString _returnFromFullScreenMirrorTo;
 };
 
-void forEachSimulation(std::function<void(EntitySimulationPointer)> actor);
-void forEachPhysicsEngine(std::function<void(PhysicalEntitySimulationPointer, PhysicsEnginePointer)> actor);
-PhysicalEntitySimulationPointer getSimulationFromAvatarMotionState(ObjectMotionState* motionState);
+void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor);
 PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState);
-PhysicalEntitySimulationPointer getDefaultSimulation();
 PhysicsEnginePointer getDefaultPhysicsEngine();
 
 #endif // hifi_Application_h

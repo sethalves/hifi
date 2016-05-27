@@ -178,8 +178,8 @@ public:
     glm::vec3 getUncachedRightPalmPosition() const;
     glm::quat getUncachedRightPalmRotation() const;
 
-    virtual EntitySimulationPointer getSimulation() override;
     PhysicsEnginePointer getPhysicsEngine();
+    virtual void hierarchyChanged() override;
 
 public slots:
 

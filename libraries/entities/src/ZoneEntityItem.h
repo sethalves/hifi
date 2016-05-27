@@ -89,7 +89,7 @@ public:
     static const bool DEFAULT_GHOSTING_ALLOWED;
     static const bool DEFAULT_LOCALIZED_SIMULATION;
 
-    virtual EntitySimulationPointer getChildSimulation() override;
+    virtual PhysicsEnginePointer getChildPhysicsEngine() override;
 
     bool getLocalizedSimulation() const { return _localizedSimulation; }
     void setLocalizedSimulation(bool value);

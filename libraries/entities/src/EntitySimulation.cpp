@@ -57,7 +57,6 @@ void EntitySimulation::removeEntityInternal(EntityItemPointer entity) {
     _simpleKinematicEntities.remove(entity);
     _allEntities.remove(entity);
     entity->setSimulated(false);
-    entity->setSimulation(nullptr);
 }
 
 void EntitySimulation::prepareEntityForDelete(EntityItemPointer entity) {
@@ -65,7 +64,7 @@ void EntitySimulation::prepareEntityForDelete(EntityItemPointer entity) {
     assert(entity->isDead());
     if (entity->isSimulated()) {
         QMutexLocker lock(&_mutex);
-        entity->clearActions();
+        entity->clearActions(getThisPointer());
         removeEntityInternal(entity);
         _entitiesToDelete.insert(entity);
     }
@@ -171,7 +170,6 @@ void EntitySimulation::sortEntitiesThatMoved() {
 void EntitySimulation::addEntity(EntityItemPointer entity) {
     QMutexLocker lock(&_mutex);
     assert(entity);
-    entity->setSimulation(getThisPointer());
     entity->deserializeActions();
     if (entity->isMortal()) {
         _mortalEntities.insert(entity);
@@ -257,7 +255,6 @@ void EntitySimulation::clearEntities() {
 
     for (auto entity : _allEntities) {
         entity->setSimulated(false);
-        entity->setSimulation(nullptr);
         entity->die();
     }
     _allEntities.clear();

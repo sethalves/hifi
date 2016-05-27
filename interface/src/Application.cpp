@@ -148,7 +148,8 @@
 #include "ui/UpdateDialog.h"
 #include "Util.h"
 #include "InterfaceParentFinder.h"
-#include "PhysicalSimulationTracker.h"
+#include "PhysicalEntitySimulation.h"
+#include "PhysicsEngineTracker.h"
 
 #include "FrameTimingsScriptingInterface.h"
 
@@ -398,7 +399,7 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::registerInheritance<AvatarHashMap, AvatarManager>();
     DependencyManager::registerInheritance<EntityActionFactoryInterface, InterfaceActionFactory>();
     DependencyManager::registerInheritance<SpatialParentFinder, InterfaceParentFinder>();
-    DependencyManager::registerInheritance<SimulationTracker, PhysicalSimulationTracker>();
+    DependencyManager::registerInheritance<PhysicsEngineTrackerInterface, PhysicsEngineTracker>();
 
     Setting::init();
 
@@ -455,7 +456,7 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::set<InterfaceParentFinder>();
     DependencyManager::set<EntityTreeRenderer>(true, qApp, qApp);
     DependencyManager::set<CompositorHelper>();
-    DependencyManager::set<PhysicalSimulationTracker>();
+    DependencyManager::set<PhysicsEngineTracker>();
     return previousSessionCrashed;
 }
 
@@ -1231,7 +1232,7 @@ Application::~Application() {
     _octreeProcessor.terminate();
     _entityEditSender.terminate();
 
-    forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
+    forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine) {
         physicsEngine->setCharacterController(nullptr);
     });
 
@@ -1240,7 +1241,7 @@ Application::~Application() {
     VectorOfMotionStates motionStates;
     DependencyManager::get<AvatarManager>()->getObjectsToRemoveFromPhysics(motionStates);
 
-    forEachPhysicsEngine([motionStates](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
+    forEachPhysicsEngine([motionStates](PhysicsEnginePointer physicsEngine) {
         VectorOfMotionStates forThisEngine;
         foreach (ObjectMotionState* motionState, motionStates) {
             PhysicsEnginePointer physicsEngineForThisMotionState = getPhysicsEngineFromAvatarMotionState(motionState);
@@ -2080,7 +2081,7 @@ void Application::keyPressEvent(QKeyEvent* event) {
                 break;
 
             case Qt::Key_F: {
-                forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine){
+                forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine){
                     physicsEngine->dumpNextStats();
                 });
                 break;
@@ -3001,7 +3002,7 @@ void Application::init() {
         DependencyManager::get<AddressManager>()->ifLocalSandboxRunningElse([](){
             qDebug() << "Home sandbox appears to be running, going to Home.";
             DependencyManager::get<AddressManager>()->goToLocalSandbox();
-        }, 
+        },
         [](){
             qDebug() << "Home sandbox does not appear to be running, going to Entry.";
             DependencyManager::get<AddressManager>()->goToEntry();
@@ -3026,12 +3027,13 @@ void Application::init() {
 
     ObjectMotionState::setShapeManager(&_shapeManager);
 
+    PhysicsEnginePointer defaultPhysicsEngine {
+        new PhysicsEngine(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID, glm::vec3(0.0f))
+    };
+
     EntityTreePointer tree = getEntities()->getTree();
-    auto simulationTracker = DependencyManager::get<PhysicalSimulationTracker>();
-    simulationTracker->setEntityEditPacketSender(&_entityEditSender);
-    EntitySimulationPointer simulation = simulationTracker->newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, tree);
-    PhysicalEntitySimulationPointer entitySimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-    tree->clearSimulationEntities();
+    PhysicalEntitySimulationPointer simulation { new PhysicalEntitySimulation() };
+    simulation->init(tree, defaultPhysicsEngine, &_entityEditSender);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
 
@@ -3313,7 +3315,7 @@ void Application::update(float deltaTime) {
 
     bool showWarnings = Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings);
     PerformanceWarning warn(showWarnings, "Application::update()");
-    auto simulationTracker = DependencyManager::get<PhysicalSimulationTracker>();
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
 
     updateLOD();
 
@@ -3449,73 +3451,61 @@ void Application::update(float deltaTime) {
 
             PerformanceTimer perfTimer("updateStates)");
             static VectorOfMotionStates motionStates;
-            forEachPhysicsEngine([](PhysicalEntitySimulationPointer entitySimulation, PhysicsEnginePointer physicsEngine){
-                entitySimulation->getObjectsToRemoveFromPhysics(motionStates);
-                physicsEngine->removeObjects(motionStates);
-                entitySimulation->deleteObjectsRemovedFromPhysics();
+
+            _entitySimulation->getObjectsToRemoveFromPhysics(motionStates);
+            auto motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+            forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine){
+                physicsEngine->removeObjects(motionStatesPerEngine[physicsEngine->getID()]);
             });
+            _entitySimulation->deleteObjectsRemovedFromPhysics();
+
             getEntities()->getTree()->withReadLock([&] {
-                forEachPhysicsEngine([](PhysicalEntitySimulationPointer entitySimulation, PhysicsEnginePointer physicsEngine) {
-                    entitySimulation->getObjectsToAddToPhysics(motionStates);
-                    physicsEngine->addObjects(motionStates);
+                _entitySimulation->getObjectsToAddToPhysics(motionStates);
+                motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+                forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
+                    physicsEngine->addObjects(motionStatesPerEngine[physicsEngine->getID()]);
                 });
             });
             getEntities()->getTree()->withReadLock([&] {
-                forEachPhysicsEngine([](PhysicalEntitySimulationPointer entitySimulation, PhysicsEnginePointer physicsEngine) {
-                    entitySimulation->getObjectsToChange(motionStates);
-                    VectorOfMotionStates stillNeedChange = physicsEngine->changeObjects(motionStates);
-                    entitySimulation->setObjectsToChange(stillNeedChange);
+                _entitySimulation->getObjectsToChange(motionStates);
+                motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+                VectorOfMotionStates stillNeedChange;
+                forEachPhysicsEngine([motionStatesPerEngine, &stillNeedChange](PhysicsEnginePointer physicsEngine) {
+                    stillNeedChange += physicsEngine->changeObjects(motionStatesPerEngine[physicsEngine->getID()]);
                 });
+                _entitySimulation->setObjectsToChange(stillNeedChange);
             });
 
-            forEachSimulation([](EntitySimulationPointer entitySimulation) {
-                entitySimulation->applyActionChanges();
-            });
+            _entitySimulation->applyActionChanges();
 
             avatarManager->getObjectsToRemoveFromPhysics(motionStates);
-            forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
-                VectorOfMotionStates forThisEngine;
-                foreach (ObjectMotionState* motionState, motionStates) {
-                    PhysicsEnginePointer physicsEngineForThisMotionState = getPhysicsEngineFromAvatarMotionState(motionState);
-                    if (physicsEngineForThisMotionState == physicsEngine) {
-                        forThisEngine.append(motionState);
-                    }
-                }
-                physicsEngine->removeObjects(forThisEngine);
+            motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+            forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
+                physicsEngine->removeObjects(motionStatesPerEngine[physicsEngine->getID()]);
             });
             avatarManager->getObjectsToAddToPhysics(motionStates);
             foreach (ObjectMotionState* motionState, motionStates) {
-                AvatarMotionState* avMotionState = static_cast<AvatarMotionState*>(motionState);
-                Avatar* avatar = avMotionState->getAvatar();
-                avatar->setSimulation(simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID));
                 PhysicsEnginePointer physicsEngine = getPhysicsEngineFromAvatarMotionState(motionState);
                 physicsEngine->addObject(motionState);
             }
             avatarManager->getObjectsToChange(motionStates);
-            forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
-                VectorOfMotionStates forThisEngine;
-                foreach (ObjectMotionState* motionState, motionStates) {
-                    PhysicsEnginePointer physicsEngineForThisMotionState = getPhysicsEngineFromAvatarMotionState(motionState);
-                    if (physicsEngineForThisMotionState == physicsEngine) {
-                        forThisEngine.append(motionState);
-                    }
-                }
-                physicsEngine->changeObjects(forThisEngine);
+            motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+            forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
+                physicsEngine->changeObjects(motionStatesPerEngine[physicsEngine->getID()]);
             });
 
-
             myAvatar->prepareForPhysicsSimulation();
-            forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
+            forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine) {
                 physicsEngine->forEachAction([&](EntityActionPointer action) {
-                        action->prepareForPhysicsSimulation();
-                    });
+                    action->prepareForPhysicsSimulation();
+                });
             });
         }
         {
             PROFILE_RANGE_EX("StepSimulation", 0xffff8000, (uint64_t)getActiveDisplayPlugin()->presentCount());
             PerformanceTimer perfTimer("stepSimulation");
             getEntities()->getTree()->withWriteLock([&] {
-                forEachPhysicsEngine([](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
+                forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine) {
                     physicsEngine->stepSimulation();
                 });
             });
@@ -3524,25 +3514,23 @@ void Application::update(float deltaTime) {
             PROFILE_RANGE_EX("HarvestChanges", 0xffffff00, (uint64_t)getActiveDisplayPlugin()->presentCount());
             PerformanceTimer perfTimer("harvestChanges");
             bool hasOutgoingChanges = false;
-            forEachPhysicsEngine([&hasOutgoingChanges](PhysicalEntitySimulationPointer, PhysicsEnginePointer physicsEngine) {
+            forEachPhysicsEngine([&hasOutgoingChanges](PhysicsEnginePointer physicsEngine) {
                 hasOutgoingChanges |= physicsEngine->hasOutgoingChanges();
             });
 
             if (hasOutgoingChanges) {
                 getEntities()->getTree()->withWriteLock([&] {
                     PerformanceTimer perfTimer("handleOutgoingChanges");
-                    forEachPhysicsEngine([&avatarManager](PhysicalEntitySimulationPointer entitySimulation,
-                                                          PhysicsEnginePointer physicsEngine) {
+                    forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
                         if (physicsEngine->hasOutgoingChanges()) {
                             const VectorOfMotionStates& outgoingChanges = physicsEngine->getOutgoingChanges();
-                            entitySimulation->handleOutgoingChanges(outgoingChanges);
+                            _entitySimulation->handleOutgoingChanges(outgoingChanges);
                             avatarManager->handleOutgoingChanges(outgoingChanges);
                         }
                     });
                 });
 
-                forEachPhysicsEngine([&avatarManager, this](PhysicalEntitySimulationPointer entitySimulation,
-                                                            PhysicsEnginePointer physicsEngine) {
+                forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
                     auto collisionEvents = physicsEngine->getCollisionEvents();
                     avatarManager->handleCollisionEvents(collisionEvents);
 
@@ -3552,7 +3540,7 @@ void Application::update(float deltaTime) {
                         PerformanceTimer perfTimer("entities");
                         // Collision events (and their scripts) must not be handled when we're locked, above. (That would risk
                         // deadlock.)
-                        entitySimulation->handleCollisionEvents(collisionEvents);
+                        _entitySimulation->handleCollisionEvents(collisionEvents);
                     }
                 });
 
@@ -5367,40 +5355,22 @@ CompositorHelper& Application::getApplicationCompositor() const {
     return *DependencyManager::get<CompositorHelper>();
 }
 
-void forEachSimulation(std::function<void(EntitySimulationPointer)> actor) {
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    simulationTracker->forEachSimulation([&actor](EntitySimulationPointer simulation){
-        actor(simulation);
+void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor) {
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+    physicsEngineTracker->forEachPhysicsEngine([&actor](PhysicsEnginePointer physicsEngine){
+        actor(physicsEngine);
     });
-}
-
-void forEachPhysicsEngine(std::function<void(PhysicalEntitySimulationPointer, PhysicsEnginePointer)> actor) {
-    forEachSimulation([actor](EntitySimulationPointer simulation){
-        PhysicalEntitySimulationPointer peSimulation = std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
-        PhysicsEnginePointer physicsEngine = peSimulation->getPhysicsEngine();
-        actor(peSimulation, physicsEngine);
-    });
-}
-
-PhysicalEntitySimulationPointer getSimulationFromAvatarMotionState(ObjectMotionState* motionState) {
-    AvatarMotionState* avMotionState = static_cast<AvatarMotionState*>(motionState);
-    Avatar* avatar = avMotionState ? avMotionState->getAvatar() : nullptr;
-    EntitySimulationPointer simulation = avatar ? avatar->getSimulation() : nullptr;
-    return std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
 }
 
 PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState) {
-    PhysicalEntitySimulationPointer peSimulation = getSimulationFromAvatarMotionState(motionState);
-    return peSimulation ? peSimulation->getPhysicsEngine() : nullptr;
-}
-
-PhysicalEntitySimulationPointer getDefaultSimulation() {
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    EntitySimulationPointer simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-    return std::static_pointer_cast<PhysicalEntitySimulation>(simulation);
+    AvatarMotionState* avMotionState = dynamic_cast<AvatarMotionState*>(motionState);
+    if (avMotionState) {
+        return avMotionState->getPhysicsEngine();
+    }
+    return nullptr;
 }
 
 PhysicsEnginePointer getDefaultPhysicsEngine() {
-    PhysicalEntitySimulationPointer defaultSimulation = getDefaultSimulation();
-    return defaultSimulation ? defaultSimulation->getPhysicsEngine() : nullptr;
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTracker::DEFAULT_PHYSICS_ENGINE_ID);
 }

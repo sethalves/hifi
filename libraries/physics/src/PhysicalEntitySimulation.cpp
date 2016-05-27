@@ -14,11 +14,11 @@
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
 #include "ShapeManager.h"
-#include "SimulationTracker.h"
+#include "PhysicsEngineTracker.h"
 
 #include "PhysicalEntitySimulation.h"
 
-PhysicalEntitySimulation::PhysicalEntitySimulation(QUuid id) : EntitySimulation(id) {
+PhysicalEntitySimulation::PhysicalEntitySimulation() : EntitySimulation() {
 }
 
 PhysicalEntitySimulation::~PhysicalEntitySimulation() {
@@ -26,24 +26,14 @@ PhysicalEntitySimulation::~PhysicalEntitySimulation() {
 
 void PhysicalEntitySimulation::init(
         EntityTreePointer tree,
-        PhysicsEnginePointer physicsEngine,
+        PhysicsEnginePointer defaultPhysicsEngine,
         EntityEditPacketSender* packetSender) {
     assert(tree);
+    assert(packetSender);
+
     setEntityTree(tree);
-
-    assert(physicsEngine);
-    _physicsEngine = physicsEngine;
-
-    if (packetSender) {
-        _entityPacketSender = packetSender;
-    } else {
-        auto simulationTracker = DependencyManager::get<SimulationTracker>();
-        EntitySimulationPointer defaultSimulation =
-            simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-        PhysicalEntitySimulationPointer peDefaultSimulation =
-            std::static_pointer_cast<PhysicalEntitySimulation>(defaultSimulation);
-        _entityPacketSender = peDefaultSimulation->getPacketSender();
-    }
+    _defaultPhysicsEngine = defaultPhysicsEngine;
+    _entityPacketSender = packetSender;
 }
 
 // begin EntitySimulation overrides
@@ -139,7 +129,12 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
     }
 
     // then remove the objects (aka MotionStates) from physics
-    _physicsEngine->removeObjects(_physicalObjects);
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+
+    QHash<QUuid, SetOfMotionStates> motionStatesPerEngine = sortMotionStatesByEngine(_physicalObjects);
+    foreach (QUuid engineID, motionStatesPerEngine.keys()) {
+        physicsEngineTracker->getPhysicsEngineByID(engineID)->removeObjects(motionStatesPerEngine[engineID]);
+    }
 
     // delete the MotionStates
     // TODO: after we invert the entities/physics lib dependencies we will let EntityItem delete
@@ -147,7 +142,6 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
     for (auto entity : _entitiesToDelete) {
         EntityMotionState* motionState = dynamic_cast<EntityMotionState*>(entity->getPhysicsInfo());
         if (motionState) {
-            entity->setSimulation(nullptr);
             entity->setPhysicsInfo(nullptr);
             delete motionState;
         }
@@ -166,7 +160,7 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
 void PhysicalEntitySimulation::prepareEntityForDelete(EntityItemPointer entity) {
     assert(entity);
     assert(entity->isDead());
-    entity->clearActions();
+    entity->clearActions(getThisPointer());
     removeEntityInternal(entity);
 }
 // end EntitySimulation overrides
@@ -199,7 +193,6 @@ void PhysicalEntitySimulation::deleteObjectsRemovedFromPhysics() {
     for (auto entity: _entitiesToRelease) {
         EntityMotionState* motionState = dynamic_cast<EntityMotionState*>(entity->getPhysicsInfo());
         assert(motionState);
-        entity->setSimulation(nullptr);
         entity->setPhysicsInfo(nullptr);
         delete motionState;
 
@@ -226,6 +219,12 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
                 _simpleKinematicEntities.insert(entity);
             }
         } else if (entity->isReadyToComputeShape()) {
+            PhysicsEnginePointer physicsEngine = entity->getPhysicsEngine();
+            if (!physicsEngine) {
+                ++entityItr;
+                continue;
+            }
+
             ShapeInfo shapeInfo;
             entity->computeShapeInfo(shapeInfo);
             int numPoints = shapeInfo.getMaxNumPoints();
@@ -236,9 +235,8 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
             }
             btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
             if (shape) {
-                EntityMotionState* motionState = new EntityMotionState(shape, entity);
+                EntityMotionState* motionState = new EntityMotionState(shape, entity, physicsEngine);
                 entity->setPhysicsInfo(motionState);
-                entity->setSimulation(getThisPointer());
                 _physicalObjects.insert(motionState);
                 result.push_back(motionState);
                 entityItr = _entitiesToAddToPhysics.erase(entityItr);
@@ -286,32 +284,39 @@ void PhysicalEntitySimulation::handleOutgoingChanges(const VectorOfMotionStates&
         }
     }
 
-    uint32_t numSubsteps = _physicsEngine->getNumSubsteps();
-    if (_lastStepSendPackets != numSubsteps) {
-        _lastStepSendPackets = numSubsteps;
+    if (Physics::getSessionUUID().isNull()) {
+        // usually don't get here, but if so --> nothing to do
+        _outgoingChanges.clear();
+        return;
+    }
 
-        if (Physics::getSessionUUID().isNull()) {
-            // usually don't get here, but if so --> nothing to do
-            _outgoingChanges.clear();
-            return;
-        }
+    QHash<QUuid, SetOfEntityMotionStates> outgoingChangesPerEngine = sortMotionStatesByEngine(_outgoingChanges);
+    // clear _outgoingChanges here -- the states that should stay will be re-added below.
+    _outgoingChanges.clear();
 
-        // look for entities to prune or update
-        QSet<EntityMotionState*>::iterator stateItr = _outgoingChanges.begin();
-        while (stateItr != _outgoingChanges.end()) {
-            EntityMotionState* state = *stateItr;
-            if (!state->isCandidateForOwnership()) {
-                // prune
-                stateItr = _outgoingChanges.erase(stateItr);
-            } else if (state->shouldSendUpdate(numSubsteps)) {
-                // update
-                state->sendUpdate(_entityPacketSender, numSubsteps);
-                ++stateItr;
-            } else {
-                ++stateItr;
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+    physicsEngineTracker->forEachPhysicsEngine([this, outgoingChangesPerEngine](PhysicsEnginePointer physicsEngine) {
+        uint32_t numSubsteps = physicsEngine->getNumSubsteps();
+        QUuid engineID = physicsEngine->getID();
+        if (_lastStepSendPackets[engineID] != numSubsteps) {
+            _lastStepSendPackets[engineID] = numSubsteps;
+
+            SetOfEntityMotionStates outgoingChanges = outgoingChangesPerEngine[engineID];
+            // look for entities to prune or update
+            foreach (EntityMotionState* state, outgoingChanges) {
+                if (!state->isCandidateForOwnership()) {
+                    // prune
+                    continue;
+                }
+                if (state->shouldSendUpdate(numSubsteps)) {
+                    // update
+                    state->sendUpdate(_entityPacketSender, numSubsteps);
+                }
+                // keep this MotionState in the _outgoingChanges set
+                _outgoingChanges += state;
             }
         }
-    }
+    });
 }
 
 void PhysicalEntitySimulation::handleCollisionEvents(const CollisionEvents& collisionEvents) {
@@ -326,13 +331,21 @@ void PhysicalEntitySimulation::handleCollisionEvents(const CollisionEvents& coll
 
 
 void PhysicalEntitySimulation::addAction(EntityActionPointer action) {
-    if (_physicsEngine) {
-        // FIXME put fine grain locking into _physicsEngine
+
+    EntityItemPointer ownerEntity = action->getOwnerEntity().lock();
+    if (!ownerEntity) {
+        return;
+    }
+
+    PhysicsEnginePointer physicsEngine = ownerEntity->getPhysicsEngine();
+    if (physicsEngine) {
+        // FIXME put fine grain locking into physicsEngine
         {
             QMutexLocker lock(&_mutex);
             const QUuid& actionID = action->getID();
-            if (_physicsEngine->getActionByID(actionID)) {
-                qDebug() << "warning -- PhysicalEntitySimulation::addAction -- adding an action that was already in _physicsEngine";
+            if (physicsEngine->getActionByID(actionID)) {
+                qDebug() << "warning -- PhysicalEntitySimulation::addAction -- adding "
+                    "an action that was already in _physicsEngine";
             }
         }
         EntitySimulation::addAction(action);
@@ -340,15 +353,23 @@ void PhysicalEntitySimulation::addAction(EntityActionPointer action) {
 }
 
 void PhysicalEntitySimulation::applyActionChanges() {
-    if (_physicsEngine) {
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+    physicsEngineTracker->forEachPhysicsEngine([this](PhysicsEnginePointer physicsEngine) {
         // FIXME put fine grain locking into _physicsEngine
         QMutexLocker lock(&_mutex);
         foreach(QUuid actionToRemove, _actionsToRemove) {
-            _physicsEngine->removeAction(actionToRemove);
+            physicsEngine->removeAction(actionToRemove);
         }
-        foreach (EntityActionPointer actionToAdd, _actionsToAdd) {
-            if (!_actionsToRemove.contains(actionToAdd->getID())) {
-                _physicsEngine->addAction(actionToAdd);
+    });
+    foreach (EntityActionPointer actionToAdd, _actionsToAdd) {
+        if (!_actionsToRemove.contains(actionToAdd->getID())) {
+            EntityItemPointer ownerEntity = actionToAdd->getOwnerEntity().lock();
+            if (!ownerEntity) {
+                continue;
+            }
+            PhysicsEnginePointer physicsEngine = ownerEntity->getPhysicsEngine();
+            if (physicsEngine) {
+                physicsEngine->addAction(actionToAdd);
             }
         }
     }

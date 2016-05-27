@@ -17,6 +17,7 @@ class ObjectMotionStateInterface {
  public:
     // include virtual destructor to force objects to be polymorphic so that dynamic_cast works
     virtual ~ObjectMotionStateInterface() {}
+    virtual void maybeSwitchPhysicsEngines() {}
 };
 
 #endif // hifi_ObjectMotionStateInterface_h

@@ -17,14 +17,16 @@ EntityTreeHeadlessViewer::EntityTreeHeadlessViewer()
 }
 
 EntityTreeHeadlessViewer::~EntityTreeHeadlessViewer() {
-    simulationTracker.removeSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID);
 }
 
 void EntityTreeHeadlessViewer::init() {
     OctreeHeadlessViewer::init();
     if (!_simulation) {
+        SimpleEntitySimulationPointer simpleSimulation { new SimpleEntitySimulation() };
         EntityTreePointer entityTree = std::static_pointer_cast<EntityTree>(_tree);
-        _simulation = simulationTracker.newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, entityTree);
+        simpleSimulation->setEntityTree(entityTree);
+        entityTree->setSimulation(simpleSimulation);
+        _simulation = simpleSimulation;
     }
 }
 

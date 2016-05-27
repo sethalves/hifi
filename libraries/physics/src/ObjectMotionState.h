@@ -149,6 +149,8 @@ public:
     void dirtyInternalKinematicChanges() { _hasInternalKinematicChanges = true; }
     void clearInternalKinematicChanges() { _hasInternalKinematicChanges = false; }
 
+    virtual void maybeSwitchPhysicsEngines() override;
+
     friend class PhysicsEngine;
 
 protected:

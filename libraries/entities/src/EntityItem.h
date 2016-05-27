@@ -59,6 +59,9 @@ namespace render {
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+
 
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
 /// to all other entity types. In particular: postion, size, rotation, age, lifetime, velocity, gravity. You can not instantiate
@@ -382,10 +385,10 @@ public:
     void flagForMotionStateChange() { _dirtyFlags |= Simulation::DIRTY_MOTION_TYPE; }
 
     QString actionsToDebugString();
-    bool addAction(EntityActionPointer action);
-    bool updateAction(const QUuid& actionID, const QVariantMap& arguments);
-    bool removeAction(const QUuid& actionID);
-    bool clearActions();
+    bool addAction(EntitySimulationPointer simulation, EntityActionPointer action);
+    bool updateAction(EntitySimulationPointer simulation, const QUuid& actionID, const QVariantMap& arguments);
+    bool removeAction(EntitySimulationPointer simulation, const QUuid& actionID);
+    bool clearActions(EntitySimulationPointer simulation);
     void setActionData(QByteArray actionData);
     const QByteArray getActionData() const;
     bool hasActions() const { return !_objectActions.empty(); }
@@ -438,10 +441,12 @@ public:
 
     static EntityItemPointer findAncestorZone(QUuid parentID);
 
-    virtual EntitySimulationPointer getSimulation() override;
-    virtual EntitySimulationPointer getChildSimulation() { return nullptr; } // overridden in ZoneEntityItem
+    virtual PhysicsEnginePointer getChildPhysicsEngine() { return nullptr; } // overridden in ZoneEntityItem
 
     virtual QString toString() const override;
+
+    PhysicsEnginePointer getPhysicsEngine();
+    virtual void hierarchyChanged() override;
 
 protected:
 
@@ -533,8 +538,8 @@ protected:
     ObjectMotionStateInterface* _physicsInfo { nullptr }; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
-    bool addActionInternal(EntityActionPointer action);
-    bool removeActionInternal(const QUuid& actionID);
+    bool addActionInternal(EntityActionPointer action, EntitySimulationPointer simulation);
+    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;
     QHash<QUuid, EntityActionPointer> _objectActions;
@@ -545,7 +550,7 @@ protected:
     // when an entity-server starts up, EntityItem::setActionData is called before the entity-tree is
     // ready.  This means we can't find our EntityItemPointer or add the action to the simulation.  These
     // are used to keep track of and work around this situation.
-    void checkWaitingToRemove();
+    void checkWaitingToRemove(EntitySimulationPointer simulation = nullptr);
     mutable QSet<QUuid> _actionsToRemove;
     mutable bool _actionDataDirty = false;
     mutable bool _actionDataNeedsTransmit = false;
@@ -557,8 +562,6 @@ protected:
 
     bool _clientOnly { false };
     QUuid _owningAvatarID;
-
-    EntitySimulationWeakPointer _simulation;
 };
 
 #endif // hifi_EntityItem_h

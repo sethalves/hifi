@@ -17,7 +17,6 @@
 #include "EntityServerConsts.h"
 #include "EntityNodeData.h"
 #include "AssignmentParentFinder.h"
-#include "SimulationTracker.h"
 
 const char* MODEL_SERVER_NAME = "Entity";
 const char* MODEL_SERVER_LOGGING_TARGET_NAME = "entity-server";
@@ -55,13 +54,12 @@ OctreePointer EntityServer::createTree() {
     EntityTreePointer tree = EntityTreePointer(new EntityTree(true));
     tree->createRootElement();
     tree->addNewlyCreatedHook(this);
-
-    auto simulationTracker = DependencyManager::set<SimulationTracker>();
-    auto simulation = simulationTracker->getSimulationByKey(SimulationTracker::DEFAULT_SIMULATOR_ID);
-    if (!simulation) {
-        simulation = simulationTracker->newSimulation(SimulationTracker::DEFAULT_SIMULATOR_ID, tree);
+    if (!_entitySimulation) {
+        SimpleEntitySimulationPointer simpleSimulation { new SimpleEntitySimulation() };
+        simpleSimulation->setEntityTree(tree);
+        tree->setSimulation(simpleSimulation);
+        _entitySimulation = simpleSimulation;
     }
-    tree->clearSimulationEntities();
 
     DependencyManager::registerInheritance<SpatialParentFinder, AssignmentParentFinder>();
     DependencyManager::set<AssignmentParentFinder>(tree);
@@ -298,11 +296,9 @@ void EntityServer::trackSend(const QUuid& dataID, quint64 dataLastEdited, const 
 void EntityServer::trackViewerGone(const QUuid& sessionID) {
     QWriteLocker locker(&_viewerSendingStatsLock);
     _viewerSendingStats.remove(sessionID);
-
-    auto simulationTracker = DependencyManager::get<SimulationTracker>();
-    simulationTracker->forEachSimulation([sessionID](EntitySimulationPointer simulation){
-        std::static_pointer_cast<SimpleEntitySimulation>(simulation)->clearOwnership(sessionID);
-    });
+    if (_entitySimulation) {
+        _entitySimulation->clearOwnership(sessionID);
+    }
 }
 
 QString EntityServer::serverSubclassStats() {

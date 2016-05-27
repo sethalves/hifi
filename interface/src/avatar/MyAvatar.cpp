@@ -1205,8 +1205,8 @@ controller::Pose MyAvatar::getRightHandControllerPoseInAvatarFrame() const {
 void MyAvatar::updateMotors() {
     _characterController.clearMotors();
 
-    EntitySimulationPointer simulation = getSimulation();
-    if (!simulation) {
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
         return;
     }
 
@@ -1223,7 +1223,7 @@ void MyAvatar::updateMotors() {
             bool success;
             _characterController.addMotor(
                 _actionMotorVelocity,
-                SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
                 DEFAULT_MOTOR_TIMESCALE,
                 INVALID_MOTOR_TIMESCALE);
         } else {
@@ -1232,7 +1232,7 @@ void MyAvatar::updateMotors() {
             bool success;
             _characterController.addMotor(
                 _actionMotorVelocity,
-                SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
                 INVALID_MOTOR_TIMESCALE);
         }
     }
@@ -1248,7 +1248,7 @@ void MyAvatar::updateMotors() {
         bool success;
         _characterController.addMotor(
             _scriptedMotorVelocity,
-            SpatiallyNestable::worldToLocal(motorRotation, simulation->getID(), -1, success),
+            SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
             _scriptedMotorTimescale);
     }
 
@@ -1257,7 +1257,7 @@ void MyAvatar::updateMotors() {
     // _characterController.setLinearAcceleration(_thrust);
     bool success;
     _characterController.setLinearAcceleration(
-        SpatiallyNestable::worldToLocalVelocity(_thrust, simulation->getID(), -1, success));
+        SpatiallyNestable::worldToLocalVelocity(_thrust, physicsEngine->getID(), -1, success));
     _thrust = Vectors::ZERO;
 }
 
@@ -1265,10 +1265,11 @@ void MyAvatar::prepareForPhysicsSimulation() {
     relayDriveKeysToCharacterController();
     updateMotors();
 
-    EntitySimulationPointer simulation = getSimulation();
-    if (!simulation) {
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
         return;
     }
+
     bool success;
     glm::vec3 parentVelocity = getParentVelocity(success);
     if (!success) {
@@ -1278,8 +1279,8 @@ void MyAvatar::prepareForPhysicsSimulation() {
 
     // convert global values to bullet position and orientation
     bool posSuccess, oSuccess;
-    glm::vec3 position = SpatiallyNestable::worldToLocal(getPosition(), simulation->getID(), -1, posSuccess);
-    glm::quat orientation = SpatiallyNestable::worldToLocal(getOrientation(), simulation->getID(), -1, oSuccess);
+    glm::vec3 position = SpatiallyNestable::worldToLocal(getPosition(), physicsEngine->getID(), -1, posSuccess);
+    glm::quat orientation = SpatiallyNestable::worldToLocal(getOrientation(), physicsEngine->getID(), -1, oSuccess);
     if (posSuccess && oSuccess) {
         _characterController.setPositionAndOrientation(position, orientation);
     } else {
@@ -1297,7 +1298,11 @@ void MyAvatar::prepareForPhysicsSimulation() {
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     glm::vec3 position = getPosition();
     glm::quat orientation = getOrientation();
-    EntitySimulationPointer simulation = getSimulation();
+
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
 
     if (_characterController.isEnabled()) {
         bool success;
@@ -1305,8 +1310,8 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
         if (success) {
             // convert bullet position and orientation to global values
             bool positionToWorldSuccess, orientationToWorldSuccess;
-            position = SpatiallyNestable::localToWorld(position, simulation->getID(), -1, positionToWorldSuccess);
-            orientation = SpatiallyNestable::localToWorld(orientation, simulation->getID(), -1, orientationToWorldSuccess);
+            position = SpatiallyNestable::localToWorld(position, physicsEngine->getID(), -1, positionToWorldSuccess);
+            orientation = SpatiallyNestable::localToWorld(orientation, physicsEngine->getID(), -1, orientationToWorldSuccess);
             if (!positionToWorldSuccess || !orientationToWorldSuccess) {
                 qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to world coords";
             }
@@ -1319,7 +1324,7 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
         glm::vec3 inSimulationVelocity = _characterController.getLinearVelocity() + _characterController.getFollowVelocity();
 
         bool velocityToWorldSuccess;
-        setVelocity(SpatiallyNestable::localToWorldVelocity(inSimulationVelocity, simulation->getID(),
+        setVelocity(SpatiallyNestable::localToWorldVelocity(inSimulationVelocity, physicsEngine->getID(),
                                                             -1, velocityToWorldSuccess));
         if (!velocityToWorldSuccess) {
             qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to velocity from local to world";
@@ -1699,11 +1704,6 @@ void MyAvatar::updateActionMotor(float deltaTime) {
 }
 
 void MyAvatar::updatePosition(float deltaTime) {
-    EntitySimulationPointer simulation = getSimulation();
-    if (!simulation) {
-        return;
-    }
-
     if (_motionBehaviors & AVATAR_MOTION_ACTION_MOTOR_ENABLED) {
         updateActionMotor(deltaTime);
     }
@@ -2223,7 +2223,6 @@ void MyAvatar::handleZoneChange() {
             setTransform(beforeTransform, success);
             setVelocity(beforeVelocity);
             setAngularVelocity(beforeAngularVelocity);
-            clearSimulation(); // this will cause getSimulation to re-search for the our containing zone
         } else {
             qDebug() << "MyAvatar::handleZoneChange -- unable to set new transform";
         }

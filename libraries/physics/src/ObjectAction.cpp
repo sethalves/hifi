@@ -49,7 +49,7 @@ void ObjectAction::updateAction(btCollisionWorld* collisionWorld, btScalar delta
                 myID = getID();
             });
             if (ownerEntity) {
-                ownerEntity->removeAction(myID);
+                ownerEntity->removeAction(nullptr, myID);
             }
         }
     }

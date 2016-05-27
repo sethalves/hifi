@@ -29,10 +29,10 @@ using SetOfEntityMotionStates = QSet<EntityMotionState*>;
 
 class PhysicalEntitySimulation : public EntitySimulation {
 public:
-    PhysicalEntitySimulation(QUuid id);
+    PhysicalEntitySimulation();
     ~PhysicalEntitySimulation();
 
-    void init(EntityTreePointer tree, PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
+    void init(EntityTreePointer tree, PhysicsEnginePointer defaultPhysicsEngine, EntityEditPacketSender* packetSender);
 
     virtual void addAction(EntityActionPointer action) override;
     virtual void applyActionChanges() override;
@@ -60,7 +60,6 @@ public:
     void handleCollisionEvents(const CollisionEvents& collisionEvents);
 
     EntityEditPacketSender* getPacketSender() { return _entityPacketSender; }
-    PhysicsEnginePointer getPhysicsEngine() { return _physicsEngine; }
 
 private:
     SetOfEntities _entitiesToRemoveFromPhysics;
@@ -72,13 +71,25 @@ private:
 
     SetOfMotionStates _physicalObjects; // MotionStates of entities in PhysicsEngine
 
-    PhysicsEnginePointer _physicsEngine = nullptr;
     EntityEditPacketSender* _entityPacketSender = nullptr;
 
-    uint32_t _lastStepSendPackets { 0 };
+    PhysicsEnginePointer _defaultPhysicsEngine;
+
+    QHash<QUuid, uint32_t> _lastStepSendPackets;
 };
 
 
 typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
+
+template<class T>
+inline QHash<QUuid, T> sortMotionStatesByEngine(T unsortedStates) {
+    QHash<QUuid, T> result;
+    foreach (ObjectMotionState* motionState, unsortedStates) {
+        EntityMotionState* entityMotionState = dynamic_cast<EntityMotionState*>(motionState);
+        PhysicsEnginePointer physicsEngine = entityMotionState->getPhysicsEngine();
+        result[physicsEngine->getID()] += entityMotionState;
+    }
+    return result;
+}
 
 #endif // hifi_PhysicalEntitySimulation_h

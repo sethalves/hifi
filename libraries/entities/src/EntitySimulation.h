@@ -45,7 +45,7 @@ const int DIRTY_SIMULATION_FLAGS =
 class EntitySimulation : public QObject, public std::enable_shared_from_this<EntitySimulation> {
 Q_OBJECT
 public:
-    EntitySimulation(QUuid id) : _mutex(QMutex::Recursive), _entityTree(NULL), _nextExpiry(quint64(-1)) { _id = id; }
+    EntitySimulation() : _mutex(QMutex::Recursive), _entityTree(NULL), _nextExpiry(quint64(-1)) {}
     virtual ~EntitySimulation() { setEntityTree(NULL); }
 
     QUuid getID() const { return _id; }

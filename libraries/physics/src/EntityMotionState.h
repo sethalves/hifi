@@ -17,6 +17,10 @@
 
 #include "ObjectMotionState.h"
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
+
 
 // From the MotionState's perspective:
 //      Inside = physics simulation
@@ -25,7 +29,7 @@
 class EntityMotionState : public ObjectMotionState {
 public:
 
-    EntityMotionState(btCollisionShape* shape, EntityItemPointer item);
+    EntityMotionState(btCollisionShape* shape, EntityItemPointer item, PhysicsEnginePointer physicsEngine);
     virtual ~EntityMotionState();
 
     void updateServerPhysicsVariables();
@@ -72,6 +76,7 @@ public:
     virtual void bump(uint8_t priority) override;
 
     EntityItemPointer getEntity() const { return _entityPtr.lock(); }
+    PhysicsEnginePointer getPhysicsEngine() const { return _physicsEngine.lock(); }
 
     void resetMeasuredBodyAcceleration();
     void measureBodyAcceleration();
@@ -103,6 +108,8 @@ protected:
     EntityItemWeakPointer _entityPtr;
     // Meanwhile we also keep a raw EntityItem* for internal stuff where the pointer is guaranteed valid.
     EntityItem* _entity;
+
+    PhysicsEngineWeakPointer _physicsEngine;
 
     glm::vec3 _serverPosition;    // in simulation-frame (not world-frame)
     glm::quat _serverRotation;
