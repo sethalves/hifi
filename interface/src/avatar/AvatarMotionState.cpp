@@ -17,8 +17,9 @@
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
-AvatarMotionState::AvatarMotionState(Avatar* avatar, btCollisionShape* shape, PhysicsEnginePointer physicsEngine) :
-    ObjectMotionState(shape),
+AvatarMotionState::AvatarMotionState(Avatar* avatar, btCollisionShape* shape,
+                                     EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
+    ObjectMotionState(shape, simulation),
     _avatar(avatar),
     _physicsEngine(physicsEngine) {
     assert(_avatar);
@@ -152,3 +153,8 @@ void AvatarMotionState::computeCollisionGroupAndMask(int16_t& group, int16_t& ma
     mask = Physics::getDefaultCollisionMask(group);
 }
 
+// virtual
+void AvatarMotionState::maybeSwitchPhysicsEngines() {
+    #warning here
+    // XXX MyAvatar::handleZoneChange
+}

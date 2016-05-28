@@ -45,10 +45,8 @@ const int DIRTY_SIMULATION_FLAGS =
 class EntitySimulation : public QObject, public std::enable_shared_from_this<EntitySimulation> {
 Q_OBJECT
 public:
-    EntitySimulation() : _mutex(QMutex::Recursive), _entityTree(NULL), _nextExpiry(quint64(-1)) {}
+    EntitySimulation() : _mutex(QMutex::Recursive), _entityTree(NULL), _nextExpiry(quint64(-1)) { }
     virtual ~EntitySimulation() { setEntityTree(NULL); }
-
-    QUuid getID() const { return _id; }
 
     inline EntitySimulationPointer getThisPointer() const {
         return std::const_pointer_cast<EntitySimulation>(shared_from_this());
@@ -67,7 +65,6 @@ public:
     /// \param entity pointer to EntityItem to be added
     /// \sideeffect sets relevant backpointers in entity, but maybe later when appropriate data structures are locked
     void addEntity(EntityItemPointer entity);
-
     void removeEntity(EntityItemPointer entity);
 
     /// \param entity pointer to EntityItem that may have changed in a way that would affect its simulation
@@ -125,8 +122,6 @@ private:
 
 
     SetOfEntities _entitiesToUpdate; // entities that need to call EntityItem::update()
-
-    QUuid _id;
 };
 
 #endif // hifi_EntitySimulation_h

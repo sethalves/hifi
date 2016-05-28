@@ -25,7 +25,10 @@ using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 
 class AvatarMotionState : public ObjectMotionState {
 public:
-    AvatarMotionState(Avatar* avatar, btCollisionShape* shape, PhysicsEnginePointer physicsEngine);
+    AvatarMotionState(Avatar* avatar, btCollisionShape* shape,
+                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
 
     virtual PhysicsMotionType getMotionType() const override { return _motionType; }
 
@@ -71,8 +74,10 @@ public:
     friend class AvatarManager;
     friend class Avatar;
 
-    Avatar* getAvatar() { return _avatar; }
-    PhysicsEnginePointer getPhysicsEngine() const { return _physicsEngine.lock(); }
+    Avatar* getAvatar() const { return _avatar; }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override { return _physicsEngine.lock(); }
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override { return getAvatar()->getPhysicsEngine(); }
+    virtual void maybeSwitchPhysicsEngines() override;
 
 protected:
     // the dtor had been made protected to force the compiler to verify that it is only

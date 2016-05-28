@@ -43,11 +43,15 @@ public:
 typedef std::map<ContactKey, ContactInfo> ContactMap;
 typedef std::vector<Collision> CollisionEvents;
 
-class PhysicsEngine {
+class PhysicsEngine : public std::enable_shared_from_this<PhysicsEngine> {
 public:
     PhysicsEngine(QUuid id, const glm::vec3& offset);
     ~PhysicsEngine();
     void init();
+
+    inline PhysicsEnginePointer getThisPointer() const {
+        return std::const_pointer_cast<PhysicsEngine>(shared_from_this());
+    }
 
     QUuid getID() { return _id; }
 
@@ -100,7 +104,7 @@ private:
 
     void doOwnershipInfection(const btCollisionObject* objectA, const btCollisionObject* objectB);
 
-    QUuid _id; // corresponds to entityID of zone that owns this PhysicsEngine
+    QUuid _id; // corresponds to entityID of zone that owns this PhysicsEngine, or nullptr for the default one
 
     btClock _clock;
     btDefaultCollisionConfiguration* _collisionConfig = NULL;

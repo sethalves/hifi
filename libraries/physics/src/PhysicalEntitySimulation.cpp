@@ -29,10 +29,13 @@ void PhysicalEntitySimulation::init(
         PhysicsEnginePointer defaultPhysicsEngine,
         EntityEditPacketSender* packetSender) {
     assert(tree);
+    setEntityTree(tree);
+
+    assert(defaultPhysicsEngine);
+    _defaultPhysicsEngine = defaultPhysicsEngine;
+
     assert(packetSender);
 
-    setEntityTree(tree);
-    _defaultPhysicsEngine = defaultPhysicsEngine;
     _entityPacketSender = packetSender;
 }
 
@@ -235,7 +238,7 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
             }
             btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
             if (shape) {
-                EntityMotionState* motionState = new EntityMotionState(shape, entity, physicsEngine);
+                EntityMotionState* motionState = new EntityMotionState(shape, entity, getThisPointer(), physicsEngine);
                 entity->setPhysicsInfo(motionState);
                 _physicalObjects.insert(motionState);
                 result.push_back(motionState);

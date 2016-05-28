@@ -29,6 +29,8 @@ class Model;
 using ModelPointer = std::shared_ptr<Model>;
 using ModelWeakPointer = std::weak_ptr<Model>;
 
+class EntitySimulation;
+
 class NewlyCreatedEntityHook {
 public:
     virtual void entityCreated(const EntityItem& newEntity, const SharedNodePointer& senderNode) = 0;
@@ -152,7 +154,7 @@ public:
     void addNewlyCreatedHook(NewlyCreatedEntityHook* hook);
     void removeNewlyCreatedHook(NewlyCreatedEntityHook* hook);
 
-    bool hasAnyDeletedEntities() const { 
+    bool hasAnyDeletedEntities() const {
         QReadLocker locker(&_recentlyDeletedEntitiesLock);
         return _recentlyDeletedEntityItemIDs.size() > 0;
     }
@@ -160,7 +162,7 @@ public:
     bool hasEntitiesDeletedSince(quint64 sinceTime);
     static quint64 getAdjustedConsiderSince(quint64 sinceTime);
 
-    QMultiMap<quint64, QUuid> getRecentlyDeletedEntityIDs() const { 
+    QMultiMap<quint64, QUuid> getRecentlyDeletedEntityIDs() const {
         QReadLocker locker(&_recentlyDeletedEntitiesLock);
         return _recentlyDeletedEntityItemIDs;
     }
@@ -192,10 +194,8 @@ public:
 
     void emitEntityScriptChanging(const EntityItemID& entityItemID, const bool reload);
 
-    void setSimulation(EntitySimulationPointer simulation) { _simulation = simulation; }
+    void setSimulation(EntitySimulationPointer simulation);
     EntitySimulationPointer getSimulation() const { return _simulation; }
-
-    void clearSimulationEntities();
 
     bool wantEditLogging() const { return _wantEditLogging; }
     void setWantEditLogging(bool value) { _wantEditLogging = value; }
@@ -299,6 +299,8 @@ protected:
     mutable QReadWriteLock _entityToElementLock;
     QHash<EntityItemID, EntityTreeElementPointer> _entityToElementMap;
 
+    EntitySimulationPointer _simulation;
+
     bool _wantEditLogging = false;
     bool _wantTerseEditLogging = false;
 
@@ -328,8 +330,6 @@ protected:
     // we maintain a list of avatarIDs to notice when an entity is a child of one.
     QSet<QUuid> _avatarIDs; // IDs of avatars connected to entity server
     QHash<QUuid, QSet<EntityItemID>> _childrenOfAvatars;  // which entities are children of which avatars
-
-    EntitySimulationPointer _simulation;
 };
 
 #endif // hifi_EntityTree_h

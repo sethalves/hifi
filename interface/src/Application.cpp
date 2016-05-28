@@ -486,6 +486,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     _sessionRunTimer(startupTimer),
     _previousSessionCrashed(setupEssentials(argc, argv)),
     _undoStackScriptingInterface(&_undoStack),
+    _entitySimulation(new PhysicalEntitySimulation()),
     _entityClipboardRenderer(false, this, this),
     _entityClipboard(new EntityTree()),
     _lastQueriedTime(usecTimestampNow()),
@@ -1247,7 +1248,7 @@ Application::~Application() {
     _entityClipboard.reset();
 
     EntityTreePointer tree = getEntities()->getTree();
-    tree->clearSimulationEntities();
+    tree->setSimulation(nullptr);
 
     _octreeProcessor.terminate();
     _entityEditSender.terminate();
@@ -1260,16 +1261,10 @@ Application::~Application() {
     DependencyManager::get<AvatarManager>()->clearAllAvatars();
     VectorOfMotionStates motionStates;
     DependencyManager::get<AvatarManager>()->getObjectsToRemoveFromPhysics(motionStates);
+    auto motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
 
-    forEachPhysicsEngine([motionStates](PhysicsEnginePointer physicsEngine) {
-        VectorOfMotionStates forThisEngine;
-        foreach (ObjectMotionState* motionState, motionStates) {
-            PhysicsEnginePointer physicsEngineForThisMotionState = getPhysicsEngineFromAvatarMotionState(motionState);
-            if (physicsEngineForThisMotionState == physicsEngine) {
-                forThisEngine.append(motionState);
-            }
-        }
-        physicsEngine->removeObjects(forThisEngine);
+    forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
+        physicsEngine->removeObjects(motionStatesPerEngine[physicsEngine->getID()]);
     });
 
     DependencyManager::destroy<OffscreenUi>();
@@ -3052,10 +3047,14 @@ void Application::init() {
     };
 
     EntityTreePointer tree = getEntities()->getTree();
-    PhysicalEntitySimulationPointer simulation { new PhysicalEntitySimulation() };
-    simulation->init(tree, defaultPhysicsEngine, &_entityEditSender);
+    _entitySimulation->init(tree, defaultPhysicsEngine, &_entityEditSender);
+    tree->setSimulation(_entitySimulation);
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
+
+    // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
+    connect(_entitySimulation.get(), &EntitySimulation::entityCollisionWithEntity,
+            getEntities(), &EntityTreeRenderer::entityCollisionWithEntity);
 
     // connect the _entities (EntityTreeRenderer) to our script engine's EntityScriptingInterface for firing
     // of events related clicking, hovering over, and entering entities
@@ -3471,7 +3470,6 @@ void Application::update(float deltaTime) {
 
             PerformanceTimer perfTimer("updateStates)");
             static VectorOfMotionStates motionStates;
-
             _entitySimulation->getObjectsToRemoveFromPhysics(motionStates);
             auto motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
             forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine){

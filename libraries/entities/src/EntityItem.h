@@ -538,7 +538,7 @@ protected:
     ObjectMotionStateInterface* _physicsInfo { nullptr }; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
-    bool addActionInternal(EntityActionPointer action, EntitySimulationPointer simulation);
+    bool addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action);
     bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;

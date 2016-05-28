@@ -151,6 +151,7 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
         btRigidBody* body = object->getRigidBody();
         if (body) {
             _dynamicsWorld->removeRigidBody(body);
+            object->setPhysicsEngine(nullptr);
 
             // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
             object->setRigidBody(nullptr);
@@ -183,6 +184,7 @@ void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
 }
 
 void PhysicsEngine::addObject(ObjectMotionState* object) {
+    object->setPhysicsEngine(getThisPointer());
     addObjectToDynamicsWorld(object);
 }
 

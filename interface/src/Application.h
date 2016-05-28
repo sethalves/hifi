@@ -228,6 +228,8 @@ public:
     float getAvatarSimrate() const { return _avatarSimCounter.rate(); }
     float getAverageSimsPerSecond() const { return _simCounter.rate(); }
 
+    PhysicalEntitySimulationPointer getSimulation() { return _entitySimulation; }
+
 signals:
     void svoImportRequested(const QString& url);
 

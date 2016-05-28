@@ -29,8 +29,11 @@ using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 class EntityMotionState : public ObjectMotionState {
 public:
 
-    EntityMotionState(btCollisionShape* shape, EntityItemPointer item, PhysicsEnginePointer physicsEngine);
+    EntityMotionState(btCollisionShape* shape, EntityItemPointer item,
+                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
     virtual ~EntityMotionState();
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
 
     void updateServerPhysicsVariables();
     virtual void handleEasyChanges(uint32_t& flags) override;
@@ -76,7 +79,9 @@ public:
     virtual void bump(uint8_t priority) override;
 
     EntityItemPointer getEntity() const { return _entityPtr.lock(); }
-    PhysicsEnginePointer getPhysicsEngine() const { return _physicsEngine.lock(); }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override { return _physicsEngine.lock(); }
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override { return getEntity()->getPhysicsEngine(); }
+    virtual void maybeSwitchPhysicsEngines() override;
 
     void resetMeasuredBodyAcceleration();
     void measureBodyAcceleration();

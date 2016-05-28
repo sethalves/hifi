@@ -354,7 +354,8 @@ void AvatarManager::addAvatarToSimulation(Avatar* avatar) {
     btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
     if (shape) {
         // we don't add to the simulation now, we put it on a list to be added later
-        AvatarMotionState* motionState = new AvatarMotionState(avatar, shape, avatar->getPhysicsEngine());
+        AvatarMotionState* motionState =
+            new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
         avatar->setMotionState(motionState);
         _motionStatesToAddToPhysics.insert(motionState);
         _motionStatesThatMightUpdate.insert(motionState);

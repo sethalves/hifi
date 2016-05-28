@@ -30,7 +30,8 @@ static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC *
 
 EntityTree::EntityTree(bool shouldReaverage) :
     Octree(shouldReaverage),
-    _fbxService(NULL)
+    _fbxService(NULL),
+    _simulation(NULL)
 {
     resetClientEditStats();
 }
@@ -53,8 +54,9 @@ void EntityTree::eraseAllOctreeElements(bool createNewRoot) {
     emit clearingEntities();
 
     // this would be a good place to clean up our entities...
-    _simulation->clearEntities();
-
+    if (_simulation) {
+        _simulation->clearEntities();
+    }
     {
         QWriteLocker locker(&_entityToElementLock);
         foreach(EntityTreeElementPointer element, _entityToElementMap) {
@@ -84,7 +86,9 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
 void EntityTree::postAddEntity(EntityItemPointer entity) {
     assert(entity);
     // check to see if we need to simulate this entity..
-    _simulation->addEntity(entity);
+    if (_simulation) {
+        _simulation->addEntity(entity);
+    }
 
     if (!entity->isParentIDValid()) {
         QWriteLocker locker(&_missingParentLock);
@@ -281,7 +285,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
                     _simulation->changeEntity(entity);
                 }
             } else {
-                // normally the simulation clears ALL updateFlags, but since there are none we do it explicitly
+                // normally the _simulation clears ALL updateFlags, but since there are none we do it explicitly
                 entity->clearDirtyFlags();
             }
         }
@@ -364,11 +368,18 @@ void EntityTree::notifyNewCollisionSoundURL(const QString& newURL, const EntityI
     emit newCollisionSoundURL(QUrl(newURL), entityID);
 }
 
-void EntityTree::clearSimulationEntities() {
+void EntityTree::setSimulation(EntitySimulationPointer simulation) {
     this->withWriteLock([&] {
-        if (_simulation) {
+        if (simulation) {
+            // assert that the simulation's backpointer has already been properly connected
+            assert(simulation->getEntityTree().get() == this);
+        }
+        if (_simulation && _simulation != simulation) {
+            // It's important to clearEntities() on the simulation since taht will update each
+            // EntityItem::_simulationState correctly so as to not confuse the next _simulation.
             _simulation->clearEntities();
         }
+        _simulation = simulation;
     });
 }
 
@@ -1046,11 +1057,6 @@ void EntityTree::fixupMissingParents() {
             if (entity->isParentIDValid()) {
                 // this entity's parent was previously not known, and now is.  Update its location in the EntityTree...
                 doMove = true;
-                // and make sure it's in the correct simulation...
-                ObjectMotionStateInterface* physicsInfo = entity->getPhysicsInfo();
-                if (physicsInfo) {
-                    physicsInfo->maybeSwitchPhysicsEngines();
-                }
             } else if (getIsServer() && _avatarIDs.contains(entity->getParentID())) {
                 // this is a child of an avatar, which the entity server will never have
                 // a SpatiallyNestable object for.  Add it to a list for cleanup when the avatar leaves.
@@ -1083,24 +1089,25 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
 
 void EntityTree::update() {
     fixupMissingParents();
+    if (_simulation) {
+        withWriteLock([&] {
+            _simulation->updateEntities();
+            VectorOfEntities pendingDeletes;
+            _simulation->takeEntitiesToDelete(pendingDeletes);
 
-    withWriteLock([&] {
-        _simulation->updateEntities();
-        VectorOfEntities pendingDeletes;
-        _simulation->takeEntitiesToDelete(pendingDeletes);
+            if (pendingDeletes.size() > 0) {
+                // translate into list of ID's
+                QSet<EntityItemID> idsToDelete;
 
-        if (pendingDeletes.size() > 0) {
-            // translate into list of ID's
-            QSet<EntityItemID> idsToDelete;
+                for (auto entity : pendingDeletes) {
+                    idsToDelete.insert(entity->getEntityItemID());
+                }
 
-            for (auto entity : pendingDeletes) {
-                idsToDelete.insert(entity->getEntityItemID());
+                // delete these things the roundabout way
+                deleteEntities(idsToDelete, true);
             }
-
-            // delete these things the roundabout way
-            deleteEntities(idsToDelete, true);
-        }
-    });
+        });
+    }
 }
 
 quint64 EntityTree::getAdjustedConsiderSince(quint64 sinceTime) {

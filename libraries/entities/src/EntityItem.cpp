@@ -1782,7 +1782,7 @@ bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPoint
     withWriteLock([&] {
         checkWaitingToRemove(simulation);
 
-        result = addActionInternal(action, simulation);
+        result = addActionInternal(simulation, action);
         if (result) {
             action->setIsMine(true);
             _actionDataDirty = true;
@@ -1794,7 +1794,7 @@ bool EntityItem::addAction(EntitySimulationPointer simulation, EntityActionPoint
     return result;
 }
 
-bool EntityItem::addActionInternal(EntityActionPointer action, EntitySimulationPointer simulation) {
+bool EntityItem::addActionInternal(EntitySimulationPointer simulation, EntityActionPointer action) {
     assert(action);
     assert(simulation);
     auto actionOwnerEntity = action->getOwnerEntity().lock();
@@ -1948,7 +1948,7 @@ void EntityItem::deserializeActionsInternal() {
             EntityItemPointer entity = getThisPointer();
             EntityActionPointer action = actionFactory->factoryBA(entity, serializedAction);
             if (action) {
-                entity->addActionInternal(action, simulation);
+                entity->addActionInternal(simulation, action);
                 updated << actionID;
             } else {
                 static QString repeatedMessage =

@@ -21,6 +21,7 @@
 #include "PhysicsEngine.h"
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
+#include "PhysicalEntitySimulation.h"
 
 #ifdef WANT_DEBUG_ENTITY_TREE_LOCKS
 #include "EntityTree.h"
@@ -45,8 +46,9 @@ bool entityTreeIsLocked() {
 #endif
 
 
-EntityMotionState::EntityMotionState(btCollisionShape* shape, EntityItemPointer entity, PhysicsEnginePointer physicsEngine) :
-    ObjectMotionState(shape),
+EntityMotionState::EntityMotionState(btCollisionShape* shape, EntityItemPointer entity,
+                                     EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
+    ObjectMotionState(shape, simulation),
     _entityPtr(entity),
     _entity(entity.get()),
     _physicsEngine(physicsEngine),
@@ -703,4 +705,18 @@ void EntityMotionState::computeCollisionGroupAndMask(int16_t& group, int16_t& ma
 
 void EntityMotionState::upgradeOutgoingPriority(uint8_t priority) {
     _outgoingPriority = glm::max<uint8_t>(_outgoingPriority, priority);
+}
+
+void EntityMotionState::maybeSwitchPhysicsEngines() {
+    PhysicsEnginePointer currentPhysicsEngine = getPhysicsEngine();
+    PhysicsEnginePointer shouldBeInPhysicsEngine = getShouldBeInPhysicsEngine();
+    auto simulation = _simulation.lock();
+    if (!simulation) {
+        return;
+    }
+
+    if (currentPhysicsEngine != shouldBeInPhysicsEngine) {
+        simulation->removeEntity(_entity->getThisPointer());
+        simulation->addEntity(_entity->getThisPointer());
+    }
 }
