@@ -720,3 +720,11 @@ void EntityMotionState::maybeSwitchPhysicsEngines() {
         simulation->addEntity(_entity->getThisPointer());
     }
 }
+
+PhysicsEnginePointer EntityMotionState::getPhysicsEngine() const {
+    PhysicsEnginePointer result = _physicsEngine.lock();
+    if (result) {
+        return result;
+    }
+    return getShouldBeInPhysicsEngine();
+}

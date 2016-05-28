@@ -121,7 +121,7 @@ private:
 
     glm::vec3 _originOffset;
 
-    CharacterController* _myAvatarController;
+    CharacterController* _myAvatarController { nullptr };
 
     uint32_t _numContactFrames = 0;
     uint32_t _numSubsteps;

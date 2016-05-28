@@ -3042,11 +3042,12 @@ void Application::init() {
 
     ObjectMotionState::setShapeManager(&_shapeManager);
 
-    PhysicsEnginePointer defaultPhysicsEngine {
-        new PhysicsEngine(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID, glm::vec3(0.0f))
-    };
-
     EntityTreePointer tree = getEntities()->getTree();
+
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+    PhysicsEnginePointer defaultPhysicsEngine =
+        physicsEngineTracker->newPhysicsEngine(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID, glm::vec3(0.0f), tree);
+
     _entitySimulation->init(tree, defaultPhysicsEngine, &_entityEditSender);
     tree->setSimulation(_entitySimulation);
 
@@ -3503,7 +3504,7 @@ void Application::update(float deltaTime) {
             });
             avatarManager->getObjectsToAddToPhysics(motionStates);
             foreach (ObjectMotionState* motionState, motionStates) {
-                PhysicsEnginePointer physicsEngine = getPhysicsEngineFromAvatarMotionState(motionState);
+                PhysicsEnginePointer physicsEngine = motionState->getPhysicsEngine();
                 physicsEngine->addObject(motionState);
             }
             avatarManager->getObjectsToChange(motionStates);
@@ -5389,14 +5390,6 @@ void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor) {
     physicsEngineTracker->forEachPhysicsEngine([&actor](PhysicsEnginePointer physicsEngine){
         actor(physicsEngine);
     });
-}
-
-PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState) {
-    AvatarMotionState* avMotionState = dynamic_cast<AvatarMotionState*>(motionState);
-    if (avMotionState) {
-        return avMotionState->getPhysicsEngine();
-    }
-    return nullptr;
 }
 
 PhysicsEnginePointer getDefaultPhysicsEngine() {

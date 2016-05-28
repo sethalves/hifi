@@ -1211,7 +1211,8 @@ PhysicsEnginePointer Avatar::getPhysicsEngine() {
     if (ancestorZone) {
         return ancestorZone->getChildPhysicsEngine();
     }
-    return nullptr;
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTracker::DEFAULT_PHYSICS_ENGINE_ID);
 }
 
 void Avatar::hierarchyChanged() {

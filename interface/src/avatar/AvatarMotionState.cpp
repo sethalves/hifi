@@ -154,6 +154,15 @@ void AvatarMotionState::computeCollisionGroupAndMask(int16_t& group, int16_t& ma
 }
 
 // virtual
+PhysicsEnginePointer AvatarMotionState::getPhysicsEngine() const {
+    PhysicsEnginePointer result = _physicsEngine.lock();
+    if (result) {
+        return result;
+    }
+    return getShouldBeInPhysicsEngine();
+}
+
+// virtual
 void AvatarMotionState::maybeSwitchPhysicsEngines() {
     #warning here
     // XXX MyAvatar::handleZoneChange

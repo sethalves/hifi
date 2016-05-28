@@ -315,6 +315,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_CLIENT_ONLY, clientOnly);
     CHECK_PROPERTY_CHANGE(PROP_OWNING_AVATAR_ID, owningAvatarID);
 
+    CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
+
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
     changedProperties += _skybox.getChangedProperties();
@@ -435,6 +437,9 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     }
     if (_type == EntityTypes::Sphere) {
         COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER(PROP_SHAPE_TYPE, shapeType, QString("Sphere"));
+    }
+    if (_type == EntityTypes::Box || _type == EntityTypes::Sphere || _type == EntityTypes::Shape) {
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_SHAPE, shape);
     }
 
     // FIXME - it seems like ParticleEffect should also support this
@@ -1153,7 +1158,11 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
                 APPEND_ENTITY_PROPERTY(PROP_STROKE_WIDTHS, properties.getStrokeWidths());
                 APPEND_ENTITY_PROPERTY(PROP_TEXTURES, properties.getTextures());
             }
-            if (properties.getType() == EntityTypes::Shape) {
+            // NOTE: Spheres and Boxes are just special cases of Shape, and they need to include their PROP_SHAPE
+            // when encoding/decoding edits because otherwise they can't polymorph to other shape types
+            if (properties.getType() == EntityTypes::Shape ||
+                properties.getType() == EntityTypes::Box ||
+                properties.getType() == EntityTypes::Sphere) {
                 APPEND_ENTITY_PROPERTY(PROP_SHAPE, properties.getShape());
             }
             APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, properties.getMarketplaceID());
@@ -1220,7 +1229,6 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
     } else {
         packetData->discardSubTree();
     }
-
     return success;
 }
 
@@ -1445,7 +1453,12 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_STROKE_WIDTHS, QVector<float>, setStrokeWidths);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_TEXTURES, QString, setTextures);
     }
-    if (properties.getType() == EntityTypes::Shape) {
+
+    // NOTE: Spheres and Boxes are just special cases of Shape, and they need to include their PROP_SHAPE
+    // when encoding/decoding edits because otherwise they can't polymorph to other shape types
+    if (properties.getType() == EntityTypes::Shape || 
+        properties.getType() == EntityTypes::Box ||
+        properties.getType() == EntityTypes::Sphere) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SHAPE, QString, setShape);
     }
 

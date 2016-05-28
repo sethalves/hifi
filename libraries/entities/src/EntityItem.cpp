@@ -1760,7 +1760,8 @@ PhysicsEnginePointer EntityItem::getPhysicsEngine() {
     if (ancestorZone) {
         return ancestorZone->getChildPhysicsEngine();
     }
-    return nullptr;
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID);
 }
 
 QString EntityItem::actionsToDebugString() {

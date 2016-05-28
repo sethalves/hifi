@@ -18,6 +18,7 @@ PhysicsEnginePointer PhysicsEngineTracker::newPhysicsEngine(QUuid key, const glm
     _physicsEnginesLock.withWriteLock([&] {
         _physicsEngines[key] = physicsEngine;
     });
+    physicsEngine->init();
 
     return physicsEngine;
 }

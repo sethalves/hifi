@@ -79,7 +79,7 @@ public:
     virtual void bump(uint8_t priority) override;
 
     EntityItemPointer getEntity() const { return _entityPtr.lock(); }
-    virtual PhysicsEnginePointer getPhysicsEngine() const override { return _physicsEngine.lock(); }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override;
     virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override { return getEntity()->getPhysicsEngine(); }
     virtual void maybeSwitchPhysicsEngines() override;
 

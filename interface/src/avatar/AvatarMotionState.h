@@ -75,7 +75,7 @@ public:
     friend class Avatar;
 
     Avatar* getAvatar() const { return _avatar; }
-    virtual PhysicsEnginePointer getPhysicsEngine() const override { return _physicsEngine.lock(); }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override;
     virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override { return getAvatar()->getPhysicsEngine(); }
     virtual void maybeSwitchPhysicsEngines() override;
 

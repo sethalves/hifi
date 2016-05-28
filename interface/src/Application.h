@@ -543,7 +543,6 @@ private:
 };
 
 void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor);
-PhysicsEnginePointer getPhysicsEngineFromAvatarMotionState(ObjectMotionState* motionState);
 PhysicsEnginePointer getDefaultPhysicsEngine();
 
 #endif // hifi_Application_h
