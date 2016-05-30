@@ -86,8 +86,10 @@ inline QHash<QUuid, T> sortMotionStatesByEngine(T unsortedStates) {
     QHash<QUuid, T> result;
     foreach (ObjectMotionState* motionState, unsortedStates) {
         EntityMotionState* entityMotionState = dynamic_cast<EntityMotionState*>(motionState);
-        PhysicsEnginePointer physicsEngine = entityMotionState->getPhysicsEngine();
-        result[physicsEngine->getID()] += entityMotionState;
+        if (entityMotionState) {
+            PhysicsEnginePointer physicsEngine = entityMotionState->getPhysicsEngine();
+            result[physicsEngine->getID()] += entityMotionState;
+        }
     }
     return result;
 }

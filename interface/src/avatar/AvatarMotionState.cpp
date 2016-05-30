@@ -13,7 +13,7 @@
 #include <PhysicsEngine.h>
 #include <PhysicsHelpers.h>
 
-#include "Avatar.h"
+#include "MyAvatar.h"
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
@@ -164,6 +164,8 @@ PhysicsEnginePointer AvatarMotionState::getPhysicsEngine() const {
 
 // virtual
 void AvatarMotionState::maybeSwitchPhysicsEngines() {
-    #warning here
-    // XXX MyAvatar::handleZoneChange
+    MyAvatar* myAvatar = dynamic_cast<MyAvatar*>(_avatar); // will be nullptr if not MyAvatar
+    if (myAvatar) {
+        myAvatar->handleZoneChange();
+    }
 }

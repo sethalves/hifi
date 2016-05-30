@@ -298,6 +298,8 @@ public slots:
     glm::vec3 getPositionForAudio();
     glm::quat getOrientationForAudio();
 
+    void handleZoneChange();
+
 signals:
     void audioListenerModeChanged();
     void transformChanged();
@@ -484,8 +486,6 @@ private:
     float getEnergy();
     void setEnergy(float value);
     bool didTeleport();
-
-    void handleZoneChange();
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);
