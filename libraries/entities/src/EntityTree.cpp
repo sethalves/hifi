@@ -241,7 +241,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
         QQueue<SpatiallyNestablePointer> toProcess;
         foreach (SpatiallyNestablePointer child, entity->getChildren()) {
-            if (child && child->getNestableType() == NestableType::Entity) {
+            if (child && child->getNestableFlags().isSet(SpatiallyNestableFlagBits::Entity)) {
                 toProcess.enqueue(child);
             }
         }
@@ -271,7 +271,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
             UpdateEntityOperator theChildOperator(getThisPointer(), containingElement, childEntity, queryCube);
             recurseTreeWithOperator(&theChildOperator);
             foreach (SpatiallyNestablePointer childChild, childEntity->getChildren()) {
-                if (childChild && childChild->getNestableType() == NestableType::Entity) {
+                if (childChild && childChild->getNestableFlags().isSet(SpatiallyNestableFlagBits::Entity)) {
                     toProcess.enqueue(childChild);
                 }
             }
@@ -469,7 +469,7 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
         if (getIsServer()) {
             QSet<EntityItemID> childrenIDs;
             theEntity->forEachChild([&](SpatiallyNestablePointer child) {
-                if (child->getNestableType() == NestableType::Entity) {
+                if (child->getNestableFlags().isSet(SpatiallyNestableFlagBits::Entity)) {
                     childrenIDs += child->getID();
                 }
             });

@@ -95,7 +95,7 @@ namespace AvatarDataPacket {
 #define ASSERT(COND)  do { if (!(COND)) { abort(); } } while(0)
 
 AvatarData::AvatarData() :
-    SpatiallyNestable(NestableType::Avatar, QUuid()),
+    SpatiallyNestable(SpatiallyNestableFlagBits::Avatar, QUuid()),
     _handPosition(0.0f),
     _targetScale(1.0f),
     _handState(0),
@@ -235,7 +235,7 @@ QByteArray AvatarData::toByteArray(bool cullSmallChanges, bool sendAll) {
         auto parentInfo = reinterpret_cast<AvatarDataPacket::ParentInfo*>(destinationBuffer);
         QByteArray referentialAsBytes = parentID.toRfc4122();
         memcpy(parentInfo->parentUUID, referentialAsBytes.data(), referentialAsBytes.size());
-        parentInfo->parentJointIndex = _parentJointIndex;
+        parentInfo->parentJointIndex = getParentJointIndex();
         destinationBuffer += sizeof(AvatarDataPacket::ParentInfo);
     }
 
@@ -522,10 +522,10 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
             sourceBuffer += sizeof(AvatarDataPacket::ParentInfo);
 
             QByteArray byteArray((const char*)parentInfo->parentUUID, NUM_BYTES_RFC4122_UUID);
-            _parentID = QUuid::fromRfc4122(byteArray);
-            _parentJointIndex = parentInfo->parentJointIndex;
+            setParentID(QUuid::fromRfc4122(byteArray));
+            setParentJointIndex(parentInfo->parentJointIndex);
         } else {
-            _parentID = QUuid();
+            setParentID(QUuid());
         }
 
         if (_headData->_isFaceTrackerConnected) {

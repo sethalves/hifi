@@ -80,7 +80,7 @@ public:
         return std::static_pointer_cast<EntityItem>(std::const_pointer_cast<SpatiallyNestable>(shared_from_this()));
     }
 
-    EntityItemID getEntityItemID() const { return EntityItemID(_id); }
+    EntityItemID getEntityItemID() const { return EntityItemID(getID()); }
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const;

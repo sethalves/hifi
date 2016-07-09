@@ -173,7 +173,7 @@ PhysicsMotionType EntityMotionState::computePhysicsMotionType() const {
     }
     if (_entity->isMovingRelativeToParent() ||
         _entity->hasActions() ||
-        _entity->hasAncestorOfType(NestableType::Avatar)) {
+        _entity->hasAncestorOfType(SpatiallyNestableFlagBits::Avatar)) {
         return MOTION_TYPE_KINEMATIC;
     }
     return MOTION_TYPE_STATIC;
@@ -343,7 +343,7 @@ bool EntityMotionState::remoteSimulationOutOfSync(uint32_t simulationStep) {
         // related code in EntitySimulation::moveSimpleKinematics.
         bool ancestryIsKnown;
         _entity->getMaximumAACube(ancestryIsKnown);
-        bool hasAvatarAncestor = _entity->hasAncestorOfType(NestableType::Avatar);
+        bool hasAvatarAncestor = _entity->hasAncestorOfType(SpatiallyNestableFlagBits::Avatar);
 
         if (ancestryIsKnown && !hasAvatarAncestor) {
             _serverVelocity += _serverAcceleration * dt;
@@ -597,7 +597,7 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
     // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
     // if they've changed.
     _entity->forEachDescendant([&](SpatiallyNestablePointer descendant) {
-        if (descendant->getNestableType() == NestableType::Entity) {
+        if (descendant->getNestableFlags().isSet(SpatiallyNestableFlagBits::Entity)) {
             EntityItemPointer entityDescendant = std::static_pointer_cast<EntityItem>(descendant);
             if (descendant->computePuffedQueryAACube()) {
                 EntityItemProperties newQueryCubeProperties;
