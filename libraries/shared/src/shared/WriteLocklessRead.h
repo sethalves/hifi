@@ -13,6 +13,7 @@
 #include <utility>
 #include <atomic>
 #include <mutex>
+#include <assert.h>
 
 template <typename T>
 class WriteLocklessRead {

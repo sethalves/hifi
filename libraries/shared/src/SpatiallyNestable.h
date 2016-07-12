@@ -94,8 +94,8 @@ using SpatiallyNestableFlags = Flags<SpatiallyNestableFlagBits>;
 
 class SpatiallyNestable : public std::enable_shared_from_this<SpatiallyNestable> {
 public:
-    SpatiallyNestable(const SpatiallyNestableFlags& flags, const QUuid& id) 
-        : _flags(flags), _id(id) {
+    SpatiallyNestable(const SpatiallyNestableFlags& flags, const QUuid& id)
+        : _id(id), _flags(flags) {
         // Valid objects always have a non-zero stamp
         ++_stamp;
     }
