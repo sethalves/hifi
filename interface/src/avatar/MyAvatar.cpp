@@ -443,7 +443,7 @@ void MyAvatar::simulate(float deltaTime) {
             MovingEntitiesOperator moveOperator(entityTree);
             forEachDescendant([&](SpatiallyNestablePointer object) {
                 // if the queryBox has changed, tell the entity-server
-                if (object->computePuffedQueryAACube() && object->getNestableType() == NestableType::Entity) {
+                if (object->computePuffedQueryAACube() && !object->getNestableFlags().isSet(SpatiallyNestableFlagBits::Avatar)) {
                     EntityItemPointer entity = std::static_pointer_cast<EntityItem>(object);
                     bool success;
                     AACube newCube = entity->getQueryAACube(success);

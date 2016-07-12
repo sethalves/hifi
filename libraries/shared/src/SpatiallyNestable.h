@@ -12,7 +12,11 @@
 #ifndef hifi_SpatiallyNestable_h
 #define hifi_SpatiallyNestable_h
 
+#include <atomic>
+
 #include <QUuid>
+
+#include "shared/WriteLocklessRead.h"
 
 #include "Transform.h"
 #include "AACube.h"
@@ -26,23 +30,87 @@ using SpatiallyNestableWeakConstPointer = std::weak_ptr<const SpatiallyNestable>
 using SpatiallyNestablePointer = std::shared_ptr<SpatiallyNestable>;
 using SpatiallyNestableConstPointer = std::shared_ptr<const SpatiallyNestable>;
 
-enum class NestableType {
-    Entity,
-    Avatar
+enum class SpatiallyNestableFlagBits {
+    Entity = 0x01,
+    Avatar = 0x02,
 };
+
+template <typename BitType, typename MaskType = uint32_t>
+class Flags {
+public:
+    Flags() {}
+    Flags(BitType bit) : _mask(static_cast<MaskType>(bit)) {}
+    Flags(const Flags<BitType>& flags) : _mask(flags._mask) {}
+
+    inline Flags<BitType> operator|(const Flags<BitType>& flags) const { 
+        Flags<BitType> result(*this);
+        result |= flags;
+        return result;
+    }
+
+    inline Flags<BitType> operator|=(const Flags<BitType>& flags) {
+        _mask |= flags._mask;
+        return *this;
+    }
+
+    inline Flags<BitType> operator&(const Flags<BitType>& flags) const {
+        Flags<BitType> result(*this);
+        result &= flags;
+        return result;
+    }
+
+    inline Flags<BitType> operator&=(const Flags<BitType>& flags) {
+        _mask &= flags._mask;
+        return *this;
+    }
+
+    inline Flags<BitType> operator^(const Flags<BitType>& flags) const {
+        Flags<BitType> result(*this);
+        result ^= flags;
+        return result;
+    }
+
+    inline Flags<BitType> operator^=(const Flags<BitType>& flags) {
+        _mask ^= flags._mask;
+        return *this;
+    }
+
+    inline bool operator==(const Flags<BitType>& flags) const { return _mask == flags._mask; }
+
+    inline bool operator!=(const Flags<BitType>& flags) const { return _mask != flags._mask; }
+
+    inline bool isSet(BitType bit) const {
+        MaskType mask = static_cast<MaskType>(bit);
+        return (mask == (_mask & mask));
+    }
+
+    explicit operator bool() const { return !!_mask; }
+
+private:
+    MaskType _mask { 0 };
+};
+
+using SpatiallyNestableFlags = Flags<SpatiallyNestableFlagBits>;
 
 class SpatiallyNestable : public std::enable_shared_from_this<SpatiallyNestable> {
 public:
-    SpatiallyNestable(NestableType nestableType, QUuid id);
+    SpatiallyNestable(const SpatiallyNestableFlags& flags, const QUuid& id) 
+        : _flags(flags), _id(id) {
+        // Valid objects always have a non-zero stamp
+        ++_stamp;
+    }
+
     virtual ~SpatiallyNestable() { }
 
-    virtual const QUuid getID() const;
+    const SpatiallyNestableFlags& getNestableFlags() const { return _flags; }
+
+    virtual const QUuid& getID() const { return _id; }
     virtual void setID(const QUuid& id);
 
     virtual const QUuid getParentID() const;
     virtual void setParentID(const QUuid& parentID);
 
-    virtual quint16 getParentJointIndex() const { return _parentJointIndex; }
+    virtual quint16 getParentJointIndex() const { quint16 result;  _locker.withConsistentRead([&](const Data& data) { result = data._parentJointIndex;  });  return result; }
     virtual void setParentJointIndex(quint16 parentJointIndex);
 
     static glm::vec3 worldToLocal(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
@@ -52,10 +120,10 @@ public:
     static glm::quat localToWorld(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
 
     // world frame
-    virtual const Transform getTransform(bool& success, int depth = 0) const;
+    virtual const Transform getTransform(bool& success) const;
     virtual void setTransform(const Transform& transform, bool& success);
 
-    virtual Transform getParentTransform(bool& success, int depth = 0) const;
+    virtual Transform getParentTransform(bool& success) const;
 
     virtual glm::vec3 getPosition(bool& success) const;
     virtual glm::vec3 getPosition() const;
@@ -93,7 +161,7 @@ public:
     virtual void setScale(const glm::vec3& scale);
 
     // get world-frame values for a specific joint
-    virtual const Transform getTransform(int jointIndex, bool& success, int depth = 0) const;
+    virtual const Transform getTransform(int jointIndex, bool& success) const;
     virtual glm::vec3 getPosition(int jointIndex, bool& success) const;
     virtual glm::vec3 getScale(int jointIndex) const;
 
@@ -119,8 +187,6 @@ public:
     QList<SpatiallyNestablePointer> getChildren() const;
     bool hasChildren() const;
 
-    NestableType getNestableType() const { return _nestableType; }
-
     // this object's frame
     virtual const Transform getAbsoluteJointTransformInObjectFrame(int jointIndex) const;
     virtual glm::quat getAbsoluteJointRotationInObjectFrame(int index) const = 0;
@@ -136,13 +202,15 @@ public:
     void forEachChild(std::function<void(SpatiallyNestablePointer)> actor);
     void forEachDescendant(std::function<void(SpatiallyNestablePointer)> actor);
 
-    void die() { _isDead = true; }
-    bool isDead() const { return _isDead; }
+    void die() { _locker.withWriteLock([](Data& data) { data._isDead = true;  }); }
+
+    bool isDead() const { bool result;  _locker.withConsistentRead([&](const Data& data) { result = data._isDead;  });  return result; }
 
     bool isParentIDValid() const { bool success = false; getParentPointer(success); return success; }
     virtual SpatialParentTree* getParentTree() const { return nullptr; }
 
-    bool hasAncestorOfType(NestableType nestableType);
+    bool hasAncestorOfType(const SpatiallyNestableFlags& flags) const;
+    bool hasAncestorOfType(SpatiallyNestableFlagBits flag) const;
 
     void getLocalTransformAndVelocities(Transform& localTransform,
                                         glm::vec3& localVelocity,
@@ -154,20 +222,10 @@ public:
             const glm::vec3& localAngularVelocity);
 
 protected:
-    const NestableType _nestableType; // EntityItem or an AvatarData
-    QUuid _id;
-    QUuid _parentID; // what is this thing's transform relative to?
-    quint16 _parentJointIndex { 0 }; // which joint of the parent is this relative to?
     SpatiallyNestablePointer getParentPointer(bool& success) const;
-
-    mutable SpatiallyNestableWeakPointer _parent;
 
     virtual void beParentOfChild(SpatiallyNestablePointer newChild) const;
     virtual void forgetChild(SpatiallyNestablePointer newChild) const;
-
-    mutable ReadWriteLockable _childrenLock;
-    mutable QHash<QUuid, SpatiallyNestableWeakPointer> _children;
-
     virtual void locationChanged(bool tellPhysics = true); // called when a this object's location has changed
     virtual void dimensionsChanged() { } // called when a this object's dimensions have changed
 
@@ -176,17 +234,31 @@ protected:
     mutable bool _queryAACubeSet { false };
 
     bool _missingAncestor { false };
+    const QUuid _id;
 
 private:
-    mutable ReadWriteLockable _transformLock;
-    mutable ReadWriteLockable _idLock;
-    mutable ReadWriteLockable _velocityLock;
-    mutable ReadWriteLockable _angularVelocityLock;
-    Transform _transform; // this is to be combined with parent's world-transform to produce this' world-transform.
-    glm::vec3 _velocity;
-    glm::vec3 _angularVelocity;
-    mutable bool _parentKnowsMe { false };
-    bool _isDead { false };
+    bool ensureParentClean(int depth) const;
+
+    struct Data {
+        mutable SpatiallyNestableWeakPointer _parent;
+        mutable QHash<QUuid, SpatiallyNestableWeakPointer> _children;
+        SpatiallyNestableFlags _parentFlags; // EntityItem or an AvatarData
+        Transform _parentTransform; // this is to be combined with parent's world-transform to produce this' world-transform.
+        glm::vec3 _parentVelocity;
+        glm::vec3 _parentAngularVelocity;
+        Transform _transform; // this is to be combined with parent's world-transform to produce this' world-transform.
+        glm::vec3 _velocity;
+        glm::vec3 _angularVelocity;
+        QUuid _parentID; // what is this thing's transform relative to?
+        quint16 _parentJointIndex { 0 }; // which joint of the parent is this relative to?
+        mutable bool _parentKnowsMe { false };
+        bool _isDead { false };
+    };
+
+    mutable WriteLocklessRead<Data> _locker;
+    const SpatiallyNestableFlags _flags; // EntityItem or an AvatarData
+    mutable std::atomic<uint64_t> _parentStamp;
+    std::atomic<uint64_t> _stamp;
 };
 
 

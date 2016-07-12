@@ -266,7 +266,7 @@ void EntitySimulation::moveSimpleKinematics(const quint64& now) {
         // children of avatars.  See related code in EntityMotionState::remoteSimulationOutOfSync.
         bool ancestryIsKnown;
         entity->getMaximumAACube(ancestryIsKnown);
-        bool hasAvatarAncestor = entity->hasAncestorOfType(NestableType::Avatar);
+        bool hasAvatarAncestor = entity->hasAncestorOfType(SpatiallyNestableFlagBits::Avatar);
 
         if (entity->isMovingRelativeToParent() && !entity->getPhysicsInfo() && ancestryIsKnown && !hasAvatarAncestor) {
             entity->simulate(now);

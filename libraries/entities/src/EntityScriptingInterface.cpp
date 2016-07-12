@@ -384,7 +384,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
             // if they've changed.
             entity->forEachDescendant([&](SpatiallyNestablePointer descendant) {
-                if (descendant->getNestableType() == NestableType::Entity) {
+                if (descendant->getNestableFlags().isSet(SpatiallyNestableFlagBits::Entity)) {
                     if (descendant->computePuffedQueryAACube()) {
                         EntityItemPointer entityDescendant = std::static_pointer_cast<EntityItem>(descendant);
                         EntityItemProperties newQueryCubeProperties;
