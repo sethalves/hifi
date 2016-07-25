@@ -1335,7 +1335,7 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
         return;
     }
 
-    if (_characterController.isEnabled()) {
+    if (_characterController.isEnabledAndReady()) {
         bool success;
         _characterController.getPositionAndOrientation(position, orientation, success);
         if (success) {
@@ -1346,14 +1346,6 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
             if (!positionToWorldSuccess || !orientationToWorldSuccess) {
                 qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to world coords";
             }
-        }
-    }
-
-    if (_characterController.isEnabledAndReady()) {
-        bool success;
-        _characterController.getPositionAndOrientation(position, orientation, success);
-        if (!success) {
-            return;
         }
     }
 
