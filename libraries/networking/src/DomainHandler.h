@@ -75,7 +75,6 @@ public:
     bool hasSettings() const { return !_settingsObject.isEmpty(); }
     void requestDomainSettings();
     const QJsonObject& getSettingsObject() const { return _settingsObject; }
-
    
     void setPendingPath(const QString& pendingPath) { _pendingPath = pendingPath; }
     const QString& getPendingPath() { return _pendingPath; }
@@ -145,9 +144,11 @@ private:
     QString _pendingPath;
     QTimer _settingsTimer;
 
-    QStringList _domainConnectionRefusals;
+    QSet<QString> _domainConnectionRefusals;
     bool _hasCheckedForAccessToken { false };
     int _connectionDenialsSinceKeypairRegen { 0 };
+
+    QTimer _apiRefreshTimer;
 };
 
 #endif // hifi_DomainHandler_h

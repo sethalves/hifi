@@ -171,18 +171,20 @@ public:
 
     virtual void hierarchyChanged(); // path through ancestors to root has changed
 
-protected:
-    const NestableType _nestableType; // EntityItem or an AvatarData
-    QUuid _id;
-    QUuid _parentID; // what is this thing's transform relative to?
-    quint16 _parentJointIndex { 0 }; // which joint of the parent is this relative to?
-
-    void getLocalTransformAndVelocities(Transform& localTransform, glm::vec3& localVelocity, glm::vec3& localAngularVelocity) const;
+    void getLocalTransformAndVelocities(Transform& localTransform,
+                                        glm::vec3& localVelocity,
+                                        glm::vec3& localAngularVelocity) const;
 
     void setLocalTransformAndVelocities(
             const Transform& localTransform,
             const glm::vec3& localVelocity,
             const glm::vec3& localAngularVelocity);
+
+protected:
+    const NestableType _nestableType; // EntityItem or an AvatarData
+    QUuid _id;
+    QUuid _parentID; // what is this thing's transform relative to?
+    quint16 _parentJointIndex { 0 }; // which joint of the parent is this relative to?
 
     mutable SpatiallyNestableWeakPointer _parent;
 

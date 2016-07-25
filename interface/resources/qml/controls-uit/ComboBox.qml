@@ -117,19 +117,22 @@ FocusScope {
 
     function showList() {
         var r = desktop.mapFromItem(root, 0, 0, root.width, root.height);
-        listView.currentIndex = root.currentIndex
-        scrollView.x = r.x;
-        scrollView.y = r.y + r.height;
-        var bottom = scrollView.y + scrollView.height;
+        var y = r.y + r.height;
+        var bottom = y + scrollView.height;
         if (bottom > desktop.height) {
-            scrollView.y -= bottom - desktop.height + 8;
+            y -= bottom - desktop.height + 8;
         }
+        scrollView.x = r.x;
+        scrollView.y = y;
         popup.visible = true;
         popup.forceActiveFocus();
+        listView.currentIndex = root.currentIndex;
+        scrollView.hoverEnabled = true;
     }
 
     function hideList() {
         popup.visible = false;
+        scrollView.hoverEnabled = false;
     }
 
     FocusScope {
@@ -161,6 +164,7 @@ FocusScope {
             id: scrollView
             height: 480
             width: root.width + 4
+            property bool hoverEnabled: false;
 
             style: ScrollViewStyle {
                 decrementControl: Item {
@@ -193,22 +197,23 @@ FocusScope {
                 delegate: Rectangle {
                     width: root.width + 4
                     height: popupText.implicitHeight * 1.4
-                    color: popupHover.containsMouse ? hifi.colors.primaryHighlight : (isLightColorScheme ? hifi.colors.dropDownPressedLight : hifi.colors.dropDownPressedDark)
+                    color: (listView.currentIndex === index) ? hifi.colors.primaryHighlight :
+                           (isLightColorScheme ? hifi.colors.dropDownPressedLight : hifi.colors.dropDownPressedDark)
                     FiraSansSemiBold {
                         anchors.left: parent.left
                         anchors.leftMargin: hifi.dimensions.textPadding
                         anchors.verticalCenter: parent.verticalCenter
                         id: popupText
-                        text: listView.model[index]
+                        text: listView.model[index] ? listView.model[index] : ""
                         size: hifi.fontSizes.textFieldInput
                         color: hifi.colors.baseGray
                     }
                     MouseArea {
                         id: popupHover
                         anchors.fill: parent;
-                        hoverEnabled: true
+                        hoverEnabled: scrollView.hoverEnabled;
                         onEntered: listView.currentIndex = index;
-                        onClicked: popup.selectSpecificItem(index)
+                        onClicked: popup.selectSpecificItem(index);
                     }
                 }
             }

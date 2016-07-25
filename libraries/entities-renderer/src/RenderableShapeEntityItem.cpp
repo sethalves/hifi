@@ -23,9 +23,11 @@
 // is a half unit sphere.  However, the geometry cache renders a UNIT sphere, so we need to scale down.
 static const float SPHERE_ENTITY_SCALE = 0.5f;
 
-static GeometryCache::Shape MAPPING[entity::NUM_SHAPES] = {
+static std::array<GeometryCache::Shape, entity::NUM_SHAPES> MAPPING { {
     GeometryCache::Triangle,
     GeometryCache::Quad,
+    GeometryCache::Hexagon,
+    GeometryCache::Octagon,
     GeometryCache::Circle,
     GeometryCache::Cube,
     GeometryCache::Sphere,
@@ -36,7 +38,7 @@ static GeometryCache::Shape MAPPING[entity::NUM_SHAPES] = {
     GeometryCache::Torus,
     GeometryCache::Cone,
     GeometryCache::Cylinder,
-};
+} };
 
 
 RenderableShapeEntityItem::Pointer RenderableShapeEntityItem::baseFactory(const EntityItemID& entityID, const EntityItemProperties& properties) {
@@ -98,7 +100,7 @@ void RenderableShapeEntityItem::render(RenderArgs* args) {
     }
     batch.setModelTransform(modelTransform); // use a transform with scale, rotation, registration point and translation
     if (_procedural->ready()) {
-        _procedural->prepare(batch, getPosition(), getDimensions());
+        _procedural->prepare(batch, getPosition(), getDimensions(), getOrientation());
         auto outColor = _procedural->getColor(color);
         batch._glColor4f(outColor.r, outColor.g, outColor.b, outColor.a);
         DependencyManager::get<GeometryCache>()->renderShape(batch, MAPPING[_shape]);

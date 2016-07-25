@@ -190,9 +190,6 @@ MyAvatar::MyAvatar(RigPointer rig) :
             if (!headData->getBlendshapeCoefficients().isEmpty()) {
                 _headData->setBlendshapeCoefficients(headData->getBlendshapeCoefficients());
             }
-            // head lean
-            _headData->setLeanForward(headData->getLeanForward());
-            _headData->setLeanSideways(headData->getLeanSideways());
             // head orientation
             _headData->setLookAtPosition(headData->getLookAtPosition());
         }
@@ -234,12 +231,45 @@ QByteArray MyAvatar::toByteArray(bool cullSmallChanges, bool sendAll) {
     return AvatarData::toByteArray(cullSmallChanges, sendAll);
 }
 
-void MyAvatar::reset(bool andRecenter, bool andReload, bool andHead) {
-
+void MyAvatar::centerBody() {
     if (QThread::currentThread() != thread()) {
-        QMetaObject::invokeMethod(this, "reset", Q_ARG(bool, andRecenter));
+        QMetaObject::invokeMethod(this, "centerBody");
         return;
     }
+
+    // derive the desired body orientation from the current hmd orientation, before the sensor reset.
+    auto newBodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
+
+    // transform this body into world space
+    auto worldBodyMatrix = _sensorToWorldMatrix * newBodySensorMatrix;
+    auto worldBodyPos = extractTranslation(worldBodyMatrix);
+    auto worldBodyRot = glm::normalize(glm::quat_cast(worldBodyMatrix));
+
+    // this will become our new position.
+    setPosition(worldBodyPos);
+    setOrientation(worldBodyRot);
+
+    // reset the body in sensor space
+    _bodySensorMatrix = newBodySensorMatrix;
+
+    // rebuild the sensor to world matrix
+    updateSensorToWorldMatrix();
+}
+
+void MyAvatar::clearIKJointLimitHistory() {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "clearIKJointLimitHistory");
+        return;
+    }
+
+    if (_rig) {
+        _rig->clearIKJointLimitHistory();
+    }
+}
+
+void MyAvatar::reset(bool andRecenter, bool andReload, bool andHead) {
+
+    assert(QThread::currentThread() == thread());
 
     // Reset dynamic state.
     _wasPushing = _isPushing = _isBraking = false;
@@ -306,7 +336,7 @@ void MyAvatar::update(float deltaTime) {
     }
 
     Head* head = getHead();
-    head->relaxLean(deltaTime);
+    head->relax(deltaTime);
     updateFromTrackers(deltaTime);
 
     //  Get audio loudness data from audio input device
@@ -576,16 +606,6 @@ void MyAvatar::updateFromTrackers(float deltaTime) {
         head->setDeltaYaw(estimatedRotation.y * magnifyFieldOfView);
         head->setDeltaRoll(estimatedRotation.z);
     }
-
-    //  Update torso lean distance based on accelerometer data
-    const float TORSO_LENGTH = 0.5f;
-    glm::vec3 relativePosition = estimatedPosition - glm::vec3(0.0f, -TORSO_LENGTH, 0.0f);
-
-    const float MAX_LEAN = 45.0f;
-    head->setLeanSideways(glm::clamp(glm::degrees(atanf(relativePosition.x * _leanScale / TORSO_LENGTH)),
-                                     -MAX_LEAN, MAX_LEAN));
-    head->setLeanForward(glm::clamp(glm::degrees(atanf(relativePosition.z * _leanScale / TORSO_LENGTH)),
-                                    -MAX_LEAN, MAX_LEAN));
 }
 
 glm::vec3 MyAvatar::getLeftHandPosition() const {
@@ -694,7 +714,6 @@ void MyAvatar::saveData() {
 
     settings.setValue("headPitch", getHead()->getBasePitch());
 
-    settings.setValue("leanScale", _leanScale);
     settings.setValue("scale", _targetScale);
 
     settings.setValue("fullAvatarURL",
@@ -703,7 +722,9 @@ void MyAvatar::saveData() {
                       _fullAvatarURLFromPreferences.toString());
 
     settings.setValue("fullAvatarModelName", _fullAvatarModelName);
-    settings.setValue("animGraphURL", _animGraphUrl);
+
+    QUrl animGraphUrl = _prefOverrideAnimGraphUrl.get();
+    settings.setValue("animGraphURL", animGraphUrl);
 
     settings.beginWriteArray("attachmentData");
     for (int i = 0; i < _attachmentData.size(); i++) {
@@ -725,23 +746,25 @@ void MyAvatar::saveData() {
 
     settings.beginWriteArray("avatarEntityData");
     int avatarEntityIndex = 0;
-    for (auto entityID : _avatarEntityData.keys()) {
-        settings.setArrayIndex(avatarEntityIndex);
-        settings.setValue("id", entityID);
-        settings.setValue("properties", _avatarEntityData.value(entityID));
-        avatarEntityIndex++;
-    }
+    _avatarEntitiesLock.withReadLock([&] {
+        for (auto entityID : _avatarEntityData.keys()) {
+            settings.setArrayIndex(avatarEntityIndex);
+            settings.setValue("id", entityID);
+            settings.setValue("properties", _avatarEntityData.value(entityID));
+            avatarEntityIndex++;
+        }
+    });
     settings.endArray();
 
     settings.setValue("displayName", _displayName);
     settings.setValue("collisionSoundURL", _collisionSoundURL);
     settings.setValue("useSnapTurn", _useSnapTurn);
-    settings.setValue("clearOverlayWhenDriving", _clearOverlayWhenDriving);
+    settings.setValue("clearOverlayWhenMoving", _clearOverlayWhenMoving);
 
     settings.endGroup();
 }
 
-float loadSetting(QSettings& settings, const char* name, float defaultValue) {
+float loadSetting(Settings& settings, const QString& name, float defaultValue) {
     float value = settings.value(name, defaultValue).toFloat();
     if (glm::isnan(value)) {
         value = defaultValue;
@@ -811,11 +834,10 @@ void MyAvatar::loadData() {
 
     getHead()->setBasePitch(loadSetting(settings, "headPitch", 0.0f));
 
-    _leanScale = loadSetting(settings, "leanScale", 0.05f);
     _targetScale = loadSetting(settings, "scale", 1.0f);
     setScale(glm::vec3(_targetScale));
 
-    _animGraphUrl = settings.value("animGraphURL", "").toString();
+    _prefOverrideAnimGraphUrl.set(QUrl(settings.value("animGraphURL", "").toString()));
     _fullAvatarURLFromPreferences = settings.value("fullAvatarURL", AvatarData::defaultFullAvatarModelUrl()).toUrl();
     _fullAvatarModelName = settings.value("fullAvatarModelName", DEFAULT_FULL_AVATAR_MODEL_NAME).toString();
 
@@ -857,7 +879,7 @@ void MyAvatar::loadData() {
     setDisplayName(settings.value("displayName").toString());
     setCollisionSoundURL(settings.value("collisionSoundURL", DEFAULT_AVATAR_COLLISION_SOUND_URL).toString());
     setSnapTurn(settings.value("useSnapTurn", _useSnapTurn).toBool());
-    setClearOverlayWhenDriving(settings.value("clearOverlayWhenDriving", _clearOverlayWhenDriving).toBool());
+    setClearOverlayWhenMoving(settings.value("clearOverlayWhenMoving", _clearOverlayWhenMoving).toBool());
 
     settings.endGroup();
 
@@ -1222,7 +1244,10 @@ void MyAvatar::updateMotors() {
         if (_characterController.getState() == CharacterController::State::Hover) {
             motorRotation = getHead()->getCameraOrientation();
         } else {
-            motorRotation = getOrientation();
+            // non-hovering = walking: follow camera twist about vertical but not lift
+            // so we decompose camera's rotation and store the twist part in motorRotation
+            glm::quat liftRotation;
+            swingTwistDecomposition(getHead()->getCameraOrientation(), _worldUpDirection, liftRotation, motorRotation);
         }
         const float DEFAULT_MOTOR_TIMESCALE = 0.2f;
         const float INVALID_MOTOR_TIMESCALE = 1.0e6f;
@@ -1295,8 +1320,7 @@ void MyAvatar::prepareForPhysicsSimulation() {
     }
 
     if (qApp->isHMDMode()) {
-        bool hasDriveInput = fabsf(_driveKeys[TRANSLATE_X]) > 0.0f || fabsf(_driveKeys[TRANSLATE_Z]) > 0.0f;
-        _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput);
+        _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput());
     } else {
         _follow.deactivate();
     }
@@ -1324,6 +1348,15 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
             }
         }
     }
+
+    if (_characterController.isEnabledAndReady()) {
+        bool success;
+        _characterController.getPositionAndOrientation(position, orientation, success);
+        if (!success) {
+            return;
+        }
+    }
+
     nextAttitude(position, orientation);
     _bodySensorMatrix = _follow.postPhysicsUpdate(*this, _bodySensorMatrix);
 
@@ -1336,6 +1369,10 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
         if (!velocityToWorldSuccess) {
             qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to velocity from local to world";
         }
+    }
+
+    if (_characterController.isEnabledAndReady()) {
+        setVelocity(_characterController.getLinearVelocity() + _characterController.getFollowVelocity());
     } else {
         setVelocity(getVelocity() + _characterController.getFollowVelocity());
     }
@@ -1450,21 +1487,55 @@ void MyAvatar::initHeadBones() {
     }
 }
 
+QUrl MyAvatar::getAnimGraphOverrideUrl() const {
+    return _prefOverrideAnimGraphUrl.get();
+}
+
+void MyAvatar::setAnimGraphOverrideUrl(QUrl value) {
+    _prefOverrideAnimGraphUrl.set(value);
+    if (!value.isEmpty()) {
+        setAnimGraphUrl(value);
+    } else {
+        initAnimGraph();
+    }
+}
+
+QUrl MyAvatar::getAnimGraphUrl() const {
+    return _currentAnimGraphUrl.get();
+}
+
 void MyAvatar::setAnimGraphUrl(const QUrl& url) {
-    if (_animGraphUrl == url) {
+
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "setAnimGraphUrl", Q_ARG(QUrl, url));
+        return;
+    }
+
+    if (_currentAnimGraphUrl.get() == url) {
         return;
     }
     destroyAnimGraph();
     _skeletonModel->reset(); // Why is this necessary? Without this, we crash in the next render.
-    _animGraphUrl = url;
-    initAnimGraph();
+
+    _currentAnimGraphUrl.set(url);
+    _rig->initAnimGraph(url);
+
+    _bodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
+    updateSensorToWorldMatrix(); // Uses updated position/orientation and _bodySensorMatrix changes
 }
 
 void MyAvatar::initAnimGraph() {
-    auto graphUrl =_animGraphUrl.isEmpty() ?
-        QUrl::fromLocalFile(PathUtils::resourcesPath() + "avatar/avatar-animation.json") :
-        QUrl(_animGraphUrl);
+    QUrl graphUrl;
+    if (!_prefOverrideAnimGraphUrl.get().isEmpty()) {
+        graphUrl = _prefOverrideAnimGraphUrl.get();
+    } else if (!_fstAnimGraphOverrideUrl.isEmpty()) {
+        graphUrl = _fstAnimGraphOverrideUrl;
+    } else {
+        graphUrl = QUrl::fromLocalFile(PathUtils::resourcesPath() + "avatar/avatar-animation.json");
+    }
+
     _rig->initAnimGraph(graphUrl);
+    _currentAnimGraphUrl.set(graphUrl);
 
     _bodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
     updateSensorToWorldMatrix(); // Uses updated position/orientation and _bodySensorMatrix changes
@@ -1482,6 +1553,7 @@ void MyAvatar::postUpdate(float deltaTime) {
     if (_skeletonModel->initWhenReady(scene)) {
         initHeadBones();
         _skeletonModel->setCauterizeBoneSet(_headBoneSet);
+        _fstAnimGraphOverrideUrl = _skeletonModel->getGeometry()->getAnimGraphOverrideUrl();
         initAnimGraph();
     }
 
@@ -1717,7 +1789,7 @@ void MyAvatar::updatePosition(float deltaTime) {
 
     vec3 velocity = getVelocityInSimulationFrame();
     const float MOVING_SPEED_THRESHOLD_SQUARED = 0.0001f; // 0.01 m/s
-    if (!_characterController.isEnabled()) {
+    if (!_characterController.isEnabledAndReady()) {
         // _characterController is not in physics simulation but it can still compute its target velocity
         updateMotors();
         _characterController.computeNewVelocity(deltaTime, velocity);
@@ -1891,6 +1963,16 @@ void MyAvatar::updateMotionBehaviorFromMenu() {
         _motionBehaviors &= ~AVATAR_MOTION_SCRIPTED_MOTOR_ENABLED;
     }
 
+    setCharacterControllerEnabled(menu->isOptionChecked(MenuOption::EnableCharacterController));
+}
+
+void MyAvatar::setCharacterControllerEnabled(bool enabled) {
+
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "setCharacterControllerEnabled", Q_ARG(bool, enabled));
+        return;
+    }
+
     bool ghostingAllowed = true;
     EntityTreeRenderer* entityTreeRenderer = qApp->getEntities();
     if (entityTreeRenderer) {
@@ -1899,12 +1981,11 @@ void MyAvatar::updateMotionBehaviorFromMenu() {
             ghostingAllowed = zone->getGhostingAllowed();
         }
     }
-    bool checked = menu->isOptionChecked(MenuOption::EnableCharacterController);
-    if (!ghostingAllowed) {
-        checked = true;
-    }
+    _characterController.setEnabled(ghostingAllowed ? enabled : true);
+}
 
-    _characterController.setEnabled(checked);
+bool MyAvatar::getCharacterControllerEnabled() {
+    return _characterController.isEnabled();
 }
 
 void MyAvatar::clearDriveKeys() {
@@ -2112,14 +2193,17 @@ bool MyAvatar::FollowHelper::shouldActivateVertical(const MyAvatar& myAvatar, co
 
 void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat4& desiredBodyMatrix, const glm::mat4& currentBodyMatrix, bool hasDriveInput) {
     _desiredBodyMatrix = desiredBodyMatrix;
-    if (!isActive(Rotation) && shouldActivateRotation(myAvatar, desiredBodyMatrix, currentBodyMatrix)) {
-        activate(Rotation);
-    }
-    if (!isActive(Horizontal) && shouldActivateHorizontal(myAvatar, desiredBodyMatrix, currentBodyMatrix)) {
-        activate(Horizontal);
-    }
-    if (!isActive(Vertical) && (shouldActivateVertical(myAvatar, desiredBodyMatrix, currentBodyMatrix) || hasDriveInput)) {
-        activate(Vertical);
+
+    if (myAvatar.getHMDLeanRecenterEnabled()) {
+        if (!isActive(Rotation) && shouldActivateRotation(myAvatar, desiredBodyMatrix, currentBodyMatrix)) {
+            activate(Rotation);
+        }
+        if (!isActive(Horizontal) && shouldActivateHorizontal(myAvatar, desiredBodyMatrix, currentBodyMatrix)) {
+            activate(Horizontal);
+        }
+        if (!isActive(Vertical) && (shouldActivateVertical(myAvatar, desiredBodyMatrix, currentBodyMatrix) || hasDriveInput)) {
+            activate(Vertical);
+        }
     }
 
     glm::mat4 desiredWorldMatrix = myAvatar.getSensorToWorldMatrix() * _desiredBodyMatrix;
@@ -2193,7 +2277,6 @@ bool MyAvatar::didTeleport() {
     return (changeInPosition.length() > MAX_AVATAR_MOVEMENT_PER_FRAME);
 }
 
-
 void MyAvatar::handleZoneChange() {
     EntityTreeRenderer* treeRenderer = qApp->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->myAvatarZone();
@@ -2244,4 +2327,8 @@ void MyAvatar::handleZoneChange() {
             qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
         }
     }
+}
+
+bool MyAvatar::hasDriveInput() const {
+    return fabsf(_driveKeys[TRANSLATE_X]) > 0.0f || fabsf(_driveKeys[TRANSLATE_Y]) > 0.0f || fabsf(_driveKeys[TRANSLATE_Z]) > 0.0f;
 }

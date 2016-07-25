@@ -14,6 +14,8 @@
 #include <QMessageBox>
 #include <QScriptValue>
 
+#include <SettingHandle.h>
+
 #include "Application.h"
 #include "DomainHandler.h"
 #include "MainWindow.h"
@@ -22,6 +24,24 @@
 #include "WebWindowClass.h"
 
 #include "WindowScriptingInterface.h"
+
+static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+static const QString LAST_BROWSE_LOCATION_SETTING = "LastBrowseLocation";
+
+
+QScriptValue CustomPromptResultToScriptValue(QScriptEngine* engine, const CustomPromptResult& result) {
+    if (!result.value.isValid()) {
+        return QScriptValue::UndefinedValue;
+    }
+
+    Q_ASSERT(result.value.userType() == qMetaTypeId<QVariantMap>());
+    return engine->toScriptValue(result.value.toMap());
+}
+
+void CustomPromptResultFromScriptValue(const QScriptValue& object, CustomPromptResult& result) {
+    result.value = object.toVariant();
+}
+
 
 WindowScriptingInterface::WindowScriptingInterface() {
     const DomainHandler& domainHandler = DependencyManager::get<NodeList>()->getDomainHandler();
@@ -89,6 +109,14 @@ QScriptValue WindowScriptingInterface::prompt(const QString& message, const QStr
     return ok ? QScriptValue(result) : QScriptValue::NullValue;
 }
 
+CustomPromptResult WindowScriptingInterface::customPrompt(const QVariant& config) {
+    CustomPromptResult result;
+    bool ok = false;
+    auto configMap = config.toMap();
+    result.value = OffscreenUi::getCustomInfo(OffscreenUi::ICON_NONE, "", configMap, &ok);
+    return ok ? result : CustomPromptResult();
+}
+
 QString fixupPathForMac(const QString& directory) {
     // On OS X `directory` does not work as expected unless a file is included in the path, so we append a bogus
     // filename if the directory is valid.
@@ -101,6 +129,14 @@ QString fixupPathForMac(const QString& directory) {
     return path;
 }
 
+QString WindowScriptingInterface::getPreviousBrowseLocation() const {
+    return Setting::Handle<QString>(LAST_BROWSE_LOCATION_SETTING, DESKTOP_LOCATION).get();
+}
+
+void WindowScriptingInterface::setPreviousBrowseLocation(const QString& location) {
+    Setting::Handle<QVariant>(LAST_BROWSE_LOCATION_SETTING).set(location);
+}
+
 /// Display an open file dialog.  If `directory` is an invalid file or directory the browser will start at the current
 /// working directory.
 /// \param const QString& title title of the window
@@ -108,8 +144,17 @@ QString fixupPathForMac(const QString& directory) {
 /// \param const QString& nameFilter filter to filter filenames by - see `QFileDialog`
 /// \return QScriptValue file path as a string if one was selected, otherwise `QScriptValue::NullValue`
 QScriptValue WindowScriptingInterface::browse(const QString& title, const QString& directory, const QString& nameFilter) {
-    QString path = fixupPathForMac(directory);
+    QString path = directory;
+    if (path.isEmpty()) {
+        path = getPreviousBrowseLocation();
+    }
+#ifndef Q_OS_WIN
+    path = fixupPathForMac(directory);
+#endif
     QString result = OffscreenUi::getOpenFileName(nullptr, title, path, nameFilter);
+    if (!result.isEmpty()) {
+        setPreviousBrowseLocation(QFileInfo(result).absolutePath());
+    }
     return result.isEmpty() ? QScriptValue::NullValue : QScriptValue(result);
 }
 
@@ -120,8 +165,17 @@ QScriptValue WindowScriptingInterface::browse(const QString& title, const QStrin
 /// \param const QString& nameFilter filter to filter filenames by - see `QFileDialog`
 /// \return QScriptValue file path as a string if one was selected, otherwise `QScriptValue::NullValue`
 QScriptValue WindowScriptingInterface::save(const QString& title, const QString& directory, const QString& nameFilter) {
-    QString path = fixupPathForMac(directory);
+    QString path = directory;
+    if (path.isEmpty()) {
+        path = getPreviousBrowseLocation();
+    }
+#ifndef Q_OS_WIN
+    path = fixupPathForMac(directory);
+#endif
     QString result = OffscreenUi::getSaveFileName(nullptr, title, path, nameFilter);
+    if (!result.isEmpty()) {
+        setPreviousBrowseLocation(QFileInfo(result).absolutePath());
+    }
     return result.isEmpty() ? QScriptValue::NullValue : QScriptValue(result);
 }
 

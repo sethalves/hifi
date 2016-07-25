@@ -230,11 +230,13 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
 
             ShapeInfo shapeInfo;
             entity->computeShapeInfo(shapeInfo);
-            int numPoints = shapeInfo.getMaxNumPoints();
-            if (numPoints > MAX_HULL_POINTS) {
-                qWarning() << "convex hull with" << numPoints
-                    << "points for entity" << entity->getName()
-                    << "at" << entity->getPosition() << " will be reduced";
+            int numPoints = shapeInfo.getLargestSubshapePointCount();
+            if (shapeInfo.getType() == SHAPE_TYPE_COMPOUND) {
+                if (numPoints > MAX_HULL_POINTS) {
+                    qWarning() << "convex hull with" << numPoints
+                        << "points for entity" << entity->getName()
+                        << "at" << entity->getPosition() << " will be reduced";
+                }
             }
             btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
             if (shape) {
@@ -244,7 +246,7 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
                 result.push_back(motionState);
                 entityItr = _entitiesToAddToPhysics.erase(entityItr);
             } else {
-                //qDebug() << "Warning!  Failed to generate new shape for entity." << entity->getName();
+                //qWarning() << "Failed to generate new shape for entity." << entity->getName();
                 ++entityItr;
             }
         } else {

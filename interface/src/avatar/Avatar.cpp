@@ -85,7 +85,6 @@ Avatar::Avatar(RigPointer rig) :
     _acceleration(0.0f),
     _lastAngularVelocity(0.0f),
     _lastOrientation(),
-    _leanScale(0.5f),
     _worldUpDirection(DEFAULT_UP_DIRECTION),
     _moving(false),
     _initialized(false),
@@ -241,11 +240,13 @@ void Avatar::updateAvatarEntities() {
         }
 
         AvatarEntityIDs recentlyDettachedAvatarEntities = getAndClearRecentlyDetachedIDs();
-        foreach (auto entityID, recentlyDettachedAvatarEntities) {
-            if (!_avatarEntityData.contains(entityID)) {
-                entityTree->deleteEntity(entityID, true, true);
+        _avatarEntitiesLock.withReadLock([&] {
+            foreach (auto entityID, recentlyDettachedAvatarEntities) {
+                if (!_avatarEntityData.contains(entityID)) {
+                    entityTree->deleteEntity(entityID, true, true);
+                }
             }
-        }
+        });
     });
 
     if (success) {
@@ -1083,6 +1084,15 @@ void Avatar::computeShapeInfo(ShapeInfo& shapeInfo) {
     shapeInfo.setCapsuleY(uniformScale * _skeletonModel->getBoundingCapsuleRadius(),
             0.5f * uniformScale *  _skeletonModel->getBoundingCapsuleHeight());
     shapeInfo.setOffset(uniformScale * _skeletonModel->getBoundingCapsuleOffset());
+}
+
+void Avatar::getCapsule(glm::vec3& start, glm::vec3& end, float& radius) {
+    ShapeInfo shapeInfo;
+    computeShapeInfo(shapeInfo);
+    glm::vec3 halfExtents = shapeInfo.getHalfExtents(); // x = radius, y = halfHeight
+    start = getPosition() - glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
+    end = getPosition() + glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
+    radius = halfExtents.x;
 }
 
 void Avatar::setMotionState(AvatarMotionState* motionState) {

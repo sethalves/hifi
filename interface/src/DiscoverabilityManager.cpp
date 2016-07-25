@@ -79,9 +79,6 @@ void DiscoverabilityManager::updateLocation() {
         const QString FRIENDS_ONLY_KEY_IN_LOCATION = "friends_only";
         locationObject.insert(FRIENDS_ONLY_KEY_IN_LOCATION, (_mode.get() == Discoverability::Friends));
 
-        // if we have a session ID add it now, otherwise add a null value
-        rootObject[SESSION_ID_KEY] = _sessionID.isEmpty() ? QJsonValue() : _sessionID;
-
         JSONCallbackParameters callbackParameters;
         callbackParameters.jsonCallbackReceiver = this;
         callbackParameters.jsonCallbackMethod = "handleHeartbeatResponse";
@@ -109,16 +106,8 @@ void DiscoverabilityManager::updateLocation() {
         callbackParameters.jsonCallbackReceiver = this;
         callbackParameters.jsonCallbackMethod = "handleHeartbeatResponse";
 
-        QJsonObject heartbeatObject;
-        if (!_sessionID.isEmpty()) {
-            heartbeatObject[SESSION_ID_KEY] = _sessionID;
-        } else {
-            heartbeatObject[SESSION_ID_KEY] = QJsonValue();
-        }
-
         accountManager->sendRequest(API_USER_HEARTBEAT_PATH, AccountManagerAuth::Optional,
-                                   QNetworkAccessManager::PutOperation, callbackParameters,
-                                   QJsonDocument(heartbeatObject).toJson());
+                                   QNetworkAccessManager::PutOperation, callbackParameters);
     }
 }
 
@@ -126,11 +115,11 @@ void DiscoverabilityManager::handleHeartbeatResponse(QNetworkReply& requestReply
     auto dataObject = AccountManager::dataObjectFromResponse(requestReply);
 
     if (!dataObject.isEmpty()) {
-        _sessionID = dataObject[SESSION_ID_KEY].toString();
+        auto sessionID = dataObject[SESSION_ID_KEY].toString();
 
         // give that session ID to the account manager
         auto accountManager = DependencyManager::get<AccountManager>();
-        accountManager->setSessionID(_sessionID);
+        accountManager->setSessionID(sessionID);
     }
 }
 
