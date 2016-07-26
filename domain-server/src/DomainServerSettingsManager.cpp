@@ -273,6 +273,15 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
             // This was prior to operating hours, so add default hours
             validateDescriptorsMap();
         }
+
+        if (oldVersion < 1.6) {
+            unpackPermissions();
+
+            // This was prior to addition of kick permissions, add that to localhost permissions by default
+            _standardAgentPermissions[NodePermissions::standardNameLocalhost]->set(NodePermissions::Permission::canKick);
+
+            packPermissions();
+        }
     }
 
     unpackPermissions();
@@ -354,16 +363,14 @@ void DomainServerSettingsManager::packPermissionsForMap(QString mapName,
                                                         NodePermissionsMap& permissionsRows,
                                                         QString keyPath) {
     // find (or create) the "security" section of the settings map
-    QVariant* security = valueForKeyPath(_configMap.getUserConfig(), "security");
-    if (!security || !security->canConvert(QMetaType::QVariantMap)) {
-        security = valueForKeyPath(_configMap.getUserConfig(), "security", true);
+    QVariant* security = valueForKeyPath(_configMap.getUserConfig(), "security", true);
+    if (!security->canConvert(QMetaType::QVariantMap)) {
         (*security) = QVariantMap();
     }
 
     // find (or create) whichever subsection of "security" we are packing
-    QVariant* permissions = valueForKeyPath(_configMap.getUserConfig(), keyPath);
-    if (!permissions || !permissions->canConvert(QMetaType::QVariantList)) {
-        permissions = valueForKeyPath(_configMap.getUserConfig(), keyPath, true);
+    QVariant* permissions = valueForKeyPath(_configMap.getUserConfig(), keyPath, true);
+    if (!permissions->canConvert(QMetaType::QVariantList)) {
         (*permissions) = QVariantList();
     }
 
@@ -420,6 +427,9 @@ void DomainServerSettingsManager::packPermissions() {
     // save settings for specific users
     packPermissionsForMap("permissions", _agentPermissions, AGENT_PERMISSIONS_KEYPATH);
 
+    // save settings for IP addresses
+    packPermissionsForMap("permissions", _ipPermissions, IP_PERMISSIONS_KEYPATH);
+
     // save settings for groups
     packPermissionsForMap("permissions", _groupPermissions, GROUP_PERMISSIONS_KEYPATH);
 
@@ -430,136 +440,90 @@ void DomainServerSettingsManager::packPermissions() {
     _configMap.loadMasterAndUserConfig(_argumentList);
 }
 
-void DomainServerSettingsManager::unpackPermissions() {
-    // transfer details from _configMap to _agentPermissions;
+bool DomainServerSettingsManager::unpackPermissionsForKeypath(const QString& keyPath,
+                                                              NodePermissionsMap* mapPointer,
+                                                              std::function<void(NodePermissionsPointer)> customUnpacker) {
 
-    _standardAgentPermissions.clear();
-    _agentPermissions.clear();
-    _groupPermissions.clear();
-    _groupForbiddens.clear();
+    mapPointer->clear();
 
-    bool foundLocalhost = false;
-    bool foundAnonymous = false;
-    bool foundLoggedIn = false;
-    bool foundFriends = false;
-    bool needPack = false;
-
-    QVariant* standardPermissions = valueForKeyPath(_configMap.getUserConfig(), AGENT_STANDARD_PERMISSIONS_KEYPATH);
-    if (!standardPermissions || !standardPermissions->canConvert(QMetaType::QVariantList)) {
-        qDebug() << "failed to extract standard permissions from settings.";
-        standardPermissions = valueForKeyPath(_configMap.getUserConfig(), AGENT_STANDARD_PERMISSIONS_KEYPATH, true);
-        (*standardPermissions) = QVariantList();
-    }
-    QVariant* permissions = valueForKeyPath(_configMap.getUserConfig(), AGENT_PERMISSIONS_KEYPATH);
-    if (!permissions || !permissions->canConvert(QMetaType::QVariantList)) {
-        qDebug() << "failed to extract permissions from settings.";
-        permissions = valueForKeyPath(_configMap.getUserConfig(), AGENT_PERMISSIONS_KEYPATH, true);
+    QVariant* permissions = valueForKeyPath(_configMap.getMergedConfig(), keyPath, true);
+    if (!permissions->canConvert(QMetaType::QVariantList)) {
+        qDebug() << "Failed to extract permissions for key path" << keyPath << "from settings.";
         (*permissions) = QVariantList();
     }
-    QVariant* groupPermissions = valueForKeyPath(_configMap.getUserConfig(), GROUP_PERMISSIONS_KEYPATH);
-    if (!groupPermissions || !groupPermissions->canConvert(QMetaType::QVariantList)) {
-        qDebug() << "failed to extract group permissions from settings.";
-        groupPermissions = valueForKeyPath(_configMap.getUserConfig(), GROUP_PERMISSIONS_KEYPATH, true);
-        (*groupPermissions) = QVariantList();
-    }
-    QVariant* groupForbiddens = valueForKeyPath(_configMap.getUserConfig(), GROUP_FORBIDDENS_KEYPATH);
-    if (!groupForbiddens || !groupForbiddens->canConvert(QMetaType::QVariantList)) {
-        qDebug() << "failed to extract group forbiddens from settings.";
-        groupForbiddens = valueForKeyPath(_configMap.getUserConfig(), GROUP_FORBIDDENS_KEYPATH, true);
-        (*groupForbiddens) = QVariantList();
-    }
 
-    QList<QVariant> standardPermissionsList = standardPermissions->toList();
-    foreach (QVariant permsHash, standardPermissionsList) {
-        NodePermissionsPointer perms { new NodePermissions(permsHash.toMap()) };
-        QString id = perms->getID();
-        NodePermissionsKey idKey = NodePermissionsKey(id, 0);
-        foundLocalhost |= (idKey == NodePermissions::standardNameLocalhost);
-        foundAnonymous |= (idKey == NodePermissions::standardNameAnonymous);
-        foundLoggedIn |= (idKey == NodePermissions::standardNameLoggedIn);
-        foundFriends |= (idKey == NodePermissions::standardNameFriends);
-        if (_standardAgentPermissions.contains(idKey)) {
-            qDebug() << "duplicate name in standard permissions table: " << id;
-            _standardAgentPermissions[idKey] |= perms;
-            needPack = true;
-        } else {
-            _standardAgentPermissions[idKey] = perms;
-        }
-    }
+    bool needPack = false;
 
     QList<QVariant> permissionsList = permissions->toList();
     foreach (QVariant permsHash, permissionsList) {
         NodePermissionsPointer perms { new NodePermissions(permsHash.toMap()) };
         QString id = perms->getID();
-        NodePermissionsKey idKey = NodePermissionsKey(id, 0);
-        if (_agentPermissions.contains(idKey)) {
-            qDebug() << "duplicate name in permissions table: " << id;
-            _agentPermissions[idKey] |= perms;
+        NodePermissionsKey idKey = perms->getKey();
+
+        if (mapPointer->contains(idKey)) {
+            qDebug() << "Duplicate name in permissions table for" << keyPath << " - " << id;
+            (*mapPointer)[idKey] |= perms;
             needPack = true;
         } else {
-            _agentPermissions[idKey] = perms;
+            (*mapPointer)[idKey] = perms;
+        }
+
+        if (customUnpacker) {
+            customUnpacker(perms);
         }
     }
 
-    QList<QVariant> groupPermissionsList = groupPermissions->toList();
-    foreach (QVariant permsHash, groupPermissionsList) {
-        NodePermissionsPointer perms { new NodePermissions(permsHash.toMap()) };
-        QString id = perms->getID();
-        NodePermissionsKey idKey = perms->getKey();
-        if (_groupPermissions.contains(idKey)) {
-            qDebug() << "duplicate name in group permissions table: " << id;
-            _groupPermissions[idKey] |= perms;
-            needPack = true;
-        } else {
-            _groupPermissions[idKey] = perms;
-        }
-        if (perms->isGroup()) {
-            // the group-id was cached.  hook-up the uuid in the uuid->group hash
-            _groupPermissionsByUUID[GroupByUUIDKey(perms->getGroupID(), perms->getRankID())] = _groupPermissions[idKey];
-            needPack |= setGroupID(perms->getID(), perms->getGroupID());
-        }
-    }
+    return needPack;
 
-    QList<QVariant> groupForbiddensList = groupForbiddens->toList();
-    foreach (QVariant permsHash, groupForbiddensList) {
-        NodePermissionsPointer perms { new NodePermissions(permsHash.toMap()) };
-        QString id = perms->getID();
-        NodePermissionsKey idKey = perms->getKey();
-        if (_groupForbiddens.contains(idKey)) {
-            qDebug() << "duplicate name in group forbiddens table: " << id;
-            _groupForbiddens[idKey] |= perms;
-            needPack = true;
-        } else {
-            _groupForbiddens[idKey] = perms;
-        }
-        if (perms->isGroup()) {
-            // the group-id was cached.  hook-up the uuid in the uuid->group hash
-            _groupForbiddensByUUID[GroupByUUIDKey(perms->getGroupID(), perms->getRankID())] = _groupForbiddens[idKey];
-            needPack |= setGroupID(perms->getID(), perms->getGroupID());
-        }
-    }
+}
+
+void DomainServerSettingsManager::unpackPermissions() {
+    // transfer details from _configMap to _agentPermissions
+
+    bool needPack = false;
+
+    needPack |= unpackPermissionsForKeypath(AGENT_STANDARD_PERMISSIONS_KEYPATH, &_standardAgentPermissions);
+
+    needPack |= unpackPermissionsForKeypath(AGENT_PERMISSIONS_KEYPATH, &_agentPermissions);
+
+    needPack |= unpackPermissionsForKeypath(IP_PERMISSIONS_KEYPATH, &_ipPermissions);
+
+    needPack |= unpackPermissionsForKeypath(GROUP_PERMISSIONS_KEYPATH, &_groupPermissions,
+        [&](NodePermissionsPointer perms){
+            if (perms->isGroup()) {
+                // the group-id was cached.  hook-up the uuid in the uuid->group hash
+                _groupPermissionsByUUID[GroupByUUIDKey(perms->getGroupID(), perms->getRankID())] = _groupPermissions[perms->getKey()];
+                needPack |= setGroupID(perms->getID(), perms->getGroupID());
+            }
+    });
+
+    needPack |= unpackPermissionsForKeypath(GROUP_FORBIDDENS_KEYPATH, &_groupForbiddens,
+        [&](NodePermissionsPointer perms) {
+            if (perms->isGroup()) {
+                // the group-id was cached.  hook-up the uuid in the uuid->group hash
+                _groupForbiddensByUUID[GroupByUUIDKey(perms->getGroupID(), perms->getRankID())] = _groupForbiddens[perms->getKey()];
+                needPack |= setGroupID(perms->getID(), perms->getGroupID());
+            }
+    });
 
     // if any of the standard names are missing, add them
-    if (!foundLocalhost) {
-        NodePermissionsPointer perms { new NodePermissions(NodePermissions::standardNameLocalhost) };
-        perms->setAll(true);
-        _standardAgentPermissions[perms->getKey()] = perms;
-        needPack = true;
-    }
-    if (!foundAnonymous) {
-        NodePermissionsPointer perms { new NodePermissions(NodePermissions::standardNameAnonymous) };
-        _standardAgentPermissions[perms->getKey()] = perms;
-        needPack = true;
-    }
-    if (!foundLoggedIn) {
-        NodePermissionsPointer perms { new NodePermissions(NodePermissions::standardNameLoggedIn) };
-        _standardAgentPermissions[perms->getKey()] = perms;
-        needPack = true;
-    }
-    if (!foundFriends) {
-        NodePermissionsPointer perms { new NodePermissions(NodePermissions::standardNameFriends) };
-        _standardAgentPermissions[perms->getKey()] = perms;
-        needPack = true;
+    foreach(const QString& standardName, NodePermissions::standardNames) {
+        NodePermissionsKey standardKey { standardName, 0 };
+        if (!_standardAgentPermissions.contains(standardKey)) {
+            // we don't have permissions for one of the standard groups, so we'll add them now
+            NodePermissionsPointer perms { new NodePermissions(standardKey) };
+
+            // the localhost user is granted all permissions by default
+            if (standardKey == NodePermissions::standardNameLocalhost) {
+                perms->setAll(true);
+            }
+
+            // add the permissions to the standard map
+            _standardAgentPermissions[standardKey] = perms;
+
+            // this will require a packing of permissions
+            needPack = true;
+        }
     }
 
     needPack |= ensurePermissionsForGroupRanks();
@@ -572,7 +536,7 @@ void DomainServerSettingsManager::unpackPermissions() {
     qDebug() << "--------------- permissions ---------------------";
     QList<QHash<NodePermissionsKey, NodePermissionsPointer>> permissionsSets;
     permissionsSets << _standardAgentPermissions.get() << _agentPermissions.get()
-                    << _groupPermissions.get() << _groupForbiddens.get();
+                    << _groupPermissions.get() << _groupForbiddens.get() << _ipPermissions.get();
     foreach (auto permissionSet, permissionsSets) {
         QHashIterator<NodePermissionsKey, NodePermissionsPointer> i(permissionSet);
         while (i.hasNext()) {
@@ -669,6 +633,16 @@ NodePermissions DomainServerSettingsManager::getPermissionsForName(const QString
     NodePermissionsKey nameKey = NodePermissionsKey(name, 0);
     if (_agentPermissions.contains(nameKey)) {
         return *(_agentPermissions[nameKey].get());
+    }
+    NodePermissions nullPermissions;
+    nullPermissions.setAll(false);
+    return nullPermissions;
+}
+
+NodePermissions DomainServerSettingsManager::getPermissionsForIP(const QHostAddress& address) const {
+    NodePermissionsKey ipKey = NodePermissionsKey(address.toString(), 0);
+    if (_ipPermissions.contains(ipKey)) {
+        return *(_ipPermissions[ipKey].get());
     }
     NodePermissions nullPermissions;
     nullPermissions.setAll(false);

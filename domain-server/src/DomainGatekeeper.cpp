@@ -120,8 +120,8 @@ void DomainGatekeeper::processConnectRequestPacket(QSharedPointer<ReceivedMessag
     }
 }
 
-NodePermissions DomainGatekeeper::applyPermissionsForUser(bool isLocalUser,
-                                                          NodePermissions userPerms, QString verifiedUsername) {
+NodePermissions DomainGatekeeper::applyPermissionsForUser(bool isLocalUser, NodePermissions userPerms,
+                                                          QString verifiedUsername, const QHostAddress& senderAddress) {
     userPerms.setAll(false);
 
     if (isLocalUser) {
@@ -136,15 +136,30 @@ NodePermissions DomainGatekeeper::applyPermissionsForUser(bool isLocalUser,
         #ifdef WANT_DEBUG
         qDebug() << "|  user-permissions: unverified or no username for" << userPerms.getID() << ", so:" << userPerms;
         #endif
+
+        if (_server->_settingsManager.hasPermissionsForIP(senderAddress)) {
+            // this user comes from an IP we have in our permissions table, apply those permissions
+            userPerms = _server->_settingsManager.getPermissionsForIP(senderAddress);
+
+#ifdef WANT_DEBUG
+            qDebug() << "|  user-permissions: specific IP matches, so:" << userPerms;
+#endif
+        }
     } else {
         if (_server->_settingsManager.havePermissionsForName(verifiedUsername)) {
             userPerms = _server->_settingsManager.getPermissionsForName(verifiedUsername);
-            userPerms.setVerifiedUserName(verifiedUsername);
             #ifdef WANT_DEBUG
             qDebug() << "|  user-permissions: specific user matches, so:" << userPerms;
             #endif
+        } else if (_server->_settingsManager.hasPermissionsForIP(senderAddress)) {
+            // this user comes from an IP we have in our permissions table, apply those permissions
+            userPerms = _server->_settingsManager.getPermissionsForIP(senderAddress);
+
+            #ifdef WANT_DEBUG
+            qDebug() << "|  user-permissions: specific IP matches, so:" << userPerms;
+            #endif
         } else {
-            userPerms.setVerifiedUserName(verifiedUsername);
+
             // they are logged into metaverse, but we don't have specific permissions for them.
             userPerms |= _server->_settingsManager.getStandardPermissionsForName(NodePermissions::standardNameLoggedIn);
             #ifdef WANT_DEBUG
@@ -166,9 +181,10 @@ NodePermissions DomainGatekeeper::applyPermissionsForUser(bool isLocalUser,
                     userPerms |= _server->_settingsManager.getPermissionsForGroup(groupID, rankID);
 
                     GroupRank rank = _server->_settingsManager.getGroupRank(groupID, rankID);
+
                     #ifdef WANT_DEBUG
                     qDebug() << "|  user-permissions: user is in group:" << groupID << " rank:"
-                             << rank.name << "so:" << userPerms;
+                        << rank.name << "so:" << userPerms;
                     #endif
                 }
             }
@@ -182,14 +198,17 @@ NodePermissions DomainGatekeeper::applyPermissionsForUser(bool isLocalUser,
                         userPerms &= ~_server->_settingsManager.getForbiddensForGroup(groupID, rankID);
 
                         GroupRank rank = _server->_settingsManager.getGroupRank(groupID, rankID);
+
                         #ifdef WANT_DEBUG
                         qDebug() << "|  user-permissions: user is in blacklist group:" << groupID << " rank:" << rank.name
-                                 << "so:" << userPerms;
+                            << "so:" << userPerms;
                         #endif
                     }
                 }
             }
         }
+
+        userPerms.setVerifiedUserName(verifiedUsername);
     }
 
     #ifdef WANT_DEBUG
@@ -224,7 +243,12 @@ void DomainGatekeeper::updateNodePermissions() {
             const QHostAddress& addr = node->getLocalSocket().getAddress();
             bool isLocalUser = (addr == limitedNodeList->getLocalSockAddr().getAddress() ||
                                 addr == QHostAddress::LocalHost);
-            userPerms = applyPermissionsForUser(isLocalUser, userPerms, username);
+
+            // at this point we don't have a sending socket for packets from this node - assume it is the active socket
+            // or the public socket if we haven't activated a socket for the node yet
+            HifiSockAddr connectingAddr = node->getActiveSocket() ? *node->getActiveSocket() : node->getPublicSocket();
+
+            userPerms = applyPermissionsForUser(isLocalUser, userPerms, username, connectingAddr.getAddress());
         }
 
         node->setPermissions(userPerms);
@@ -333,7 +357,7 @@ SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnect
         return SharedNodePointer();
     }
 
-    userPerms = applyPermissionsForUser(isLocalUser, userPerms, verifiedUsername);
+    userPerms = applyPermissionsForUser(isLocalUser, userPerms, verifiedUsername, nodeConnection.senderSockAddr.getAddress());
 
     if (!userPerms.can(NodePermissions::Permission::canConnectToDomain)) {
         sendConnectionDeniedPacket("You lack the required permissions to connect to this domain.",
