@@ -105,7 +105,8 @@ private:
     QHash<QString, bool> _inFlightPublicKeyRequests; // keep track of which we've already asked for
     QHash<QString, bool> _domainOwnerFriends; // keep track of friends of the domain owner
 
-    NodePermissions applyPermissionsForUser(bool isLocalUser, NodePermissions userPerms, QString verifiedUsername);
+    NodePermissions applyPermissionsForUser(bool isLocalUser, NodePermissions userPerms,
+                                            QString verifiedUsername, const QHostAddress& senderAddress);
     void getGroupMemberships(const QString& username);
     // void getIsGroupMember(const QString& username, const QUuid groupID);
     void getDomainOwnerFriendsList();

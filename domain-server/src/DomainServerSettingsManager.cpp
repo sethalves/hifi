@@ -421,9 +421,6 @@ void DomainServerSettingsManager::packPermissions() {
     // save settings for IP addresses
     packPermissionsForMap("permissions", _ipPermissions, IP_PERMISSIONS_KEYPATH);
 
-    // save settings for IP address blacklist
-    packPermissionsForMap("permissions", _ipForbiddens, IP_FORBIDDENS_KEYPATH);
-
     // save settings for groups
     packPermissionsForMap("permissions", _groupPermissions, GROUP_PERMISSIONS_KEYPATH);
 
@@ -479,8 +476,8 @@ void DomainServerSettingsManager::unpackPermissions() {
     needPack |= unpackPermissionsForKeypath(AGENT_STANDARD_PERMISSIONS_KEYPATH, &_standardAgentPermissions);
 
     needPack |= unpackPermissionsForKeypath(AGENT_PERMISSIONS_KEYPATH, &_agentPermissions);
+
     needPack |= unpackPermissionsForKeypath(IP_PERMISSIONS_KEYPATH, &_ipPermissions);
-    needPack |= unpackPermissionsForKeypath(IP_FORBIDDENS_KEYPATH, &_ipForbiddens);
 
     needPack |= unpackPermissionsForKeypath(GROUP_PERMISSIONS_KEYPATH, &_groupPermissions,
         [&](NodePermissionsPointer perms){
@@ -627,6 +624,16 @@ NodePermissions DomainServerSettingsManager::getPermissionsForName(const QString
     NodePermissionsKey nameKey = NodePermissionsKey(name, 0);
     if (_agentPermissions.contains(nameKey)) {
         return *(_agentPermissions[nameKey].get());
+    }
+    NodePermissions nullPermissions;
+    nullPermissions.setAll(false);
+    return nullPermissions;
+}
+
+NodePermissions DomainServerSettingsManager::getPermissionsForIP(const QHostAddress& address) const {
+    NodePermissionsKey ipKey = NodePermissionsKey(address.toString(), 0);
+    if (_ipPermissions.contains(ipKey)) {
+        return *(_ipPermissions[ipKey].get());
     }
     NodePermissions nullPermissions;
     nullPermissions.setAll(false);
