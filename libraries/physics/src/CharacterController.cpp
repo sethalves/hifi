@@ -332,7 +332,7 @@ void CharacterController::setEnabled(bool enabled) {
             }
             _pendingFlags &= ~ PENDING_FLAG_ADD_TO_SIMULATION;
         }
-        SET_STATE(State::Hover, "setEnabled");
+        SET_STATE(_state, "setEnabled");
         _enabled = enabled;
     }
 }
@@ -418,7 +418,8 @@ void CharacterController::addMotor(const glm::vec3& velocity, const glm::quat& r
     _motors.push_back(CharacterController::CharacterMotor(velocity, rotation, horizTimescale, vertTimescale));
 }
 
-void CharacterController::applyMotor(int index, btScalar dt, btVector3& worldVelocity, std::vector<btVector3>& velocities, std::vector<btScalar>& weights) {
+void CharacterController::applyMotor(int index, btScalar dt, btVector3& worldVelocity,
+                                     std::vector<btVector3>& velocities, std::vector<btScalar>& weights) {
     assert(index < (int)(_motors.size()));
     CharacterController::CharacterMotor& motor = _motors[index];
     if (motor.hTimescale >= MAX_CHARACTER_MOTOR_TIMESCALE && motor.vTimescale >= MAX_CHARACTER_MOTOR_TIMESCALE) {

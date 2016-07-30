@@ -169,7 +169,7 @@ protected:
     btVector3 _linearAcceleration;
 
     std::atomic_bool _enabled;
-    State _state;
+    State _state { State::Hover };
     bool _isPushingUp;
 
     btDynamicsWorld* _dynamicsWorld { nullptr };
