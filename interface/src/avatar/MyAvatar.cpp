@@ -1361,10 +1361,6 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
         if (!velocityToWorldSuccess) {
             qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to velocity from local to world";
         }
-    }
-
-    if (_characterController.isEnabledAndReady()) {
-        setVelocity(_characterController.getLinearVelocity() + _characterController.getFollowVelocity());
     } else {
         setVelocity(getVelocity() + _characterController.getFollowVelocity());
     }
