@@ -2315,6 +2315,9 @@ void MyAvatar::handleZoneChange() {
             qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
         }
     }
+
+    auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
+    entityScriptingInterface->setDefaultParentID(_currentZoneID);
 }
 
 bool MyAvatar::hasDriveInput() const {

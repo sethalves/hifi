@@ -73,6 +73,9 @@ public:
     EntityTreePointer getEntityTree() { return _entityTree; }
     void setEntitiesScriptEngine(EntitiesScriptEngineProvider* engine);
     float calculateCost(float mass, float oldVelocity, float newVelocity);
+
+    void setDefaultParentID(const QUuid& defaultParentID) { _defaultParentID = defaultParentID; }
+
 public slots:
 
     // returns true if the DomainServer will allow this Node/Avatar to make changes
@@ -221,15 +224,17 @@ private:
 
     std::recursive_mutex _entitiesScriptEngineLock;
     EntitiesScriptEngineProvider* _entitiesScriptEngine { nullptr };
-    
+
     bool _bidOnSimulationOwnership { false };
     float _currentAvatarEnergy = { FLT_MAX };
     float getCurrentAvatarEnergy() { return _currentAvatarEnergy; }
     void setCurrentAvatarEnergy(float energy);
-    
+
     float costMultiplier = { 0.01f };
     float getCostMultiplier();
     void setCostMultiplier(float value);
+
+    QUuid _defaultParentID;
 };
 
 #endif // hifi_EntityScriptingInterface_h

@@ -129,7 +129,14 @@ EntityItemProperties convertLocationFromScriptSemantics(const EntityItemProperti
 
 
 QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties, bool clientOnly) {
-    EntityItemProperties propertiesWithSimID = convertLocationFromScriptSemantics(properties);
+    EntityItemProperties propertiesWithSimID = properties;
+
+    if (!propertiesWithSimID.parentIDChanged()) {
+        // _defaultParentID is set from MyAvatar to be either null or the current simulation parent's ID
+        propertiesWithSimID.setParentID(_defaultParentID);
+    }
+
+    propertiesWithSimID = convertLocationFromScriptSemantics(propertiesWithSimID);
     propertiesWithSimID.setDimensionsInitialized(properties.dimensionsChanged());
 
     if (clientOnly) {
