@@ -156,6 +156,7 @@ public:
 
     static SpatiallyNestablePointer findByID(QUuid id, bool& success);
     virtual bool isSimulationParent() { return false; }
+    bool parentIsSimulationParent() const;
 
     // in the frame of the simulation for this object
     virtual glm::vec3 getPositionInSimulationFrame() const;

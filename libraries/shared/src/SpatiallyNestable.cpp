@@ -976,6 +976,15 @@ SpatiallyNestablePointer SpatiallyNestable::findByID(QUuid id, bool& success) {
     return parentWP.lock();
 }
 
+bool SpatiallyNestable::parentIsSimulationParent() const {
+    bool success;
+    SpatiallyNestablePointer parent = getParentPointer(success);
+    if (!success || !parent) {
+        return false;
+    }
+    return parent->isSimulationParent();
+}
+
 glm::vec3 SpatiallyNestable::getPositionInSimulationFrame() const {
     bool success;
     auto result = getTransform(success, 0, true).getTranslation();
