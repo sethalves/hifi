@@ -62,7 +62,7 @@ public:
 
     // world frame
     virtual const Transform getTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
-    virtual const Transform getTransform(bool inSimulationFrame = false) const;
+    virtual const Transform getTransform() const;
     virtual void setTransform(const Transform& transform, bool& success);
     virtual bool setTransform(const Transform& transform);
 
