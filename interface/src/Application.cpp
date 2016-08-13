@@ -86,15 +86,16 @@
 #include <PhysicsHelpers.h>
 #include <plugins/PluginManager.h>
 #include <plugins/CodecPlugin.h>
+#include <RecordingScriptingInterface.h>
 #include <RenderableWebEntityItem.h>
 #include <RenderShadowTask.h>
 #include <RenderDeferredTask.h>
 #include <ResourceCache.h>
 #include <SceneScriptingInterface.h>
-#include <RecordingScriptingInterface.h>
+#include <ScriptEngines.h>
 #include <ScriptCache.h>
 #include <SoundCache.h>
-#include <ScriptEngines.h>
+#include <steamworks-wrapper/SteamClient.h>
 #include <Tooltip.h>
 #include <udt/PacketHeaders.h>
 #include <UserActivityLogger.h>
@@ -139,7 +140,6 @@
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN)
 #include "SpeechRecognizer.h"
 #endif
-#include "Stars.h"
 #include "ui/AddressBarDialog.h"
 #include "ui/AvatarInputs.h"
 #include "ui/DialogsManager.h"
@@ -393,6 +393,11 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 }
 
 static const QString STATE_IN_HMD = "InHMD";
+static const QString STATE_CAMERA_FULL_SCREEN_MIRROR = "CameraFSM";
+static const QString STATE_CAMERA_FIRST_PERSON = "CameraFirstPerson";
+static const QString STATE_CAMERA_THIRD_PERSON = "CameraThirdPerson";
+static const QString STATE_CAMERA_ENTITY = "CameraEntity";
+static const QString STATE_CAMERA_INDEPENDENT = "CameraIndependent";
 static const QString STATE_SNAP_TURN = "SnapTurn";
 static const QString STATE_GROUNDED = "Grounded";
 static const QString STATE_NAV_FOCUSED = "NavigationFocused";
@@ -473,7 +478,9 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::set<InterfaceActionFactory>();
     DependencyManager::set<AudioInjectorManager>();
     DependencyManager::set<MessagesClient>();
-    controller::StateController::setStateVariables({ { STATE_IN_HMD, STATE_SNAP_TURN, STATE_GROUNDED, STATE_NAV_FOCUSED } });
+    controller::StateController::setStateVariables({ { STATE_IN_HMD, STATE_CAMERA_FULL_SCREEN_MIRROR,
+                    STATE_CAMERA_FIRST_PERSON, STATE_CAMERA_THIRD_PERSON, STATE_CAMERA_ENTITY, STATE_CAMERA_INDEPENDENT,
+                    STATE_SNAP_TURN, STATE_GROUNDED, STATE_NAV_FOCUSED } });
     DependencyManager::set<UserInputMapper>();
     DependencyManager::set<controller::ScriptingInterface, ControllerScriptingInterface>();
     DependencyManager::set<InterfaceParentFinder>();
@@ -742,7 +749,14 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(&identityPacketTimer, &QTimer::timeout, getMyAvatar(), &MyAvatar::sendIdentityPacket);
     identityPacketTimer.start(AVATAR_IDENTITY_PACKET_SEND_INTERVAL_MSECS);
 
-    ResourceCache::setRequestLimit(MAX_CONCURRENT_RESOURCE_DOWNLOADS);
+    const char** constArgv = const_cast<const char**>(argv);
+    QString concurrentDownloadsStr = getCmdOption(argc, constArgv, "--concurrent-downloads");
+    bool success;
+    int concurrentDownloads = concurrentDownloadsStr.toInt(&success);
+    if (!success) {
+        concurrentDownloads = MAX_CONCURRENT_RESOURCE_DOWNLOADS;
+    }
+    ResourceCache::setRequestLimit(concurrentDownloads);
 
     _glWidget = new GLCanvas();
     getApplicationCompositor().setRenderingWidget(_glWidget);
@@ -814,6 +828,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     }
     UserActivityLogger::getInstance().logAction("launch", properties);
 
+    _connectionMonitor.init();
 
     // Tell our entity edit sender about our known jurisdictions
     _entityEditSender.setServerJurisdictions(&_entityServerJurisdictions);
@@ -956,6 +971,21 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     _applicationStateDevice->setInputVariant(STATE_IN_HMD, []() -> float {
         return qApp->isHMDMode() ? 1 : 0;
+    });
+    _applicationStateDevice->setInputVariant(STATE_CAMERA_FULL_SCREEN_MIRROR, []() -> float {
+        return qApp->getCamera()->getMode() == CAMERA_MODE_MIRROR ? 1 : 0;
+    });
+    _applicationStateDevice->setInputVariant(STATE_CAMERA_FIRST_PERSON, []() -> float {
+        return qApp->getCamera()->getMode() == CAMERA_MODE_FIRST_PERSON ? 1 : 0;
+    });
+    _applicationStateDevice->setInputVariant(STATE_CAMERA_THIRD_PERSON, []() -> float {
+        return qApp->getCamera()->getMode() == CAMERA_MODE_THIRD_PERSON ? 1 : 0;
+    });
+    _applicationStateDevice->setInputVariant(STATE_CAMERA_ENTITY, []() -> float {
+        return qApp->getCamera()->getMode() == CAMERA_MODE_ENTITY ? 1 : 0;
+    });
+    _applicationStateDevice->setInputVariant(STATE_CAMERA_INDEPENDENT, []() -> float {
+        return qApp->getCamera()->getMode() == CAMERA_MODE_INDEPENDENT ? 1 : 0;
     });
     _applicationStateDevice->setInputVariant(STATE_SNAP_TURN, []() -> float {
         return qApp->getMyAvatar()->getSnapTurn() ? 1 : 0;
@@ -1206,6 +1236,17 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     connect(this, &Application::applicationStateChanged, this, &Application::activeChanged);
     qCDebug(interfaceapp, "Startup time: %4.2f seconds.", (double)startupTimer.elapsed() / 1000.0);
+
+    auto textureCache = DependencyManager::get<TextureCache>();
+
+    QString skyboxUrl { PathUtils::resourcesPath() + "images/Default-Sky-9-cubemap.jpg" };
+    QString skyboxAmbientUrl { PathUtils::resourcesPath() + "images/Default-Sky-9-ambient.jpg" };
+
+    _defaultSkyboxTexture = textureCache->getImageTexture(skyboxUrl, NetworkTexture::CUBE_TEXTURE, { { "generateIrradiance", false } });
+    _defaultSkyboxAmbientTexture = textureCache->getImageTexture(skyboxAmbientUrl, NetworkTexture::CUBE_TEXTURE, { { "generateIrradiance", true } });
+
+    _defaultSkybox->setCubemap(_defaultSkyboxTexture);
+    _defaultSkybox->setColor({ 1.0, 1.0, 1.0 });
 
     // After all of the constructor is completed, then set firstRun to false.
     Setting::Handle<bool> firstRun{ Settings::firstRun, true };
@@ -1600,6 +1641,8 @@ void Application::initializeUi() {
     rootContext->setContextProperty("Reticle", getApplicationCompositor().getReticleInterface());
 
     rootContext->setContextProperty("ApplicationCompositor", &getApplicationCompositor());
+
+    rootContext->setContextProperty("Steam", new SteamScriptingInterface(engine));
     
 
     _glWidget->installEventFilter(offscreenUi.data());
@@ -2283,7 +2326,7 @@ void Application::keyPressEvent(QKeyEvent* event) {
             }
 
             case Qt::Key_Asterisk:
-                Menu::getInstance()->triggerOption(MenuOption::Stars);
+                Menu::getInstance()->triggerOption(MenuOption::DefaultSkybox);
                 break;
 
             case Qt::Key_S:
@@ -2914,6 +2957,8 @@ void Application::idle(float nsecsElapsed) {
 
     PROFILE_RANGE(__FUNCTION__);
 
+    SteamClient::runCallbacks();
+
     float secondsSinceLastUpdate = nsecsElapsed / NSECS_PER_MSEC / MSECS_PER_SECOND;
 
     // If the offscreen Ui has something active that is NOT the root, then assume it has keyboard focus.
@@ -3222,6 +3267,14 @@ void Application::init() {
         addressLookupString = arguments().value(urlIndex + 1);
     }
 
+    // when +connect_lobby in command line, join steam lobby
+    const QString STEAM_LOBBY_COMMAND_LINE_KEY = "+connect_lobby";
+    int lobbyIndex = arguments().indexOf(STEAM_LOBBY_COMMAND_LINE_KEY);
+    if (lobbyIndex != -1) {
+        QString lobbyId = arguments().value(lobbyIndex + 1);
+        SteamClient::joinLobby(lobbyId);
+    }
+
     Setting::Handle<bool> firstRun { Settings::firstRun, true };
     if (addressLookupString.isEmpty() && firstRun.get()) {
         qDebug() << "First run and no URL passed... attempting to go to Home or Entry...";
@@ -3250,6 +3303,18 @@ void Application::init() {
         QMutexLocker viewLocker(&_viewMutex);
         getEntities()->setViewFrustum(_viewFrustum);
     }
+
+    getEntities()->setEntityLoadingPriorityFunction([this](const EntityItem& item) {
+        auto dims = item.getDimensions();
+        auto maxSize = glm::max(dims.x, dims.y, dims.z);
+
+        if (maxSize <= 0.0f) {
+            return 0.0f;
+        }
+
+        auto distance = glm::distance(getMyAvatar()->getPosition(), item.getPosition());
+        return atan2(maxSize, distance);
+    });
 
     ObjectMotionState::setShapeManager(&_shapeManager);
 
@@ -4236,8 +4301,6 @@ public:
     typedef render::Payload<BackgroundRenderData> Payload;
     typedef Payload::DataPointer Pointer;
 
-    Stars _stars;
-
     static render::ItemID _item; // unique WorldBoxRenderData
 };
 
@@ -4272,15 +4335,26 @@ namespace render {
 
             // Fall through: if no skybox is available, render the SKY_DOME
             case model::SunSkyStage::SKY_DOME:  {
-                if (Menu::getInstance()->isOptionChecked(MenuOption::Stars)) {
-                    PerformanceTimer perfTimer("stars");
-                    PerformanceWarning warn(Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings),
-                        "Application::payloadRender<BackgroundRenderData>() ... My god, it's full of stars...");
-                    // should be the first rendering pass - w/o depth buffer / lighting
+               if (Menu::getInstance()->isOptionChecked(MenuOption::DefaultSkybox)) {
+                   static const glm::vec3 DEFAULT_SKYBOX_COLOR { 255.0f / 255.0f, 220.0f / 255.0f, 194.0f / 255.0f };
+                   static const float DEFAULT_SKYBOX_INTENSITY { 0.2f };
+                   static const float DEFAULT_SKYBOX_AMBIENT_INTENSITY { 2.0f };
+                   static const glm::vec3 DEFAULT_SKYBOX_DIRECTION { 0.0f, 0.0f, -1.0f };
 
-                    static const float alpha = 1.0f;
-                    background->_stars.render(args, alpha);
-                }
+                   auto scene = DependencyManager::get<SceneScriptingInterface>()->getStage();
+                   auto sceneKeyLight = scene->getKeyLight();
+                   scene->setSunModelEnable(false);
+                   sceneKeyLight->setColor(DEFAULT_SKYBOX_COLOR);
+                   sceneKeyLight->setIntensity(DEFAULT_SKYBOX_INTENSITY);
+                   sceneKeyLight->setAmbientIntensity(DEFAULT_SKYBOX_AMBIENT_INTENSITY);
+                   sceneKeyLight->setDirection(DEFAULT_SKYBOX_DIRECTION);
+
+                   auto defaultSkyboxAmbientTexture = qApp->getDefaultSkyboxAmbientTexture();
+                   sceneKeyLight->setAmbientSphere(defaultSkyboxAmbientTexture->getIrradiance());
+                   sceneKeyLight->setAmbientMap(defaultSkyboxAmbientTexture);
+
+                   qApp->getDefaultSkybox()->render(batch, args->getViewFrustum());
+               }
             }
                 break;
 
@@ -4474,7 +4548,6 @@ void Application::updateWindowTitle() const {
 #endif
     _window->setWindowTitle(title);
 }
-
 void Application::clearDomainOctreeDetails() {
 
     // if we're about to quit, we really don't need to do any of these things...
@@ -4500,6 +4573,7 @@ void Application::clearDomainOctreeDetails() {
     getEntities()->clear();
 
     auto skyStage = DependencyManager::get<SceneScriptingInterface>()->getSkyStage();
+
     skyStage->setBackgroundMode(model::SunSkyStage::SKY_DOME);
 
     _recentlyClearedDomain = true;
@@ -4827,6 +4901,8 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
 
     scriptEngine->registerGlobalObject("UserActivityLogger", DependencyManager::get<UserActivityLoggerScriptingInterface>().data());
     scriptEngine->registerGlobalObject("Users", DependencyManager::get<UsersScriptingInterface>().data());
+
+    scriptEngine->registerGlobalObject("Steam", new SteamScriptingInterface(scriptEngine));
 }
 
 bool Application::canAcceptURL(const QString& urlString) const {
@@ -5104,8 +5180,10 @@ void Application::setPreviousScriptLocation(const QString& location) {
 }
 
 void Application::loadScriptURLDialog() const {
-    auto newScript = OffscreenUi::getText(nullptr, "Open and Run Script", "Script URL");
-    if (!newScript.isEmpty()) {
+    auto newScript = OffscreenUi::getText(OffscreenUi::ICON_NONE, "Open and Run Script", "Script URL");
+    if (QUrl(newScript).scheme() == "atp") {
+        OffscreenUi::warning("Error Loading Script", "Cannot load client script over ATP");
+    } else if (!newScript.isEmpty()) {
         DependencyManager::get<ScriptEngines>()->loadScript(newScript);
     }
 }

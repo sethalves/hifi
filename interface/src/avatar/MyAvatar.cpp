@@ -122,11 +122,13 @@ MyAvatar::MyAvatar(RigPointer rig) :
         _driveKeys[i] = 0.0f;
     }
 
+
+    // Necessary to select the correct slot
+    using SlotType = void(MyAvatar::*)(const glm::vec3&, bool, const glm::quat&, bool);
+
     // connect to AddressManager signal for location jumps
-    connect(DependencyManager::get<AddressManager>().data(), &AddressManager::locationChangeRequired, 
-        [=](const glm::vec3& newPosition, bool hasOrientation, const glm::quat& newOrientation, bool shouldFaceLocation){
-        goToLocation(newPosition, hasOrientation, newOrientation, shouldFaceLocation);
-    });
+    connect(DependencyManager::get<AddressManager>().data(), &AddressManager::locationChangeRequired,
+            this, static_cast<SlotType>(&MyAvatar::goToLocation));
 
     _characterController.setEnabled(true);
 
@@ -432,6 +434,7 @@ void MyAvatar::simulate(float deltaTime) {
 
     if (!_skeletonModel->hasSkeleton()) {
         // All the simulation that can be done has been done
+        getHead()->setPosition(getPosition()); // so audio-position isn't 0,0,0
         return;
     }
 
@@ -1919,7 +1922,7 @@ void MyAvatar::goToLocation(const glm::vec3& newPosition,
         glm::quat quatOrientation = cancelOutRollAndPitch(newOrientation);
 
         if (shouldFaceLocation) {
-            quatOrientation = newOrientation * glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
+            quatOrientation = newOrientation * glm::angleAxis(PI, Vectors::UP);
 
             // move the user a couple units away
             const float DISTANCE_TO_USER = 2.0f;

@@ -26,6 +26,7 @@
 #include <Transform.h>
 #include <Sound.h>
 #include <SpatiallyNestable.h>
+#include <Interpolate.h>
 
 #include "EntityItemID.h"
 #include "EntityItemPropertiesDefaults.h"
@@ -325,10 +326,6 @@ public:
     /// return preferred shape type (actual physical shape may differ)
     virtual ShapeType getShapeType() const { return SHAPE_TYPE_NONE; }
 
-    // these are only needed because the names don't match
-    virtual const glm::quat getRotation() const { return getOrientation(); }
-    virtual void setRotation(glm::quat orientation) { setOrientation(orientation); }
-
     // updateFoo() methods to be used when changes need to be accumulated in the _dirtyFlags
     virtual void updateRegistrationPoint(const glm::vec3& value);
     void updatePosition(const glm::vec3& value);
@@ -447,6 +444,8 @@ public:
 
     PhysicsEnginePointer getPhysicsEngine();
     virtual void hierarchyChanged() override;
+
+    virtual bool isTransparent() { return _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) < 1.0f : false; }
 
 protected:
 
@@ -577,7 +576,8 @@ protected:
     quint64 _lastUpdatedAngularVelocityTimestamp { 0 };
     quint64 _lastUpdatedAccelerationTimestamp { 0 };
 
-
+    quint64 _fadeStartTime { usecTimestampNow() };
+    bool _isFading { true };
 };
 
 #endif // hifi_EntityItem_h

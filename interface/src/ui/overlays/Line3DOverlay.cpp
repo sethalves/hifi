@@ -35,8 +35,8 @@ AABox Line3DOverlay::getBounds() const {
     auto extents = Extents{};
     extents.addPoint(_start);
     extents.addPoint(_end);
-    extents.transform(_transform);
-    
+    extents.transform(getTransform());
+
     return AABox(extents);
 }
 
@@ -52,17 +52,17 @@ void Line3DOverlay::render(RenderArgs* args) {
 
     auto batch = args->_batch;
     if (batch) {
-        batch->setModelTransform(_transform);
+        batch->setModelTransform(getTransform());
 
         auto geometryCache = DependencyManager::get<GeometryCache>();
         if (getIsDashedLine()) {
             // TODO: add support for color to renderDashedLine()
-            geometryCache->bindSimpleProgram(*batch, false, false, true, true);
+            geometryCache->bindSimpleProgram(*batch, false, false, false, true, true);
             geometryCache->renderDashedLine(*batch, _start, _end, colorv4, _geometryCacheID);
         } else if (_glow > 0.0f) {
             geometryCache->renderGlowLine(*batch, _start, _end, colorv4, _glow, _glowWidth, _geometryCacheID);
         } else {
-            geometryCache->bindSimpleProgram(*batch, false, false, true, true);
+            geometryCache->bindSimpleProgram(*batch, false, false, false, true, true);
             geometryCache->renderLine(*batch, _start, _end, colorv4, _geometryCacheID);
         }
     }
