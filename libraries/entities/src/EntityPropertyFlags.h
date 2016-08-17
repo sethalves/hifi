@@ -177,6 +177,9 @@ enum EntityPropertyList {
 
     PROP_SHAPE,
 
+    PROP_LOCAL_VELOCITY, // only used to convert values to and from scripts
+    PROP_LOCAL_ANGULAR_VELOCITY, // only used to convert values to and from scripts
+
     PROP_LOCALIZED_SIMULATION, // does a zone localize the physics of its children?
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

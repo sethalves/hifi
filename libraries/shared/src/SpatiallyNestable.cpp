@@ -247,6 +247,20 @@ glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, con
     return glm::inverse(parentTransform.getRotation()) * (velocity - parentVelocity);
 }
 
+glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
+                                                         int parentJointIndex, bool& success) {
+    SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
+    if (!success || !parent) {
+        return angularVelocity;
+    }
+    Transform parentTransform = parent->getTransform(success);
+    if (!success) {
+        return angularVelocity;
+    }
+
+    return glm::inverse(parentTransform.getRotation()) * angularVelocity;
+}
+
 glm::vec3 SpatiallyNestable::localToWorld(const glm::vec3& position,
                                           const QUuid& parentID, int parentJointIndex,
                                           bool& success) {
@@ -339,6 +353,19 @@ glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, con
     return parentVelocity + parentTransform.getRotation() * velocity;
 }
 
+glm::vec3 SpatiallyNestable::localToWorldAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
+                                                  int parentJointIndex, bool& success) {
+    SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
+    if (!success || !parent) {
+        return angularVelocity;
+    }
+    Transform parentTransform = parent->getTransform(success);
+    if (!success) {
+        return angularVelocity;
+    }
+
+    return parentTransform.getRotation() * angularVelocity;
+}
 
 glm::vec3 SpatiallyNestable::getPosition(bool& success) const {
     return getTransform(success).getTranslation();
