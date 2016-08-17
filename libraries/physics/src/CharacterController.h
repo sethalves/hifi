@@ -124,6 +124,7 @@ protected:
 
     void updateUpAxis(const glm::quat& rotation);
     bool checkForSupport(btCollisionWorld* collisionWorld) const;
+    bool checkForStuck(btCollisionWorld* collisionWorld) const;
 
 protected:
     struct CharacterMotor {
@@ -159,7 +160,8 @@ protected:
     btScalar _radius;
 
     btScalar _floorDistance;
-    bool _hasSupport;
+    bool _hasSupport; // standing on something?
+    int _framesSpentStuck; // how many frames have we been embedded in something?
 
     btScalar _gravity;
 

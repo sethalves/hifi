@@ -150,7 +150,6 @@ bool CharacterController::checkForSupport(btCollisionWorld* collisionWorld) cons
             int numContacts = contactManifold->getNumContacts();
             for (int j = 0; j < numContacts; j++) {
                 btManifoldPoint& pt = contactManifold->getContactPoint(j);
-
                 // check to see if contact point is touching the bottom sphere of the capsule.
                 // and the contact normal is not slanted too much.
                 float contactPointY = (obA == _rigidBody) ? pt.m_localPointA.getY() : pt.m_localPointB.getY();
@@ -162,6 +161,23 @@ bool CharacterController::checkForSupport(btCollisionWorld* collisionWorld) cons
         }
     }
     return false;
+}
+
+bool CharacterController::checkForStuck(btCollisionWorld* collisionWorld) const {
+    int numManifolds = collisionWorld->getDispatcher()->getNumManifolds();
+    int totalContacts = 0;
+    for (int i = 0; i < numManifolds; i++) {
+        btPersistentManifold* contactManifold = collisionWorld->getDispatcher()->getManifoldByIndexInternal(i);
+        const btCollisionObject* obA = static_cast<const btCollisionObject*>(contactManifold->getBody0());
+        const btCollisionObject* obB = static_cast<const btCollisionObject*>(contactManifold->getBody1());
+        if (obA == _rigidBody || obB == _rigidBody) {
+            int numContacts = contactManifold->getNumContacts();
+            totalContacts += numContacts;
+        }
+    }
+
+    const int MIN_CONTACTS_FOR_STUCK = 5;
+    return totalContacts >= MIN_CONTACTS_FOR_STUCK;
 }
 
 void CharacterController::preStep(btCollisionWorld* collisionWorld) {
@@ -185,6 +201,11 @@ void CharacterController::preStep(btCollisionWorld* collisionWorld) {
     }
 
     _hasSupport = checkForSupport(collisionWorld);
+    if (checkForStuck(collisionWorld)) {
+        _framesSpentStuck++;
+    } else {
+        _framesSpentStuck = 0;
+    }
 }
 
 const btScalar MIN_TARGET_SPEED = 0.001f;
@@ -531,6 +552,17 @@ void CharacterController::preSimulation() {
         _rigidBody->setWorldTransform(_characterBodyTransform);
         btVector3 velocity = _rigidBody->getLinearVelocity();
         _preSimulationVelocity = velocity;
+
+        const int STUCK_FRAMES_BEFORE_MOVE = 10;
+        if (_framesSpentStuck >= STUCK_FRAMES_BEFORE_MOVE) {
+            qDebug() << "Avatar is stuck -- raising by 1 meter";
+            btTransform worldTrans = _rigidBody->getWorldTransform();
+            btVector3 pos = worldTrans.getOrigin();
+            pos += btVector3(0.0f, 1.0f, 0.0f);
+            worldTrans.setOrigin(pos);
+            _rigidBody->setWorldTransform(worldTrans);
+            _framesSpentStuck = 0;
+        }
 
         // scan for distant floor
         // rayStart is at center of bottom sphere
