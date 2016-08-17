@@ -553,7 +553,7 @@ void CharacterController::preSimulation() {
         btVector3 velocity = _rigidBody->getLinearVelocity();
         _preSimulationVelocity = velocity;
 
-        const int STUCK_FRAMES_BEFORE_MOVE = 10;
+        const int STUCK_FRAMES_BEFORE_MOVE = 40;
         if (_framesSpentStuck >= STUCK_FRAMES_BEFORE_MOVE) {
             qDebug() << "Avatar is stuck -- raising by 1 meter";
             btTransform worldTrans = _rigidBody->getWorldTransform();
