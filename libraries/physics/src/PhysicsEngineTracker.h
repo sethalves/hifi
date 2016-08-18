@@ -28,7 +28,7 @@ typedef std::shared_ptr<EntityTree> EntityTreePointer;
 class PhysicsEngineTracker : public PhysicsEngineTrackerInterface {
 
 public:
-    virtual PhysicsEnginePointer newPhysicsEngine(QUuid key, const glm::vec3& offset, EntityTreePointer tree);
+    virtual PhysicsEnginePointer newPhysicsEngine(QUuid key, const glm::vec3& offset, EntityTreePointer tree) override;
 };
 
 

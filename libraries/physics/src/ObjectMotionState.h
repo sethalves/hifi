@@ -156,7 +156,7 @@ public:
 
     virtual PhysicsEnginePointer getPhysicsEngine() const { return nullptr; }
     virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const { return nullptr; }
-    virtual void maybeSwitchPhysicsEngines() { };
+    virtual void maybeSwitchPhysicsEngines() override { };
 
     friend class PhysicsEngine;
 
