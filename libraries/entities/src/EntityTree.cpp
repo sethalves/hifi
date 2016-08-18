@@ -1305,8 +1305,8 @@ void EntityTree::debugDumpMap() {
 
 class ContentsDimensionOperator : public RecurseOctreeOperator {
 public:
-    virtual bool preRecursion(OctreeElementPointer element);
-    virtual bool postRecursion(OctreeElementPointer element) { return true; }
+    virtual bool preRecursion(OctreeElementPointer element) override;
+    virtual bool postRecursion(OctreeElementPointer element) override { return true; }
     glm::vec3 getDimensions() const { return _contentExtents.size(); }
     float getLargestDimension() const { return _contentExtents.largestDimension(); }
 private:
@@ -1333,8 +1333,8 @@ float EntityTree::getContentsLargestDimension() {
 
 class DebugOperator : public RecurseOctreeOperator {
 public:
-    virtual bool preRecursion(OctreeElementPointer element);
-    virtual bool postRecursion(OctreeElementPointer element) { return true; }
+    virtual bool preRecursion(OctreeElementPointer element) override;
+    virtual bool postRecursion(OctreeElementPointer element) override { return true; }
 };
 
 bool DebugOperator::preRecursion(OctreeElementPointer element) {
@@ -1351,8 +1351,8 @@ void EntityTree::dumpTree() {
 
 class PruneOperator : public RecurseOctreeOperator {
 public:
-    virtual bool preRecursion(OctreeElementPointer element) { return true; }
-    virtual bool postRecursion(OctreeElementPointer element);
+    virtual bool preRecursion(OctreeElementPointer element) override { return true; }
+    virtual bool postRecursion(OctreeElementPointer element) override;
 };
 
 bool PruneOperator::postRecursion(OctreeElementPointer element) {

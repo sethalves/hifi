@@ -59,15 +59,15 @@ void RayToEntityIntersectionResultFromScriptValue(const QScriptValue& object, Ra
 /// handles scripting of Entity commands from JS passed to assigned clients
 class EntityScriptingInterface : public OctreeScriptingInterface, public Dependency  {
     Q_OBJECT
-    
+
     Q_PROPERTY(float currentAvatarEnergy READ getCurrentAvatarEnergy WRITE setCurrentAvatarEnergy)
     Q_PROPERTY(float costMultiplier READ getCostMultiplier WRITE setCostMultiplier)
 public:
     EntityScriptingInterface(bool bidOnSimulationOwnership);
 
     EntityEditPacketSender* getEntityPacketSender() const { return (EntityEditPacketSender*)getPacketSender(); }
-    virtual NodeType_t getServerNodeType() const { return NodeType::EntityServer; }
-    virtual OctreeEditPacketSender* createPacketSender() { return new EntityEditPacketSender(); }
+    virtual NodeType_t getServerNodeType() const override { return NodeType::EntityServer; }
+    virtual OctreeEditPacketSender* createPacketSender() override { return new EntityEditPacketSender(); }
 
     void setEntityTree(EntityTreePointer modelTree);
     EntityTreePointer getEntityTree() { return _entityTree; }
