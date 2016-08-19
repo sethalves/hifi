@@ -23,6 +23,8 @@
 
 using SharedAssignmentPointer = QSharedPointer<Assignment>;
 
+#define WANT_DEBUG 1
+
 DomainGatekeeper::DomainGatekeeper(DomainServer* server) :
     _server(server)
 {
