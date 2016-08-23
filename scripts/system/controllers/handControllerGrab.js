@@ -22,6 +22,8 @@ var WANT_DEBUG = false;
 var WANT_DEBUG_STATE = false;
 var WANT_DEBUG_SEARCH_NAME = null;
 
+var FORCE_IGNORE_IK = false;
+
 //
 // these tune time-averaging and "on" value for analog trigger
 //
@@ -1670,12 +1672,25 @@ function MyController(hand) {
         var grabbedProperties = Entities.getEntityProperties(this.grabbedEntity, GRABBABLE_PROPERTIES);
         this.activateEntity(this.grabbedEntity, grabbedProperties, false);
 
-        // var handRotation = this.getHandRotation();
-        var handRotation = (this.hand === RIGHT_HAND) ? MyAvatar.getRightPalmRotation() : MyAvatar.getLeftPalmRotation();
-        var handPosition = this.getHandPosition();
-
         var grabbableData = getEntityCustomData(GRABBABLE_DATA_KEY, this.grabbedEntity, DEFAULT_GRABBABLE_DATA);
-        this.ignoreIK = grabbableData.ignoreIK ? grabbableData.ignoreIK : false;
+
+        if (FORCE_IGNORE_IK) {
+            this.ignoreIK = true;
+        } else {
+            this.ignoreIK = grabbableData.ignoreIK ? grabbableData.ignoreIK : false;
+        }
+
+        var handRotation;
+        var handPosition;
+        if (this.ignoreIK) {
+            var standardControllerValue = (hand === RIGHT_HAND) ? Controller.Standard.RightHand : Controller.Standard.LeftHand;
+            var pose = Controller.getPoseValue(standardControllerValue);
+            handRotation = Quat.multiply(MyAvatar.orientation, pose.rotation);
+            handPosition = Vec3.sum(Vec3.multiplyQbyV(MyAvatar.orientation, pose.translation), MyAvatar.position);
+        } else {
+            handRotation = (this.hand === RIGHT_HAND) ? MyAvatar.getRightPalmRotation() : MyAvatar.getLeftPalmRotation();
+            handPosition = this.getHandPosition();
+        }
 
         var hasPresetPosition = false;
         if (this.state == STATE_HOLD && this.grabbedHotspot) {
