@@ -22,7 +22,7 @@ var WANT_DEBUG = false;
 var WANT_DEBUG_STATE = false;
 var WANT_DEBUG_SEARCH_NAME = null;
 
-var FORCE_IGNORE_IK = false;
+var FORCE_IGNORE_IK = true;
 
 //
 // these tune time-averaging and "on" value for analog trigger
