@@ -63,6 +63,8 @@
 
 #include "MIDIEvent.h"
 
+#define WANT_DEBUG 1
+
 static const QString SCRIPT_EXCEPTION_FORMAT = "[UncaughtException] %1 in %2:%3";
 
 Q_DECLARE_METATYPE(QScriptEngine::FunctionSignature)
@@ -143,6 +145,10 @@ ScriptEngine::ScriptEngine(const QString& scriptContents, const QString& fileNam
     _fileNameString(fileNameString),
     _arrayBufferClass(new ArrayBufferClass(this))
 {
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: new script engine -- " << fileNameString;
+#endif
+
     DependencyManager::get<ScriptEngines>()->addScriptEngine(this);
 
     connect(this, &QScriptEngine::signalHandlerException, this, [this](const QScriptValue& exception) {
@@ -345,6 +351,10 @@ QString ScriptEngine::getFilename() const {
     if (!fileNameParts.isEmpty()) {
         lastPart = fileNameParts.last();
     }
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: " << "getFilename for" << _fileNameString << " returning " << lastPart;
+#endif
+
     return lastPart;
 }
 
@@ -356,6 +366,11 @@ void ScriptEngine::loadURL(const QUrl& scriptURL, bool reload) {
     }
 
     QUrl url = expandScriptUrl(scriptURL);
+
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: loadURL(" << scriptURL << " for " << _fileNameString << " now " << url.toString();
+#endif
+
     _fileNameString = url.toString();
     _isReloading = reload;
 
@@ -1092,21 +1107,44 @@ QUrl ScriptEngine::resolvePath(const QString& include) const {
         return expandScriptUrl(url);
     }
 
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: resolvePath(" << include << ") for " << _fileNameString;
+#endif
+
     // we apparently weren't a fully qualified url, so, let's assume we're relative
     // to the original URL of our script
     QUrl parentURL;
     if (_parentURL.isEmpty()) {
         parentURL = QUrl(_fileNameString);
+#if WANT_DEBUG
+        qDebug() << "SCRIPT-ENGINE-DEBUG: resolvePath(" << include << ") for " << _fileNameString
+                 << "_parentURL was empty, using " << parentURL;
+#endif
     } else {
         parentURL = QUrl(_parentURL);
+#if WANT_DEBUG
+        qDebug() << "SCRIPT-ENGINE-DEBUG: resolvePath(" << include << ") for " << _fileNameString
+                 << "_parentURL was set, using " << parentURL;
+#endif
     }
     // if the parent URL's scheme is empty, then this is probably a local file...
     if (parentURL.scheme().isEmpty()) {
         parentURL = QUrl::fromLocalFile(_fileNameString);
+#if WANT_DEBUG
+        qDebug() << "SCRIPT-ENGINE-DEBUG: resolvePath(" << include << ") for " << _fileNameString
+                 << "parentURL had no scheme, using " << parentURL;
+#endif
+
     }
 
     // at this point we should have a legitimate fully qualified URL for our parent
     url = expandScriptUrl(parentURL.resolved(url));
+
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: resolvePath(" << include << ") for " << _fileNameString
+             << "returning " << url;
+#endif
+
     return url;
 }
 
