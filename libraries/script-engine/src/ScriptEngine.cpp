@@ -788,6 +788,11 @@ QScriptValue ScriptEngine::evaluate(const QString& sourceCode, const QString& fi
         return QScriptValue(); // bail early
     }
 
+#if WANT_DEBUG
+    qDebug() << "SCRIPT-ENGINE-DEBUG: evaluate " << fileName << "for " << _fileNameString;
+#endif
+
+
     if (QThread::currentThread() != thread()) {
         QScriptValue result;
 #ifdef THREAD_DEBUGGING
@@ -1381,6 +1386,10 @@ void ScriptEngine::entityScriptContentAvailable(const EntityItemID& entityID, co
 
     if (isURL) {
         setParentURL(scriptOrURL);
+    } else {
+#if WANT_DEBUG
+        qDebug() << "SCRIPT-ENGINE-DEBUG: in entityScriptContentAvailable NOT A URL" << scriptOrURL << "for" << _fileNameString;
+#endif
     }
 
     const int SANDBOX_TIMEOUT = 0.25 * MSECS_PER_SECOND;

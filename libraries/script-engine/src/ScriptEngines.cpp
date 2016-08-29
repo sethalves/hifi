@@ -265,6 +265,9 @@ void ScriptEngines::loadDefaultScripts() {
 }
 
 void ScriptEngines::loadOneScript(const QString& scriptFilename) {
+
+    qDebug() << "SCRIPT-ENGINE-DEBUG: loadOneScript: " << scriptFilename;
+
     loadScript(scriptFilename);
 }
 
@@ -425,6 +428,9 @@ QString ScriptEngines::getScriptsLocation() const {
 }
 
 void ScriptEngines::setScriptsLocation(const QString& scriptsLocation) {
+
+    qDebug() << "SCRIPT-ENGINE-DEBUG: setScriptsLocation" << scriptsLocation;
+
     _scriptsLocationHandle.set(scriptsLocation);
     _scriptsModel.updateScriptsLocation(scriptsLocation);
 }
@@ -437,6 +443,9 @@ void ScriptEngines::reloadAllScripts() {
 
 ScriptEngine* ScriptEngines::loadScript(const QUrl& scriptFilename, bool isUserLoaded, bool loadScriptFromEditor,
                                         bool activateMainWindow, bool reload) {
+
+    qDebug() << "SCRIPT-ENGINE-DEBUG: " << "ScriptEngines::loadScript" << scriptFilename;
+
     if (thread() != QThread::currentThread()) {
         ScriptEngine* result { nullptr };
         QMetaObject::invokeMethod(this, "loadScript", Qt::BlockingQueuedConnection, Q_RETURN_ARG(ScriptEngine*, result),
@@ -486,6 +495,9 @@ ScriptEngine* ScriptEngines::loadScript(const QUrl& scriptFilename, bool isUserL
 }
 
 ScriptEngine* ScriptEngines::getScriptEngine(const QUrl& rawScriptURL) {
+
+    qDebug() << "SCRIPT-ENGINE-DEBUG: " << "ScriptEngines::getScriptEngine" << rawScriptURL;
+
     ScriptEngine* result = nullptr;
     {
         QReadLocker lock(&_scriptEnginesHashLock);

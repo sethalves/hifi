@@ -214,7 +214,10 @@ protected:
     void stopAllTimersForEntityScript(const EntityItemID& entityID);
     void refreshFileScript(const EntityItemID& entityID);
 
-    void setParentURL(const QString& parentURL) { _parentURL = parentURL; }
+    void setParentURL(const QString& parentURL) {
+        qDebug() << "SCRIPT-ENGINE-DEBUG: setParentURL to" << parentURL << "for" <<  _fileNameString;
+        _parentURL = parentURL;
+    }
 
     QObject* setupTimerWithInterval(const QScriptValue& function, int intervalMS, bool isSingleShot);
     void stopTimer(QTimer* timer);
