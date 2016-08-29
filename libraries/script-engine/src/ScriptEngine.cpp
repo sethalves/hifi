@@ -1215,7 +1215,7 @@ void ScriptEngine::include(const QStringList& includeFiles, QScriptValue callbac
     EntityItemID capturedEntityIdentifier = currentEntityIdentifier;
     QUrl capturedSandboxURL = currentSandboxURL;
 
-    auto evaluateScripts = [=](const QMap<QUrl, QString>& data) {
+    auto evaluateScripts = [&](const QMap<QUrl, QString>& data) {
         auto parentURL = _parentURL;
         for (QUrl url : urls) {
             QString contents = data[url];
