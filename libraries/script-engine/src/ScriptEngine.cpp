@@ -1224,6 +1224,9 @@ void ScriptEngine::include(const QStringList& includeFiles, QScriptValue callbac
             } else {
                 // Set the parent url so that path resolution will be relative
                 // to this script's url during its initial evaluation
+#if WANT_DEBUG
+                qDebug() << "SCRIPT-ENGINE-DEBUG: setting _parentURL to " << url.toString() << " for " << _fileNameString;
+#endif
                 _parentURL = url.toString();
                 auto operation = [&]() {
                     evaluate(contents, url.toString());
@@ -1231,6 +1234,10 @@ void ScriptEngine::include(const QStringList& includeFiles, QScriptValue callbac
                 doWithEnvironment(capturedEntityIdentifier, capturedSandboxURL, operation);
             }
         }
+#if WANT_DEBUG
+        qDebug() << "SCRIPT-ENGINE-DEBUG: setting _parentURL back to " << parentURL << " for " << _fileNameString;
+#endif
+
         _parentURL = parentURL;
 
         if (callback.isFunction()) {
