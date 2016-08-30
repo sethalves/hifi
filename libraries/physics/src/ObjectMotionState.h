@@ -84,7 +84,7 @@ public:
     static void setShapeManager(ShapeManager* manager);
     static ShapeManager* getShapeManager();
 
-    ObjectMotionState(btCollisionShape* shape, EntitySimulationPointer simulation);
+    ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation);
     ~ObjectMotionState();
 
     virtual void handleEasyChanges(uint32_t& flags);
@@ -116,10 +116,8 @@ public:
 
     virtual PhysicsMotionType computePhysicsMotionType() const = 0;
 
-    btCollisionShape* getShape() const { return _shape; }
+    const btCollisionShape* getShape() const { return _shape; }
     btRigidBody* getRigidBody() const { return _body; }
-
-    void releaseShape();
 
     virtual bool isMoving() const = 0;
 
@@ -162,16 +160,17 @@ public:
 
 protected:
     virtual bool isReadyToComputeShape() const = 0;
-    virtual btCollisionShape* computeNewShape() = 0;
-    void setMotionType(PhysicsMotionType motionType);
+    virtual const btCollisionShape* computeNewShape() = 0;
+    virtual void setMotionType(PhysicsMotionType motionType);
     void updateCCDConfiguration();
 
     void setRigidBody(btRigidBody* body);
+    virtual void setShape(const btCollisionShape* shape);
 
     MotionStateType _type = MOTIONSTATE_TYPE_INVALID; // type of MotionState
     PhysicsMotionType _motionType; // type of motion: KINEMATIC, DYNAMIC, or STATIC
 
-    btCollisionShape* _shape;
+    const btCollisionShape* _shape;
     btRigidBody* _body;
     float _mass;
 

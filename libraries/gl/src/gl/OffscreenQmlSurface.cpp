@@ -166,7 +166,7 @@ private:
     QMyQuickRenderControl* _renderControl{ nullptr };
     FramebufferPtr _fbo;
     RenderbufferPtr _depthStencil;
-    TextureRecycler _textures;
+    TextureRecycler _textures { true };
     GLTextureEscrow _escrow;
 
     uint64_t _lastRenderTime{ 0 };
@@ -195,6 +195,7 @@ QEvent* OffscreenQmlRenderThread::Queue::take() {
 }
 
 OffscreenQmlRenderThread::OffscreenQmlRenderThread(OffscreenQmlSurface* surface, QOpenGLContext* shareContext) : _surface(surface) {
+    _canvas.setObjectName("OffscreenQmlRenderCanvas");
     qDebug() << "Building QML Renderer";
     if (!_canvas.create(shareContext)) {
         qWarning("Failed to create OffscreenGLCanvas");
@@ -398,6 +399,8 @@ void OffscreenQmlRenderThread::render() {
             // for now just clear the errors
             glGetError();
         }
+
+        Context::Bound(oglplus::Texture::Target::_2D, *texture).GenerateMipmap();
 
         // FIXME probably unecessary
         DefaultFramebuffer().Bind(Framebuffer::Target::Draw);

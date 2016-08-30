@@ -238,7 +238,7 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
                         << "at" << entity->getPosition() << " will be reduced";
                 }
             }
-            btCollisionShape* shape = ObjectMotionState::getShapeManager()->getShape(shapeInfo);
+            btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
             if (shape) {
                 EntityMotionState* motionState = new EntityMotionState(shape, entity, getThisPointer(), physicsEngine);
                 entity->setPhysicsInfo(motionState);

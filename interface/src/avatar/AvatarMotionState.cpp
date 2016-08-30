@@ -17,7 +17,7 @@
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
-AvatarMotionState::AvatarMotionState(Avatar* avatar, btCollisionShape* shape,
+AvatarMotionState::AvatarMotionState(Avatar* avatar, const btCollisionShape* shape,
                                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
     ObjectMotionState(shape, simulation),
     _avatar(avatar),
@@ -51,7 +51,7 @@ PhysicsMotionType AvatarMotionState::computePhysicsMotionType() const {
 }
 
 // virtual and protected
-btCollisionShape* AvatarMotionState::computeNewShape() {
+const btCollisionShape* AvatarMotionState::computeNewShape() {
     ShapeInfo shapeInfo;
     _avatar->computeShapeInfo(shapeInfo);
     return getShapeManager()->getShape(shapeInfo);

@@ -394,7 +394,6 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
             const int16_t* nextSoundOutput = NULL;
 
             if (_avatarSound) {
-
                 const QByteArray& soundByteArray = _avatarSound->getByteArray();
                 nextSoundOutput = reinterpret_cast<const int16_t*>(soundByteArray.data()
                     + _numAvatarSoundSentBytes);
@@ -444,6 +443,10 @@ void Agent::processAgentAvatarAndAudio(float deltaTime) {
                 audioPacket->writePrimitive(headOrientation);
 
             } else if (nextSoundOutput) {
+                // write the codec
+                QString codecName;
+                audioPacket->writeString(codecName);
+
                 // assume scripted avatar audio is mono and set channel flag to zero
                 audioPacket->writePrimitive((quint8)0);
 

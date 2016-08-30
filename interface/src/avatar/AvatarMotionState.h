@@ -25,7 +25,7 @@ using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 
 class AvatarMotionState : public ObjectMotionState {
 public:
-    AvatarMotionState(Avatar* avatar, btCollisionShape* shape,
+    AvatarMotionState(Avatar* avatar, const btCollisionShape* shape,
                       EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
 
     virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
@@ -85,7 +85,7 @@ protected:
     ~AvatarMotionState();
 
     virtual bool isReadyToComputeShape() const override { return true; }
-    virtual btCollisionShape* computeNewShape() override;
+    virtual const btCollisionShape* computeNewShape() override;
 
     // The AvatarMotionState keeps a RAW backpointer to its Avatar because all AvatarMotionState
     // instances are "owned" by their corresponding Avatar instance and are deleted in the Avatar dtor.
