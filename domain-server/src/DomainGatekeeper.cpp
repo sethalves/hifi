@@ -99,7 +99,18 @@ void DomainGatekeeper::processConnectRequestPacket(QSharedPointer<ReceivedMessag
             if (message->getBytesLeftToRead() > 0) {
                 // read user signature from packet
                 packetStream >> usernameSignature;
+#ifdef WANT_DEBUG
+                qDebug() << "read usernameSignature -- " << usernameSignature.size() << "bytes";
+#endif
+            } else {
+#ifdef WANT_DEBUG
+                qDebug() << "failed to read usernameSignature";
+#endif
             }
+        } else {
+#ifdef WANT_DEBUG
+            qDebug() << "no usernameSignature";
+#endif
         }
 
         node = processAgentConnectRequest(nodeConnection, username, usernameSignature);
@@ -454,7 +465,13 @@ bool DomainGatekeeper::verifyUserSignature(const QString& username,
                                            const HifiSockAddr& senderSockAddr) {
     // it's possible this user can be allowed to connect, but we need to check their username signature
     auto lowerUsername = username.toLower();
-    QByteArray publicKeyArray = _userPublicKeys.value(lowerUsername);
+    QByteArray publicKeyArray = _server->_settingsManager.getUserPublicKey(lowerUsername);
+
+
+#ifdef WANT_DEBUG
+    qDebug() << "got public key for user" << username << "from cache:" << publicKeyArray.toBase64();
+#endif
+
 
     const QUuid& connectionToken = _connectionTokenHash.value(lowerUsername);
 
@@ -600,8 +617,12 @@ void DomainGatekeeper::publicKeyJSONCallback(QNetworkReply& requestReply) {
         const QString JSON_DATA_KEY = "data";
         const QString JSON_PUBLIC_KEY_KEY = "public_key";
 
-        _userPublicKeys[username.toLower()] =
-            QByteArray::fromBase64(jsonObject[JSON_DATA_KEY].toObject()[JSON_PUBLIC_KEY_KEY].toString().toUtf8());
+        QByteArray publicKeyB64 = jsonObject[JSON_DATA_KEY].toObject()[JSON_PUBLIC_KEY_KEY].toString().toUtf8();
+#ifdef WANT_DEBUG
+        qDebug() << "got public key for user" << username << ":" << publicKeyB64;
+#endif
+
+        _server->_settingsManager.setUserPublicKey(username.toLower(), QByteArray::fromBase64(publicKeyB64));
     }
 
     _inFlightPublicKeyRequests.remove(username);

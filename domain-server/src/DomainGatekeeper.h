@@ -101,7 +101,6 @@ private:
     QHash<QUuid, SharedNetworkPeer> _icePeers;
     
     QHash<QString, QUuid> _connectionTokenHash;
-    QHash<QString, QByteArray> _userPublicKeys;
     QSet<QString> _inFlightPublicKeyRequests; // keep track of which we've already asked for
     QSet<QString> _domainOwnerFriends; // keep track of friends of the domain owner
     QSet<QString> _inFlightGroupMembershipsRequests; // keep track of which we've already asked for

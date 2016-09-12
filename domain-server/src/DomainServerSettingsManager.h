@@ -93,6 +93,9 @@ public:
 
     void debugDumpGroupsState();
 
+    void setUserPublicKey(QString lowerUserName, QByteArray publicKey) { _userPublicKeys[lowerUserName] = publicKey; }
+    QByteArray getUserPublicKey(QString lowerUserName) { return _userPublicKeys.value(lowerUserName); }
+
 signals:
     void updateNodePermissions();
 
@@ -157,6 +160,12 @@ private:
 
     // keep track of answers to api queries about which users are in which groups
     QHash<QString, QHash<QUuid, QUuid>> _groupMembership; // QHash<user-name, QHash<group-id, rank-id>>
+
+    // _userPublicKeys is a cached copy of public keys we've successfully retrieved from the metaverse api.
+    // We copy them into and out of the _configMap during saves and loads.
+    void copyPublicKeysToConfigMap();
+    void copyConfigMapToPublicKeys();
+    QHash<QString, QByteArray> _userPublicKeys;
 };
 
 #endif // hifi_DomainServerSettingsManager_h

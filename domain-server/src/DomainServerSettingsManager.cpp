@@ -38,7 +38,7 @@ const QString SETTING_DEFAULT_KEY = "default";
 const QString DESCRIPTION_NAME_KEY = "name";
 const QString SETTING_DESCRIPTION_TYPE_KEY = "type";
 const QString DESCRIPTION_COLUMNS_KEY = "columns";
-
+const QString PUBLIC_KEYS_KEY = "user_public_keys";
 const QString SETTINGS_VIEWPOINT_KEY = "viewpoint";
 
 DomainServerSettingsManager::DomainServerSettingsManager() :
@@ -98,6 +98,7 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
 
     // after 1.7 we no longer use the master or merged configs - this is kept in place for migration
     _configMap.loadMasterAndUserConfig(_argumentList);
+    copyConfigMapToPublicKeys();
 
     // What settings version were we before and what are we using now?
     // Do we need to do any re-mapping?
@@ -140,6 +141,7 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
 
                 // reload the master and user config so that the merged config is right
                 _configMap.loadMasterAndUserConfig(_argumentList);
+                copyConfigMapToPublicKeys();
             }
         }
 
@@ -175,6 +177,7 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
 
                 // reload the master and user config so that the merged config is right
                 _configMap.loadMasterAndUserConfig(_argumentList);
+                copyConfigMapToPublicKeys();
             }
 
         }
@@ -198,6 +201,7 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
 
                 // reload the master and user config so the merged config is correct
                 _configMap.loadMasterAndUserConfig(_argumentList);
+                copyConfigMapToPublicKeys();
             }
         }
 
@@ -1165,6 +1169,25 @@ bool DomainServerSettingsManager::recurseJSONObjectAndOverwriteSettings(const QJ
     return needRestart;
 }
 
+
+void DomainServerSettingsManager::copyPublicKeysToConfigMap() {
+    QVariantMap publicKeysQVM;
+    foreach (const QString& userName, _userPublicKeys.keys()) {
+        publicKeysQVM[userName] = QString(_userPublicKeys.value(userName).toBase64());
+    }
+
+    _configMap.getConfig()[PUBLIC_KEYS_KEY] = publicKeysQVM;
+}
+
+void DomainServerSettingsManager::copyConfigMapToPublicKeys() {
+    QVariantMap publicKeysQVM = _configMap.getConfig()[PUBLIC_KEYS_KEY].toMap();
+    foreach (const QString& userName, publicKeysQVM.keys()) {
+        _userPublicKeys[userName] = QByteArray::fromBase64(QByteArray(publicKeysQVM[userName].toString().toUtf8()));
+    }
+}
+
+
+
 // Compare two members of a permissions list
 bool permissionVariantLessThan(const QVariant &v1, const QVariant &v2) {
     if (!v1.canConvert(QMetaType::QVariantMap) ||
@@ -1212,6 +1235,7 @@ void DomainServerSettingsManager::sortPermissions() {
 }
 
 void DomainServerSettingsManager::persistToFile() {
+    copyPublicKeysToConfigMap();
     sortPermissions();
 
     // make sure we have the dir the settings file is supposed to live in
