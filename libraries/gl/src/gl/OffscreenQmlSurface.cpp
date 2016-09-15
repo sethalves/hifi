@@ -832,9 +832,10 @@ void OffscreenQmlSurface::onFocusObjectChanged(QObject* object) {
 
     if (_currentFocusItem) {
         disconnect(_currentFocusItem, &QObject::destroyed, this, 0);
-        setKeyboardRaised(_currentFocusItem, false);
+        // setKeyboardRaised(_currentFocusItem, false);
     }
-    setKeyboardRaised(item, item->hasActiveFocus());
+    qDebug() << "OffscreenQmlSurface::onFocusObjectChanged";
+    // setKeyboardRaised(item, item->hasActiveFocus());
     _currentFocusItem = item;
     connect(_currentFocusItem, &QObject::destroyed, this, &OffscreenQmlSurface::focusDestroyed);
 }
@@ -894,6 +895,18 @@ void OffscreenQmlSurface::synthesizeKeyPress(QString key) {
     QCoreApplication::postEvent(getEventHandler(), releaseEvent);
 }
 
+QString itemToName(QQuickItem* item) {
+    QString result;
+    while (item) {
+        if (result != "") {
+            result += "-->";
+        }
+        result += "'" + item->objectName() + "'";
+        item = dynamic_cast<QQuickItem*>(item->parentItem());
+    }
+    return result;
+}
+
 void OffscreenQmlSurface::setKeyboardRaised(QObject* object, bool raised) {
 
     // raise the keyboard only while in HMD mode and it's being requested.
@@ -906,6 +919,9 @@ void OffscreenQmlSurface::setKeyboardRaised(QObject* object, bool raised) {
     }
 
     QQuickItem* item = dynamic_cast<QQuickItem*>(object);
+
+    qDebug() << "setKeyboardRaised" << raised << itemToName(item);
+
     while (item) {
         if (item->property("keyboardRaised").isValid()) {
             item->setProperty("keyboardRaised", QVariant(raised));
@@ -927,14 +943,23 @@ void OffscreenQmlSurface::emitWebEvent(const QVariant& message) {
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "emitWebEvent", Qt::QueuedConnection, Q_ARG(QVariant, message));
     } else {
-        // special case to handle raising and lowering the virtual keyboard
-        if (message.type() == QVariant::String && message.toString() == "_RAISE_KEYBOARD") {
-            setKeyboardRaised(getRootItem(), true);
-        } else if (message.type() == QVariant::String && message.toString() == "_LOWER_KEYBOARD") {
-            setKeyboardRaised(getRootItem(), false);
-        } else {
+        qDebug() << "HERE OffscreenQmlSurface::emitWebEvent: " << message.toString();
+
+        if (message.type() != QVariant::String) {
             emit webEventReceived(message);
+            return;
         }
+        QString messageJSON = message.toString();
+        QJsonDocument doc(QJsonDocument::fromJson(messageJSON.toUtf8()));
+        QJsonObject messageObject = doc.object();
+
+        // special case to handle raising and lowering the virtual keyboard
+        if (messageObject["type"].toString() != "showKeyboard") {
+            emit webEventReceived(message);
+            return;
+        }
+
+        setKeyboardRaised(getRootItem(), messageObject["value"].toBool());
     }
 }
 

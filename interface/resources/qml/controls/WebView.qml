@@ -5,8 +5,8 @@ import QtWebChannel 1.0
 Item {
     property alias url: root.url
     property alias eventBridge: eventBridgeWrapper.eventBridge
-    property bool keyboardRaised: false
-    property bool punctuationMode: false
+
+    anchors.fill: parent
 
     QtObject {
         id: eventBridgeWrapper
@@ -14,12 +14,24 @@ Item {
         property var eventBridge;
     }
 
+    property alias keyboardRaised: root.keyboardRaised
+    property alias punctuationMode: root.punctuationMode
+
     WebEngineView {
         id: root
-        x: 0
-        y: 0
-        width: parent.width
-        height: keyboardRaised ? parent.height - keyboard1.height : parent.height
+        objectName: "root"
+        // x: 0
+        // y: 0
+        // width: parent.width
+        // height: keyboardRaised ? parent.height - keyboard1.height : parent.height
+
+        property bool keyboardRaised: false
+        property bool punctuationMode: false
+
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.left: parent.left
+        anchors.bottom: keyboard1.top
 
         // creates a global EventBridge object.
         WebEngineScript {
@@ -113,11 +125,8 @@ Item {
         visible: keyboardRaised && !punctuationMode
         enabled: keyboardRaised && !punctuationMode
         anchors.right: parent.right
-        anchors.rightMargin: 0
         anchors.left: parent.left
-        anchors.leftMargin: 0
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 0
     }
 
     KeyboardPunctuation {
@@ -127,10 +136,7 @@ Item {
         visible: keyboardRaised && punctuationMode
         enabled: keyboardRaised && punctuationMode
         anchors.right: parent.right
-        anchors.rightMargin: 0
         anchors.left: parent.left
-        anchors.leftMargin: 0
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 0
     }
 }

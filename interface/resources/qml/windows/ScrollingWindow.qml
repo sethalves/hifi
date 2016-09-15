@@ -25,6 +25,7 @@ import "../styles-uit"
 // are still at least partially visible?
 Window {
     id: window
+    objectName: "ScrollingWindow"
     HifiConstants { id: hifi }
     children: [ swallower, frame, pane, activator ]
 
@@ -44,6 +45,7 @@ Window {
 
         Rectangle {
             id: contentBackground
+            objectName: "ScrollingWindowtop"
             anchors.fill: parent
             anchors.rightMargin: parent.isScrolling ? 11 : 0
             color: hifi.colors.baseGray
@@ -68,6 +70,7 @@ Window {
 
         ScrollView {
             id: scrollView
+            objectName: "ScrollingWindowScrollView"
             contentItem: content
             horizontalScrollBarPolicy: Qt.ScrollBarAlwaysOff
             verticalScrollBarPolicy: Qt.ScrollBarAsNeeded
@@ -119,6 +122,7 @@ Window {
         Rectangle {
             // Optional non-scrolling footer.
             id: footerPane
+            objectName: "ScrollingWindowFooterPane"
             anchors {
                 left: parent.left
                 bottom: parent.bottom

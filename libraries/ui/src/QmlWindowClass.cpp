@@ -96,6 +96,12 @@ void QmlWindowClass::initQml(QVariantMap properties) {
     if (_toolWindow) {
         // Build the event bridge and wrapper on the main thread
         _qmlWindow = offscreenUi->getToolWindow();
+
+
+        // _qmlWindow->setProperty("keyboardRaised", false);
+        // _qmlWindow->setProperty("punctuationMode", false);
+
+
         properties[EVENT_BRIDGE_PROPERTY] = QVariant::fromValue(this);
         QVariant newTabVar;
         bool invokeResult = QMetaObject::invokeMethod(_qmlWindow, "addWebTab", Qt::DirectConnection,

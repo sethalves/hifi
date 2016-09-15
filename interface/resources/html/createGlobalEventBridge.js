@@ -27,6 +27,10 @@ var EventBridge;
         };
     };
 
+    if (EventBridge) {
+        return;
+    }
+
     EventBridge = new TempEventBridge();
 
     var webChannel = new QWebChannel(qt.webChannelTransport, function (channel) {

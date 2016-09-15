@@ -13,7 +13,26 @@ import QtWebEngine 1.1
 
 WebEngineView {
     id: root
+    objectName: "BaseWebViewWebEngineView"
     property var newUrl;
+
+    // creates a global EventBridge object.
+    WebEngineScript {
+        id: createGlobalEventBridge
+        sourceCode: eventBridgeJavaScriptToInject
+        injectionPoint: WebEngineScript.DocumentCreation
+        worldId: WebEngineScript.MainWorld
+    }
+
+    // detects when to raise and lower virtual keyboard
+    WebEngineScript {
+        id: raiseAndLowerKeyboard
+        injectionPoint: WebEngineScript.Deferred
+        sourceUrl: resourceDirectoryUrl + "/html/raiseAndLowerKeyboard.js"
+        worldId: WebEngineScript.MainWorld
+    }
+
+    userScripts: [ createGlobalEventBridge, raiseAndLowerKeyboard ]
 
     profile: desktop.browserProfile
 

@@ -1702,7 +1702,13 @@ var propertiesTool = new PropertiesTool();
 var particleExplorerTool = new ParticleExplorerTool();
 var selectedParticleEntity = 0;
 entityListTool.webView.webEventReceived.connect(function (data) {
-    data = JSON.parse(data);
+    try {
+        data = JSON.parse(data);
+    } catch (err) {
+        print("edit.js failed to parse json: " + data);
+        return;
+    }
+    print("edit.js got " + JSON.stringify(data));
     if (data.type === "selectionUpdate") {
         var ids = data.entityIds;
         if (ids.length === 1) {

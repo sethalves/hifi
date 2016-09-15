@@ -10,6 +10,7 @@ import "controls" as Controls
 
 ScrollingWindow {
     id: root
+    objectName: "BrowserScrollingWindow"
     HifiConstants { id: hifi }
     HifiStyles.HifiConstants { id: hifistyles }
     title: "Browser"
@@ -50,6 +51,7 @@ ScrollingWindow {
 
     Item {
         id:item
+        objectName: "BrowserItem"
         width: pane.contentWidth
         implicitHeight: pane.scrollHeight
 
@@ -58,6 +60,7 @@ ScrollingWindow {
 
         Row {
             id: buttons
+            objectName: "BrowserItemTopRow"
             spacing: 4
             anchors.top: parent.top
             anchors.topMargin: 8
@@ -94,6 +97,7 @@ ScrollingWindow {
 
         Item {
             id: border
+            objectName: "BrowserToolbar"
             height: 48
             anchors.top: parent.top
             anchors.topMargin: 8
@@ -104,6 +108,7 @@ ScrollingWindow {
     
             Item {
                 id: barIcon
+                objectName: "BrowserToolbarIcon"
                 width: parent.height
                 height: parent.height
                 Image {
@@ -119,6 +124,7 @@ ScrollingWindow {
 
             TextField {
                 id: addressBar
+                objectName: "BrowserAddressBar"
                 anchors.right: parent.right
                 anchors.rightMargin: 8
                 anchors.left: barIcon.right
@@ -146,6 +152,7 @@ ScrollingWindow {
 
         Rectangle {
             id:permissionsContainer
+            objectName: "BrowserRectangle"
             visible:false
             color: "#000000"
             width:  parent.width
@@ -203,7 +210,27 @@ ScrollingWindow {
 
         WebEngineView {
             id: webview
+            objectName: "BrowserWebEngineView"
             url: "https://highfidelity.com"
+
+            // creates a global EventBridge object.
+            WebEngineScript {
+                id: createGlobalEventBridge
+                sourceCode: eventBridgeJavaScriptToInject
+                injectionPoint: WebEngineScript.DocumentCreation
+                worldId: WebEngineScript.MainWorld
+            }
+
+            // detects when to raise and lower virtual keyboard
+            WebEngineScript {
+                id: raiseAndLowerKeyboard
+                injectionPoint: WebEngineScript.Deferred
+                sourceUrl: resourceDirectoryUrl + "/html/raiseAndLowerKeyboard.js"
+                worldId: WebEngineScript.MainWorld
+            }
+
+            userScripts: [ createGlobalEventBridge, raiseAndLowerKeyboard ]
+
             anchors.top: buttons.bottom
             anchors.topMargin: 8
             anchors.bottom: keyboard1.top

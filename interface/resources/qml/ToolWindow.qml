@@ -36,6 +36,9 @@ ScrollingWindow {
 
     HifiConstants { id: hifi }
 
+    // property bool keyboardRaised: false // asQuickItem() hits these
+    // property bool punctuationMode: false
+
     onParentChanged: {
         if (parent) {
             x = 120;
@@ -49,35 +52,44 @@ ScrollingWindow {
         property alias y: toolWindow.y
     }
 
-    Item {
-        id: toolWindowTabViewItem
-        height: pane.scrollHeight
+    TabView {
+        id: tabView;
+        objectName: "ToolWindowTabView"
         width: pane.contentWidth
-        anchors.left: parent.left
-        anchors.top: parent.top
+        // Pane height so that don't use Window's scrollbars otherwise tabs may be scrolled out of view.
+        height: pane.scrollHeight // - (keyboardRaised ? 200 : 0)
+        property int tabCount: 0
 
-        property bool keyboardRaised: false
-        property bool punctuationMode: false
+        // property bool keyboardRaised: false // children of asQuickItem hits these
+        // property bool punctuationMode: false
 
-        TabView {
-            id: tabView;
-            width: pane.contentWidth
-            // Pane height so that don't use Window's scrollbars otherwise tabs may be scrolled out of view.
-            height: pane.scrollHeight - (toolWindowTabViewItem.keyboardRaised ? 200 : 0)
-            property int tabCount: 0
+        Repeater {
+            model: 4
+            Tab {
+                // Force loading of the content even if the tab is not visible
+                // (required for letting the C++ code access the webview)
+                active: true
+                enabled: false
+                property string originalUrl: "";
+                objectName: "ToolWindowTab"
 
-            Repeater {
-                model: 4
-                Tab {
-                    // Force loading of the content even if the tab is not visible
-                    // (required for letting the C++ code access the webview)
-                    active: true
-                    enabled: false
-                    property string originalUrl: "";
+                width: pane.contentWidth
+                height: pane.scrollHeight // - (keyboardRaised ? 200 : 0)
+
+                Item {
+                    anchors.fill: parent
+
+                    property bool keyboardRaised: false
+                    property bool punctuationMode: false
 
                     WebView {
                         id: webView;
                         anchors.fill: parent
+                        // anchors.top: parent.top
+                        // anchors.right: parent.right
+                        // anchors.left: parent.left
+                        // anchors.bottom: keyboard1.top
+
                         enabled: false
                         property alias eventBridgeWrapper: eventBridgeWrapper
 
@@ -90,94 +102,89 @@ ScrollingWindow {
                         webChannel.registeredObjects: [eventBridgeWrapper]
                         onEnabledChanged: toolWindow.updateVisiblity();
                     }
-                }
-            }
 
-            style: TabViewStyle {
-
-                frame: Rectangle {  // Background shown before content loads.
-                    anchors.fill: parent
-                    color: hifi.colors.baseGray
-                }
-
-                frameOverlap: 0
-
-                tab: Rectangle {
-                    implicitWidth: text.width
-                    implicitHeight: 3 * text.height
-                    color: styleData.selected ? hifi.colors.black : hifi.colors.tabBackgroundDark
-
-                    RalewayRegular {
-                        id: text
-                        text: styleData.title
-                        font.capitalization: Font.AllUppercase
-                        size: hifi.fontSizes.tabName
-                        width: tabView.tabCount > 1 ? styleData.availableWidth / tabView.tabCount : implicitWidth + 2 * hifi.dimensions.contentSpacing.x
-                        elide: Text.ElideRight
-                        color: styleData.selected ? hifi.colors.primaryHighlight : hifi.colors.lightGrayText
-                        horizontalAlignment: Text.AlignHCenter
-                        anchors.centerIn: parent
-                    }
-
-                    Rectangle {  // Separator.
-                        width: 1
-                        height: parent.height
-                        color: hifi.colors.black
-                        anchors.left: parent.left
-                        anchors.top: parent.top
-                        visible: styleData.index > 0
-
-                        Rectangle {
-                            width: 1
-                            height: 1
-                            color: hifi.colors.baseGray
-                            anchors.left: parent.left
-                            anchors.bottom: parent.bottom
-                        }
-                    }
-
-                    Rectangle {  // Active underline.
-                        width: parent.width - (styleData.index > 0 ? 1 : 0)
-                        height: 1
+                    // virtual keyboard, letters
+                    Controls.Keyboard {
+                        id: keyboard1
+                        // y: parent.keyboardRaised ? parent.height : 0
+                        height: parent.keyboardRaised ? 200 : 0
+                        visible: parent.keyboardRaised && !parent.punctuationMode
+                        enabled: parent.keyboardRaised && !parent.punctuationMode
                         anchors.right: parent.right
+                        anchors.left: parent.left
                         anchors.bottom: parent.bottom
-                        color: styleData.selected ? hifi.colors.primaryHighlight : hifi.colors.baseGray
+                    }
+
+                    Controls.KeyboardPunctuation {
+                        id: keyboard2
+                        // y: parent.keyboardRaised ? parent.height : 0
+                        height: parent.keyboardRaised ? 200 : 0
+                        visible: parent.keyboardRaised && parent.punctuationMode
+                        enabled: parent.keyboardRaised && parent.punctuationMode
+                        anchors.right: parent.right
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
                     }
                 }
-
-                tabOverlap: 0
             }
         }
 
-        // virtual keyboard, letters
-        Controls.Keyboard {
-            id: keyboard1
-            // y: parent.keyboardRaised ? parent.height : 0
-            height: parent.keyboardRaised ? 200 : 0
-            visible: parent.keyboardRaised && !parent.punctuationMode
-            enabled: parent.keyboardRaised && !parent.punctuationMode
-            anchors.right: parent.right
-            anchors.rightMargin: 0
-            anchors.left: parent.left
-            anchors.leftMargin: 0
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 0
-            // anchors.bottomMargin: 2 * hifi.dimensions.contentSpacing.y
-        }
+        style: TabViewStyle {
 
-        Controls.KeyboardPunctuation {
-            id: keyboard2
-            // y: parent.keyboardRaised ? parent.height : 0
-            height: parent.keyboardRaised ? 200 : 0
-            visible: parent.keyboardRaised && parent.punctuationMode
-            enabled: parent.keyboardRaised && parent.punctuationMode
-            anchors.right: parent.right
-            anchors.rightMargin: 0
-            anchors.left: parent.left
-            anchors.leftMargin: 0
-            anchors.bottom: parent.bottom
-            anchors.bottomMargin: 0
-            // anchors.bottomMargin: 2 * hifi.dimensions.contentSpacing.y
+            frame: Rectangle {  // Background shown before content loads.
+                anchors.fill: parent
+                color: hifi.colors.baseGray
+            }
+
+            frameOverlap: 0
+
+            tab: Rectangle {
+                objectName: "ToolWindowRect1"
+                implicitWidth: text.width
+                implicitHeight: 3 * text.height
+                color: styleData.selected ? hifi.colors.black : hifi.colors.tabBackgroundDark
+
+                RalewayRegular {
+                    id: text
+                    text: styleData.title
+                    font.capitalization: Font.AllUppercase
+                    size: hifi.fontSizes.tabName
+                    width: tabView.tabCount > 1 ? styleData.availableWidth / tabView.tabCount : implicitWidth + 2 * hifi.dimensions.contentSpacing.x
+                    elide: Text.ElideRight
+                    color: styleData.selected ? hifi.colors.primaryHighlight : hifi.colors.lightGrayText
+                    horizontalAlignment: Text.AlignHCenter
+                    anchors.centerIn: parent
+                }
+
+                Rectangle {  // Separator.
+                    objectName: "ToolWindowRect2"
+                    width: 1
+                    height: parent.height
+                    color: hifi.colors.black
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    visible: styleData.index > 0
+
+                    Rectangle {
+                        width: 1
+                        height: 1
+                        color: hifi.colors.baseGray
+                        anchors.left: parent.left
+                        anchors.bottom: parent.bottom
+                    }
+                }
+
+                Rectangle {  // Active underline.
+                    objectName: "ToolWindowRect3"
+                    width: parent.width - (styleData.index > 0 ? 1 : 0)
+                    height: 1
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    color: styleData.selected ? hifi.colors.primaryHighlight : hifi.colors.baseGray
+                }
+            }
+
+            tabOverlap: 0
         }
     }
 
@@ -290,7 +297,8 @@ ScrollingWindow {
         var eventBridge = properties.eventBridge;
         console.log("Event bridge: " + eventBridge);
 
-        var result = tab.item;
+        var result = tab.item.children[0];
+        // var result = tab.item;
         result.enabled = true;
         tabView.tabCount++;
         console.log("Setting event bridge: " + eventBridge);

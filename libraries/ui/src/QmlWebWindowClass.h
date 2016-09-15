@@ -33,6 +33,7 @@ signals:
 
 protected:
     QString qmlSource() const override { return "QmlWebWindow.qml"; }
+    void setKeyboardRaised(QObject* object, bool raised);
 };
 
 #endif

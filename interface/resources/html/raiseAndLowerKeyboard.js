@@ -28,7 +28,7 @@
     };
 
     setInterval(function () {
-        var event = shouldRaiseKeyboard() ? "_RAISE_KEYBOARD" : "_LOWER_KEYBOARD";
+        var event = JSON.stringify({type: "showKeyboard", value: shouldRaiseKeyboard()})
         if (typeof EventBridge != "undefined") {
             EventBridge.emitWebEvent(event);
         } else {
