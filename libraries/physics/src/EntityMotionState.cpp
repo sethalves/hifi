@@ -15,6 +15,7 @@
 #include <EntityItemProperties.h>
 #include <EntityEditPacketSender.h>
 #include <PhysicsCollisionGroups.h>
+#include <LogHandler.h>
 
 #include "BulletUtil.h"
 #include "EntityMotionState.h"
