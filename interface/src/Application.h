@@ -377,7 +377,7 @@ private slots:
     void nodeKilled(SharedNodePointer node);
     static void packetSent(quint64 length);
     void updateDisplayMode();
-    void domainConnectionRefused(const QString& reasonMessage, int reason);
+    void domainConnectionRefused(const QString& reasonMessage, int reason, const QString& extraInfo);
 
 private:
     static void initDisplay();
