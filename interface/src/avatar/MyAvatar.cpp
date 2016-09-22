@@ -2204,6 +2204,11 @@ bool MyAvatar::FollowHelper::shouldActivateVertical(const MyAvatar& myAvatar, co
 void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat4& desiredBodyMatrix, const glm::mat4& currentBodyMatrix, bool hasDriveInput) {
     _desiredBodyMatrix = desiredBodyMatrix;
 
+    PhysicsEnginePointer physicsEngine = myAvatar.getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+
     if (myAvatar.getHMDLeanRecenterEnabled()) {
         if (!isActive(Rotation) && shouldActivateRotation(myAvatar, desiredBodyMatrix, currentBodyMatrix)) {
             activate(Rotation);
@@ -2219,17 +2224,21 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     glm::mat4 desiredWorldMatrix = myAvatar.getSensorToWorldMatrix() * _desiredBodyMatrix;
     glm::mat4 currentWorldMatrix = myAvatar.getSensorToWorldMatrix() * currentBodyMatrix;
 
-    AnimPose followWorldPose(currentWorldMatrix);
+    bool success;
+    glm::mat4 SFdesiredWorldMatrix = SpatiallyNestable::worldToLocal(desiredWorldMatrix, physicsEngine->getID(), -1, success);
+    glm::mat4 SFcurrentWorldMatrix = SpatiallyNestable::worldToLocal(currentWorldMatrix, physicsEngine->getID(), -1, success);
+
+    AnimPose followWorldPose(SFcurrentWorldMatrix);
     if (isActive(Rotation)) {
-        followWorldPose.rot = glmExtractRotation(desiredWorldMatrix);
+        followWorldPose.rot = glmExtractRotation(SFdesiredWorldMatrix);
     }
     if (isActive(Horizontal)) {
-        glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
+        glm::vec3 desiredTranslation = extractTranslation(SFdesiredWorldMatrix);
         followWorldPose.trans.x = desiredTranslation.x;
         followWorldPose.trans.z = desiredTranslation.z;
     }
     if (isActive(Vertical)) {
-        glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
+        glm::vec3 desiredTranslation = extractTranslation(SFdesiredWorldMatrix);
         followWorldPose.trans.y = desiredTranslation.y;
     }
 
@@ -2238,17 +2247,34 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
 
 glm::mat4 MyAvatar::FollowHelper::postPhysicsUpdate(const MyAvatar& myAvatar, const glm::mat4& currentBodyMatrix) {
     if (isActive()) {
+        MyAvatar *unconstMyAvatar = const_cast<MyAvatar*>(&myAvatar);
+        PhysicsEnginePointer physicsEngine = unconstMyAvatar->getPhysicsEngine();
+        if (!physicsEngine) {
+            return currentBodyMatrix;
+        }
+
         float dt = myAvatar.getCharacterController()->getFollowTime();
         decrementTimeRemaining(dt);
 
         // apply follow displacement to the body matrix.
-        glm::vec3 worldLinearDisplacement = myAvatar.getCharacterController()->getFollowLinearDisplacement();
-        glm::quat worldAngularDisplacement = myAvatar.getCharacterController()->getFollowAngularDisplacement();
-        glm::quat sensorToWorld = glmExtractRotation(myAvatar.getSensorToWorldMatrix());
-        glm::quat worldToSensor = glm::inverse(sensorToWorld);
+        glm::vec3 SFlinearDisplacement = myAvatar.getCharacterController()->getFollowLinearDisplacement();
+        glm::quat SFangularDisplacement = myAvatar.getCharacterController()->getFollowAngularDisplacement();
 
-        glm::vec3 sensorLinearDisplacement = worldToSensor * worldLinearDisplacement;
-        glm::quat sensorAngularDisplacement = worldToSensor * worldAngularDisplacement * sensorToWorld;
+
+        glm::mat4 sensorToWorldTrans = myAvatar.getSensorToWorldMatrix();
+
+        // XXX this getParentTransform should be getSimulationTransform or something
+        bool success;
+        glm::mat4 simToWorldTrans = unconstMyAvatar->getParentTransform(success).getMatrix();
+
+        glm::mat4 worldToSimTrans = glm::inverse(simToWorldTrans);
+        glm::mat4 sensorToSimTrans = worldToSimTrans * sensorToWorldTrans;
+
+        glm::quat sensorToSim = glmExtractRotation(sensorToSimTrans);
+        glm::quat simToSensor = glm::inverse(sensorToSim);
+
+        glm::vec3 sensorLinearDisplacement = simToSensor * SFlinearDisplacement;
+        glm::quat sensorAngularDisplacement = simToSensor * SFangularDisplacement * sensorToSim;
 
         glm::mat4 newBodyMat = createMatFromQuatAndPos(sensorAngularDisplacement * glmExtractRotation(currentBodyMatrix),
                                                        sensorLinearDisplacement + extractTranslation(currentBodyMatrix));

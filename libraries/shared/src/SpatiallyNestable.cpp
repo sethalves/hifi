@@ -229,6 +229,43 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
     return result.getRotation();
 }
 
+
+glm::mat4 SpatiallyNestable::worldToLocal(const glm::mat4& trans,
+                                          const QUuid& parentID, int parentJointIndex,
+                                          bool& success) {
+    Transform result;
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return glm::mat4();
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return glm::mat4();
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return glm::mat4();
+    }
+
+    if (parent) {
+        parentTransform = parent->getTransform(parentJointIndex, success);
+        if (!success) {
+            return glm::mat4();
+        }
+        parentTransform.setScale(1.0f); // TODO: scale
+    }
+    success = true;
+
+    Transform::inverseMult(result, parentTransform, trans);
+    return result.getMatrix();
+}
+
+
 glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                                   int parentJointIndex, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
@@ -334,6 +371,43 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
     Transform::mult(result, parentTransform, orientationTransform);
     return result.getRotation();
 }
+
+glm::mat4 SpatiallyNestable::localToWorld(const glm::mat4& trans,
+                                          const QUuid& parentID, int parentJointIndex,
+                                          bool& success) {
+    Transform result;
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return glm::mat4();
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return glm::mat4();
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return glm::mat4();
+    }
+
+    if (parent) {
+        parentTransform = parent->getTransform(parentJointIndex, success);
+        if (!success) {
+            return glm::mat4();
+        }
+        parentTransform.setScale(1.0f);
+    }
+    success = true;
+
+    Transform::mult(result, parentTransform, trans);
+    return result.getMatrix();
+}
+
+
 
 glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                                   int parentJointIndex, bool& success) {
