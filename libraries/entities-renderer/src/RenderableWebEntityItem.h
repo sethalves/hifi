@@ -92,6 +92,12 @@ private:
     QMetaObject::Connection _mouseReleaseConnection;
     QMetaObject::Connection _mouseMoveConnection;
     QMetaObject::Connection _hoverLeaveConnection;
+
+    enum contentType {
+        htmlContent,
+        qmlContent
+    };
+    contentType _contentType;
 };
 
 #endif // hifi_RenderableWebEntityItem_h

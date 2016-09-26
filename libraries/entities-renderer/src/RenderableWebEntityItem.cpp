@@ -123,24 +123,45 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
 
     ++_currentWebCount;
     // Save the original GL context, because creating a QML surface will create a new context
-    QOpenGLContext * currentContext = QOpenGLContext::currentContext();
-    QSurface * currentSurface = currentContext->surface();
+    QOpenGLContext* currentContext = QOpenGLContext::currentContext();
+    QSurface* currentSurface = currentContext->surface();
     _webSurface = new OffscreenQmlSurface();
     _webSurface->create(currentContext);
-    _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "/qml/controls/"));
-    _webSurface->load("WebView.qml", [&](QQmlContext* context, QObject* obj) {
-        context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
-    });
-    _webSurface->resume();
-    _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
-    _webSurface->getRootItem()->setProperty("url", _sourceUrl);
-    _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
-    _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
-    _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
-        _texture = textureId;
-    });
-    // Restore the original GL context
-    currentContext->makeCurrent(currentSurface);
+
+    QUrl sourceUrl(_sourceUrl);
+    if (sourceUrl.scheme() == "http" || sourceUrl.scheme() == "https" ||
+        _sourceUrl.toLower().endsWith(".htm") || _sourceUrl.toLower().endsWith(".html")) {
+
+        _contentType = htmlContent;
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "/qml/controls/"));
+        _webSurface->load("WebView.qml", [&](QQmlContext* context, QObject* obj) {
+                context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
+            });
+        _webSurface->resume();
+        _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
+        _webSurface->getRootItem()->setProperty("url", _sourceUrl);
+        _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
+        _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
+        _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
+            _texture = textureId;
+        });
+        // Restore the original GL context
+        currentContext->makeCurrent(currentSurface);
+
+    } else {
+
+        _contentType = qmlContent;
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "/qml/"));
+        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) {
+                // context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
+            });
+        _webSurface->resume();
+        _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
+            _texture = textureId;
+        });
+        // Restore the original GL context
+        currentContext->makeCurrent(currentSurface);
+    }
 
     auto forwardPointerEvent = [=](const EntityItemID& entityItemID, const PointerEvent& event) {
         if (entityItemID == getID()) {
@@ -165,7 +186,9 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
             QTouchEvent* touchEvent = new QTouchEvent(QEvent::TouchEnd, nullptr, Qt::NoModifier, Qt::TouchPointReleased, touchPoints);
             touchEvent->setWindow(_webSurface->getWindow());
             touchEvent->setDevice(&_touchDevice);
-            touchEvent->setTarget(_webSurface->getRootItem());
+            if (_contentType == htmlContent) {
+                touchEvent->setTarget(_webSurface->getRootItem());
+            }
             QCoreApplication::postEvent(_webSurface->getWindow(), touchEvent);
         }
     });
@@ -246,7 +269,9 @@ void RenderableWebEntityItem::setSourceUrl(const QString& value) {
         _sourceUrl = value;
         if (_webSurface) {
             AbstractViewStateInterface::instance()->postLambdaEvent([this] {
-                _webSurface->getRootItem()->setProperty("url", _sourceUrl);
+                if (_contentType == htmlContent) {
+                    _webSurface->getRootItem()->setProperty("url", _sourceUrl);
+                }
             });
         }
     }
@@ -317,7 +342,9 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
         QTouchEvent* touchEvent = new QTouchEvent(type);
         touchEvent->setWindow(_webSurface->getWindow());
         touchEvent->setDevice(&_touchDevice);
-        touchEvent->setTarget(_webSurface->getRootItem());
+        if (_contentType == htmlContent) {
+            touchEvent->setTarget(_webSurface->getRootItem());
+        }
         touchEvent->setTouchPoints(touchPoints);
         touchEvent->setTouchPointStates(touchPointState);
 
@@ -424,5 +451,7 @@ void RenderableWebEntityItem::setKeyboardRaised(bool raised) {
     // raise the keyboard only while in HMD mode and it's being requested.
     bool value = AbstractViewStateInterface::instance()->isHMDMode() && raised;
 
-    _webSurface->getRootItem()->setProperty("keyboardRaised", QVariant(value));
+    if (_contentType == htmlContent) {
+        _webSurface->getRootItem()->setProperty("keyboardRaised", QVariant(value));
+    }
 }
