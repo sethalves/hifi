@@ -28,6 +28,7 @@ class HMDScriptingInterface : public AbstractHMDScriptingInterface, public Depen
     Q_PROPERTY(glm::vec3 position READ getPosition)
     Q_PROPERTY(glm::quat orientation READ getOrientation)
     Q_PROPERTY(bool mounted READ isMounted)
+    Q_PROPERTY(bool showTablet READ getShouldShowTablet)
 
 public:
     Q_INVOKABLE glm::vec3 calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction) const;
@@ -65,7 +66,12 @@ public:
 
     bool isMounted() const;
 
+    void toggleShouldShowTablet() { _showTablet = !_showTablet; }
+    bool getShouldShowTablet() const { return _showTablet; }
+
 private:
+    bool _showTablet { false };
+
     // Get the position of the HMD
     glm::vec3 getPosition() const;
     
