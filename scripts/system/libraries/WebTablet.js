@@ -39,37 +39,40 @@ function calcSpawnInfo() {
 }
 
 // ctor
-WebTablet = function (url, width, dpi) {
+WebTablet = function (url, width, dpi, location) {
 
     var ASPECT = 4.0 / 3.0;
     var WIDTH = width || DEFAULT_WIDTH;
     var HEIGHT = WIDTH * ASPECT;
     var DEPTH = 0.025;
     var DPI = dpi || DEFAULT_DPI;
+    var _this = this;
 
-    var spawnInfo = calcSpawnInfo();
-
-    var tabletEntityPosition = spawnInfo.position;
-    var tabletEntityRotation = spawnInfo.rotation;
-    this.tabletEntityID = Entities.addEntity({
+    var tabletProperties = {
         name: "tablet",
         type: "Model",
         modelURL: TABLET_URL,
-        position: tabletEntityPosition,
-        rotation: tabletEntityRotation,
         userData: JSON.stringify({
             "grabbableKey": {"grabbable": true}
         }),
         dimensions: {x: WIDTH, y: HEIGHT, z: DEPTH},
         parentID: MyAvatar.sessionUUID,
         parentJointIndex: -2
-    });
+    }
+
+    if (location) {
+        tabletProperties.localPosition = location.localPosition;
+        tabletProperties.localRotation = location.localRotation;
+    } else {
+        var spawnInfo = calcSpawnInfo();
+        tabletProperties.position = spawnInfo.position;
+        tabletProperties.rotation = spawnInfo.rotation;
+    }
+
+    this.tabletEntityID = Entities.addEntity(tabletProperties);
 
     var WEB_ENTITY_REDUCTION_FACTOR = {x: 0.78, y: 0.85};
     var WEB_ENTITY_Z_OFFSET = -0.01;
-
-    var webEntityRotation = Quat.multiply(spawnInfo.rotation, Quat.angleAxis(180, Y_AXIS));
-    var webEntityPosition = Vec3.sum(spawnInfo.position, Vec3.multiply(WEB_ENTITY_Z_OFFSET, Quat.getFront(webEntityRotation)));
 
     this.webEntityID = Entities.addEntity({
         name: "web",
@@ -78,8 +81,8 @@ WebTablet = function (url, width, dpi) {
         dimensions: {x: WIDTH * WEB_ENTITY_REDUCTION_FACTOR.x,
                      y: HEIGHT * WEB_ENTITY_REDUCTION_FACTOR.y,
                      z: 0.1},
-        position: webEntityPosition,
-        rotation: webEntityRotation,
+        localPosition: { x: 0, y: 0, z: WEB_ENTITY_Z_OFFSET },
+        localRotation: Quat.angleAxis(180, Y_AXIS),
         shapeType: "box",
         dpi: DPI,
         parentID: this.tabletEntityID,
@@ -87,6 +90,10 @@ WebTablet = function (url, width, dpi) {
     });
 
     this.state = "idle";
+
+    this.getLocation = function() {
+        return Entities.getEntityProperties(_this.tabletEntityID, ["localPosition", "localRotation"]);
+    };
 };
 
 WebTablet.prototype.destroy = function () {
