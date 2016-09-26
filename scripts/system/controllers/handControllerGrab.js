@@ -1258,6 +1258,9 @@ function MyController(hand) {
         var grabbableProps = entityPropertiesCache.getGrabbableProps(entityID);
         var grabProps = entityPropertiesCache.getGrabProps(entityID);
         var props = entityPropertiesCache.getProps(entityID);
+        if (!props) {
+            return false;
+        }
         var physical = propsArePhysical(props);
         var grabbable = false;
         var debug = (WANT_DEBUG_SEARCH_NAME && props.name === WANT_DEBUG_SEARCH_NAME);
