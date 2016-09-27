@@ -151,7 +151,7 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
     } else {
 
         _contentType = qmlContent;
-        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "/qml/"));
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() /*+ "/qml/" */));
         _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) {
                 // context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
             });

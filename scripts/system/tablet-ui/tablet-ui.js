@@ -12,7 +12,7 @@
         tabletShown = true;
         print("show tablet-ui");
         // UIWebTablet = new WebTablet("controls/Keyboard.qml", null, null, tabletLocation);
-        UIWebTablet = new WebTablet("desktop/TabletUI.qml", null, null, tabletLocation);
+        UIWebTablet = new WebTablet("qml/desktop/TabletUI.qml", null, null, tabletLocation);
         // UserActivityLogger.openedTabletUI();
     }
 
