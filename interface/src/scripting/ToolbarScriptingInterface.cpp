@@ -79,7 +79,10 @@ class ToolbarProxy : public QmlWrapper {
     Q_OBJECT
 
 public:
-    ToolbarProxy(QObject* qmlObject, QObject* parent = nullptr) : QmlWrapper(qmlObject, parent) { }
+    ToolbarProxy(const QString& toolbarId, QObject* qmlObject, QObject* parent = nullptr) :
+        _toolbarID(toolbarId),
+        QmlWrapper(qmlObject, parent) {
+    }
 
     Q_INVOKABLE QObject* addButton(const QVariant& properties) {
         QVariant resultVar;
@@ -87,7 +90,8 @@ public:
         if (QThread::currentThread() != _qmlObject->thread()) {
             connectionType = Qt::BlockingQueuedConnection;
         }
-        bool invokeResult = QMetaObject::invokeMethod(_qmlObject, "addButton", connectionType, Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, properties));
+        bool invokeResult = QMetaObject::invokeMethod(_qmlObject, "addButton", connectionType,
+                                                      Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, properties));
         if (!invokeResult) {
             return nullptr;
         }
@@ -106,7 +110,7 @@ public:
         }
 
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
-        offscreenUi->setToolbarButton(objectName, properties);
+        offscreenUi->setToolbarButton(_toolbarID, objectName, properties);
 
         return new ToolbarButtonProxy(rawButton, this);
     }
@@ -114,10 +118,13 @@ public:
     Q_INVOKABLE void removeButton(const QVariant& name) {
         QMetaObject::invokeMethod(_qmlObject, "removeButton", Qt::AutoConnection, Q_ARG(QVariant, name));
     }
+
+protected:
+    QString _toolbarID;
 };
 
 
-QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
+QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarID) {
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto desktop = offscreenUi->getDesktop();
     Qt::ConnectionType connectionType = Qt::AutoConnection;
@@ -125,7 +132,8 @@ QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
         connectionType = Qt::BlockingQueuedConnection;
     }
     QVariant resultVar;
-    bool invokeResult = QMetaObject::invokeMethod(desktop, "getToolbar", connectionType, Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, toolbarId));
+    bool invokeResult = QMetaObject::invokeMethod(desktop, "getToolbar", connectionType,
+                                                  Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, toolbarID));
     if (!invokeResult) {
         return nullptr;
     }
@@ -135,7 +143,7 @@ QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
         return nullptr;
     }
 
-    return new ToolbarProxy(rawToolbar);
+    return new ToolbarProxy(toolbarID, rawToolbar);
 }
 
 #include "ToolbarScriptingInterface.moc"

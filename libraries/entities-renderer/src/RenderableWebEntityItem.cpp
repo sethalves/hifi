@@ -158,7 +158,8 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
             // QQuickItem* desktop = offscreenUi->getDesktop();
             // context->setContextProperty("desktop", desktop);
             auto offscreenUi = DependencyManager::get<OffscreenUi>();
-            context->setContextProperty("toolbarButtons", offscreenUi->getToolbarButtons());
+            context->setContextProperty("toolbarButtons",
+                                        offscreenUi->getToolbarButtons("com.highfidelity.interface.toolbar.system"));
         });
         _webSurface->resume();
 
