@@ -594,9 +594,6 @@ private:
     model::SkyboxPointer _defaultSkybox { new ProceduralSkybox() } ;
     gpu::TexturePointer _defaultSkyboxTexture;
     gpu::TexturePointer _defaultSkyboxAmbientTexture;
-
- public:
-    Q_INVOKABLE void setToolbarButton(QString objectName, QVariant properties);
 };
 
 

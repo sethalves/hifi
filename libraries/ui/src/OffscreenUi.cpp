@@ -663,5 +663,9 @@ unsigned int OffscreenUi::getMenuUserDataId() const {
     return _vrMenu->_userDataId;
 }
 
+void OffscreenUi::setToolbarButton(QString objectName, QVariant properties) {
+    _toolbarButtons[objectName] = properties;
+}
+
 #include "OffscreenUi.moc"
 

@@ -157,6 +157,11 @@ private:
     std::unordered_map<int, bool> _pressedKeys;
     VrMenu* _vrMenu { nullptr };
     QQueue<std::function<void(VrMenu*)>> _queuedMenuInitializers; 
+
+ public:
+    void setToolbarButton(QString objectName, QVariant properties);
+    QList<QVariant> getToolbarButtons() { return _toolbarButtons.values(); }
+    QHash<QString, QVariant> _toolbarButtons; // QHash<toolbar-name, QHash<button-name, properties>>
 };
 
 #endif

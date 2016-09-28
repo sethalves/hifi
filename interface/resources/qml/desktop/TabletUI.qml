@@ -6,7 +6,7 @@ Item {
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.margins: 40;
+    anchors.margins: 50;
 
     Grid {
         id: root
@@ -16,8 +16,8 @@ Item {
         columns: 4
         Component { id: toolbarButtonBuilder; ToolbarButton { } }
         Component.onCompleted: {
-            for (var i = 0; i < blah.length; i++) {
-                var result = toolbarButtonBuilder.createObject(root, blah[i]);
+            for (var i = 0; i < toolbarButtons.length; i++) {
+                var result = toolbarButtonBuilder.createObject(root, toolbarButtons[i]);
             }
         }
     }

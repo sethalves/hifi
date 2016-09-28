@@ -24,6 +24,7 @@
 #include <PathUtils.h>
 #include <TextureCache.h>
 #include <gpu/Context.h>
+#include <OffscreenUi.h>
 
 #include "EntityTreeRenderer.h"
 #include "EntitiesRendererLogging.h"
@@ -156,8 +157,8 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
             // auto offscreenUi = DependencyManager::get<OffscreenUi>();
             // QQuickItem* desktop = offscreenUi->getDesktop();
             // context->setContextProperty("desktop", desktop);
-
-                context->setContextProperty("blah", renderer->_toolbarButtons.values());
+            auto offscreenUi = DependencyManager::get<OffscreenUi>();
+            context->setContextProperty("toolbarButtons", offscreenUi->getToolbarButtons());
         });
         _webSurface->resume();
 

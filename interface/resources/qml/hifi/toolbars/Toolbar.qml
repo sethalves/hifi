@@ -83,15 +83,6 @@ Window {
         }
     }
 
-    function getButtonNames() {
-        var result = [];
-        for (var i in buttons) {
-            var child = buttons[i];
-            result.push(child.objectName);
-        }
-        return result;
-    }
-
     function findButtonIndex(name) {
         if (!name) {
             return -1;
