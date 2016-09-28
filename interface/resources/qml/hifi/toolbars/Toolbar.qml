@@ -83,6 +83,7 @@ Window {
         }
     }
 
+
     function findButtonIndex(name) {
         if (!name) {
             return -1;

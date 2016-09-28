@@ -107,9 +107,6 @@ public:
 
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->setToolbarButton(objectName, properties);
-        // QMetaObject::invokeMethod(qApp, "setToolbarButton", Qt::QueuedConnection,
-        //                           Q_ARG(QString, objectName),
-        //                           Q_ARG(QVariant, properties));
 
         return new ToolbarButtonProxy(rawButton, this);
     }

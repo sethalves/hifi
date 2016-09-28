@@ -38,7 +38,6 @@
         }
     }
 
-    
     Script.update.connect(updateShowTablet);
     // Script.setInterval(updateShowTablet, 1000);
 
