@@ -1198,3 +1198,8 @@ bool EntityTreeRenderer::LayeredZones::contains(const LayeredZones& other) {
     }
     return result;
 }
+
+
+void EntityTreeRenderer::setToolbarButton(QString objectName, QVariant properties) {
+    _toolbarButtons[objectName] = properties;
+}

@@ -5763,3 +5763,7 @@ void Application::updateThreadPoolCount() const {
     qCDebug(interfaceapp) << "Setting thread pool size to " << threadPoolSize;
     QThreadPool::globalInstance()->setMaxThreadCount(threadPoolSize);
 }
+
+void Application::setToolbarButton(QString objectName, QVariant properties) {
+    getEntities()->setToolbarButton(objectName, properties);
+}

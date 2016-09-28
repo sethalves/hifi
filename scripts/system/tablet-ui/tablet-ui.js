@@ -11,6 +11,10 @@
     function showTabletUI() {
         tabletShown = true;
         print("show tablet-ui");
+
+        // var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
+        // print("BUTTONS: ", Toolbars.getButtons());
+
         // UIWebTablet = new WebTablet("controls/Keyboard.qml", null, null, tabletLocation);
         UIWebTablet = new WebTablet("qml/desktop/TabletUI.qml", null, null, tabletLocation);
         // UserActivityLogger.openedTabletUI();

@@ -151,11 +151,16 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
     } else {
 
         _contentType = qmlContent;
-        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() /*+ "/qml/" */));
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath()));
         _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) {
-                // context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
-            });
+            // auto offscreenUi = DependencyManager::get<OffscreenUi>();
+            // QQuickItem* desktop = offscreenUi->getDesktop();
+            // context->setContextProperty("desktop", desktop);
+
+                context->setContextProperty("blah", renderer->_toolbarButtons.values());
+        });
         _webSurface->resume();
+
         _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
             _texture = textureId;
         });

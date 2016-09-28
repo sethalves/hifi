@@ -247,6 +247,10 @@ private:
     CalculateEntityLoadingPriority _calculateEntityLoadingPriorityFunc = [](const EntityItem& item) -> float {
         return 0.0f;
     };
+
+ public:
+    void setToolbarButton(QString objectName, QVariant properties);
+    QHash<QString, QVariant> _toolbarButtons; // QHash<toolbar-name, QHash<button-name, properties>>
 };
 
 

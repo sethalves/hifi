@@ -9,6 +9,8 @@
 #include "ToolbarScriptingInterface.h"
 
 #include <QtCore/QThread>
+#include <QUuid>
+#include <QApplication>
 
 #include <OffscreenUi.h>
 
@@ -95,6 +97,21 @@ public:
             return nullptr;
         }
 
+        QMap<QString, QVariant> propertiesMap = properties.toMap();
+        QString objectName;
+        if (propertiesMap.contains("objectName")) {
+            objectName = propertiesMap["objectName"].toString();
+        } else {
+            objectName = QUuid::createUuid().toString();
+        }
+
+        qDebug() << "HERE" << propertiesMap;
+
+        // qApp->setToolbarButton(objectName, properties);
+        QMetaObject::invokeMethod(qApp, "setToolbarButton", Qt::QueuedConnection,
+                                  Q_ARG(QString, objectName),
+                                  Q_ARG(QVariant, properties));
+
         return new ToolbarButtonProxy(rawButton, this);
     }
 
@@ -124,6 +141,5 @@ QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
 
     return new ToolbarProxy(rawToolbar);
 }
-
 
 #include "ToolbarScriptingInterface.moc"
