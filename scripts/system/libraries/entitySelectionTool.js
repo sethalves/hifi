@@ -1030,9 +1030,16 @@ SelectionDisplay = (function() {
                     var pickRay = controllerComputePickRay();
                     if (pickRay) {
                         var entityIntersection = Entities.findRayIntersection(pickRay, true);
+
+
                         var overlayIntersection = Overlays.findRayIntersection(pickRay);
                         if (entityIntersection.intersects &&
                             (!overlayIntersection.intersects || (entityIntersection.distance < overlayIntersection.distance))) {
+
+                            if (entityIntersection.properties.name == "WebTablet Web") {
+                                return;
+                            }
+
                             selectionManager.setSelections([entityIntersection.entityID]);
                         }
                     }

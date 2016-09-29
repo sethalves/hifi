@@ -49,7 +49,7 @@ WebTablet = function (url, width, dpi, location) {
     var _this = this;
 
     var tabletProperties = {
-        name: "tablet",
+        name: "WebTablet Tablet",
         type: "Model",
         modelURL: TABLET_URL,
         userData: JSON.stringify({
@@ -75,7 +75,7 @@ WebTablet = function (url, width, dpi, location) {
     var WEB_ENTITY_Z_OFFSET = -0.01;
 
     this.webEntityID = Entities.addEntity({
-        name: "web",
+        name: "WebTablet Web",
         type: "Web",
         sourceUrl: url,
         dimensions: {x: WIDTH * WEB_ENTITY_REDUCTION_FACTOR.x,

@@ -1545,7 +1545,7 @@ function MyController(hand) {
                 Entities.sendHoverOverEntity(entity, pointerEvent);
             }
 
-            if (this.triggerSmoothedGrab() && !isEditing()) {
+            if (this.triggerSmoothedGrab() && (!isEditing() || name == "WebTablet Web")) {
                 this.grabbedEntity = entity;
                 this.setState(STATE_ENTITY_TOUCHING, "begin touching entity '" + name + "'");
                 return;

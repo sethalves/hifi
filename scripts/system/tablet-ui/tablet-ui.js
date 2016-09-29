@@ -1,4 +1,16 @@
+"use strict";
 
+//
+//  tablet-ui.js
+//
+//  scripts/system/tablet-ui/
+//
+//  Created by Seth Alves 2016-9-29
+//  Copyright 2016 High Fidelity, Inc.
+//
+//  Distributed under the Apache License, Version 2.0.
+//  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
+//
 
 /* global Script, HMD, WebTablet, UIWebTablet */
 
