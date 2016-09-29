@@ -13,14 +13,25 @@
         print("show tablet-ui");
         // var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
         UIWebTablet = new WebTablet("qml/desktop/TabletUI.qml", null, null, tabletLocation);
-        var root = UIWebTablet.getRoot();
-        var buttons = Toolbars.getToolbarButtons("com.highfidelity.interface.toolbar.system");
-        print("HERE got buttons: ", buttons.length);
-        for (var i = 0; i < buttons.length; i++) {
-            print("HERE hooking up button: ", buttons[i].objectName);
-            Toolbars.hookUpButtonClone("com.highfidelity.interface.toolbar.system", root, buttons[i]);
+
+        var setUpTabletUI = function() {
+            var root = UIWebTablet.getRoot();
+            if (!root) {
+                print("HERE no root yet");
+                Script.setTimeout(setUpTabletUI, 100);
+                return;
+            }
+            print("HERE got root", root);
+            var buttons = Toolbars.getToolbarButtons("com.highfidelity.interface.toolbar.system");
+            print("HERE got buttons: ", buttons.length);
+            for (var i = 0; i < buttons.length; i++) {
+                print("HERE hooking up button: ", buttons[i].objectName);
+                Toolbars.hookUpButtonClone("com.highfidelity.interface.toolbar.system", root, buttons[i]);
+            }
+            // UserActivityLogger.openedTabletUI();
         }
-        // UserActivityLogger.openedTabletUI();
+
+        Script.setTimeout(setUpTabletUI, 100);
     }
 
     function hideTabletUI() {

@@ -92,7 +92,7 @@ WebTablet = function (url, width, dpi, location) {
     this.state = "idle";
 
     this.getRoot = function() {
-        Entities.getWebViewRoot(_this.webEntityID);
+        return Entities.getWebViewRoot(_this.webEntityID);
     }
 
     this.getLocation = function() {

@@ -404,6 +404,8 @@ QObject* RenderableWebEntityItem::getRootItem() {
     if (_webSurface) {
         return dynamic_cast<QObject*>(_webSurface->getRootItem());
     }
+
+    qDebug() << "HERE no _websurface";
     return nullptr;
 }
 

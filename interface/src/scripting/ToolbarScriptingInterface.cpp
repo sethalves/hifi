@@ -185,7 +185,6 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
         qDebug() << "HERE cast of root failed 0";
     }
 
-
     QMap<QString, QVariant> propertiesMap = properties.toMap();
     QString buttonName = propertiesMap["objectName"].toString();
 
@@ -207,9 +206,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
         return nullptr;
     }
 
-    qDebug() << "HERE creating clone button";
-    QVariant resultVar;
-    Qt::ConnectionType connectionType = Qt::AutoConnection;
+    // Qt::ConnectionType connectionType = Qt::AutoConnection;
     // if (QThread::currentThread() != root->thread()) {
     //     connectionType = Qt::BlockingQueuedConnection;
     // }
@@ -217,9 +214,19 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     QQuickItem* rootQ = dynamic_cast<QQuickItem*>(root);
     if (!rootQ) {
         qDebug() << "HERE cast of root failed 1";
+        return nullptr;
     }
 
-    bool invokeResult = QMetaObject::invokeMethod(root, "addCloneButton", connectionType,
+    QQuickItem *fuh = root->findChild<QQuickItem*>("tabletUIBase");
+    if (!fuh) {
+        qDebug() << "HERE didn't find tabletUIBase";
+        return nullptr;
+    }
+
+    qDebug() << "HERE calling addCloneButton on " << fuh->objectName();
+
+    QVariant resultVar;
+    bool invokeResult = QMetaObject::invokeMethod(fuh, "addCloneButton", Qt::BlockingQueuedConnection,
                                                   Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, properties));
     if (!invokeResult) {
         qDebug() << "HERE addCloneButton failed";
