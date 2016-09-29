@@ -14,11 +14,16 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         columns: 4
-        Component { id: toolbarButtonBuilder; ToolbarButton { } }
-        Component.onCompleted: {
-            for (var i = 0; i < toolbarButtons.length; i++) {
-                var result = toolbarButtonBuilder.createObject(root, toolbarButtons[i]);
-            }
+        // Component { id: toolbarButtonBuilder; ToolbarButton { } }
+        // Component.onCompleted: {
+        //     for (var i = 0; i < toolbarButtons.length; i++) {
+        //         var result = toolbarButtonBuilder.createObject(root, toolbarButtons[i]);
+        //     }
+        // }
+
+        function addCloneButton(properties) {
+            var result = toolbarButtonBuilder.createObject(root, properties);
+            return result;
         }
     }
 }

@@ -21,6 +21,7 @@
 #include "EntityTree.h"
 #include "LightEntityItem.h"
 #include "ModelEntityItem.h"
+#include "WebEntityItem.h"
 #include "QVariantGLM.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
@@ -1360,3 +1361,13 @@ void EntityScriptingInterface::setCostMultiplier(float value) {
     costMultiplier = value;
 }
 
+QObject* EntityScriptingInterface::getWebViewRoot(const QUuid& entityID) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Web)) {
+        auto webEntity = std::dynamic_pointer_cast<WebEntityItem>(entity);
+        QObject* root = webEntity->getRootItem();
+        qDebug() << "HERE getWebViewRoot root =" << ((void*) root);
+        return root;
+    } else {
+        return nullptr;
+    }
+}

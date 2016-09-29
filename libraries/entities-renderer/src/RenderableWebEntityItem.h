@@ -15,6 +15,7 @@
 #include <PointerEvent.h>
 
 #include <WebEntityItem.h>
+#include <gl/OffscreenQmlSurface.h>
 
 #include "RenderableEntityItem.h"
 
@@ -70,8 +71,10 @@ public:
 
     virtual bool isTransparent() override;
 
-public:
+ public:
     void synthesizeKeyPress(QString key);
+
+    QObject* getRootItem() override;
 
 private:
     bool buildWebSurface(EntityTreeRenderer* renderer);

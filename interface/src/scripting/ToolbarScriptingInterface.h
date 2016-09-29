@@ -21,6 +21,8 @@ class ToolbarScriptingInterface : public QObject, public Dependency {
     Q_OBJECT
 public:
     Q_INVOKABLE QObject* getToolbar(const QString& toolbarID);
+    Q_INVOKABLE QList<QVariant> getToolbarButtons(const QString& toolbarID);
+    Q_INVOKABLE QObject* hookUpButtonClone(const QString& toolbarID, QVariant rootVar, QVariant properties);
 };
 
 #endif // hifi_ToolbarScriptingInterface_h

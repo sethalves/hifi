@@ -18,7 +18,6 @@
 
 #include <GeometryCache.h>
 #include <PerfStat.h>
-#include <gl/OffscreenQmlSurface.h>
 #include <AbstractViewStateInterface.h>
 #include <GLMHelpers.h>
 #include <PathUtils.h>
@@ -400,6 +399,14 @@ bool RenderableWebEntityItem::isTransparent() {
     float fadeRatio = _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) : 1.0f;
     return fadeRatio < OPAQUE_ALPHA_THRESHOLD;
 }
+
+QObject* RenderableWebEntityItem::getRootItem() {
+    if (_webSurface) {
+        return dynamic_cast<QObject*>(_webSurface->getRootItem());
+    }
+    return nullptr;
+}
+
 
 // UTF-8 encoded symbols
 static const uint8_t UPWARDS_WHITE_ARROW_FROM_BAR[] = { 0xE2, 0x87, 0xAA, 0x00 }; // shift
