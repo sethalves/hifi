@@ -74,7 +74,9 @@ public:
         _name(name)
     {
         connect(qmlObject, SIGNAL(clicked()), this, SLOT(qmlClicked()));
-        bluh[name] = this;
+        if (!bluh.contains(name)) {
+            bluh[name] = this;
+        }
     }
 
 public slots:
@@ -141,7 +143,7 @@ public:
 
     Q_INVOKABLE QObject* findButton(const QVariant& name) {
         QVariant resultVar;
-        QMetaObject::invokeMethod(_qmlObject, "findButton", Qt::AutoConnection,
+        QMetaObject::invokeMethod(_qmlObject, "findButton", Qt::BlockingQueuedConnection,
                                   Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, name));
         return qvariant_cast<QObject *>(resultVar);
     }
@@ -190,59 +192,61 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
 
     QObject* toolbar = getToolbar(toolbarID);
     if (!toolbar) {
-        qDebug() << "can't find toolbar with ID:" << toolbarID;
+        qDebug() << "HERE can't find toolbar with ID:" << toolbarID;
         return nullptr;
     }
 
-    // QObject* button = toolbar->findButton(buttonName);
-    // if (!button) {
-    //     qDebug() << "can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
+    ToolbarProxy* toolbarProxy = dynamic_cast<ToolbarProxy*>(toolbar);
+    if (!toolbarProxy) {
+        qDebug() << "HERE cast of toolbar failed." << toolbar;
+        return nullptr;
+    }
+
+    // QObject* originalButton = toolbarProxy->findButton(buttonName);
+    // if (!originalButton) {
+    //     qDebug() << "can't find button named:" << buttonName << "in toolbar with ID:" << toolbarID;
     //     return nullptr;
     // }
+    // ToolbarButtonProxy* originalButtonProxy = new ToolbarButtonProxy(buttonName, originalButton, nullptr);
 
-    QObject* button = bluh[buttonName];
-    if (!button) {
+    QObject* originalButtonProxy = bluh[buttonName];
+    if (!originalButtonProxy) {
         qDebug() << "can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
         return nullptr;
     }
-
-    // Qt::ConnectionType connectionType = Qt::AutoConnection;
-    // if (QThread::currentThread() != root->thread()) {
-    //     connectionType = Qt::BlockingQueuedConnection;
-    // }
-
+    
     QQuickItem* rootQ = dynamic_cast<QQuickItem*>(root);
     if (!rootQ) {
         qDebug() << "HERE cast of root failed 1";
         return nullptr;
     }
 
-    QQuickItem *fuh = root->findChild<QQuickItem*>("tabletUIBase");
-    if (!fuh) {
+    QQuickItem *tabletUIBase = root->findChild<QQuickItem*>("tabletUIBase");
+    if (!tabletUIBase) {
         qDebug() << "HERE didn't find tabletUIBase";
         return nullptr;
     }
 
-    qDebug() << "HERE calling addCloneButton on " << fuh->objectName();
+    qDebug() << "HERE calling addCloneButton on " << tabletUIBase->objectName();
 
     QVariant resultVar;
-    bool invokeResult = QMetaObject::invokeMethod(fuh, "addCloneButton", Qt::BlockingQueuedConnection,
+    bool invokeResult = QMetaObject::invokeMethod(tabletUIBase, "addCloneButton", Qt::BlockingQueuedConnection,
                                                   Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, properties));
     if (!invokeResult) {
         qDebug() << "HERE addCloneButton failed";
         return nullptr;
     }
 
-    QObject* rawButton = qvariant_cast<QObject *>(resultVar);
-    if (!rawButton) {
+    QObject* cloneButton = qvariant_cast<QObject *>(resultVar);
+    if (!cloneButton) {
         qDebug() << "HERE didn't get raw button" << resultVar;
         return nullptr;
     }
 
     qDebug() << "HERE c++ hooking up button: " << buttonName;
-    connect(rawButton, SIGNAL(clicked()), button, SLOT(qmlClicked()));
+    connect(cloneButton, SIGNAL(clicked()), originalButtonProxy, SLOT(qmlClicked()));
 
-    return new ToolbarButtonProxy(buttonName, rawButton, root);
+    return new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
 }
 
 
