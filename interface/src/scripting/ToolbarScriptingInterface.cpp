@@ -99,8 +99,8 @@ class ToolbarProxy : public QmlWrapper {
 
 public:
     ToolbarProxy(const QString& toolbarId, QObject* qmlObject, QObject* parent = nullptr) :
-        _toolbarID(toolbarId),
-        QmlWrapper(qmlObject, parent) {
+        QmlWrapper(qmlObject, parent),
+        _toolbarID(toolbarId) {
     }
 
     Q_INVOKABLE QObject* addButton(const QVariant& properties) {
@@ -181,6 +181,11 @@ QList<QVariant> ToolbarScriptingInterface::getToolbarButtons(const QString& tool
 
 QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, QVariant rootVar, QVariant properties) {
     QObject* root = qvariant_cast<QObject *>(rootVar);
+    if (!root) {
+        qDebug() << "HERE cast of root failed 0";
+    }
+
+
     QMap<QString, QVariant> propertiesMap = properties.toMap();
     QString buttonName = propertiesMap["objectName"].toString();
 
@@ -211,7 +216,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
 
     QQuickItem* rootQ = dynamic_cast<QQuickItem*>(root);
     if (!rootQ) {
-        qDebug() << "HERE cast of root failed";
+        qDebug() << "HERE cast of root failed 1";
     }
 
     bool invokeResult = QMetaObject::invokeMethod(root, "addCloneButton", connectionType,
