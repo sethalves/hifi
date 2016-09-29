@@ -131,8 +131,8 @@ public:
             propertiesMap["objectName"] = QVariant(objectName);
         }
 
-        auto offscreenUi = DependencyManager::get<OffscreenUi>();
-        offscreenUi->setToolbarButton(_toolbarID, objectName, propertiesMap);
+        auto toolbarScriptingInterface = DependencyManager::get<ToolbarScriptingInterface>();
+        toolbarScriptingInterface->setToolbarButton(_toolbarID, objectName, propertiesMap);
         
         return new ToolbarButtonProxy(objectName, rawButton, this);
     }
@@ -174,11 +174,6 @@ QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarID) {
     }
 
     return new ToolbarProxy(toolbarID, rawToolbar);
-}
-
-QList<QVariant> ToolbarScriptingInterface::getToolbarButtons(const QString& toolbarID) {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    return offscreenUi->getToolbarButtons(toolbarID);
 }
 
 QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, QVariant rootVar, QVariant properties) {
@@ -247,6 +242,15 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     connect(cloneButton, SIGNAL(clicked()), originalButtonProxy, SLOT(qmlClicked()));
 
     return new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
+}
+
+
+void ToolbarScriptingInterface::setToolbarButton(QString toolbarID, QString objectName, QVariant properties) {
+    _toolbarButtons[toolbarID][objectName] = properties;
+}
+
+QList<QVariant> ToolbarScriptingInterface::getToolbarButtons(QString toolbarID) {
+    return _toolbarButtons[toolbarID].values();
 }
 
 

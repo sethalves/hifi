@@ -23,7 +23,6 @@
 #include <PathUtils.h>
 #include <TextureCache.h>
 #include <gpu/Context.h>
-#include <OffscreenUi.h>
 
 #include "EntityTreeRenderer.h"
 #include "EntitiesRendererLogging.h"

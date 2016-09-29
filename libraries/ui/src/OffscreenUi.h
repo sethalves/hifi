@@ -146,9 +146,6 @@ public:
 
     unsigned int getMenuUserDataId() const;
 
-    void setToolbarButton(QString toolbarID, QString objectName, QVariant properties);
-    QList<QVariant> getToolbarButtons(QString toolbarID);
-
 signals:
     void showDesktop();
 
@@ -160,8 +157,6 @@ private:
     std::unordered_map<int, bool> _pressedKeys;
     VrMenu* _vrMenu { nullptr };
     QQueue<std::function<void(VrMenu*)>> _queuedMenuInitializers; 
-
-    QHash<QString, QHash<QString, QVariant>> _toolbarButtons; // QHash<toolbar-name, QHash<button-name, properties>>
 };
 
 #endif
