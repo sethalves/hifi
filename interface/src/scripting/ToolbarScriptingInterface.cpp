@@ -62,8 +62,6 @@ protected:
 };
 
 
-QHash<QString, QObject*> bluh;
-
 class ToolbarButtonProxy : public QmlWrapper {
     Q_OBJECT
 
@@ -73,9 +71,6 @@ public:
         _name(name)
     {
         connect(qmlObject, SIGNAL(clicked()), this, SLOT(qmlClicked()));
-        if (!bluh.contains(name)) {
-            bluh[name] = this;
-        }
     }
 
 public slots:
@@ -131,9 +126,12 @@ public:
         }
 
         auto toolbarScriptingInterface = DependencyManager::get<ToolbarScriptingInterface>();
+        ToolbarButtonProxy* result = new ToolbarButtonProxy(objectName, rawButton, this);
+
         toolbarScriptingInterface->setToolbarButton(_toolbarID, objectName, propertiesMap);
-        
-        return new ToolbarButtonProxy(objectName, rawButton, this);
+        toolbarScriptingInterface->rememberButtonProxy(_toolbarID, objectName, result);
+
+        return result;
     }
 
     Q_INVOKABLE void removeButton(const QVariant& name) {
@@ -203,7 +201,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     // }
     // ToolbarButtonProxy* originalButtonProxy = new ToolbarButtonProxy(buttonName, originalButton, nullptr);
 
-    QObject* originalButtonProxy = bluh[buttonName];
+    ToolbarButtonProxy* originalButtonProxy = getButtonProxy(toolbarID, buttonName);
     if (!originalButtonProxy) {
         qDebug() << "can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
         return nullptr;
@@ -245,12 +243,33 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
 
 
 void ToolbarScriptingInterface::setToolbarButton(QString toolbarID, QString objectName, QVariant properties) {
-    _toolbarButtons[toolbarID][objectName] = properties;
+    _buttonsLock.withWriteLock([&] {
+        _toolbarButtons[toolbarID][objectName] = properties;
+    });
 }
 
 QList<QVariant> ToolbarScriptingInterface::getToolbarButtons(QString toolbarID) {
-    return _toolbarButtons[toolbarID].values();
+    QList<QVariant> result;
+    _buttonsLock.withReadLock([&] {
+        result = _toolbarButtons[toolbarID].values();
+    });
+    return result;
 }
 
+void ToolbarScriptingInterface::rememberButtonProxy(QString toolbarID, QString buttonName, ToolbarButtonProxy* proxy) {
+    _buttonsLock.withWriteLock([&] {
+        if (!_toolbarButtonProxies.contains(buttonName)) {
+            _toolbarButtonProxies[toolbarID][buttonName] = proxy;
+        }
+    });
+}
+
+ToolbarButtonProxy* ToolbarScriptingInterface::getButtonProxy(QString toolbarID, QString buttonName) {
+    ToolbarButtonProxy* result = nullptr;
+    _buttonsLock.withReadLock([&] {
+        result = _toolbarButtonProxies[toolbarID][buttonName];
+    });
+    return result;
+}
 
 #include "ToolbarScriptingInterface.moc"

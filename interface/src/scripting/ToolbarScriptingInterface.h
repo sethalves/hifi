@@ -14,7 +14,10 @@
 #include <QtCore/QObject>
 
 #include <DependencyManager.h>
+#include "shared/ReadWriteLockable.h"
 
+
+class ToolbarButtonProxy;
 class ToolbarProxy;
 
 class ToolbarScriptingInterface : public QObject, public Dependency {
@@ -26,8 +29,15 @@ public:
     void setToolbarButton(QString toolbarID, QString objectName, QVariant properties);
     Q_INVOKABLE QList<QVariant> getToolbarButtons(QString toolbarID);
 
+    void rememberButtonProxy(QString toolbarID, QString buttonName, ToolbarButtonProxy* proxy);
+    ToolbarButtonProxy* getButtonProxy(QString toolbarID, QString buttonName);
+
 protected:
-    QHash<QString, QHash<QString, QVariant>> _toolbarButtons; // QHash<toolbar-name, QHash<button-name, properties>>
+    // QHash<toolbar-name, QHash<button-name, properties>>
+    QHash<QString, QHash<QString, QVariant>> _toolbarButtons;
+    // QHash<toolbar-name, QHash<button-name, proxy>>
+    QHash<QString, QHash<QString, ToolbarButtonProxy*>> _toolbarButtonProxies;
+    mutable ReadWriteLockable _buttonsLock;
 };
 
 #endif // hifi_ToolbarScriptingInterface_h
