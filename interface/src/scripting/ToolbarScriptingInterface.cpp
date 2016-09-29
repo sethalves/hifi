@@ -10,7 +10,6 @@
 
 #include <QtCore/QThread>
 #include <QUuid>
-#include <QApplication>
 
 #include <OffscreenUi.h>
 

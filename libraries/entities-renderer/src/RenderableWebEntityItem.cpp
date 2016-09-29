@@ -151,14 +151,7 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
 
         _contentType = qmlContent;
         _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath()));
-        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) {
-            // auto offscreenUi = DependencyManager::get<OffscreenUi>();
-            // QQuickItem* desktop = offscreenUi->getDesktop();
-            // context->setContextProperty("desktop", desktop);
-            // auto offscreenUi = DependencyManager::get<OffscreenUi>();
-            // context->setContextProperty("toolbarButtons",
-            //                             offscreenUi->getToolbarButtons("com.highfidelity.interface.toolbar.system"));
-        });
+        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) { });
         _webSurface->resume();
 
         _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {

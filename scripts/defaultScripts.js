@@ -31,7 +31,8 @@ var DEFAULT_SCRIPTS = [
     "system/controllers/toggleAdvancedMovementForHandControllers.js",
     "system/dialTone.js",
     "system/firstPersonHMD.js",
-    "system/snapshot.js"
+    "system/snapshot.js",
+    "system/tablet-ui/tablet-ui.js"
 ];
 
 // add a menu item for debugging
