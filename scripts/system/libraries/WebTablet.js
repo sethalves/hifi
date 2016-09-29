@@ -74,20 +74,27 @@ WebTablet = function (url, width, dpi, location) {
     var WEB_ENTITY_REDUCTION_FACTOR = {x: 0.78, y: 0.85};
     var WEB_ENTITY_Z_OFFSET = -0.01;
 
-    this.webEntityID = Entities.addEntity({
-        name: "WebTablet Web",
-        type: "Web",
-        sourceUrl: url,
-        dimensions: {x: WIDTH * WEB_ENTITY_REDUCTION_FACTOR.x,
-                     y: HEIGHT * WEB_ENTITY_REDUCTION_FACTOR.y,
-                     z: 0.1},
-        localPosition: { x: 0, y: 0, z: WEB_ENTITY_Z_OFFSET },
-        localRotation: Quat.angleAxis(180, Y_AXIS),
-        shapeType: "box",
-        dpi: DPI,
-        parentID: this.tabletEntityID,
-        parentJointIndex: -1
-    });
+    this.createWebEntity = function(url) {
+        if (_this.webEntityID) {
+            Entities.deleteEntity(_this.webEntityID);
+        }
+        _this.webEntityID = Entities.addEntity({
+            name: "WebTablet Web",
+            type: "Web",
+            sourceUrl: url,
+            dimensions: {x: WIDTH * WEB_ENTITY_REDUCTION_FACTOR.x,
+                         y: HEIGHT * WEB_ENTITY_REDUCTION_FACTOR.y,
+                         z: 0.1},
+            localPosition: { x: 0, y: 0, z: WEB_ENTITY_Z_OFFSET },
+            localRotation: Quat.angleAxis(180, Y_AXIS),
+            shapeType: "box",
+            dpi: DPI,
+            parentID: _this.tabletEntityID,
+            parentJointIndex: -1
+        });
+    }
+
+    this.createWebEntity(url);
 
     this.state = "idle";
 

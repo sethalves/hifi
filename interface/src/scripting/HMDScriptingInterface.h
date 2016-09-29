@@ -14,6 +14,7 @@
 
 #include <atomic>
 
+#include <QUuid>
 #include <QtScript/QScriptValue>
 class QScriptContext;
 class QScriptEngine;
@@ -29,6 +30,7 @@ class HMDScriptingInterface : public AbstractHMDScriptingInterface, public Depen
     Q_PROPERTY(glm::quat orientation READ getOrientation)
     Q_PROPERTY(bool mounted READ isMounted)
     Q_PROPERTY(bool showTablet READ getShouldShowTablet)
+    Q_PROPERTY(QUuid tabletID READ getCurrentTableUIID WRITE setCurrentTabletUIID)
 
 public:
     Q_INVOKABLE glm::vec3 calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction) const;
@@ -69,8 +71,13 @@ public:
     void toggleShouldShowTablet() { _showTablet = !_showTablet; }
     bool getShouldShowTablet() const { return _showTablet; }
 
+    void setCurrentTabletUIID(QUuid tabletID) { _tabletUIID = tabletID; }
+    QUuid getCurrentTableUIID() { return _tabletUIID; }
+
+    
 private:
     bool _showTablet { false };
+    QUuid _tabletUIID; // this is the entityID of the WebEntity which is part of (a child of) the tablet-ui.
 
     // Get the position of the HMD
     glm::vec3 getPosition() const;

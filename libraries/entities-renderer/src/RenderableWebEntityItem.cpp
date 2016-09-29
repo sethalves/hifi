@@ -106,7 +106,6 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
     }
     qDebug() << "Building web surface";
 
-    QString javaScriptToInject;
     QFile webChannelFile(":qtwebchannel/qwebchannel.js");
     QFile createGlobalEventBridgeFile(PathUtils::resourcesPath() + "/html/createGlobalEventBridge.js");
     if (webChannelFile.open(QFile::ReadOnly | QFile::Text) &&
@@ -115,7 +114,7 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
         QString createGlobalEventBridgeStr = QTextStream(&createGlobalEventBridgeFile).readAll();
 
         // concatenate these js files
-        javaScriptToInject = webChannelStr + createGlobalEventBridgeStr;
+        _javaScriptToInject = webChannelStr + createGlobalEventBridgeStr;
     } else {
         qCWarning(entitiesrenderer) << "unable to find qwebchannel.js or createGlobalEventBridge.js";
     }
@@ -127,39 +126,14 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
     _webSurface = new OffscreenQmlSurface();
     _webSurface->create(currentContext);
 
-    QUrl sourceUrl(_sourceUrl);
-    if (sourceUrl.scheme() == "http" || sourceUrl.scheme() == "https" ||
-        _sourceUrl.toLower().endsWith(".htm") || _sourceUrl.toLower().endsWith(".html")) {
+    loadSourceURL();
 
-        _contentType = htmlContent;
-        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "/qml/controls/"));
-        _webSurface->load("WebView.qml", [&](QQmlContext* context, QObject* obj) {
-                context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
-            });
-        _webSurface->resume();
-        _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
-        _webSurface->getRootItem()->setProperty("url", _sourceUrl);
-        _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
-        _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
-        _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
-            _texture = textureId;
-        });
-        // Restore the original GL context
-        currentContext->makeCurrent(currentSurface);
-
-    } else {
-
-        _contentType = qmlContent;
-        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath()));
-        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) { });
-        _webSurface->resume();
-
-        _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
-            _texture = textureId;
-        });
-        // Restore the original GL context
-        currentContext->makeCurrent(currentSurface);
-    }
+    _webSurface->resume();
+    _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
+        _texture = textureId;
+    });
+    // Restore the original GL context
+    currentContext->makeCurrent(currentSurface);
 
     auto forwardPointerEvent = [=](const EntityItemID& entityItemID, const PointerEvent& event) {
         if (entityItemID == getID()) {
@@ -261,12 +235,46 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
     DependencyManager::get<GeometryCache>()->renderQuad(batch, topLeft, bottomRight, texMin, texMax, glm::vec4(1.0f, 1.0f, 1.0f, fadeRatio));
 }
 
+void RenderableWebEntityItem::loadSourceURL() {
+    QUrl sourceUrl(_sourceUrl);
+    if (sourceUrl.scheme() == "http" || sourceUrl.scheme() == "https" ||
+        _sourceUrl.toLower().endsWith(".htm") || _sourceUrl.toLower().endsWith(".html")) {
+
+        qDebug() << "HERE RenderableWebEntityItem::loadSourceURL http -- " << _sourceUrl;
+
+        _contentType = htmlContent;
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath() + "qml/controls/"));
+
+        QString fuh = QUrl::fromLocalFile(PathUtils::resourcesPath()).toString() + "qml/controls/" + "WebView.qml";
+        qDebug() << "HERE full name is " << fuh;
+            
+        _webSurface->load("WebView.qml", [&](QQmlContext* context, QObject* obj) {
+            context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(_javaScriptToInject));
+        });
+        _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
+        _webSurface->getRootItem()->setProperty("url", _sourceUrl);
+        _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
+        _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
+
+    } else {
+        qDebug() << "HERE RenderableWebEntityItem::loadSourceURL qml -- " << _sourceUrl;
+
+        _contentType = qmlContent;
+        _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath()));
+        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) { });
+    }
+}
+
+
 void RenderableWebEntityItem::setSourceUrl(const QString& value) {
     if (_sourceUrl != value) {
         qDebug() << "Setting web entity source URL to " << value;
         _sourceUrl = value;
         if (_webSurface) {
+            qDebug() << "HERE RenderableWebEntityItem::setSourceUrl has _webSurface";
             AbstractViewStateInterface::instance()->postLambdaEvent([this] {
+                    qDebug() << "HERE RenderableWebEntityItem::setSourceUrl in lambda";
+                loadSourceURL();
                 if (_contentType == htmlContent) {
                     _webSurface->getRootItem()->setProperty("url", _sourceUrl);
                 }

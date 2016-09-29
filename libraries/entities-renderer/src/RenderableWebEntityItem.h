@@ -52,6 +52,7 @@ public:
     ~RenderableWebEntityItem();
 
     virtual void render(RenderArgs* args) override;
+    void loadSourceURL();
     virtual void setSourceUrl(const QString& value) override;
 
     virtual bool wantsHandControllerPointerEvents() const override { return true; }
@@ -95,6 +96,8 @@ private:
     QMetaObject::Connection _mouseReleaseConnection;
     QMetaObject::Connection _mouseMoveConnection;
     QMetaObject::Connection _hoverLeaveConnection;
+
+    QString _javaScriptToInject;
 
     enum contentType {
         htmlContent,
