@@ -25,7 +25,6 @@
         print("show tablet-ui");
         // var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
         UIWebTablet = new WebTablet("qml/desktop/TabletUI.qml", null, null, tabletLocation);
-
         HMD.tabletID = UIWebTablet.webEntityID;
 
         var setUpTabletUI = function() {

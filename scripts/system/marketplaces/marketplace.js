@@ -42,8 +42,8 @@ function showMarketplace(marketplaceID) {
         print("HERE shouldShowWebTablet");
         if (HMD.tabletID) {
             print("HERE shouldShowWebTablet tabletID is ", HMD.tabletID);
-            // Entities.editEntity(HMD.tabletID, { sourceUrl: "https://metaverse.highfidelity.com/marketplace" });
             UIWebTablet.createWebEntity("https://metaverse.highfidelity.com/marketplace");
+            HMD.tabletID = UIWebTablet.webEntityID;
         } else {
             print("HERE shouldShowWebTablet making new tablet");
             marketplaceWebTablet = new WebTablet("https://metaverse.highfidelity.com/marketplace");

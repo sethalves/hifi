@@ -167,7 +167,7 @@ function toggleMarketplace() {
 var TOOLS_PATH = Script.resolvePath("assets/images/tools/");
 
 var toolBar = (function () {
-    var EDIT_SETTING = "io.highfidelity.isEditting"; // for communication with other scripts
+    var EDIT_SETTING = "io.highfidelity.isEditing"; // for communication with other scripts
     var that = {},
         toolBar,
         systemToolbar,
