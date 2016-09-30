@@ -60,6 +60,10 @@ void ApplicationOverlay::renderOverlay(RenderArgs* renderArgs) {
     PerformanceWarning warn(Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings), "ApplicationOverlay::displayOverlay()");
 
     buildFramebufferObject();
+
+    // if (qApp->isHMDMode()) {
+    //     return;
+    // }
     
     if (!_overlayFramebuffer) {
         return; // we can't do anything without our frame buffer.

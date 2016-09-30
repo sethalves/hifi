@@ -30,7 +30,7 @@ public:
     Q_INVOKABLE QList<QVariant> getToolbarButtons(QString toolbarID);
 
     void rememberButtonProxy(QString toolbarID, QString buttonName, ToolbarButtonProxy* proxy);
-    ToolbarButtonProxy* getButtonProxy(QString toolbarID, QString buttonName);
+    Q_INVOKABLE QObject* getButtonProxy(QString toolbarID, QString buttonName);
 
 protected:
     // QHash<toolbar-name, QHash<button-name, properties>>

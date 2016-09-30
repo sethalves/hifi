@@ -4316,6 +4316,11 @@ public:
     typedef Payload::DataPointer Pointer;
 
     static render::ItemID _item; // unique WorldBoxRenderData
+
+	~BackgroundRenderData() {
+		// THat should be just this unique _item
+		_item = render::Item::INVALID_ITEM_ID;
+	}
 };
 
 render::ItemID BackgroundRenderData::_item = 0;

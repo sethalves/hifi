@@ -457,20 +457,32 @@ var toolBar = (function () {
             entityListTool.setVisible(false);
             gridTool.setVisible(false);
             grid.setEnabled(false);
-            propertiesTool.setVisible(false);
+            if (UIWebTablet) {
+                // propertiesTool.setVisible(false);
+            } else {
+                propertiesTool.setVisible(false);
+            }
             selectionManager.clearSelections();
             cameraManager.disable();
             selectionDisplay.triggerMapping.disable();
         } else {
             UserActivityLogger.enabledEdit();
-            entityListTool.setVisible(true);
-            gridTool.setVisible(true);
-            grid.setEnabled(true);
-            propertiesTool.setVisible(true);
+            if (UIWebTablet) {
+                UIWebTablet.createWebEntity(ENTITY_PROPERTIES_URL);
+                UIWebTablet.onClose = function() {
+                    var editButton = Toolbars.getButtonProxy("com.highfidelity.interface.toolbar.system",
+                                                             "com.highfidelity.interface.system.editButton");
+                    editButton.clicked();
+                    // that.setActive(false);
+                }
+                HMD.tabletID = UIWebTablet.webEntityID;
+            } else {
+                entityListTool.setVisible(true);
+                gridTool.setVisible(true);
+                grid.setEnabled(true);
+                propertiesTool.setVisible(true);
+            }
             selectionDisplay.triggerMapping.enable();
-            // Not sure what the following was meant to accomplish, but it currently causes
-            // everybody else to think that Interface has lost focus overall. fogbugzid:558
-            // Window.setFocus();
         }
         // Sets visibility of tool buttons, excluding the power button
         toolBar.writeProperty("shown", active);
@@ -1332,19 +1344,23 @@ var ENTITY_PROPERTIES_URL = Script.resolvePath('html/entityProperties.html');
 var PropertiesTool = function (opts) {
     var that = {};
 
-    var webView = new OverlayWebWindow({
-        title: 'Entity Properties',
-        source: ENTITY_PROPERTIES_URL,
-        toolWindow: true
-    });
+    var webView;
+    // var webView = new OverlayWebWindow({
+    //     title: 'Entity Properties',
+    //     source: ENTITY_PROPERTIES_URL,
+    //     toolWindow: true
+    // });
 
     var visible = false;
 
-    webView.setVisible(visible);
+    // webView.setVisible(visible);
 
     that.setVisible = function (newVisible) {
         visible = newVisible;
-        webView.setVisible(visible);
+        // webView.setVisible(visible);
+        UIWebTablet.createWebEntity(ENTITY_PROPERTIES_URL);
+        HMD.tabletID = UIWebTablet.webEntityID;
+        webView = UIWebTablet.getRoot();
     };
 
     selectionManager.addEventListener(function () {

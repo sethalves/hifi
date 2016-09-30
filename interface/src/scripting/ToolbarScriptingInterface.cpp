@@ -13,26 +13,46 @@
 
 #include <OffscreenUi.h>
 
-class QmlWrapper : public QObject {
+class QmlWrapper : public QObject /*, public std::enable_shared_from_this<QmlWrapper>*/ {
     Q_OBJECT
 public:
     QmlWrapper(QObject* qmlObject, QObject* parent = nullptr)
         : QObject(parent), _qmlObject(qmlObject) {
     }
 
+    ~QmlWrapper() {
+        if (_original) {
+            _original->removeClone(this);
+        }
+    }
+
     Q_INVOKABLE void writeProperty(QString propertyName, QVariant propertyValue) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
+        QVector<QmlWrapper*> clones;
+        _clonesLock.withReadLock([&] {
+            clones = _clones;
+        });
         offscreenUi->executeOnUiThread([=] {
             _qmlObject->setProperty(propertyName.toStdString().c_str(), propertyValue);
+            foreach (QmlWrapper* clone, clones) {
+                clone->writeProperty(propertyName, propertyValue);
+            }
         });
     }
 
     Q_INVOKABLE void writeProperties(QVariant propertyMap) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
+        QVector<QmlWrapper*> clones;
+        _clonesLock.withReadLock([&] {
+            clones = _clones;
+        });
         offscreenUi->executeOnUiThread([=] {
             QVariantMap map = propertyMap.toMap();
             for (const QString& key : map.keys()) {
                 _qmlObject->setProperty(key.toStdString().c_str(), map[key]);
+                foreach (QmlWrapper* clone, clones) {
+                    clone->_qmlObject->setProperty(key.toStdString().c_str(), map[key]);
+                }
             }
         });
     }
@@ -56,9 +76,29 @@ public:
         });
     }
 
+    void addClone(QObject* clone) {
+        _clonesLock.withWriteLock([&] {
+            _clones.append(dynamic_cast<QmlWrapper*>(clone));
+        });
+    }
+
+    void removeClone(QObject *clone) {
+        _clonesLock.withWriteLock([&] {
+            _clones.removeAll(dynamic_cast<QmlWrapper*>(clone));
+        });
+    }
+
+    void setOriginal(QObject* original) {
+        _original = dynamic_cast<QmlWrapper*>(original);
+    }
 
 protected:
     QObject* _qmlObject{ nullptr };
+
+    QVector<QmlWrapper*> _clones;
+    mutable ReadWriteLockable _clonesLock;
+
+    QmlWrapper* _original { nullptr };
 };
 
 
@@ -201,7 +241,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     // }
     // ToolbarButtonProxy* originalButtonProxy = new ToolbarButtonProxy(buttonName, originalButton, nullptr);
 
-    ToolbarButtonProxy* originalButtonProxy = getButtonProxy(toolbarID, buttonName);
+    ToolbarButtonProxy* originalButtonProxy = dynamic_cast<ToolbarButtonProxy*>(getButtonProxy(toolbarID, buttonName));
     if (!originalButtonProxy) {
         qDebug() << "can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
         return nullptr;
@@ -236,9 +276,13 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     }
 
     qDebug() << "HERE c++ hooking up button: " << buttonName;
+    // connect the clone to the original button, because that's where the callback payload is connected
     connect(cloneButton, SIGNAL(clicked()), originalButtonProxy, SLOT(qmlClicked()));
 
-    return new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
+    QObject* cloneButtonProxy = new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
+    originalButtonProxy->addClone(cloneButtonProxy);
+
+    return cloneButtonProxy;
 }
 
 
@@ -264,7 +308,7 @@ void ToolbarScriptingInterface::rememberButtonProxy(QString toolbarID, QString b
     });
 }
 
-ToolbarButtonProxy* ToolbarScriptingInterface::getButtonProxy(QString toolbarID, QString buttonName) {
+QObject* ToolbarScriptingInterface::getButtonProxy(QString toolbarID, QString buttonName) {
     ToolbarButtonProxy* result = nullptr;
     _buttonsLock.withReadLock([&] {
         result = _toolbarButtonProxies[toolbarID][buttonName];

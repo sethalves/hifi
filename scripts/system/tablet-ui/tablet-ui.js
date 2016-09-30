@@ -51,6 +51,10 @@
         tabletShown = false;
         print("hide tablet-ui");
         if (UIWebTablet) {
+            if (UIWebTablet.onClose) {
+                UIWebTablet.onClose();
+            }
+
             tabletLocation = UIWebTablet.getLocation();
             UIWebTablet.destroy();
             UIWebTablet = null;
