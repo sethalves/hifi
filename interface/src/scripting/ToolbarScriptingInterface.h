@@ -25,6 +25,7 @@ class ToolbarScriptingInterface : public QObject, public Dependency {
 public:
     Q_INVOKABLE QObject* getToolbar(const QString& toolbarID);
     Q_INVOKABLE QObject* hookUpButtonClone(const QString& toolbarID, QVariant rootVar, QVariant properties);
+    Q_INVOKABLE void destroyButtonClones(const QString& toolbarID);
 
     void setToolbarButton(QString toolbarID, QString objectName, QVariant properties);
     Q_INVOKABLE QList<QVariant> getToolbarButtons(QString toolbarID);
@@ -38,6 +39,8 @@ protected:
     // QHash<toolbar-name, QHash<button-name, proxy>>
     QHash<QString, QHash<QString, ToolbarButtonProxy*>> _toolbarButtonProxies;
     mutable ReadWriteLockable _buttonsLock;
+
+    QHash<QString, ToolbarProxy*> _toolbarProxies;
 };
 
 #endif // hifi_ToolbarScriptingInterface_h

@@ -13,18 +13,19 @@
 
 #include <OffscreenUi.h>
 
-class QmlWrapper : public QObject /*, public std::enable_shared_from_this<QmlWrapper>*/ {
+class QmlWrapper : public QObject {
     Q_OBJECT
 public:
     QmlWrapper(QObject* qmlObject, QObject* parent = nullptr)
         : QObject(parent), _qmlObject(qmlObject) {
     }
 
-    ~QmlWrapper() {
-        if (_original) {
-            _original->removeClone(this);
-        }
-    }
+    // virtual ~QmlWrapper() {
+    //     qDebug() << "OKOKOK" << "destroy" << (void*)this;
+    //     if (_original) {
+    //         _original->removeClone(this);
+    //     }
+    // }
 
     Q_INVOKABLE void writeProperty(QString propertyName, QVariant propertyValue) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -35,7 +36,8 @@ public:
         offscreenUi->executeOnUiThread([=] {
             _qmlObject->setProperty(propertyName.toStdString().c_str(), propertyValue);
             foreach (QmlWrapper* clone, clones) {
-                clone->writeProperty(propertyName, propertyValue);
+                qDebug() << "OKOKOK" << (void*)this << "writeProperty" << (void*)clone;
+                QMetaObject::invokeMethod(clone, "writeProperty", Q_ARG(QString, propertyName), Q_ARG(QVariant, propertyValue));
             }
         });
     }
@@ -50,9 +52,10 @@ public:
             QVariantMap map = propertyMap.toMap();
             for (const QString& key : map.keys()) {
                 _qmlObject->setProperty(key.toStdString().c_str(), map[key]);
-                foreach (QmlWrapper* clone, clones) {
-                    clone->_qmlObject->setProperty(key.toStdString().c_str(), map[key]);
-                }
+            }
+            foreach (QmlWrapper* clone, clones) {
+                qDebug() << "OKOKOK" << (void*)this << "writeProperties" << (void*)clone;
+                QMetaObject::invokeMethod(clone, "writeProperties", Q_ARG(QVariant, propertyMap));
             }
         });
     }
@@ -77,18 +80,33 @@ public:
     }
 
     void addClone(QObject* clone) {
+        qDebug() << "OKOKOK" << (void*)this << "addClone" << (void*)clone;
         _clonesLock.withWriteLock([&] {
             _clones.append(dynamic_cast<QmlWrapper*>(clone));
         });
     }
 
     void removeClone(QObject *clone) {
+        qDebug() << "OKOKOK" << (void*)this << "removeClone" << (void*)clone;
         _clonesLock.withWriteLock([&] {
             _clones.removeAll(dynamic_cast<QmlWrapper*>(clone));
         });
     }
 
+    void removeClones() {
+        qDebug() << "OKOKOK" << "removeClones" << (void*)this;
+        QVector<QmlWrapper*> clones;
+        _clonesLock.withReadLock([&] {
+            clones = _clones;
+            _clones.clear();
+        });
+        foreach (QmlWrapper* clone, clones) {
+            delete clone;
+        }
+    }
+
     void setOriginal(QObject* original) {
+        qDebug() << "OKOKOK" << (void*)this << "setOriginal" << (void*)original;
         _original = dynamic_cast<QmlWrapper*>(original);
     }
 
@@ -124,7 +142,7 @@ protected:
 };
 
 void ToolbarButtonProxy::qmlClicked() {
-    qDebug() << "CLICKED on" << _name;
+    qDebug() << "OKOKOK" << "CLICKED on" << _name;
     emit clicked();
 }
 
@@ -192,6 +210,10 @@ protected:
 
 
 QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarID) {
+    if (_toolbarProxies.contains(toolbarID)) {
+        return _toolbarProxies[toolbarID];
+    }
+
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto desktop = offscreenUi->getDesktop();
     Qt::ConnectionType connectionType = Qt::AutoConnection;
@@ -210,7 +232,8 @@ QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarID) {
         return nullptr;
     }
 
-    return new ToolbarProxy(toolbarID, rawToolbar);
+    _toolbarProxies[toolbarID] = new ToolbarProxy(toolbarID, rawToolbar);
+    return _toolbarProxies[toolbarID];
 }
 
 QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, QVariant rootVar, QVariant properties) {
@@ -243,7 +266,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
 
     ToolbarButtonProxy* originalButtonProxy = dynamic_cast<ToolbarButtonProxy*>(getButtonProxy(toolbarID, buttonName));
     if (!originalButtonProxy) {
-        qDebug() << "can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
+        qDebug() << "HERE can't find button named:" << buttonName << " in toolbar with ID:" << toolbarID;
         return nullptr;
     }
     
@@ -260,6 +283,7 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     }
 
     qDebug() << "HERE calling addCloneButton on " << tabletUIBase->objectName();
+    qDebug() << "OKOKOK toolbar:" << (void*)toolbarProxy << "calling addCloneButton";
 
     QVariant resultVar;
     bool invokeResult = QMetaObject::invokeMethod(tabletUIBase, "addCloneButton", Qt::BlockingQueuedConnection,
@@ -279,10 +303,21 @@ QObject* ToolbarScriptingInterface::hookUpButtonClone(const QString& toolbarID, 
     // connect the clone to the original button, because that's where the callback payload is connected
     connect(cloneButton, SIGNAL(clicked()), originalButtonProxy, SLOT(qmlClicked()));
 
-    QObject* cloneButtonProxy = new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
+    ToolbarButtonProxy* cloneButtonProxy = new ToolbarButtonProxy(buttonName, cloneButton, nullptr);
     originalButtonProxy->addClone(cloneButtonProxy);
+    cloneButtonProxy->setOriginal(originalButtonProxy);
 
     return cloneButtonProxy;
+}
+
+void ToolbarScriptingInterface::destroyButtonClones(const QString& toolbarID) {
+    if (!_toolbarButtonProxies.contains(toolbarID)) {
+        qDebug() << "HERE can't find toolbar with ID:" << toolbarID;
+        return;
+    }
+    foreach (ToolbarButtonProxy* toolbarButtonProxy, _toolbarButtonProxies[toolbarID].values()) {
+        toolbarButtonProxy->removeClones();
+    }
 }
 
 

@@ -54,6 +54,7 @@
             if (UIWebTablet.onClose) {
                 UIWebTablet.onClose();
             }
+            Toolbars.destroyButtonClones("com.highfidelity.interface.toolbar.system");
 
             tabletLocation = UIWebTablet.getLocation();
             UIWebTablet.destroy();
