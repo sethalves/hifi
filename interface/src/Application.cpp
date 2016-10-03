@@ -68,6 +68,7 @@
 #include <InfoView.h>
 #include <input-plugins/InputPlugin.h>
 #include <controllers/UserInputMapper.h>
+#include <controllers/ScriptingInterface.h>
 #include <controllers/StateController.h>
 #include <UserActivityLoggerScriptingInterface.h>
 #include <LogHandler.h>
@@ -1042,7 +1043,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
         cameraMenuChanged();
     }
 
-    // set the local loopback interface for local sounds from audio scripts
+    // set the local loopback interface for local sounds
+    AudioInjector::setLocalAudioInterface(audioIO.data());
     AudioScriptingInterface::getInstance().setLocalAudioInterface(audioIO.data());
 
     this->installEventFilter(this);
@@ -2177,7 +2179,7 @@ bool Application::event(QEvent* event) {
     // handle custom URL
     if (event->type() == QEvent::FileOpen) {
 
-		QFileOpenEvent* fileEvent = static_cast<QFileOpenEvent*>(event);
+        QFileOpenEvent* fileEvent = static_cast<QFileOpenEvent*>(event);
 
         QUrl url = fileEvent->url();
 
@@ -4410,8 +4412,13 @@ namespace render {
                     auto scene = DependencyManager::get<SceneScriptingInterface>()->getStage();
                     auto sceneKeyLight = scene->getKeyLight();
                     auto defaultSkyboxAmbientTexture = qApp->getDefaultSkyboxAmbientTexture();
-                    sceneKeyLight->setAmbientSphere(defaultSkyboxAmbientTexture->getIrradiance());
-                    sceneKeyLight->setAmbientMap(defaultSkyboxAmbientTexture);
+                    if (defaultSkyboxAmbientTexture) {
+                        sceneKeyLight->setAmbientSphere(defaultSkyboxAmbientTexture->getIrradiance());
+                        sceneKeyLight->setAmbientMap(defaultSkyboxAmbientTexture);
+                    } else {
+                        static QString repeatedMessage = LogHandler::getInstance().addRepeatedMessageRegex(
+                            "Failed to get a valid Default Skybox Ambient Texture ? probably because it couldn't be find during initialization step");
+                    }
                     // fall through: render defaults skybox
                 } else {
                     break;
@@ -4968,6 +4975,10 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     scriptEngine->registerGlobalObject("Users", DependencyManager::get<UsersScriptingInterface>().data());
 
     scriptEngine->registerGlobalObject("Steam", new SteamScriptingInterface(scriptEngine));
+
+    auto scriptingInterface = DependencyManager::get<controller::ScriptingInterface>();
+    scriptEngine->registerGlobalObject("Controller", scriptingInterface.data());
+    UserInputMapper::registerControllerTypes(scriptEngine);
 }
 
 bool Application::canAcceptURL(const QString& urlString) const {
