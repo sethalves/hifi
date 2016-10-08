@@ -22,6 +22,7 @@
 #include <QtCore/QUuid>
 
 #include <UUIDHasher.h>
+#include <shared/ReadWriteLockable.h>
 
 #include <tbb/concurrent_unordered_set.h>
 
@@ -47,8 +48,18 @@ public:
     char getType() const { return _type; }
     void setType(char type);
 
-    const QUuid& getConnectionSecret() const { return _connectionSecret; }
-    void setConnectionSecret(const QUuid& connectionSecret) { _connectionSecret = connectionSecret; }
+    QUuid getConnectionSecret() const {
+        QUuid result;
+        _connectionSecretLock.withReadLock([&] {
+            result = _connectionSecret;
+        });
+        return result;
+    }
+    void setConnectionSecret(const QUuid& connectionSecret) {
+        _connectionSecretLock.withWriteLock([&] {
+            _connectionSecret = connectionSecret;
+        });
+    }
 
     NodeData* getLinkedData() const { return _linkedData.get(); }
     void setLinkedData(std::unique_ptr<NodeData> linkedData) { _linkedData = std::move(linkedData); }
@@ -82,6 +93,8 @@ private:
     // privatize copy and assignment operator to disallow Node copying
     Node(const Node &otherNode);
     Node& operator=(Node otherNode);
+
+    mutable ReadWriteLockable _connectionSecretLock;
 
     NodeType_t _type;
 

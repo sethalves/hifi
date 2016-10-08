@@ -52,10 +52,12 @@ private:
 
     float _trailingSleepRatio { 1.0f };
     float _performanceThrottlingRatio { 0.0f };
+    mutable ReadWriteLockable _sleepRatioLock { };
 
     int _sumListeners { 0 };
     int _numStatFrames { 0 };
     int _sumIdentityPackets { 0 };
+    mutable ReadWriteLockable _statsLock { };
 
     float _maxKbpsPerNode = 0.0f;
 

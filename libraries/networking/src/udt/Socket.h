@@ -105,6 +105,7 @@ private:
     Q_INVOKABLE void writeReliablePacketList(PacketList* packetList, const HifiSockAddr& sockAddr);
     
     QUdpSocket _udpSocket { this };
+
     PacketFilterOperator _packetFilterOperator;
     PacketHandler _packetHandler;
     MessageHandler _messageHandler;

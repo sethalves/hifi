@@ -56,7 +56,10 @@ AssignmentClient::AssignmentClient(Assignment::Type requestAssignmentType, QStri
  
     auto scriptableAvatar = DependencyManager::set<ScriptableAvatar>();
     auto addressManager = DependencyManager::set<AddressManager>();
-    auto scriptEngines = DependencyManager::set<ScriptEngines>();
+
+    if (requestAssignmentType != Assignment::AvatarMixerType) {
+        auto scriptEngines = DependencyManager::set<ScriptEngines>();
+    }
 
     // create a NodeList as an unassigned client, must be after addressManager
     auto nodeList = DependencyManager::set<NodeList>(NodeType::Unassigned, listenPort);

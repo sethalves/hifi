@@ -75,7 +75,9 @@ void AvatarMixer::broadcastAvatarData() {
         idleTime = std::chrono::duration_cast<std::chrono::microseconds>(idleDuration).count();
     }
 
-    ++_numStatFrames;
+    _statsLock.withWriteLock([&] {
+        ++_numStatFrames;
+    });
 
     const float STRUGGLE_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD = 0.10f;
     const float BACK_OFF_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD = 0.20f;
@@ -93,41 +95,43 @@ void AvatarMixer::broadcastAvatarData() {
     // is unused as it is assumed this should not be hit before the avatar-mixer hits the desired bandwidth limit per client.
     // It is reported in the domain-server stats for the avatar-mixer.
 
-    _trailingSleepRatio = (PREVIOUS_FRAMES_RATIO * _trailingSleepRatio)
-        + (idleTime * CURRENT_FRAME_RATIO / (float) AVATAR_DATA_SEND_INTERVAL_MSECS);
+    _sleepRatioLock.withWriteLock([&] {
+        _trailingSleepRatio = (PREVIOUS_FRAMES_RATIO * _trailingSleepRatio)
+            + (idleTime * CURRENT_FRAME_RATIO / (float) AVATAR_DATA_SEND_INTERVAL_MSECS);
 
-    float lastCutoffRatio = _performanceThrottlingRatio;
-    bool hasRatioChanged = false;
+        float lastCutoffRatio = _performanceThrottlingRatio;
+        bool hasRatioChanged = false;
 
-    if (framesSinceCutoffEvent >= TRAILING_AVERAGE_FRAMES) {
-        if (_trailingSleepRatio <= STRUGGLE_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD) {
-            // we're struggling - change our performance throttling ratio
-            _performanceThrottlingRatio = _performanceThrottlingRatio + (0.5f * (1.0f - _performanceThrottlingRatio));
+        if (framesSinceCutoffEvent >= TRAILING_AVERAGE_FRAMES) {
+            if (_trailingSleepRatio <= STRUGGLE_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD) {
+                // we're struggling - change our performance throttling ratio
+                _performanceThrottlingRatio = _performanceThrottlingRatio + (0.5f * (1.0f - _performanceThrottlingRatio));
 
-            qDebug() << "Mixer is struggling, sleeping" << _trailingSleepRatio * 100 << "% of frame time. Old cutoff was"
-                << lastCutoffRatio << "and is now" << _performanceThrottlingRatio;
-            hasRatioChanged = true;
-        } else if (_trailingSleepRatio >= BACK_OFF_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD && _performanceThrottlingRatio != 0) {
-            // we've recovered and can back off the performance throttling
-            _performanceThrottlingRatio = _performanceThrottlingRatio - RATIO_BACK_OFF;
+                qDebug() << "Mixer is struggling, sleeping" << _trailingSleepRatio * 100 << "% of frame time. Old cutoff was"
+                         << lastCutoffRatio << "and is now" << _performanceThrottlingRatio;
+                hasRatioChanged = true;
+            } else if (_trailingSleepRatio >= BACK_OFF_TRIGGER_SLEEP_PERCENTAGE_THRESHOLD && _performanceThrottlingRatio != 0) {
+                // we've recovered and can back off the performance throttling
+                _performanceThrottlingRatio = _performanceThrottlingRatio - RATIO_BACK_OFF;
 
-            if (_performanceThrottlingRatio < 0) {
-                _performanceThrottlingRatio = 0;
+                if (_performanceThrottlingRatio < 0) {
+                    _performanceThrottlingRatio = 0;
+                }
+
+                qDebug() << "Mixer is recovering, sleeping" << _trailingSleepRatio * 100 << "% of frame time. Old cutoff was"
+                         << lastCutoffRatio << "and is now" << _performanceThrottlingRatio;
+                hasRatioChanged = true;
             }
 
-            qDebug() << "Mixer is recovering, sleeping" << _trailingSleepRatio * 100 << "% of frame time. Old cutoff was"
-                << lastCutoffRatio << "and is now" << _performanceThrottlingRatio;
-            hasRatioChanged = true;
+            if (hasRatioChanged) {
+                framesSinceCutoffEvent = 0;
+            }
         }
 
-        if (hasRatioChanged) {
-            framesSinceCutoffEvent = 0;
+        if (!hasRatioChanged) {
+            ++framesSinceCutoffEvent;
         }
-    }
-
-    if (!hasRatioChanged) {
-        ++framesSinceCutoffEvent;
-    }
+    });
 
     auto nodeList = DependencyManager::get<NodeList>();
 
@@ -155,7 +159,9 @@ void AvatarMixer::broadcastAvatarData() {
             if (!lock.isLocked()) {
                 return;
             }
-            ++_sumListeners;
+            _statsLock.withWriteLock([&] {
+                ++_sumListeners;
+            });
 
             AvatarData& avatar = nodeData->getAvatar();
             glm::vec3 myPosition = avatar.getClientGlobalPosition();
@@ -265,7 +271,9 @@ void AvatarMixer::broadcastAvatarData() {
 
                         nodeList->sendPacket(std::move(identityPacket), *node);
 
-                        ++_sumIdentityPackets;
+                        _statsLock.withWriteLock([&] {
+                            ++_sumIdentityPackets;
+                        });
                     }
 
                     AvatarData& otherAvatar = otherNodeData->getAvatar();
@@ -442,12 +450,15 @@ void AvatarMixer::handleNodeIgnoreRequestPacket(QSharedPointer<ReceivedMessage> 
 
 void AvatarMixer::sendStatsPacket() {
     QJsonObject statsObject;
-    statsObject["average_listeners_last_second"] = (float) _sumListeners / (float) _numStatFrames;
+    _statsLock.withReadLock([&] {
+        statsObject["average_listeners_last_second"] = (float) _sumListeners / (float) _numStatFrames;
+        statsObject["average_identity_packets_per_frame"] = (float) _sumIdentityPackets / (float) _numStatFrames;
+    });
 
-    statsObject["average_identity_packets_per_frame"] = (float) _sumIdentityPackets / (float) _numStatFrames;
-
-    statsObject["trailing_sleep_percentage"] = _trailingSleepRatio * 100;
-    statsObject["performance_throttling_ratio"] = _performanceThrottlingRatio;
+    _sleepRatioLock.withReadLock([&] {
+        statsObject["trailing_sleep_percentage"] = _trailingSleepRatio * 100;
+        statsObject["performance_throttling_ratio"] = _performanceThrottlingRatio;
+    });
 
     QJsonObject avatarsObject;
 
@@ -483,9 +494,11 @@ void AvatarMixer::sendStatsPacket() {
     statsObject["avatars"] = avatarsObject;
     ThreadedAssignment::addPacketStatsAndSendStatsPacket(statsObject);
 
-    _sumListeners = 0;
-    _sumIdentityPackets = 0;
-    _numStatFrames = 0;
+    _statsLock.withWriteLock([&] {
+        _sumListeners = 0;
+        _sumIdentityPackets = 0;
+        _numStatFrames = 0;
+    });
 }
 
 void AvatarMixer::run() {

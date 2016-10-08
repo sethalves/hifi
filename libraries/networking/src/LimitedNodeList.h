@@ -104,7 +104,13 @@ public:
 
     Q_ENUMS(ConnectionStep);
 
-    const QUuid& getSessionUUID() const { return _sessionUUID; }
+    QUuid getSessionUUID() const {
+        QUuid result;
+        _sessionUUIDLock.withReadLock([&] {
+            result = _sessionUUID;
+        });
+        return result;
+    }
     void setSessionUUID(const QUuid& sessionUUID);
 
     void setPermissions(const NodePermissions& newPermissions);
@@ -314,6 +320,7 @@ protected:
     // XXX can BandwidthRecorder be used for this?
     int _numCollectedPackets;
     int _numCollectedBytes;
+    mutable ReadWriteLockable _statsLock { };
 
     QElapsedTimer _packetStatTimer;
     NodePermissions _permissions;
@@ -324,6 +331,8 @@ protected:
     bool _hasCompletedInitialSTUN = false;
     quint64 _firstSTUNTime = 0;
     quint64 _publicSocketUpdateTime = 0;
+
+    mutable ReadWriteLockable _sessionUUIDLock;
 
     mutable QReadWriteLock _connectionTimeLock { };
     QMap<quint64, ConnectionStep> _lastConnectionTimes;

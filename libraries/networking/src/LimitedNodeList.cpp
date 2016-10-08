@@ -125,12 +125,15 @@ LimitedNodeList::LimitedNodeList(int socketListenPort, int dtlsListenPort) :
 }
 
 void LimitedNodeList::setSessionUUID(const QUuid& sessionUUID) {
-    QUuid oldUUID = _sessionUUID;
-    _sessionUUID = sessionUUID;
+    QUuid oldUUID;
+    _sessionUUIDLock.withWriteLock([&] {
+        oldUUID = _sessionUUID;
+        _sessionUUID = sessionUUID;
+    });
 
     if (sessionUUID != oldUUID) {
         qCDebug(networking) << "NodeList UUID changed from" <<  uuidStringWithoutCurlyBraces(oldUUID)
-        << "to" << uuidStringWithoutCurlyBraces(_sessionUUID);
+        << "to" << uuidStringWithoutCurlyBraces(sessionUUID);
         emit uuidChanged(sessionUUID, oldUUID);
     }
 }
@@ -301,8 +304,10 @@ bool LimitedNodeList::packetSourceAndHashMatchAndTrackBandwidth(const udt::Packe
 
 void LimitedNodeList::collectPacketStats(const NLPacket& packet) {
     // stat collection for packets
-    ++_numCollectedPackets;
-    _numCollectedBytes += packet.getDataSize();
+    _statsLock.withWriteLock([&] {
+        ++_numCollectedPackets;
+        _numCollectedBytes += packet.getDataSize();
+    });
 }
 
 void LimitedNodeList::fillPacketHeader(const NLPacket& packet, const QUuid& connectionSecret) {
@@ -707,13 +712,17 @@ SharedNodePointer LimitedNodeList::soloNodeOfType(NodeType_t nodeType) {
 }
 
 void LimitedNodeList::getPacketStats(float& packetsPerSecond, float& bytesPerSecond) {
-    packetsPerSecond = (float) _numCollectedPackets / ((float) _packetStatTimer.elapsed() / 1000.0f);
-    bytesPerSecond = (float) _numCollectedBytes / ((float) _packetStatTimer.elapsed() / 1000.0f);
+    _statsLock.withReadLock([&] {
+        packetsPerSecond = (float) _numCollectedPackets / ((float) _packetStatTimer.elapsed() / 1000.0f);
+        bytesPerSecond = (float) _numCollectedBytes / ((float) _packetStatTimer.elapsed() / 1000.0f);
+    });
 }
 
 void LimitedNodeList::resetPacketStats() {
-    _numCollectedPackets = 0;
-    _numCollectedBytes = 0;
+    _statsLock.withWriteLock([&] {
+        _numCollectedPackets = 0;
+        _numCollectedBytes = 0;
+    });
     _packetStatTimer.restart();
 }
 
