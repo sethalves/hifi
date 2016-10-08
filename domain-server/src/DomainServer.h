@@ -104,7 +104,7 @@ signals:
     void userDisconnected();
 
 private:
-    const QUuid& getID();
+    QUuid getID();
     void parseCommandLine();
 
     void setupNodeListAndAssignments();

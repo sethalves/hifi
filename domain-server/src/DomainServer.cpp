@@ -235,7 +235,7 @@ void DomainServer::restart() {
     exit(DomainServer::EXIT_CODE_REBOOT);
 }
 
-const QUuid& DomainServer::getID() {
+QUuid DomainServer::getID() {
     return DependencyManager::get<LimitedNodeList>()->getSessionUUID();
 }
 
@@ -484,7 +484,7 @@ void DomainServer::setupNodeListAndAssignments() {
 
     if (isMetaverseDomain) {
         // see if we think we're a temp domain (we have an API key) or a full domain
-        const auto& temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
+        const auto temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
         if (temporaryDomainKey.isEmpty()) {
             _type = MetaverseDomain;
         } else {
@@ -1206,7 +1206,7 @@ void DomainServer::sendHeartbeatToMetaverse(const QString& networkAddress) {
     NodePermissions anonymousPermissions = _settingsManager.getPermissionsForName(NodePermissions::standardNameAnonymous);
     domainObject[RESTRICTED_ACCESS_FLAG] = !anonymousPermissions.can(NodePermissions::Permission::canConnectToDomain);
 
-    const auto& temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
+    const auto temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
     if (!temporaryDomainKey.isEmpty()) {
         // add the temporary domain token
         const QString KEY_KEY = "api_key";
@@ -1289,7 +1289,7 @@ void DomainServer::sendICEServerAddressToMetaverseAPI() {
         domainObject[ICE_SERVER_ADDRESS] = _iceServerSocket.getAddress().toString();
     }
 
-    const auto& temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
+    const auto temporaryDomainKey = DependencyManager::get<AccountManager>()->getTemporaryDomainKey(getID());
     if (!temporaryDomainKey.isEmpty()) {
         // add the temporary domain token
         const QString KEY_KEY = "api_key";

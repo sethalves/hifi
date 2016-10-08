@@ -50,7 +50,10 @@ public:
     
     Socket(QObject* object = 0);
     
-    quint16 localPort() const { return _udpSocket.localPort(); }
+    quint16 localPort() const {
+        std::lock_guard<std::mutex> locker { _udpSocketLock };
+        return _udpSocket.localPort();
+    }
     
     // Simple functions writing to the socket with no processing
     qint64 writeBasePacket(const BasePacket& packet, const HifiSockAddr& sockAddr);
@@ -105,6 +108,7 @@ private:
     Q_INVOKABLE void writeReliablePacketList(PacketList* packetList, const HifiSockAddr& sockAddr);
     
     QUdpSocket _udpSocket { this };
+    mutable std::mutex _udpSocketLock;
 
     PacketFilterOperator _packetFilterOperator;
     PacketHandler _packetHandler;

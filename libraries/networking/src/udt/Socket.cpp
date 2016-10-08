@@ -48,6 +48,7 @@ Socket::Socket(QObject* parent) :
 }
 
 void Socket::bind(const QHostAddress& address, quint16 port) {
+    std::lock_guard<std::mutex> locker { _udpSocketLock };
     _udpSocket.bind(address, port);
     setSystemBufferSizes();
 
@@ -63,15 +64,20 @@ void Socket::bind(const QHostAddress& address, quint16 port) {
 }
 
 void Socket::rebind() {
+    std::lock_guard<std::mutex> locker { _udpSocketLock };
     rebind(_udpSocket.localPort());
 }
 
 void Socket::rebind(quint16 localPort) {
-    _udpSocket.close();
+    {
+        std::lock_guard<std::mutex> locker { _udpSocketLock };
+        _udpSocket.close();
+    }
     bind(QHostAddress::AnyIPv4, localPort);
 }
 
 void Socket::setSystemBufferSizes() {
+    // private, so no need to take _udpSocketLock
     for (int i = 0; i < 2; i++) {
         QAbstractSocket::SocketOption bufferOpt;
         QString bufferTypeString;
@@ -183,12 +189,13 @@ qint64 Socket::writeDatagram(const char* data, qint64 size, const HifiSockAddr& 
 }
 
 qint64 Socket::writeDatagram(const QByteArray& datagram, const HifiSockAddr& sockAddr) {
-
+    std::lock_guard<std::mutex> locker { _udpSocketLock };
     qint64 bytesWritten = _udpSocket.writeDatagram(datagram, sockAddr.getAddress(), sockAddr.getPort());
 
     if (bytesWritten < 0) {
         // when saturating a link this isn't an uncommon message - suppress it so it doesn't bomb the debug
-        static const QString WRITE_ERROR_REGEX = "Socket::writeDatagram QAbstractSocket::NetworkError - Unable to send a message";
+        static const QString WRITE_ERROR_REGEX =
+            "Socket::writeDatagram QAbstractSocket::NetworkError - Unable to send a message";
         static QString repeatedMessage
             = LogHandler::getInstance().addRepeatedMessageRegex(WRITE_ERROR_REGEX);
 
@@ -255,6 +262,7 @@ void Socket::messageFailed(Connection* connection, Packet::MessageNumber message
 }
 
 void Socket::readPendingDatagrams() {
+    // private slot, no need to take _udpSocketLock
     int packetSizeWithHeader = -1;
     while ((packetSizeWithHeader = _udpSocket.pendingDatagramSize()) != -1) {
         // setup a HifiSockAddr to read into

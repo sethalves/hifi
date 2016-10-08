@@ -92,7 +92,7 @@ public:
     void setSessionID(const QUuid& sessionID) { _sessionID = sessionID; }
 
     void setTemporaryDomain(const QUuid& domainID, const QString& key);
-    const QString& getTemporaryDomainKey(const QUuid& domainID) { return _accountInfo.getTemporaryDomainKey(domainID); }
+    const QString& getTemporaryDomainKey(const QUuid domainID) { return _accountInfo.getTemporaryDomainKey(domainID); }
 
 public slots:
     void requestAccessToken(const QString& login, const QString& password);
