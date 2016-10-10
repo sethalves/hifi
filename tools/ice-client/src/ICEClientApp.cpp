@@ -146,6 +146,16 @@ void ICEClientApp::openSocket() {
     _domainPingCount = 0;
 }
 
+void ICEClientApp::reactToError(int possibleExitCode) {
+    // if _actionMax is 0, run forever (don't exit)
+    if (_actionMax > 0) {
+        QCoreApplication::exit(possibleExitCode);
+    }
+    closeSocket();
+    setState(sendStunRequestPacket);
+    _actionCount++;
+}
+
 void ICEClientApp::doSomething() {
     if (_actionMax > 0 && _actionCount >= _actionMax) {
         // time to stop.
@@ -162,7 +172,8 @@ void ICEClientApp::doSomething() {
             if (_verbose) {
                 qDebug() << "_stunSockAddr is" << _stunSockAddr.getAddress();
             }
-            QCoreApplication::exit(stunFailureExitStatus);
+            reactToError(stunFailureExitStatus);
+            return;
         }
 
     } else if (_state == sendStunRequestPacket) {
@@ -227,14 +238,14 @@ void ICEClientApp::iceResponseTimeout() {
     if (_verbose) {
         qDebug() << "timeout waiting for ice-server response";
     }
-    QCoreApplication::exit(iceFailureExitStatus);
+    reactToError(iceFailureExitStatus);
 }
 
 void ICEClientApp::stunResponseTimeout() {
     if (_verbose) {
         qDebug() << "timeout waiting for stun-server response";
     }
-    QCoreApplication::exit(stunFailureExitStatus);
+    reactToError(stunFailureExitStatus);
 }
 
 void ICEClientApp::sendPacketToIceServer(PacketType packetType, const HifiSockAddr& iceServerSockAddr,
@@ -265,7 +276,7 @@ void ICEClientApp::checkDomainPingCount() {
         if (_verbose) {
             qDebug() << "too many unanswered pings to domain-server.";
         }
-        QCoreApplication::exit(domainPingExitStatus);
+        reactToError(domainPingExitStatus);
     }
 }
 
@@ -294,7 +305,8 @@ void ICEClientApp::processSTUNResponse(std::unique_ptr<udt::BasePacket> packet) 
         if (_verbose) {
             qDebug() << "got unexpected stun response";
         }
-        QCoreApplication::exit(stunFailureExitStatus);
+        reactToError(stunFailureExitStatus);
+        return;
     }
 
     _stunResponseTimer.stop();
@@ -309,7 +321,7 @@ void ICEClientApp::processSTUNResponse(std::unique_ptr<udt::BasePacket> packet) 
         _stunResultSet = true;
         setState(talkToIceServer);
     } else {
-        QCoreApplication::exit(stunFailureExitStatus);
+        reactToError(stunFailureExitStatus);
     }
 }
 

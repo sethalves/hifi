@@ -53,6 +53,7 @@ private:
 
     void setState(int newState);
 
+    void reactToError(int possibleExitCode);
     void doSomething();
     void sendPacketToIceServer(PacketType packetType, const HifiSockAddr& iceServerSockAddr,
                                const QUuid& clientID, const QUuid& peerID);
