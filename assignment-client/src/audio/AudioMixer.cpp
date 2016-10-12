@@ -636,6 +636,10 @@ QString AudioMixer::percentageForMixStats(int counter) {
 }
 
 void AudioMixer::sendStatsPacket() {
+    if (_numStatFrames == 0) {
+        return;
+    }
+
     static QJsonObject statsObject;
 
     statsObject["useDynamicJitterBuffers"] = _numStaticJitterFrames == -1;
