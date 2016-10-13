@@ -15,6 +15,7 @@
 #ifndef hifi_PerfStat_h
 #define hifi_PerfStat_h
 
+#include <mutex>
 #include <stdint.h>
 #include "SharedUtil.h"
 #include "SimpleMovingAverage.h"

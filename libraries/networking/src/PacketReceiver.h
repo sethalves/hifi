@@ -89,7 +89,7 @@ private:
     QHash<PacketType, Listener> _messageListenerMap;
     int _inPacketCount = 0;
     int _inByteCount = 0;
-    bool _shouldDropPackets = false;
+    std::atomic<bool> _shouldDropPackets { false };
     QMutex _directConnectSetMutex;
     QSet<QObject*> _directlyConnectedObjects;
 

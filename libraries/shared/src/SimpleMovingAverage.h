@@ -20,15 +20,17 @@
 class SimpleMovingAverage {
 public:
     SimpleMovingAverage(int numSamplesToAverage = 100);
-    
+    SimpleMovingAverage(const SimpleMovingAverage& other);
+    SimpleMovingAverage& operator=(const SimpleMovingAverage& other);
+
     int updateAverage(float sample);
     void reset();
-    
-    int getSampleCount() const { return _numSamples; };
-    float getAverage() const { return _average; };
+
+    int getSampleCount() const;
+    float getAverage() const;
     float getEventDeltaAverage() const; // returned in seconds
-    float getAverageSampleValuePerSecond() const { return _average * (1.0f / getEventDeltaAverage()); }
-    
+    float getAverageSampleValuePerSecond() const;
+
     uint64_t getUsecsSinceLastEvent() const;
 
 private:
@@ -36,9 +38,13 @@ private:
     uint64_t _lastEventTimestamp;
     float _average;
     float _eventDeltaAverage;
-    
+
     float WEIGHTING;
     float ONE_MINUS_WEIGHTING;
+
+    mutable std::mutex _lock;
+    void takeLock() const { _lock.lock(); }
+    void releaseLock() const { _lock.unlock(); }
 };
 
 
@@ -72,7 +78,7 @@ public:
         _samples = 0;
     }
 
-    bool isAverageValid() const { 
+    bool isAverageValid() const {
         std::unique_lock<std::mutex> lock(_lock);
         return (_samples > 0);
     }
@@ -87,7 +93,7 @@ public:
         _samples++;
     }
 
-    T getAverage() const { 
+    T getAverage() const {
         std::unique_lock<std::mutex> lock(_lock);
         return _average;
     }
