@@ -48,7 +48,7 @@ Socket::Socket(QObject* parent) :
 }
 
 void Socket::bind(const QHostAddress& address, quint16 port) {
-    std::lock_guard<std::mutex> locker { _udpSocketLock };
+    // std::lock_guard<std::mutex> locker { _udpSocketLock };
     _udpSocket.bind(address, port);
     setSystemBufferSizes();
 
@@ -64,13 +64,13 @@ void Socket::bind(const QHostAddress& address, quint16 port) {
 }
 
 void Socket::rebind() {
-    std::lock_guard<std::mutex> locker { _udpSocketLock };
+    // std::lock_guard<std::mutex> locker { _udpSocketLock };
     rebind(_udpSocket.localPort());
 }
 
 void Socket::rebind(quint16 localPort) {
     {
-        std::lock_guard<std::mutex> locker { _udpSocketLock };
+        // std::lock_guard<std::mutex> locker { _udpSocketLock };
         _udpSocket.close();
     }
     bind(QHostAddress::AnyIPv4, localPort);
@@ -189,7 +189,7 @@ qint64 Socket::writeDatagram(const char* data, qint64 size, const HifiSockAddr& 
 }
 
 qint64 Socket::writeDatagram(const QByteArray& datagram, const HifiSockAddr& sockAddr) {
-    std::lock_guard<std::mutex> locker { _udpSocketLock };
+    // std::lock_guard<std::mutex> locker { _udpSocketLock };
     qint64 bytesWritten = _udpSocket.writeDatagram(datagram, sockAddr.getAddress(), sockAddr.getPort());
 
     if (bytesWritten < 0) {
