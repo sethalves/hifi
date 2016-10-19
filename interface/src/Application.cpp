@@ -3413,21 +3413,6 @@ void Application::init() {
         SteamClient::joinLobby(lobbyId);
     }
 
-    Setting::Handle<bool> firstRun { Settings::firstRun, true };
-    if (addressLookupString.isEmpty() && firstRun.get()) {
-        qCDebug(interfaceapp) << "First run and no URL passed... attempting to go to Home or Entry...";
-        DependencyManager::get<AddressManager>()->ifLocalSandboxRunningElse([](){
-            qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
-            DependencyManager::get<AddressManager>()->goToLocalSandbox();
-        },
-        [](){
-            qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
-            DependencyManager::get<AddressManager>()->goToEntry();
-        });
-    } else {
-        qCDebug(interfaceapp) << "Not first run... going to" << qPrintable(addressLookupString.isEmpty() ? QString("previous location") : addressLookupString);
-        DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
-    }
 
     qCDebug(interfaceapp) << "Loaded settings";
 
