@@ -831,7 +831,7 @@ function loaded() {
 
                         elGrabbable.checked = properties.dynamic;
                         elWantsTrigger.checked = false;
-                        elIgnoreIK.checked = false;
+                        elIgnoreIK.checked = true;
                         var parsedUserData = {}
                         try {
                             parsedUserData = JSON.parse(properties.userData);
@@ -1145,7 +1145,7 @@ function loaded() {
             userDataChanger("grabbableKey", "wantsTrigger", elWantsTrigger, elUserData, false);
         });
         elIgnoreIK.addEventListener('change', function() {
-            userDataChanger("grabbableKey", "ignoreIK", elIgnoreIK, elUserData, false);
+            userDataChanger("grabbableKey", "ignoreIK", elIgnoreIK, elUserData, true);
         });
 
         elCollisionSoundURL.addEventListener('change', createEmitTextPropertyUpdateFunction('collisionSoundURL'));
@@ -1593,6 +1593,8 @@ function loaded() {
     }
 
     augmentSpinButtons();
+
+    setUpKeyboardControl();
 
     // Disable right-click context menu which is not visible in the HMD and makes it seem like the app has locked
     document.addEventListener("contextmenu", function(event) {

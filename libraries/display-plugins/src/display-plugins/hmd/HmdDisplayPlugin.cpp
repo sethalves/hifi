@@ -124,8 +124,8 @@ void HmdDisplayPlugin::uncustomizeContext() {
         batch.setFramebuffer(_compositeFramebuffer);
         batch.clearColorFramebuffer(gpu::Framebuffer::BUFFER_COLOR0, vec4(0));
     });
-    internalPresent();
     _overlayRenderer = OverlayRenderer();
+    _previewTexture.reset();
     Parent::uncustomizeContext();
 }
 
@@ -266,6 +266,7 @@ void HmdDisplayPlugin::internalPresent() {
                 gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA),
                 image.width(), image.height(),
                 gpu::Sampler(gpu::Sampler::FILTER_MIN_MAG_MIP_LINEAR)));
+            _previewTexture->setSource("HMD Preview Texture");
             _previewTexture->setUsage(gpu::Texture::Usage::Builder().withColor().build());
             _previewTexture->assignStoredMip(0, gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA), image.byteCount(), image.constBits());
             _previewTexture->autoGenerateMips(-1);
@@ -375,7 +376,8 @@ void HmdDisplayPlugin::updateFrameData() {
         }
 
         // this offset needs to match GRAB_POINT_SPHERE_OFFSET in scripts/system/libraries/controllers.js
-        static const vec3 GRAB_POINT_SPHERE_OFFSET = vec3(0.1f, 0.04f, -0.32f);
+        //static const vec3 GRAB_POINT_SPHERE_OFFSET = vec3(0.1f, 0.04f, -0.32f);
+        static const vec3 GRAB_POINT_SPHERE_OFFSET = vec3(0.0f, 0.0f, -0.175f);
         vec3 grabPointOffset = GRAB_POINT_SPHERE_OFFSET;
         if (i == 0) {
             grabPointOffset.x *= -1.0f; // this changes between left and right hands
@@ -634,3 +636,6 @@ void HmdDisplayPlugin::compositeExtra() {
     });
 }
 
+HmdDisplayPlugin::~HmdDisplayPlugin() {
+    qDebug() << "Destroying HmdDisplayPlugin";
+}

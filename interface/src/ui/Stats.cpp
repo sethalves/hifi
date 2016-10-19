@@ -170,7 +170,7 @@ void Stats::updateStats(bool force) {
     STAT_UPDATE(entitiesPing, octreeServerCount ? totalPingOctree / octreeServerCount : -1);
 
     // Third column, avatar stats
-    MyAvatar* myAvatar = avatarManager->getMyAvatar();
+    auto myAvatar = avatarManager->getMyAvatar();
     glm::vec3 avatarPos = myAvatar->getPosition();
     STAT_UPDATE(position, QVector3D(avatarPos.x, avatarPos.y, avatarPos.z));
     STAT_UPDATE_FLOAT(speed, glm::length(myAvatar->getVelocity()), 0.01f);
@@ -284,6 +284,9 @@ void Stats::updateStats(bool force) {
         QString sendingModeResult = sendingModeStream.str().c_str();
         STAT_UPDATE(sendingMode, sendingModeResult);
     }
+
+    STAT_UPDATE(gpuBuffers, (int)gpu::Context::getBufferGPUCount());
+    STAT_UPDATE(gpuTextures, (int)gpu::Context::getTextureGPUCount());
 
     // Incoming packets
     QLocale locale(QLocale::English);

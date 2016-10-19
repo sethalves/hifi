@@ -34,6 +34,8 @@
 #include <QtQml/QQmlEngine>
 #include <QtQuick/QQuickWindow>
 
+#include <QtWebEngineWidgets/QWebEngineProfile>
+
 #include <QtWidgets/QDesktopWidget>
 #include <QtWidgets/QMessageBox>
 
@@ -87,12 +89,14 @@
 #include <PhysicsEngine.h>
 #include <PhysicsHelpers.h>
 #include <plugins/PluginManager.h>
+#include <plugins/PluginUtils.h>
 #include <plugins/CodecPlugin.h>
 #include <RecordingScriptingInterface.h>
 #include <RenderableWebEntityItem.h>
 #include <RenderShadowTask.h>
 #include <RenderDeferredTask.h>
 #include <ResourceCache.h>
+#include <SandboxUtils.h>
 #include <SceneScriptingInterface.h>
 #include <ScriptEngines.h>
 #include <ScriptCache.h>
@@ -124,6 +128,7 @@
 #include "InterfaceLogging.h"
 #include "LODManager.h"
 #include "ModelPackager.h"
+#include "networking/HFWebEngineProfile.h"
 #include "scripting/AccountScriptingInterface.h"
 #include "scripting/AssetMappingsScriptingInterface.h"
 #include "scripting/AudioDeviceScriptingInterface.h"
@@ -200,8 +205,9 @@ static const float MIRROR_FIELD_OF_VIEW = 30.0f;
 
 static const quint64 TOO_LONG_SINCE_LAST_SEND_DOWNSTREAM_AUDIO_STATS = 1 * USECS_PER_SECOND;
 
-static const QString INFO_HELP_PATH = "html/interface-welcome.html";
+static const QString INFO_WELCOME_PATH = "html/interface-welcome.html";
 static const QString INFO_EDIT_ENTITIES_PATH = "html/edit-commands.html";
+static const QString INFO_HELP_PATH = "html/help.html";
 
 static const unsigned int THROTTLED_SIM_FRAMERATE = 15;
 static const int THROTTLED_SIM_FRAME_PERIOD_MS = MSECS_PER_SECOND / THROTTLED_SIM_FRAMERATE;
@@ -415,8 +421,6 @@ bool setupEssentials(int& argc, char** argv) {
     static const auto SUPPRESS_SETTINGS_RESET = "--suppress-settings-reset";
     bool suppressPrompt = cmdOptionExists(argc, const_cast<const char**>(argv), SUPPRESS_SETTINGS_RESET);
     bool previousSessionCrashed = CrashHandler::checkForResetSettings(suppressPrompt);
-    CrashHandler::writeRunningMarkerFiler();
-    qAddPostRoutine(CrashHandler::deleteRunningMarkerFile);
 
     DependencyManager::registerInheritance<LimitedNodeList, NodeList>();
     DependencyManager::registerInheritance<AvatarHashMap, AvatarManager>();
@@ -490,7 +494,7 @@ bool setupEssentials(int& argc, char** argv) {
 // FIXME move to header, or better yet, design some kind of UI manager
 // to take care of highlighting keyboard focused items, rather than
 // continuing to overburden Application.cpp
-Cube3DOverlay* _keyboardFocusHighlight{ nullptr };
+std::shared_ptr<Cube3DOverlay> _keyboardFocusHighlight{ nullptr };
 int _keyboardFocusHighlightID{ -1 };
 
 
@@ -506,8 +510,11 @@ Q_GUI_EXPORT void qt_gl_set_global_share_context(QOpenGLContext *context);
 
 Setting::Handle<int> sessionRunTime{ "sessionRunTime", 0 };
 
-Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
+Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bool runServer, QString runServerPathOption) :
     QApplication(argc, argv),
+    _shouldRunServer(runServer),
+    _runServerPath(runServerPathOption),
+    _runningMarker(this, RUNNING_MARKER_FILENAME),
     _window(new MainWindow(desktop())),
     _sessionRunTimer(startupTimer),
     _previousSessionCrashed(setupEssentials(argc, argv)),
@@ -530,7 +537,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     _maxOctreePPS(maxOctreePacketsPerSecond.get()),
     _lastFaceTrackerUpdate(0)
 {
-
+    _runningMarker.startRunningMarker();
 
     PluginContainer* pluginContainer = dynamic_cast<PluginContainer*>(this); // set the container for any plugins that care
     PluginManager::getInstance()->setContainer(pluginContainer);
@@ -576,6 +583,28 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     qCDebug(interfaceapp) << "[VERSION] We will use DEVELOPMENT global services.";
 #endif
 
+    
+    bool wantsSandboxRunning = shouldRunServer();
+    static bool determinedSandboxState = false;
+    SandboxUtils sandboxUtils;
+    sandboxUtils.ifLocalSandboxRunningElse([&]() {
+        qCDebug(interfaceapp) << "Home sandbox appears to be running.....";
+        determinedSandboxState = true;
+    }, [&, wantsSandboxRunning]() {
+        qCDebug(interfaceapp) << "Home sandbox does not appear to be running....";
+        determinedSandboxState = true;
+        if (wantsSandboxRunning) {
+            QString contentPath = getRunServerPath();
+            SandboxUtils::runLocalSandbox(contentPath, true, RUNNING_MARKER_FILENAME);
+        }
+    });
+
+    quint64 MAX_WAIT_TIME = USECS_PER_SECOND * 4;
+    auto startWaiting = usecTimestampNow();
+    while (!determinedSandboxState && (usecTimestampNow() - startWaiting <= MAX_WAIT_TIME)) {
+        QCoreApplication::processEvents();
+        usleep(USECS_PER_MSEC * 50); // 20hz
+    }
 
     _bookmarks = new Bookmarks();  // Before setting up the menu
 
@@ -669,6 +698,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(&domainHandler, SIGNAL(disconnectedFromDomain()), SLOT(clearDomainOctreeDetails()));
     connect(&domainHandler, &DomainHandler::domainConnectionRefused, this, &Application::domainConnectionRefused);
 
+    // We could clear ATP assets only when changing domains, but it's possible that the domain you are connected
+    // to has gone down and switched to a new content set, so when you reconnect the cached ATP assets will no longer be valid.
+    connect(&domainHandler, &DomainHandler::disconnectedFromDomain, DependencyManager::get<ScriptCache>().data(), &ScriptCache::clearATPScriptsFromCache);
+
     // update our location every 5 seconds in the metaverse server, assuming that we are authenticated with one
     const qint64 DATA_SERVER_LOCATION_CHANGE_UPDATE_MSECS = 5 * MSECS_PER_SECOND;
 
@@ -685,10 +718,12 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     // send a location update immediately
     discoverabilityManager->updateLocation();
 
+    auto myAvatar = getMyAvatar();
+
     connect(nodeList.data(), &NodeList::nodeAdded, this, &Application::nodeAdded);
     connect(nodeList.data(), &NodeList::nodeKilled, this, &Application::nodeKilled);
     connect(nodeList.data(), &NodeList::nodeActivated, this, &Application::nodeActivated);
-    connect(nodeList.data(), &NodeList::uuidChanged, getMyAvatar(), &MyAvatar::setSessionUUID);
+    connect(nodeList.data(), &NodeList::uuidChanged, myAvatar.get(), &MyAvatar::setSessionUUID);
     connect(nodeList.data(), &NodeList::uuidChanged, this, &Application::setSessionUUID);
     connect(nodeList.data(), &NodeList::packetVersionMismatch, this, &Application::notifyPacketVersionMismatch);
 
@@ -718,7 +753,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(this, &Application::activeDisplayPluginChanged, this, &Application::updateThreadPoolCount);
 
     // Save avatar location immediately after a teleport.
-    connect(getMyAvatar(), &MyAvatar::positionGoneTo,
+    connect(myAvatar.get(), &MyAvatar::positionGoneTo,
         DependencyManager::get<AddressManager>().data(), &AddressManager::storeCurrentAddress);
 
     auto scriptEngines = DependencyManager::get<ScriptEngines>().data();
@@ -755,7 +790,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     connect(&_entityEditSender, &EntityEditPacketSender::packetSent, this, &Application::packetSent);
 
     // send the identity packet for our avatar each second to our avatar mixer
-    connect(&identityPacketTimer, &QTimer::timeout, getMyAvatar(), &MyAvatar::sendIdentityPacket);
+    connect(&identityPacketTimer, &QTimer::timeout, myAvatar.get(), &MyAvatar::sendIdentityPacket);
     identityPacketTimer.start(AVATAR_IDENTITY_PACKET_SEND_INTERVAL_MSECS);
 
     const char** constArgv = const_cast<const char**>(argv);
@@ -845,7 +880,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     // Tell our entity edit sender about our known jurisdictions
     _entityEditSender.setServerJurisdictions(&_entityServerJurisdictions);
-    _entityEditSender.setMyAvatar(getMyAvatar());
+    _entityEditSender.setMyAvatar(myAvatar.get());
 
     // For now we're going to set the PPS for outbound packets to be super high, this is
     // probably not the right long term solution. But for now, we're going to do this to
@@ -866,7 +901,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
         bandwidthRecorder.data(), &BandwidthRecorder::updateInboundData);
 
     // FIXME -- I'm a little concerned about this.
-    connect(getMyAvatar()->getSkeletonModel().get(), &SkeletonModel::skeletonLoaded,
+    connect(myAvatar->getSkeletonModel().get(), &SkeletonModel::skeletonLoaded,
         this, &Application::checkSkeleton, Qt::QueuedConnection);
 
     // Setup the userInputMapper with the actions
@@ -1081,7 +1116,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     applicationUpdater->checkForUpdate();
 
     // Now that menu is initialized we can sync myAvatar with it's state.
-    getMyAvatar()->updateMotionBehaviorFromMenu();
+    myAvatar->updateMotionBehaviorFromMenu();
 
 // FIXME spacemouse code still needs cleanup
 #if 0
@@ -1116,10 +1151,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
     static int SEND_STATS_INTERVAL_MS = 10000;
     static int NEARBY_AVATAR_RADIUS_METERS = 10;
 
-    static glm::vec3 lastAvatarPosition = getMyAvatar()->getPosition();
+    static glm::vec3 lastAvatarPosition = myAvatar->getPosition();
     static glm::mat4 lastHMDHeadPose = getHMDSensorPose();
-    static controller::Pose lastLeftHandPose = getMyAvatar()->getLeftHandPose();
-    static controller::Pose lastRightHandPose = getMyAvatar()->getRightHandPose();
+    static controller::Pose lastLeftHandPose = myAvatar->getLeftHandPose();
+    static controller::Pose lastRightHandPose = myAvatar->getRightHandPose();
 
     // Periodically send fps as a user activity event
     QTimer* sendStatsTimer = new QTimer(this);
@@ -1168,7 +1203,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
         properties["throttled"] = _displayPlugin ? _displayPlugin->isThrottled() : false;
 
-        glm::vec3 avatarPosition = getMyAvatar()->getPosition();
+        auto myAvatar = getMyAvatar();
+        glm::vec3 avatarPosition = myAvatar->getPosition();
         properties["avatar_has_moved"] = lastAvatarPosition != avatarPosition;
         lastAvatarPosition = avatarPosition;
 
@@ -1186,8 +1222,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
         properties["hmd_head_pose_changed"] = isHMDMode() && (hmdHeadPose != lastHMDHeadPose);
         lastHMDHeadPose = hmdHeadPose;
 
-        auto leftHandPose = getMyAvatar()->getLeftHandPose();
-        auto rightHandPose = getMyAvatar()->getRightHandPose();
+        auto leftHandPose = myAvatar->getLeftHandPose();
+        auto rightHandPose = myAvatar->getRightHandPose();
         // controller::Pose considers two poses to be different if either are invalid. In our case, we actually
         // want to consider the pose to be unchanged if it was invalid and still is invalid, so we check that first.
         properties["hand_pose_changed"] =
@@ -1234,7 +1270,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
 
     OctreeEditPacketSender* packetSender = entityScriptingInterface->getPacketSender();
     EntityEditPacketSender* entityPacketSender = static_cast<EntityEditPacketSender*>(packetSender);
-    entityPacketSender->setMyAvatar(getMyAvatar());
+    entityPacketSender->setMyAvatar(myAvatar.get());
 
     connect(this, &Application::applicationStateChanged, this, &Application::activeChanged);
     qCDebug(interfaceapp, "Startup time: %4.2f seconds.", (double)startupTimer.elapsed() / 1000.0);
@@ -1254,8 +1290,87 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer) :
         return entityServerNode && !isPhysicsEnabled();
     });
 
+
+
+    // Get sandbox content set version, if available
+    auto acDirPath = PathUtils::getRootDataDirectory() + BuildInfo::MODIFIED_ORGANIZATION + "/assignment-client/";
+    auto contentVersionPath = acDirPath + "content-version.txt";
+    qCDebug(interfaceapp) << "Checking " << contentVersionPath << " for content version";
+    auto contentVersion = 0;
+    QFile contentVersionFile(contentVersionPath);
+    if (contentVersionFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString line = contentVersionFile.readAll();
+        // toInt() returns 0 if the conversion fails, so we don't need to specifically check for failure
+        contentVersion = line.toInt();
+    }
+    qCDebug(interfaceapp) << "Server content version: " << contentVersion;
+
+    bool hasTutorialContent = contentVersion >= 1;
+
+    Setting::Handle<bool> firstRun { Settings::firstRun, true };
+    bool hasHMDAndHandControllers = PluginUtils::isHMDAvailable("OpenVR (Vive)") && PluginUtils::isHandControllerAvailable();
+    Setting::Handle<bool> tutorialComplete { "tutorialComplete", false };
+
+    bool shouldGoToTutorial = hasHMDAndHandControllers && hasTutorialContent && !tutorialComplete.get();
+
+    qCDebug(interfaceapp) << "Has HMD + Hand Controllers: " << hasHMDAndHandControllers << ", current plugin: " << _displayPlugin->getName();
+    qCDebug(interfaceapp) << "Has tutorial content: " << hasTutorialContent;
+    qCDebug(interfaceapp) << "Tutorial complete: " << tutorialComplete.get();
+    qCDebug(interfaceapp) << "Should go to tutorial: " << shouldGoToTutorial;
+
+    // when --url in command line, teleport to location
+    const QString HIFI_URL_COMMAND_LINE_KEY = "--url";
+    int urlIndex = arguments().indexOf(HIFI_URL_COMMAND_LINE_KEY);
+    QString addressLookupString;
+    if (urlIndex != -1) {
+        addressLookupString = arguments().value(urlIndex + 1);
+    }
+
+    const QString TUTORIAL_PATH = "/tutorial_begin";
+
+    if (shouldGoToTutorial) {
+        sandboxUtils.ifLocalSandboxRunningElse([=]() {
+            qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
+            DependencyManager::get<AddressManager>()->goToLocalSandbox(TUTORIAL_PATH);
+        }, [=]() {
+            qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
+            if (firstRun.get()) {
+                showHelp();
+            }
+            if (addressLookupString.isEmpty()) {
+                DependencyManager::get<AddressManager>()->goToEntry();
+            } else {
+                DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
+            }
+        });
+    } else {
+
+        bool isFirstRun = firstRun.get();
+
+        if (isFirstRun) {
+            showHelp();
+        }
+
+        // If this is a first run we short-circuit the address passed in
+        if (isFirstRun) {
+            if (hasHMDAndHandControllers) {
+                sandboxUtils.ifLocalSandboxRunningElse([=]() {
+                    qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
+                    DependencyManager::get<AddressManager>()->goToLocalSandbox();
+                }, [=]() {
+                    qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
+                    DependencyManager::get<AddressManager>()->goToEntry();
+                });
+            } else {
+                DependencyManager::get<AddressManager>()->goToEntry();
+            }
+        } else {
+            qCDebug(interfaceapp) << "Not first run... going to" << qPrintable(addressLookupString.isEmpty() ? QString("previous location") : addressLookupString);
+            DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
+        }
+    }
+
     // After all of the constructor is completed, then set firstRun to false.
-    Setting::Handle<bool> firstRun{ Settings::firstRun, true };
     firstRun.set(false);
 }
 
@@ -1416,6 +1531,9 @@ void Application::cleanupBeforeQuit() {
     DependencyManager::get<ScriptEngines>()->saveScripts();
     DependencyManager::get<ScriptEngines>()->shutdownScripting(); // stop all currently running global scripts
     DependencyManager::destroy<ScriptEngines>();
+
+    _displayPlugin.reset();
+    PluginManager::getInstance()->shutdown();
 
     // Cleanup all overlays after the scripts, as scripts might add more
     _overlays.cleanupAllOverlays();
@@ -1592,6 +1710,7 @@ void Application::initializeUi() {
     UpdateDialog::registerType();
     qmlRegisterType<Preference>("Hifi", 1, 0, "Preference");
 
+    qmlRegisterType<HFWebEngineProfile>("HFWebEngineProfile", 1, 0, "HFWebEngineProfile");
 
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     offscreenUi->create(_glWidget->qglContext());
@@ -1624,7 +1743,7 @@ void Application::initializeUi() {
     FileScriptingInterface* fileDownload = new FileScriptingInterface(engine);
     rootContext->setContextProperty("File", fileDownload);
     connect(fileDownload, &FileScriptingInterface::unzipSuccess, this, &Application::showAssetServerWidget);
-    rootContext->setContextProperty("MyAvatar", getMyAvatar());
+    rootContext->setContextProperty("MyAvatar", getMyAvatar().get());
     rootContext->setContextProperty("Messages", DependencyManager::get<MessagesClient>().data());
     rootContext->setContextProperty("Recording", DependencyManager::get<RecordingScriptingInterface>().data());
     rootContext->setContextProperty("Preferences", DependencyManager::get<Preferences>().data());
@@ -2005,11 +2124,11 @@ void Application::setFieldOfView(float fov) {
 }
 
 void Application::aboutApp() {
-    InfoView::show(INFO_HELP_PATH);
+    InfoView::show(INFO_WELCOME_PATH);
 }
 
 void Application::showHelp() {
-    InfoView::show(INFO_EDIT_ENTITIES_PATH);
+    InfoView::show(INFO_HELP_PATH);
 }
 
 void Application::resizeEvent(QResizeEvent* event) {
@@ -3286,15 +3405,6 @@ void Application::init() {
 
     _timerStart.start();
     _lastTimeUpdated.start();
-
-    // when --url in command line, teleport to location
-    const QString HIFI_URL_COMMAND_LINE_KEY = "--url";
-    int urlIndex = arguments().indexOf(HIFI_URL_COMMAND_LINE_KEY);
-    QString addressLookupString;
-    if (urlIndex != -1) {
-        addressLookupString = arguments().value(urlIndex + 1);
-    }
-
     // when +connect_lobby in command line, join steam lobby
     const QString STEAM_LOBBY_COMMAND_LINE_KEY = "+connect_lobby";
     int lobbyIndex = arguments().indexOf(STEAM_LOBBY_COMMAND_LINE_KEY);
@@ -3380,7 +3490,7 @@ void Application::init() {
             entity->setCollisionSound(sound);
         }
     }, Qt::QueuedConnection);
-    connect(getMyAvatar(), &MyAvatar::newCollisionSoundURL, this, [this](QUrl newURL) {
+    connect(getMyAvatar().get(), &MyAvatar::newCollisionSoundURL, this, [this](QUrl newURL) {
         if (auto avatar = getMyAvatar()) {
             auto sound = DependencyManager::get<SoundCache>()->getSound(newURL);
             avatar->setCollisionSound(sound);
@@ -3436,7 +3546,7 @@ void Application::updateMyAvatarLookAtPosition() {
         }
     } else {
         AvatarSharedPointer lookingAt = myAvatar->getLookAtTargetAvatar().lock();
-        if (lookingAt && myAvatar != lookingAt.get()) {
+        if (lookingAt && myAvatar.get() != lookingAt.get()) {
             //  If I am looking at someone else, look directly at one of their eyes
             isLookingAtSomeone = true;
             auto lookingAtHead = static_pointer_cast<Avatar>(lookingAt)->getHead();
@@ -3625,7 +3735,18 @@ void Application::setKeyboardFocusEntity(QUuid id) {
 void Application::setKeyboardFocusEntity(EntityItemID entityItemID) {
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
     if (_keyboardFocusedItem.get() != entityItemID) {
+        // reset focused entity
         _keyboardFocusedItem.set(UNKNOWN_ENTITY_ID);
+        if (_keyboardFocusHighlight) {
+            _keyboardFocusHighlight->setVisible(false);
+        }
+
+        // if invalid, return without expensive (locking) operations
+        if (entityItemID == UNKNOWN_ENTITY_ID) {
+            return;
+        }
+
+        // if valid, query properties
         auto properties = entityScriptingInterface->getEntityProperties(entityItemID);
         if (!properties.getLocked() && properties.getVisible()) {
             auto entity = getEntities()->getTree()->findEntityByID(entityItemID);
@@ -3636,8 +3757,10 @@ void Application::setKeyboardFocusEntity(EntityItemID entityItemID) {
                 }
                 _keyboardFocusedItem.set(entityItemID);
                 _lastAcceptedKeyPress = usecTimestampNow();
+
+                // create a focus
                 if (_keyboardFocusHighlightID < 0 || !getOverlays().isAddedOverlay(_keyboardFocusHighlightID)) {
-                    _keyboardFocusHighlight = new Cube3DOverlay();
+                    _keyboardFocusHighlight = std::make_shared<Cube3DOverlay>();
                     _keyboardFocusHighlight->setAlpha(1.0f);
                     _keyboardFocusHighlight->setBorderSize(1.0f);
                     _keyboardFocusHighlight->setColor({ 0xFF, 0xEF, 0x00 });
@@ -3647,16 +3770,15 @@ void Application::setKeyboardFocusEntity(EntityItemID entityItemID) {
                     _keyboardFocusHighlight->setColorPulse(1.0);
                     _keyboardFocusHighlight->setIgnoreRayIntersection(true);
                     _keyboardFocusHighlight->setDrawInFront(false);
+                    _keyboardFocusHighlightID = getOverlays().addOverlay(_keyboardFocusHighlight);
                 }
+
+                // position the focus
                 _keyboardFocusHighlight->setRotation(entity->getRotation());
                 _keyboardFocusHighlight->setPosition(entity->getPosition());
                 _keyboardFocusHighlight->setDimensions(entity->getDimensions() * 1.05f);
                 _keyboardFocusHighlight->setVisible(true);
-                _keyboardFocusHighlightID = getOverlays().addOverlay(_keyboardFocusHighlight);
             }
-        }
-        if (_keyboardFocusedItem.get() == UNKNOWN_ENTITY_ID && _keyboardFocusHighlight) {
-            _keyboardFocusHighlight->setVisible(false);
         }
     }
 }
@@ -4321,7 +4443,7 @@ PickRay Application::computePickRay(float x, float y) const {
     return result;
 }
 
-MyAvatar* Application::getMyAvatar() const {
+std::shared_ptr<MyAvatar> Application::getMyAvatar() const {
     return DependencyManager::get<AvatarManager>()->getMyAvatar();
 }
 
@@ -4616,11 +4738,15 @@ void Application::resetSensors(bool andReload) {
 
 void Application::updateWindowTitle() const {
 
-    QString buildVersion = " (build " + applicationVersion() + ")";
     auto nodeList = DependencyManager::get<NodeList>();
+    auto accountManager = DependencyManager::get<AccountManager>();
 
-    QString connectionStatus = nodeList->getDomainHandler().isConnected() ? "" : " (NOT CONNECTED) ";
-    QString username = DependencyManager::get<AccountManager>()->getAccountInfo().getUsername();
+    QString buildVersion = " (build " + applicationVersion() + ")";
+
+    QString loginStatus = accountManager->isLoggedIn() ? "" : " (NOT LOGGED IN)";
+
+    QString connectionStatus = nodeList->getDomainHandler().isConnected() ? "" : " (NOT CONNECTED)";
+    QString username = accountManager->getAccountInfo().getUsername();
     QString currentPlaceName = DependencyManager::get<AddressManager>()->getHost();
 
     if (currentPlaceName.isEmpty()) {
@@ -4628,7 +4754,7 @@ void Application::updateWindowTitle() const {
     }
 
     QString title = QString() + (!username.isEmpty() ? username + " @ " : QString())
-        + currentPlaceName + connectionStatus + buildVersion;
+        + currentPlaceName + connectionStatus + loginStatus + buildVersion;
 
 #ifndef WIN32
     // crashes with vs2013/win32
@@ -4914,7 +5040,7 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     scriptEngine->registerGlobalObject("Rates", new RatesScriptingInterface(this));
 
     // hook our avatar and avatar hash map object into this script engine
-    scriptEngine->registerGlobalObject("MyAvatar", getMyAvatar());
+    scriptEngine->registerGlobalObject("MyAvatar", getMyAvatar().get());
     qScriptRegisterMetaType(scriptEngine, audioListenModeToScriptValue, audioListenModeFromScriptValue);
 
     scriptEngine->registerGlobalObject("AvatarList", DependencyManager::get<AvatarManager>().data());

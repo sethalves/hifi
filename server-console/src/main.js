@@ -42,7 +42,7 @@ const appIcon = path.join(__dirname, '../resources/console.png');
 const DELETE_LOG_FILES_OLDER_THAN_X_SECONDS = 60 * 60 * 24 * 7; // 7 Days
 const LOG_FILE_REGEX = /(domain-server|ac-monitor|ac)-.*-std(out|err).txt/;
 
-const HOME_CONTENT_URL = "http://cachefly.highfidelity.com/home.tgz";
+const HOME_CONTENT_URL = "http://cachefly.highfidelity.com/home-tutorial-9.tar.gz";
 
 function getBuildInfo() {
     var buildInfoPath = null;
@@ -125,6 +125,12 @@ function shutdown() {
             shutdownCallback(0);
         }
 
+    }
+}
+
+function forcedShutdown() {
+    if (!isShuttingDown) {
+        shutdownCallback(0);
     }
 }
 
@@ -226,6 +232,7 @@ if (shouldQuit) {
 
 // Check command line arguments to see how to find binaries
 var argv = require('yargs').argv;
+
 var pathFinder = require('./modules/path-finder.js');
 
 var interfacePath = null;
@@ -530,6 +537,9 @@ function openBackupInstructions(folder) {
     }
     window.show();
 
+    electron.ipcMain.on('setSize', function(event, obj) {
+        window.setSize(obj.width, obj.height);
+    });
     electron.ipcMain.on('ready', function() {
         console.log("got ready");
         window.webContents.send('update', folder);
@@ -771,6 +781,7 @@ function maybeShowSplash() {
     }
 }
 
+
 const trayIconOS = (osType == "Darwin") ? "osx" : "win";
 var trayIcons = {};
 trayIcons[ProcessGroupStates.STARTED] = "console-tray-" + trayIconOS + ".png";
@@ -838,6 +849,34 @@ function onContentLoaded() {
 
         // start the home server
         homeServer.start();
+    }
+
+    // If we were launched with the shutdownWatcher option, then we need to watch for the interface app
+    // shutting down. The interface app will regularly update a running state file which we will check.
+    // If the file doesn't exist or stops updating for a significant amount of time, we will shut down.
+    if (argv.shutdownWatcher) {
+        console.log("Shutdown watcher requested... argv.shutdownWatcher:", argv.shutdownWatcher);
+        var MAX_TIME_SINCE_EDIT = 5000; // 5 seconds between updates
+        var firstAttemptToCheck = new Date().getTime();
+        var shutdownWatchInterval = setInterval(function(){
+            var stats = fs.stat(argv.shutdownWatcher, function(err, stats) {
+                if (err) {
+                    var sinceFirstCheck = new Date().getTime() - firstAttemptToCheck;
+                    if (sinceFirstCheck > MAX_TIME_SINCE_EDIT) {
+                        console.log("Running state file is missing, assume interface has shutdown... shutting down snadbox.");
+                        forcedShutdown();
+                        clearTimeout(shutdownWatchInterval);
+                    }
+                } else {
+                    var sinceEdit = new Date().getTime() - stats.mtime.getTime();
+                    if (sinceEdit > MAX_TIME_SINCE_EDIT) {
+                        console.log("Running state of interface hasn't updated in MAX time... shutting down.");
+                        forcedShutdown();
+                        clearTimeout(shutdownWatchInterval);
+                    }
+                }
+            });
+        }, 1000);
     }
 }
 
