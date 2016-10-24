@@ -28,6 +28,7 @@
 #include <ResourceCache.h>
 #include <ScriptCache.h>
 #include <SoundCache.h>
+#include <ScriptEngines.h>
 #include <UUID.h>
 
 #include <recording/Deck.h>
@@ -69,6 +70,7 @@ Agent::Agent(ReceivedMessage& message) :
     DependencyManager::set<RecordingScriptingInterface>();
     DependencyManager::set<PhysicsEngineTracker>();
     DependencyManager::set<ScriptCache>();
+    DependencyManager::set<ScriptEngines>();
 
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
 
@@ -590,9 +592,10 @@ void Agent::aboutToFinish() {
     DependencyManager::get<EntityScriptingInterface>()->setEntityTree(nullptr);
 
     ResourceManager::cleanup();
-    
+
     // cleanup the AudioInjectorManager (and any still running injectors)
     DependencyManager::destroy<AudioInjectorManager>();
+    DependencyManager::destroy<ScriptEngines>();
 
     emit stopAvatarAudioTimer();
     _avatarAudioTimerThread.quit();
