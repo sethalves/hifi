@@ -1,0 +1,153 @@
+<AppShortcuts>
+    <Shortcuts>
+        <Shortcut key="A" command="ToggleAntialias"></Shortcut>
+		<Shortcut key="A" shift="true" command="ToggleSSAO"></Shortcut>
+        <Shortcut key="B" shift="true" command="ToggleBackgroundMode" />
+		<Shortcut key="B" command="ImportSkyBox" onlyInCIRMI="true"/>
+        <Shortcut key="C" shift="true" command="CreateScreenShot"></Shortcut>
+        <Shortcut key="C" command="ToggleMouseCameraFixedPlaneRot" />
+        <!--Shortcut key="D" command="SetDeformMode"></Shortcut-->
+        <Shortcut key="D" shift="true" command="ResetCameraClosestView"></Shortcut>
+        <Shortcut key="E" command="ExportFile"></Shortcut>
+        <Shortcut key="F" shift="true" command="ToggleShowInfo" />
+        <Shortcut key="G" command="SetEngraveMode"></Shortcut>
+        <Shortcut key="G" shift="true" command="ToggleGroundVisible"></Shortcut>
+        <Shortcut key="H" command="ShowHelp"></Shortcut>
+        <Shortcut key="H" shift="true" command="ToggleRayhitMode"></Shortcut>
+        <Shortcut key="I" command="ImportFile"></Shortcut>
+        <Shortcut key="I" shift="true" command="BooleanImport" value="importFromFile"></Shortcut>
+        <Shortcut key="J" command="SetSimplifyMode"></Shortcut>
+        <Shortcut key="K" command="ToggleObjectTransform" onlyInCIRMI="true" />
+        <Shortcut key="K" shift="true" command="ToggleSurfaceApprox" onlyInCIRMI="true" />
+        <Shortcut key="L" shift="true" command="ToggleLeoHWStreaming" />
+        <Shortcut key="M" command="SetMaterialViewMode"></Shortcut>
+        <Shortcut key="M" shift="true" command="SetMaskingMode"></Shortcut>
+        <Shortcut key="N" shift="true" command="CreateScreenShot" value="transparent"></Shortcut>
+        <Shortcut key="O" command="ToggleObjectAutoRotMode"></Shortcut>
+        <Shortcut key="P" command="SetPaintMode"></Shortcut>
+        <Shortcut key="R" shift="true" command="ToggleRenderStyle"></Shortcut>
+        <Shortcut key="R" command="SetShapeShifterMode"></Shortcut>
+        <Shortcut key="S" shift="true" command="ToggleStereo"></Shortcut>
+        <Shortcut key="S" command="SetSculptMode"></Shortcut>
+        <Shortcut key="T" command="ToggleMaskingMode"></Shortcut>
+        <Shortcut key="U" command="UploadObject"></Shortcut>
+        <Shortcut key="U" shift="true" command="OpenSEPSideBar"></Shortcut>
+        <Shortcut key="W" command="ToggleWireframe"></Shortcut>
+        <Shortcut key="W" shift="true" command="ToggleMaxShadows"></Shortcut>
+        <Shortcut key="X" command="ResetCameraDefaultView"></Shortcut>
+        <Shortcut key="Y" command="Redo"></Shortcut>
+        <Shortcut key="Z" command="Undo"></Shortcut>
+        
+        <Shortcut key="1" shift="true" command="SetSimplifyMode" value="amorf" /> 
+        <Shortcut key="2" shift="true" command="SetSimplifyMode" value="geometric" /> 
+        <Shortcut key="3" shift="true" command="SetSimplifyMode" value="mixed" /> 
+        
+        <Shortcut key="4" shift="true" command="CSGOp" value="union" /> 
+        <Shortcut key="5" shift="true" command="CSGOp" value="intersection" /> 
+        <Shortcut key="6" shift="true" command="CSGOp" value="a_minus_b" /> 
+        <Shortcut key="7" shift="true" command="CSGOp" value="b_minus_a" /> 
+        <Shortcut key="8" shift="true" command="CSGOp" value="symmDiff" /> 
+        
+        <Shortcut key="+" command="IncreaseBrushSize"></Shortcut>
+        <Shortcut key="-" command="DecreaseBrushSize"></Shortcut>
+        <Shortcut key="+" shift="true" command="IncreaseBrushStrength"></Shortcut>
+        <Shortcut key="-" shift="true" command="DecreaseBrushStrength"></Shortcut>
+        <Shortcut key="*" event="press" command="EnableScaleUp" value="true"></Shortcut>
+        <Shortcut key="*" event="release" command="EnableScaleUp" value="false"></Shortcut>
+        <Shortcut key="/" event="press" command="EnableScaleDown" value="true"></Shortcut>
+        <Shortcut key="/" event="release" command="EnableScaleDown" value="false"></Shortcut>
+        <Shortcut key="left" event="press" command="SetCameraAutoRotMode" value="left true"></Shortcut>
+        <Shortcut key="left" event="release" command="SetCameraAutoRotMode" value="left false"></Shortcut>
+        <Shortcut key="right" event="press" command="SetCameraAutoRotMode" value="right true"></Shortcut>
+        <Shortcut key="right" event="release" command="SetCameraAutoRotMode" value="right false"></Shortcut>
+        <Shortcut key="up" event="press" command="SetCameraAutoRotMode" value="up true"></Shortcut>
+        <Shortcut key="up" event="release" command="SetCameraAutoRotMode" value="up false"></Shortcut>
+        <Shortcut key="down" event="press" command="SetCameraAutoRotMode" value="down true"></Shortcut>
+        <Shortcut key="down" event="release" command="SetCameraAutoRotMode" value="down false"></Shortcut>
+        <Shortcut key="escape" command="Exit" />
+    </Shortcuts>
+        
+    <Shortcuts mode="MaterialView">
+        <Shortcut key="1" command="SetMaterial" value="plastic"></Shortcut>
+        <Shortcut key="2" command="SetMaterial" value="alumide"></Shortcut>
+        <Shortcut key="3" command="SetMaterial" value="ceramics"></Shortcut>
+        <Shortcut key="4" command="SetMaterial" value="silver"></Shortcut>
+        <Shortcut key="5" command="SetMaterial" value="gold"></Shortcut>
+        <Shortcut key="6" command="SetMaterial" value="multicolor"></Shortcut>
+        <Shortcut key="L" command="SetLighting" value="toggleState"></Shortcut>
+    </Shortcuts>    
+            
+    <Shortcuts mode="Sculpt">
+        <Shortcut key="1" command="SetSculptBrush" value="pull"></Shortcut>
+        <Shortcut key="2" command="SetSculptBrush" value="push"></Shortcut>
+        <Shortcut key="3" command="SetSculptBrush" value="sculpt"></Shortcut>
+        <Shortcut key="4" command="SetSculptBrush" value="delete"></Shortcut>
+        <Shortcut key="5" command="SetSculptBrush" value="flatten"></Shortcut>
+        <Shortcut key="6" command="SetSculptBrush" value="edge"></Shortcut>
+        <Shortcut key="7" command="SetSculptBrush" value="smooth"></Shortcut>
+        <Shortcut key="8" command="SetSculptBrush" value="simplify"></Shortcut>
+        <Shortcut key="9" command="SetSculptBrush" value="neg_edge"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode="Engrave">
+        <Shortcut key="1" command="SelectPattern" value="pattern1"></Shortcut>
+        <Shortcut key="2" command="SelectPattern" value="pattern2"></Shortcut>
+        <Shortcut key="T" command="SelectPattern" value="text"></Shortcut>
+        <Shortcut key="F" command="SelectPattern" value="freehand"></Shortcut>
+        <Shortcut key="T" shift="true" command="OpenEngraveTextEditor"></Shortcut>
+        <Shortcut key="F" shift="true" command="OpenEngraveFreehand"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode="Paint">
+        <Shortcut key="0" command="SetPaintColor" value="white"></Shortcut>
+        <Shortcut key="1" command="SetPaintColor" value="yellow"></Shortcut>
+        <Shortcut key="2" command="SetPaintColor" value="orange"></Shortcut>
+        <Shortcut key="3" command="SetPaintColor" value="red"></Shortcut>
+        <Shortcut key="4" command="SetPaintColor" value="green"></Shortcut>
+        <Shortcut key="5" command="SetPaintColor" value="lightBlue"></Shortcut>
+        <Shortcut key="6" command="SetPaintColor" value="blue"></Shortcut>
+        <Shortcut key="7" command="SetPaintColor" value="pink"></Shortcut>
+        <Shortcut key="8" command="SetPaintColor" value="purple"></Shortcut>
+        <Shortcut key="9" command="SetPaintColor" value="brown"></Shortcut>
+        <Shortcut key="C" command="SetColorPickMode"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode ="ShapeShifter">
+        <Shortcut key="+" command="IncreaseShapeShifterParam"></Shortcut>
+        <Shortcut key="-" command="DecreaseShapeShifterParam"></Shortcut>
+        <Shortcut key="T" command="SetShapeShifterBaseShape" value="torus"></Shortcut>
+        <Shortcut key="B" shift="true" command="SelectShapeShifterParam" value="baseradius"></Shortcut>
+        <Shortcut key="B" command="SelectShapeShifterParam" value="basevertices"></Shortcut>
+        <Shortcut key="C" command="SetShapeShifterBaseShape" value="cup"></Shortcut>
+        <Shortcut key="I" shift="true" command="SelectShapeShifterParam" value="innerradius"></Shortcut>
+        <Shortcut key="L" command="SelectShapeShifterParam" value="length"></Shortcut>
+        <Shortcut key="O" shift="true" command="SelectShapeShifterParam" value="outerradius"></Shortcut>
+        <Shortcut key="P" command="SetShapeShifterBaseShape" value="prism"></Shortcut>
+        <Shortcut key="T" shift="true" command="SelectShapeShifterParam" value="topradius"></Shortcut>
+        <Shortcut key="V" command="SelectShapeShifterParam" value="verticalresolution"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode="Simplify">
+        <Shortcut key="B" command="BeginSimplify"></Shortcut>
+        <Shortcut key="+" command="changeSimplifyParam" value="0.05 length"></Shortcut>
+        <Shortcut key="-" command="changeSimplifyParam" value="-0.05 length"></Shortcut>
+        <Shortcut key="K" command="changeSimplifyParam" value="0.1 maxanglediff"></Shortcut>
+        <Shortcut key="L" command="changeSimplifyParam" value="-0.1 maxanglediff"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode="Deform">
+        <Shortcut key="+" command="IncreaseDeformParam"></Shortcut>
+        <Shortcut key="-" command="DecreaseDeformParam"></Shortcut>
+    </Shortcuts>
+    
+    <Shortcuts mode="Merger">
+        <Shortcut key="+" command="ChangeMergerParam" value="1.0 vertices"></Shortcut>
+        <Shortcut key="-" command="ChangeMergerParam" value="-1.0 vertices"></Shortcut>
+        <Shortcut key="Q" command="ChangeMergerParam" value="0.01 radius"></Shortcut>
+        <Shortcut key="A" command="ChangeMergerParam" value="-0.01 radius"></Shortcut>
+        <Shortcut key="Z" command="ChangeMergerParam" value="0.01 offset"></Shortcut>
+        <Shortcut key="H" command="ChangeMergerParam" value="-0.01 offset"></Shortcut>
+        <Shortcut key="K" command="ChangeMergerParam" value="0.01 aspectRatio"></Shortcut>
+        <Shortcut key="M" command="ChangeMergerParam" value="-0.01 aspectRatio"></Shortcut>
+    </Shortcuts>
+</AppShortcuts>

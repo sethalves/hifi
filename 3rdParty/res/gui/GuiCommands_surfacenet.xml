@@ -1,0 +1,9 @@
+<GuiCommands>
+
+<GuiCmd component="sfnThicknessSlider" event="sliderValueChanged" command="SurfacenetSetThickness" value="sliderValue" />
+<GuiCmd component="sfnThicknessVSlider" event="sliderValueChanged" command="SurfacenetSetThicknessV" value="sliderValue" />
+<GuiCmd component="sfnNumberSlider" event="sliderValueChanged" command="SurfacenetSetNumLines" value="sliderValue" />
+<GuiCmd component="sfnRegenerateButton" event="clicked" command="SurfacenetRegenerate" />
+<GuiCmd component="sfnGenerateMeshButton" event="clicked" command="SurfacenetGenerateMesh" />
+
+</GuiCommands>

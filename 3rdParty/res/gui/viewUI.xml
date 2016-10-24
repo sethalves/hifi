@@ -1,0 +1,545 @@
+<gui width="1024" height="1024" textureAtlasFile="res/gui/atlas2.png">
+
+
+    <!-- LEFT MENU - MODES -->	
+<!--
+    <leoPanel name="steppingFrame2" x="10" y="240" width="50" height="105" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+	
+        
+		<leoRadioButton name="paintModeButton" x="0" y="120" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Paint and Engrave" groupId="1">
+            <state id="0">
+                <idle subTexture="paintModeButton"  alpha="0.6"/>
+                <push subTexture="paintModeButton"  alpha="1"/>
+                <hover subTexture="paintModeButton" alpha="0.8"/>
+			</state>
+            <state id="1">
+                <idle subTexture="paintModeButton" alpha="1"/>
+                <push subTexture="paintModeButton" alpha="1"/>
+                <hover subTexture="paintModeButton" alpha="1"/>
+			</state>
+        </leoRadioButton>
+        
+        <leoRadioButton name="engraveModeButton" x="0" y="120" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Paint and Engrave" groupId="1">
+            <state id="0">
+                <idle subTexture="paintModeButton"  alpha="0.6"/>
+                <push subTexture="paintModeButton"  alpha="1"/>
+                <hover subTexture="paintModeButton" alpha="0.8"/>
+			</state>
+            <state id="1">
+                <idle subTexture="paintModeButton" alpha="1"/>
+                <push subTexture="paintModeButton" alpha="1"/>
+                <hover subTexture="paintModeButton" alpha="1"/>
+			</state>
+        </leoRadioButton>
+        
+        <leoRadioButton name="paintEngraveModeButton" x="0" y="120" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Paint and Engrave" groupId="1">
+		<state id="0">
+            <idle subTexture="paintModeButton"  alpha="0.6"/>
+            <push subTexture="paintModeButton"  alpha="1"/>
+            <hover subTexture="paintModeButton" alpha="0.8"/>
+			</state>
+            <state id="1">
+			<idle subTexture="paintModeButton" alpha="1"/>
+            <push subTexture="paintModeButton" alpha="1"/>
+            <hover subTexture="paintModeButton" alpha="1"/>
+			</state>
+        </leoRadioButton>
+		
+		
+		
+		<leoRadioButton name="materialPreviewButton" x="0" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Material view" groupId="1" ticked="0">
+            <state id="0">
+			
+            <idle subTexture="materialModeButton"  alpha="0.6"/>
+            <push subTexture="materialModeButton"  alpha="1"/>
+            <hover subTexture="materialModeButton" alpha="0.8"/>
+            </state>
+            <state id="1">
+                <idle subTexture="materialModeButton" alpha="1"/>
+            <push subTexture="materialModeButton" alpha="1"/>
+            <hover subTexture="materialModeButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+	
+
+    </leoPanel> -->
+	
+<!-- MAIN MENU GOMBOK -->	
+    <leoPanel name="mainMenuButtonsFrame" x="10" y="74" width="205" height="78" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        
+        <leoButton name="templateSelectorButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Templates"  >
+            <idle	subTexture="templateButton" alpha="0.3"/>
+            <push subTexture="templateButton" alpha="1"/>
+            <hover subTexture="templateButton" alpha="0.5"/>
+        </leoButton>
+		
+		<leoButton name="menuButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""   targetFrame="mainMenuFrame">
+            <idle	subTexture="menuButton" alpha="0.3"/>
+            <push subTexture="menuButton" alpha="1"/>
+            <hover subTexture="menuButton" alpha="0.5"/>
+        </leoButton>
+<!-- UPLOAD -->
+		<leoButton name="uploadButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Save" >
+            <idle	subTexture="uploadButton" alpha="0.3"/>
+            <push subTexture="uploadButton" alpha="1"/>
+            <hover subTexture="uploadButton" alpha="0.5"/>
+        </leoButton>
+		
+    </leoPanel>
+    
+<!-- main menu frame -->
+	<leoPanel name="mainMenuFrame" x="10" y="120" width="242" height="60" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" tooltip="" bgColor="rgb(51,0,0,77)" paintInside="0">
+
+		<leoToggleButton name="3dViewButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="3D Stereo View"  ticked="0">
+            <state id="0">
+                <idle subTexture="2dGlassButton" alpha="0.6000000238"/>
+                <push subTexture="2dGlassButton" alpha="1"/>
+                <hover subTexture="2dGlassButton" alpha="0.8000000119"/>
+            </state>
+            <state id="1">
+                <idle subTexture="anaglyphLeftButton" alpha="0.6000000238"/>
+                <push subTexture="anaglyphLeftButton" alpha="1"/>
+                <hover subTexture="anaglyphLeftButton" alpha="0.8000000119"/>
+            </state>
+            <state id="2">
+                <idle subTexture="anaglyphRightButton" alpha="0.6000000238"/>
+                <push subTexture="anaglyphRightButton" alpha="1"/>
+                <hover subTexture="anaglyphRightButton" alpha="0.8000000119"/>
+            </state>
+            <state id="3">
+                <idle subTexture="3dInterlacedRightButton" alpha="0.6000000238"/>
+                <push subTexture="3dInterlacedRightButton" alpha="1"/>
+                <hover subTexture="3dInterlacedRightButton" alpha="0.8000000119"/>
+            </state>
+            <state id="4">
+                <idle subTexture="3dInterlacedLeftButton" alpha="0.6000000238"/>
+                <push subTexture="3dInterlacedLeftButton" alpha="1"/>
+                <hover subTexture="3dInterlacedLeftButton" alpha="0.8000000119"/>
+            </state>
+        </leoToggleButton>	
+	
+        <leoButton name="helpButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" tooltip="Help">
+            <idle subTexture="helpButton" alpha="0.6000000238"/>
+            <push subTexture="helpButton" alpha="1"/>
+            <hover subTexture="helpButton" alpha="0.8000000119"/>
+        </leoButton>
+       
+        <leoButton name="resetSceneButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" tooltip="Reset Scene">
+            <idle subTexture="resetSceneButton" alpha="0.6000000238"/>
+            <push subTexture="resetSceneButton" alpha="1"/>
+            <hover subTexture="resetSceneButton" alpha="0.8000000119"/>
+        </leoButton>
+		
+		<leoButton name="importButton" x="180" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Import" >
+            <idle subTexture="importButton" alpha="0.6000000238"/>
+            <push subTexture="importButton" alpha="1"/>
+            <hover subTexture="importButton" alpha="0.8000000119"/>
+        </leoButton>
+        <leoButton name="exportButton" x="240" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Export" >
+            <idle subTexture="exportButton" alpha="0.6000000238"/>
+            <push subTexture="exportButton" alpha="1"/>
+            <hover subTexture="exportButton" alpha="0.8000000119"/>
+        </leoButton>
+		
+    </leoPanel>
+	
+<!--  NAVIGATION LABELS  -->
+    <leoPanel name="navigationFrame" x="10" y="-160" width="64" height="150" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoButton name="zoomNavigationButton" x="0" y="100" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Scroll the mouse wheel&#10;to zoom in/out"  >
+            <idle subTexture="naviHelpZoomButton" alpha="0.5"/>
+            <push subTexture="naviHelpZoomButton" alpha="0.5"/>
+            <hover subTexture="naviHelpZoomButton" alpha="0.5"/>
+        </leoButton>
+        <leoButton name="panNavigationButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Pan the camera&#10;with the right&#10;mouse button"  >
+            <idle subTexture="naviHelpMoveButton" alpha="0.5"/>
+            <push subTexture="naviHelpMoveButton" alpha="0.5"/>
+            <hover subTexture="naviHelpMoveButton" alpha="0.5"/>
+        </leoButton>
+        <leoButton name="rotateNavigationButton" x="0" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Rotate the object&#10;with the left&#10;mouse button"  >
+            <idle subTexture="naviHelpRotateButton" alpha="0.5"/>
+            <push subTexture="naviHelpRotateButton" alpha="0.5"/>
+            <hover subTexture="naviHelpRotateButton" alpha="0.5"/>
+        </leoButton>
+    </leoPanel>
+    
+	
+<!--	MATERIAL FRAME -->
+	<leoPanel name="materialFrame" x="-184" y="-60" width="442" height="60" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.400000" tooltip="" bgColor="rgb(51,0,0,77)" paintInside="0">
+		
+		<leoToggleButton name="lightButton" x="380" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Lighting"  ticked="0">
+            <state id="0">
+                <idle subTexture="lightFromUpButton" alpha="0.6"/>
+                <push subTexture="lightFromUpButton" alpha="1"/>
+                <hover subTexture="lightFromUpButton" alpha="0.8"/>
+            </state>
+            <state id="1">
+                <idle subTexture="lightFromRightButton" alpha="0.6000000238"/>
+                <push subTexture="lightFromRightButton" alpha="1"/>
+                <hover subTexture="lightFromRightButton" alpha="0.8000000119"/>
+            </state>
+            <state id="2">
+                <idle subTexture="lightFromLeftButton" alpha="0.6000000238"/>
+                <push subTexture="lightFromLeftButton" alpha="1"/>
+                <hover subTexture="lightFromLeftButton" alpha="0.8000000119"/>
+            </state>
+        </leoToggleButton>			
+		
+		
+	
+		<!-- MATERIAL RADIO BUTTONS -->				
+		<leoRadioButton name="multiColorButton" x="300" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Multicolor" groupId="4" ticked="1">
+			<state id="0">
+				<idle subTexture="multiMaterial" alpha="0.5"/>
+				<push subTexture="multiMaterial" alpha="0.8"/>
+				<hover subTexture="multiMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="multiMaterial" alpha="1"/>
+				<push subTexture="multiMaterial" alpha="1"/>
+				<hover subTexture="multiMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="goldButton" x="240" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Gold" groupId="4" ticked="0">
+			<state id="0">
+				<idle subTexture="goldMaterial" alpha="0.5"/>
+				<push subTexture="goldMaterial" alpha="0.8"/>
+				<hover subTexture="goldMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="goldMaterial" alpha="1"/>
+				<push subTexture="goldMaterial" alpha="1"/>
+				<hover subTexture="goldMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="silverButton" x="180" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Silver" groupId="4" ticked="0">
+			<state id="0">
+				<idle subTexture="silverMaterial" alpha="0.5"/>
+				<push subTexture="silverMaterial" alpha="0.8"/>
+				<hover subTexture="silverMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="silverMaterial" alpha="1"/>
+				<push subTexture="silverMaterial" alpha="1"/>
+				<hover subTexture="silverMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="ceramicButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Ceramic" groupId="4" ticked="0">
+			<state id="0">
+				<idle subTexture="ceramicMaterial" alpha="0.5"/>
+				<push subTexture="ceramicMaterial" alpha="0.8"/>
+				<hover subTexture="ceramicMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="ceramicMaterial" alpha="1"/>
+				<push subTexture="ceramicMaterial" alpha="1"/>
+				<hover subTexture="ceramicMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="stoneButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Stone" groupId="4" ticked="0">
+			<state id="0">
+				<idle subTexture="stoneMaterial" alpha="0.5"/>
+				<push subTexture="stoneMaterial" alpha="0.8"/>
+				<hover subTexture="stoneMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="stoneMaterial" alpha="1"/>
+				<push subTexture="stoneMaterial" alpha="1"/>
+				<hover subTexture="stoneMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="plasticButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Plastic" groupId="4" ticked="0">
+			<state id="0">
+				<idle subTexture="plasticMaterial" alpha="0.5"/>
+				<push subTexture="plasticMaterial" alpha="0.8"/>
+				<hover subTexture="plasticMaterial" alpha="0.8"/>
+			</state>
+			<state id="1">
+				<idle subTexture="plasticMaterial" alpha="1"/>
+				<push subTexture="plasticMaterial" alpha="1"/>
+				<hover subTexture="plasticMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+    </leoPanel>	
+-->	
+
+<!-- UNDO REDO FRAME -->	
+
+<!-- REFORM FRAME -->    
+     
+<!-- SCULPT FRAME -->	
+    
+<!-- COLOR AND ENGRAVE FRAME -->    
+
+<!-- SLIDERS BRUSH -->
+
+	
+    
+<!-- VISIBILITY -->    
+    
+    <visibilityConstraints>
+
+<!--
+		<constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="colorFrame" actionName="fadeIn"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="colorStateIndicator" actionName="fadeIn"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="mainPatternFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="stampStateIndicator" actionName="hide"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="engraveEmbossButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="toolStrengthSlider" actionName="fadeIn"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+
+	
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <action targetComponentName="mainPatternFrame" actionName="fadeIn"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <action targetComponentName="stampStateIndicator" actionName="fadeIn"/>
+        </constraint>
+      
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <action targetComponentName="colorFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <action targetComponentName="colorStateIndicator" actionName="hide"/>
+        </constraint>
+       
+-->
+	
+        <!-- dummies-->
+
+<!--																											
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="paintModeButton" actionName="show"/>
+        </constraint>
+
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="paintModeButton" actionName="setChecked"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="engraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="dummyEngraveButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="2"/>
+            <action targetComponentName="dummyColorOnlyButton" actionName="show"/>
+        </constraint>
+
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="dummyEngraveButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="paintModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="2"/>
+            <action targetComponentName="dummyColorOnlyButton" actionName="show"/>
+        </constraint>
+	 -->		
+<!--																	
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="paintModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="engraveModeButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="engraveModeButton" actionName="setChecked"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="dummyEngraveButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="engraveEmbossButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="mainPatternFrame" actionName="fadeIn"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="stampStateIndicator" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="colorFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="colorStateIndicator" actionName="hide"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="dummyEngraveButton" eventName="onClick"/>
+            <action targetComponentName="stampDepthSlider" actionName="fadeIn"/>
+        </constraint>
+
+        
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="paintModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="engraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="setChecked"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="dummyColorOnlyButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="engraveEmbossButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="mainPatternFrame" actionName="fadeIn"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="stampStateIndicator" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="colorFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="colorStateIndicator" actionName="hide"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="dummyColorOnlyButton" eventName="onClick"/>
+            <action targetComponentName="stampDepthSlider" actionName="fadeIn"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="engraveModeButton" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="engraveModeButton" actionName="setChecked"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="2"/>
+            <action targetComponentName="engraveModeButton" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="2"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="show"/>
+        </constraint>   
+        <constraint>
+            <event sourceComponentName="engraveEmbossButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="engraveEmbossButton" guardConditionName="activeState" guardConditionValue="2"/>
+            <action targetComponentName="paintEngraveModeButton" actionName="setChecked"/>
+        </constraint>           
+  -->
+<!--			main menu -->
+		<constraint>
+            <event sourceComponentName="menuButton" eventName="onEnter"/>
+            <action targetComponentName="mainMenuFrame" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="menuButton" eventName="onExit"/>
+            <guard type="and">
+                <guard type="leaf" guardComponentName="mainMenuFrame" guardConditionName="hover" guardConditionValue="0"/>
+                <guard type="leaf" guardComponentName="menuButton" guardConditionName="hover" guardConditionValue="0"/>
+            </guard>
+            <action targetComponentName="mainMenuFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="mainMenuFrame" eventName="onExit"/>
+            <guard type="and">
+                <guard type="leaf" guardComponentName="3dViewButton" guardConditionName="hover" guardConditionValue="0"/> 
+                
+                <guard type="leaf" guardComponentName="helpButton" guardConditionName="hover" guardConditionValue="0"/>
+                
+                <guard type="leaf" guardComponentName="resetSceneButton" guardConditionName="hover" guardConditionValue="0"/>
+                
+                <guard type="leaf" guardComponentName="menuButton" guardConditionName="hover" guardConditionValue="0"/>
+				<guard type="leaf" guardComponentName="importButton" guardConditionName="hover" guardConditionValue="0"/>
+                <guard type="leaf" guardComponentName="exportButton" guardConditionName="hover" guardConditionValue="0"/>
+            </guard>
+            <action targetComponentName="mainMenuFrame" actionName="hide"/>
+        </constraint>
+	
+	
+        
+        
+    </visibilityConstraints>
+	
+	
+</gui>

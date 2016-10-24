@@ -1,0 +1,35 @@
+<AppProperties id="doorHandle">
+    <CopyProperties url="res/apps/default.xml" />
+    
+    <DefaultObject host="localhost">35725</DefaultObject>
+    <DefaultObject host="leopoly.com">35725</DefaultObject>
+    
+    <Background type="gradient">
+        <color0>0.90196 0.90196 0.90196 1</color0>
+        <color1>0.90196 0.90196 0.90196 1</color1>
+        <color2>1 1 1 1</color2>
+        <color3>1 1 1 1</color3>
+    </Background>
+    
+    <Gui url="res/gui/doorHandleUI.xml" />
+    <GuiCommands url="res/gui/GuiCommandsDoorHandle.xml" />
+    <Sprites url="res/gui/sprites.xml" />
+    
+    <PreImportStartCommands>
+        <AppCmd cmd="SetImportTransformOptions" value="db 1 1 -1 -1 -1 1 1 1" />
+    </PreImportStartCommands>
+    
+    <StartCommands>
+        <AppCmd cmd="SetRenderStyle" value="autoSmooth" />
+        <AppCmd cmd="SetSurfaceApprox" value="1" />
+        <AppCmd cmd="SetMaterial" value="plastic" />
+        <AppCmd cmd="SetLighting" value="default" />
+    </StartCommands>
+    
+    <StartMode>deform</StartMode>
+    
+    <Shortcuts url="res/shortcuts/deformShortcuts.xml" />
+    
+    <UnlimitedUpload />
+
+</AppProperties>

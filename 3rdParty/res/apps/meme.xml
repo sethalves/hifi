@@ -1,0 +1,27 @@
+<AppProperties id="meme">
+    <CopyProperties url="res/apps/default.xml" />
+    
+    <StartMode>engrave</StartMode>
+    
+    
+    <Background type="gradient">
+        <color0>0.90196 0.90196 0.90196 1</color0>
+        <color1>0.90196 0.90196 0.90196 1</color1>
+        <color2>1 1 1 1</color2>
+        <color3>1 1 1 1</color3>
+    </Background>
+    
+    <SurfaceApprox>true</SurfaceApprox>
+    
+    <Gui url="res/gui/memeUI.xml" />
+    <GuiCommands url="res/gui/GuiCommandsVaseAndPendant.xml" />
+    <Sprites url="res/gui/sprites.xml" />
+    
+    <StartCommands>
+        <AppCmd cmd="SetRenderStyle" value="autoSmooth" />
+        <AppCmd cmd="SetSurfaceApprox" value="0" />
+    </StartCommands>
+    
+    <Shortcuts url="res/shortcuts/pendantShortcuts.xml" />
+
+</AppProperties>

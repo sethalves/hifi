@@ -1,0 +1,59 @@
+<AppProperties id="scratchsculpt">
+
+	<CopyProperties url="res/apps/default.xml" />
+    
+    <AutoSimplifyProps>
+        <MaxTriangleCount>200000</MaxTriangleCount>
+        <WarningTriangleCount>150000</WarningTriangleCount>
+        <MaxEdgeLimit>0.3</MaxEdgeLimit>
+        <MaxAngleDiff>7.0</MaxAngleDiff>
+    </AutoSimplifyProps>
+
+    <Background type="gradient">
+        <color0>0.90196 0.90196 0.90196 1</color0>
+        <color1>0.90196 0.90196 0.90196 1</color1>
+        <color2>1 1 1 1</color2>
+        <color3>1 1 1 1</color3>
+    </Background>
+    
+    <Fonts>
+        <Font name="font0" filePath="res/fonts/SourceSansPro-Semibold.ttf"></Font>
+    </Fonts>
+    
+    <SculptBrushParams default="sculpt">
+        <BrushParam name="sculpt" filePath="res/brushes/1_sculpt.lbr"></BrushParam>
+        <BrushParam name="push" filePath="res/brushes/2_push.lbr"></BrushParam>
+        <BrushParam name="pull" filePath="res/brushes/3_pull.lbr"></BrushParam>
+        <BrushParam name="smooth" filePath="res/brushes/4_smooth.lbr"></BrushParam>
+        <BrushParam name="edge" filePath="res/brushes/5_edge.lbr"></BrushParam>
+        <BrushParam name="delete" filePath="res/brushes/6_delete.lbr"></BrushParam>
+        <BrushParam name="neg_edge" filePath="res/brushes/7_neg_edge.lbr"></BrushParam>
+        <BrushParam name="flatten" filePath="res/brushes/8_flatten.lbr"></BrushParam>
+        <BrushParam name="simplify" filePath="res/brushes/9_simplify.lbr"></BrushParam>
+    </SculptBrushParams>
+    
+    <Shortcuts url="res/shortcuts/defaultShortcuts.xml" />
+    
+    <Gui url="res/gui/engraveonlyUI_v02.xml" />
+    <GuiCommands url="res/gui/GuiCommands_v02.xml" />
+    <Sprites url="res/gui/sprites.xml" />
+
+    <StartMode>engrave</StartMode>
+
+    <StartCommands>
+        <AppCmd cmd="SetRenderStyle" value="autoSmooth" />
+<!--			<AppCmd cmd="SetGuiCommandsOnlyMode" />	
+	
+	<AppCmd cmd="SetMaterial" value="default" /> -->
+    </StartCommands>
+
+
+<!--
+	<HideGuiElems>
+		sculptFrame
+	</HideGuiElems>
+-->
+	
+    
+    
+</AppProperties>

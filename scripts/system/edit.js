@@ -811,7 +811,14 @@ function setupModelMenus() {
         });
         modelMenuAddedDelete = true;
     }
-
+if (!Menu.menuItemExists("Edit", "Sculpt Model")) {
+        Menu.addMenuItem({
+            menuName: "Edit",
+            menuItemName: "Sculpt Model",
+            afterItem: "Entities",
+            grouping: "Advanced"
+        });
+    }
     Menu.addMenuItem({
         menuName: "Edit",
         menuItemName: "Entity List...",

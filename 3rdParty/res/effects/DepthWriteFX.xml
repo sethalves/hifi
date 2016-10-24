@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LeoFX>
+    <CopyStates>res/effects/DefaultStates.xml</CopyStates>
+
+    <Program>
+        <VertexShader>
+			<Include>res/shaders/DeformerDefines.glsl</Include>
+			<Include>res/shaders/CubicCurve.glsl</Include>
+			<Include>res/shaders/Deformer.glsl</Include>
+            <Main>res/shaders/depthWriteShader.vs</Main>
+        </VertexShader>
+        <FragmentShader>
+            <Include>res/shaders/FloatPackUnpack.glsl</Include>
+            <Main>res/shaders/depthWriteShader.fs</Main>
+        </FragmentShader>
+    </Program>
+</LeoFX>
