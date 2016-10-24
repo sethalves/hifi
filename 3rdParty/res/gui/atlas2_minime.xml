@@ -1,0 +1,203 @@
+<TextureAtlas imagePath="atlas2.png">
+
+
+<!-- nagy navigation gombok hianyoznak!!! -->
+<!-- Lock Button nincs!!! -->
+
+<!-- progiban nincs benne:
+	sliderek
+	buy now button
+	right arrow
+	mouse move help
+	mini info button (ket darab kicsi)
+	picked color rim - ures karika
+-->
+	
+	<!-- button background -->
+	<SubTexture name="buttonBackground" x="932" y="25" width="90" height="678"/>
+	
+	<!-- undo redo -->
+	<SubTexture name="undoButton" x="310" y="0" width="50" height="50"/>
+	<SubTexture name="redoButton" x="360" y="0" width="50" height="50"/>
+	<!-- mode-ok -->
+	<SubTexture name="paintModeButton" x="800" y="250" width="50" height="50"/>	
+	<SubTexture name="templateButton" x="0" y="290" width="50" height="50"/>
+	<SubTexture name="shapeShifterModeButton" x="800" y="200" width="50" height="50"/>
+	
+	
+	<!-- gyurma -->
+	<SubTexture name="acceptButton" x="50" y="440" width="50" height="50"/>
+	<SubTexture name="leftArrowButton" x="200" y="0" width="50" height="50"/>
+    <SubTexture name="rightArrowButton" x="260" y="50" width="50" height="50"/>
+    <SubTexture name="sliderKnobWhite" x="200" y="100" width="30" height="30"/>
+    <SubTexture name="stampNoneButton" x="260" y="100" width="50" height="50"/>
+    <SubTexture name="makerbotButton" x="310" y="100" width="50" height="50"/>
+    <SubTexture name="progressCircle" x="200" y="132" width="58" height="58"/>
+    <SubTexture name="infoIndicator" x="230" y="100" width="30" height="30"/>
+    <SubTexture name="textInputButton" x="200" y="190" width="50" height="50"/>
+    <SubTexture name="buttonLock" x="200" y="240" width="50" height="50"/>
+    <SubTexture name="print10Button" x="360" y="100" width="50" height="50"/>
+    <SubTexture name="normalStampButton" x="250" y="190" width="50" height="50"/>
+    <SubTexture name="colorStampButton" x="300" y="190" width="50" height="50"/>
+    <SubTexture name="pullButton" x="250" y="240" width="50" height="50"/>
+    <SubTexture name="pushButton" x="300" y="240" width="50" height="50"/>
+    <SubTexture name="eraseButton" x="350" y="240" width="50" height="50"/>
+    <SubTexture name="smoothButton" x="400" y="240" width="50" height="50"/>
+    <SubTexture name="flattenButton" x="450" y="240" width="50" height="50"/>
+    <SubTexture name="spikeButton" x="250" y="290" width="50" height="50"/>
+    <SubTexture name="edgeButton" x="300" y="290" width="50" height="50"/>
+    <SubTexture name="sculptButton" x="350" y="290" width="50" height="50"/>
+    <SubTexture name="mirrorLeftButton" x="400" y="290" width="50" height="50"/>
+    <SubTexture name="mirrorBothButton" x="450" y="290" width="50" height="50"/>
+    <SubTexture name="buyNowButton" x="410" y="50" width="50" height="50"/>
+    
+	<SubTexture name="rotateObjectButton" x="600" y="450" width="50" height="50"/>	
+    
+    <SubTexture name="step1Frame" x="200" y="190" width="300" height="80"/>
+    <SubTexture name="step2Frame" x="200" y="270" width="300" height="80"/>
+    <SubTexture name="step3Frame" x="200" y="350" width="300" height="80"/>
+    
+    <SubTexture name="acceptRightButton" x="310" y="50" width="50" height="50"/>
+    
+	<SubTexture name="bigFillet" x="150" y="440" width="50" height="50"/>
+	<SubTexture name="blackColorButton" x="150" y="390" width="50" height="50"/>
+	<SubTexture name="colorIndicatorButton" x="150" y="340" width="50" height="50"/>
+	<SubTexture name="lightBlueButton" x="150" y="290" width="50" height="50"/>
+	<SubTexture name="brownButton" x="150" y="240" width="50" height="50"/>
+	<SubTexture name="colorStampingButton" x="150" y="190" width="50" height="50"/>
+	<SubTexture name="blueButton" x="150" y="140" width="50" height="50"/>
+	<SubTexture name="embossButton" x="150" y="90" width="50" height="50"/>
+	<SubTexture name="engraveButton" x="100" y="440" width="50" height="50"/>
+	<SubTexture name="greenButton" x="100" y="390" width="50" height="50"/>
+	<SubTexture name="greyButton" x="100" y="340" width="50" height="50"/>
+    
+	<SubTexture name="rightArrowButton" x="260" y="50" width="50" height="50"/>
+
+<!-- SLIDERS -->
+	<SubTexture name="hueBar" x="0" y="0" width="200" height="30"/>
+	<SubTexture name="sliderBar" x="0" y="30" width="200" height="30"/>
+	<SubTexture name="sliderFilledBar" x="0" y="60" width="200" height="30"/>
+	<SubTexture name="sliderButton" x="50" y="140" width="50" height="50"/>
+	<SubTexture name="slider2Button" x="200" y="140" width="50" height="50"/>
+	
+	<SubTexture name="infoButton" x="100" y="240" width="50" height="50"/>
+	<SubTexture name="menuButton" x="100" y="190" width="50" height="50"/>
+	<SubTexture name="orangeButton" x="100" y="140" width="50" height="50"/>
+	<SubTexture name="paintButton" x="100" y="90" width="50" height="50"/>
+	<SubTexture name="panNavigationButton" x="200" y="50" width="50" height="50"/>
+	<SubTexture name="pinkButton" x="50" y="390" width="50" height="50"/>
+	<SubTexture name="randomButton" x="50" y="340" width="50" height="50"/>
+	<SubTexture name="redButton" x="50" y="290" width="50" height="50"/>
+	<SubTexture name="rotateNavigationButton" x="50" y="240" width="50" height="50"/>
+	<SubTexture name="rotateButton" x="50" y="190" width="50" height="50"/>
+	<SubTexture name="sliderRim" x="60" y="150" width="30" height="30"/>
+	<SubTexture name="pickColor1Button" x="260" y="0" width="50" height="50"/>
+	
+	<SubTexture name="darkBlueButton" x="150" y="140" width="50" height="50"/>
+	<SubTexture name="naviHelpMoveButton" x="200" y="50" width="50" height="50"/>
+	<SubTexture name="naviHelpZoomButton" x="0" y="190" width="50" height="50"/>
+	<SubTexture name="naviHelpRotateButton" x="50" y="240" width="50" height="50"/>
+	
+	
+	
+	
+	<!-- knob -->
+	<SubTexture name="sliderKnob" x="200" y="132" width="30" height="30"/>
+	<SubTexture name="sliderTrack" x="0" y="30" width="200" height="30"/>
+	<SubTexture name="smallDot" x="0" y="390" width="50" height="50"/>
+	<SubTexture name="smallFillet" x="0" y="340" width="50" height="50"/>
+	<SubTexture name="templateSelectorButton" x="0" y="290" width="50" height="50"/>
+	<SubTexture name="uploadButton" x="0" y="440" width="50" height="50"/>
+	<SubTexture name="purpleButton" x="50" y="90" width="50" height="50"/>
+	<SubTexture name="sliderTrail" x="0" y="60" width="200" height="30"/>
+	<SubTexture name="whiteButton" x="0" y="140" width="50" height="50"/>
+	<SubTexture name="xButton" x="0" y="90" width="50" height="50"/>
+	<SubTexture name="yellowButton" x="0" y="240" width="50" height="50"/>
+	<SubTexture name="zoomNavigationButton" x="0" y="190" width="50" height="50"/>
+    <SubTexture name="brFillet" x="250" y="0" width="5" height="5"/>
+    <SubTexture name="blFillet" x="250" y="5" width="5" height="5"/>
+    <SubTexture name="trFillet" x="255" y="0" width="5" height="5"/>
+    <SubTexture name="tlFillet" x="255" y="5" width="5" height="5"/>
+    <SubTexture name="colorPickerButton" x="260" y="0" width="50" height="50"/>
+	
+	<!-- UJ gombok -->
+	<SubTexture name="2dGlassButton" x="570" y="0" width="50" height="50"/>
+	<SubTexture name="twistButton" x="620" y="0" width="50" height="50"/>
+	<SubTexture name="mouseButton" x="670" y="0" width="50" height="50"/>
+	<SubTexture name="cylinderHeightButton" x="720" y="0" width="50" height="50"/>
+	<SubTexture name="blackButton" x="770" y="0" width="50" height="50"/>
+	<SubTexture name="3dInterlacedLeftButton" x="570" y="50" width="50" height="50"/>
+	<SubTexture name="ringResolutionButton" x="620" y="50" width="50" height="50"/>
+	<SubTexture name="engraveMinusButton" x="670" y="50" width="50" height="50"/>
+	<SubTexture name="freeHandButton" x="720" y="50" width="50" height="50"/>
+	<SubTexture name="bugyiButton" x="770" y="50" width="50" height="50"/>
+
+	<SubTexture name="3dInterlacedRightButton" x="600" y="100" width="50" height="50"/>
+	<SubTexture name="resetslidersButton" x="650" y="100" width="50" height="50"/>
+	<SubTexture name="mainMenuButton" x="700" y="100" width="50" height="50"/>
+	<SubTexture name="exportButton" x="750" y="100" width="50" height="50"/>
+	<SubTexture name="aspectRatioButton" x="800" y="100" width="50" height="50"/>
+	<SubTexture name="snapViewButton" x="600" y="150" width="50" height="50"/>
+	<SubTexture name="resetSceneButton" x="650" y="150" width="50" height="50"/>
+	<SubTexture name="lightFromRightButton" x="700" y="150" width="50" height="50"/>
+	<SubTexture name="eraserButton" x="750" y="150" width="50" height="50"/>
+	<SubTexture name="anaglyphLeftButton" x="800" y="150" width="50" height="50"/>
+	<SubTexture name="ringMainSidesButton" x="600" y="200" width="50" height="50"/>
+	<SubTexture name="anaglyphRightButton" x="650" y="200" width="50" height="50"/>
+	<SubTexture name="lightFromLeftButton" x="700" y="200" width="50" height="50"/>
+	<SubTexture name="engraveModeButton" x="750" y="200" width="50" height="50"/>
+	<SubTexture name="shapeShifterModeButton" x="800" y="200" width="50" height="50"/>
+	<SubTexture name="ringSidesButton" x="600" y="250" width="50" height="50"/>
+	<SubTexture name="engravePlusButton" x="650" y="250" width="50" height="50"/>
+	<SubTexture name="lightFromUpButton" x="700" y="250" width="50" height="50"/>
+	<SubTexture name="toggleCylinderButton" x="750" y="250" width="50" height="50"/>
+	<SubTexture name="paintModeButton" x="800" y="250" width="50" height="50"/>
+
+	<SubTexture name="sidesOffsetButton" x="600" y="300" width="50" height="50"/>
+	<SubTexture name="ceruzaButton" x="650" y="300" width="50" height="50"/>
+	<SubTexture name="handButton" x="700" y="300" width="50" height="50"/>
+	<SubTexture name="togglePaintButton" x="750" y="300" width="50" height="50"/>
+	<SubTexture name="sculptModeButton" x="600" y="350" width="50" height="50"/>
+	<SubTexture name="engravePatternButton" x="650" y="350" width="50" height="50"/>
+	<SubTexture name="ringInnerRadiusButton" x="700" y="350" width="50" height="50"/>
+	<SubTexture name="pickColorButton" x="750" y="350" width="50" height="50"/>
+	<SubTexture name="navigateRotateSmallButton" x="600" y="400" width="50" height="50"/>
+	<SubTexture name="ringOuterRadiusButton" x="650" y="400" width="50" height="50"/>
+	<SubTexture name="importButton" x="700" y="400" width="50" height="50"/>
+	<SubTexture name="toggleClosedCylinderButton" x="750" y="400" width="50" height="50"/>
+	<SubTexture name="rotateObjectButton" x="600" y="450" width="50" height="50"/>
+	<SubTexture name="toggleOpenCylinderButton" x="650" y="450" width="50" height="50"/>
+	<SubTexture name="helpButton" x="700" y="450" width="50" height="50"/>
+	<SubTexture name="cylinderBaseRadiusButton" x="750" y="450" width="50" height="50"/>
+
+	<SubTexture name="lockButton" x="500" y="140" width="50" height="50"/>
+	<SubTexture name="waveAmplitudeButton" x="550" y="140" width="50" height="50"/>
+	<SubTexture name="navigateZoomSmallButton" x="500" y="190" width="50" height="50"/>
+	<SubTexture name="materialModeButton" x="550" y="190" width="50" height="50"/>
+	<SubTexture name="waveYButton" x="500" y="240" width="50" height="50"/>
+	<SubTexture name="cylinderShapeButton" x="550" y="240" width="50" height="50"/>
+	<SubTexture name="waveXButton" x="500" y="290" width="50" height="50"/>
+	<SubTexture name="upLoadButton" x="550" y="290" width="50" height="50"/>
+	<SubTexture name="waveZButton" x="500" y="340" width="50" height="50"/>
+	<SubTexture name="cylinderTopRadiusButton" x="550" y="340" width="50" height="50"/>
+	<SubTexture name="waveOffsetButton" x="500" y="390" width="50" height="50"/>
+	<SubTexture name="toggleRingButton" x="550" y="390" width="50" height="50"/>
+	<SubTexture name="waveFrequencyButton" x="500" y="440" width="50" height="50"/>
+	<SubTexture name="cylinderThicknessButton" x="550" y="440" width="50" height="50"/>
+	
+	<SubTexture name="settingsButton" x="800" y="300" width="50" height="50"/>
+    <SubTexture name="customPatternButton" x="800" y="350" width="50" height="50"/>	
+	
+<!--	materialok kezzel beirt -->
+
+	<SubTexture name="plasticMaterial" x="200" y="340" width="50" height="50"/>
+	<SubTexture name="stoneMaterial" x="250" y="340" width="50" height="50"/>
+	<SubTexture name="ceramicMaterial" x="300" y="340" width="50" height="50"/>
+	<SubTexture name="silverMaterial" x="350" y="340" width="50" height="50"/>
+	<SubTexture name="goldMaterial" x="400" y="340" width="50" height="50"/>
+	<SubTexture name="multiMaterial" x="450" y="340" width="50" height="50"/>
+
+<!--    other -->	
+    <SubTexture name="buttonRimSmall" x="200" y="290" width="50" height="50"/>
+	
+</TextureAtlas>

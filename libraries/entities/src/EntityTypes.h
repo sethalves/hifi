@@ -49,6 +49,7 @@ public:
         PolyVox,
         PolyLine,
         Shape,
+        LeoPolyObject,
         LAST = Shape
     } EntityType;
 

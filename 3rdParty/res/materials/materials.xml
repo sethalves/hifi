@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LeoMaterials>
+
+<Material name="default">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <TexX url="res/textures/alumide.jpg" scale="3.0" strength="1.0" />
+    <TexY url="res/textures/alumide.jpg" scale="3.0" strength="1.0" />
+    <TexZ url="res/textures/alumide.jpg" scale="3.0" strength="1.0" />
+    <!-- BumpTexX url="res/textures/hm.jpg" scale="3.0" strength="0.3" /-->
+    <!-- BumpTexY url="res/textures/hm.jpg" scale="3.0" strength="0.3" /-->
+    <!-- BumpTexZ url="res/textures/hm.jpg" scale="3.0" strength="0.3" /-->
+    <PaintVisible />
+</Material>
+
+<Material name="bumpSimple">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <!--TexX url="res/textures/alumide.jpg" scale="3.0" strength="1.0" />
+    <TexY url="res/textures/alumide.jpg" scale="3.0" strength="1.0" />
+    <TexZ url="res/textures/alumide.jpg" scale="3.0" strength="1.0" /-->
+    <BumpTexX url="res/textures/hm.jpg" scale="3.0" strength="0.3" />
+    <BumpTexY url="res/textures/hm.jpg" scale="3.0" strength="0.3" />
+    <BumpTexZ url="res/textures/hm.jpg" scale="3.0" strength="0.3" />
+    <PaintVisible />
+</Material>
+
+<Material name="bumpCanvas">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <BumpTexX url="res/textures/canvas.jpg" scale="1.2" strength="0.15" />
+    <BumpTexY url="res/textures/canvas.jpg" scale="1.2" strength="0.15" />
+    <BumpTexZ url="res/textures/canvas.jpg" scale="1.2" strength="0.15" />
+    <PaintVisible />
+</Material>
+
+<Material name="bumpCast">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <BumpTexX url="res/textures/cast.jpg" scale="1.2" strength="0.25" />
+    <BumpTexY url="res/textures/cast.jpg" scale="1.2" strength="0.25" />
+    <BumpTexZ url="res/textures/cast.jpg" scale="1.2" strength="0.25" />
+    <PaintVisible />
+</Material>
+
+<Material name="bumpGrass">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <BumpTexX url="res/textures/grass.jpg" scale="1.0" strength="0.2" />
+    <BumpTexY url="res/textures/grass.jpg" scale="1.0" strength="0.2" />
+    <BumpTexZ url="res/textures/grass.jpg" scale="1.0" strength="0.2" />
+    <PaintVisible />
+</Material>
+
+<Material name="bumpLeather">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <BumpTexX url="res/textures/leather.jpg" scale="0.9" strength="0.25" />
+    <BumpTexY url="res/textures/leather.jpg" scale="0.9" strength="0.25" />
+    <BumpTexZ url="res/textures/leather.jpg" scale="0.9" strength="0.25" />
+    <PaintVisible />
+</Material>
+
+<Material name="bumpPitted">
+    <Diffuse> 0.7 0.7 0.7 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 0.1 0.5 </ShininessRange>
+    <BumpTexX url="res/textures/pitted.jpg" scale="1.0" strength="0.2" />
+    <BumpTexY url="res/textures/pitted.jpg" scale="1.0" strength="0.2" />
+    <BumpTexZ url="res/textures/pitted.jpg" scale="1.0" strength="0.2" />
+    <PaintVisible />
+</Material>
+
+
+<Material name="plastic">
+    <Diffuse> 0.90 0.87 0.75 </Diffuse>
+    <Specular> 0.1 0.1 0.1 </Specular>
+    <ShininessRange> 32.0 0.0 </ShininessRange>
+</Material>
+
+<Material name="alumide">
+    <Diffuse> 0.7 0.7 0.8 </Diffuse>
+    <Specular> 0.5 0.5 0.5 </Specular>
+    <ShininessRange> 4.0 8.0 </ShininessRange>
+    <TexX url="res/textures/alumide.jpg" scale="1.0" />
+    <TexY url="res/textures/alumide.jpg" scale="1.0" />
+    <TexZ url="res/textures/alumide.jpg" scale="1.0" />
+</Material>
+
+<Material name="ceramics">
+    <Diffuse> 1.0 0.95 0.73 </Diffuse>
+    <Specular> 0.7 0.7 0.7 </Specular>
+    <ShininessRange> 256.0 512.0 </ShininessRange>
+</Material>
+
+<Material name="silver">
+    <Diffuse> 0.65 0.65 0.65 </Diffuse>
+    <Specular> 0.92 0.97 0.97 </Specular>
+    <ShininessRange> 64.0 128.0 </ShininessRange>
+</Material>
+
+<Material name="gold">
+    <Diffuse> 0.8 0.6 0.0 </Diffuse>
+    <Specular> 1.0 0.71 0.29 </Specular>
+    <ShininessRange> 32.0 64.0 </ShininessRange>
+</Material>
+
+<Material name="multicolor">
+    <Diffuse> 0.85 0.85 0.85 </Diffuse>
+    <Specular> 0.25 0.25 0.25 </Specular>
+    <ShininessRange> 4.0 8.0 </ShininessRange>
+    <TexX url="res/textures/alumide.jpg" scale="4.0" />
+    <TexY url="res/textures/alumide.jpg" scale="4.0" />
+    <TexZ url="res/textures/alumide.jpg" scale="4.0" />
+    <PaintVisible />
+</Material>
+
+<Material name="silverWithPaint">
+    <Diffuse> 0.65 0.65 0.65 </Diffuse>
+    <Specular> 0.92 0.97 0.97 </Specular>
+    <ShininessRange> 64.0 128.0 </ShininessRange>
+    <PaintVisible />
+</Material>
+
+</LeoMaterials>

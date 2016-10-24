@@ -1,0 +1,28 @@
+<LeoFX>
+    <CopyStates>res/effects/DefaultStates.xml</CopyStates>
+
+    <Program>
+        <VertexShader>
+            <Include>res/shaders/FloatPackUnpack.glsl</Include>
+            <Main>res/shaders/Standard.vs</Main>
+        </VertexShader>
+        <FragmentShader>
+            <Include>res/shaders/FloatPackUnpack.glsl</Include>
+            <Include>res/shaders/shadow.glsl</Include>
+            <Main>res/shaders/Standard.fs</Main>
+        </FragmentShader>
+    </Program>
+    
+    <RasterizerState>
+        <CullMode>none</CullMode>
+        <!-- TODO: for mirroring, is it better to only mirror the transformation matrix 
+             and don't change the order of vertices in triangles? -->
+    </RasterizerState>
+	
+	<DepthState>
+        <DepthTestEnabled>true</DepthTestEnabled>
+        <DepthWriteEnabled>true</DepthWriteEnabled>
+        <DepthComparisonFunc>less</DepthComparisonFunc>
+        <DepthRange>0 0.0001</DepthRange>
+    </DepthState>
+</LeoFX>

@@ -1,0 +1,43 @@
+<gui width="1024" height="1024" textureAtlasFile="res/gui/atlas2.png">
+
+<leoPanel name="patternScissorFrame" x="65" y="0" width="360" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,128,128)" tooltip="" paintInside="1"/>
+    
+<!--leoPanel name="surfacenetFrame" x="-210" y="-120" width="200" height="239" horizontalAnchor="right" verticalAnchor="middle" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+    <leoNewTypeSlider name="sfnThicknessSlider" x="0" y="75" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" uTL="0" vTL="1" uBR="1" vBR="0" tooltip="number of lines" orientation="horizontal" minValue="0.02" maxValue="0.5" defaultPos="0.1" text="THICKNESS">
+        <trail subTexture="sliderFilledBar" alpha="1"/>
+        <track subTexture="sliderBar" alpha="1"/>
+        <knobidle subTexture="blackButton" alpha="1"/>
+        <knobpush subTexture="blackButton" alpha="1"/>
+        <knobhover subTexture="blackButton" alpha="1"/>
+    </leoNewTypeSlider>
+    
+    <leoNewTypeSlider name="sfnThicknessVSlider" x="0" y="125" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" uTL="0" vTL="1" uBR="1" vBR="0" tooltip="number of lines" orientation="horizontal" minValue="0.0" maxValue="0.4" defaultPos="0.05" text="THICKNESS VARIANCE">
+        <trail subTexture="sliderFilledBar" alpha="1"/>
+        <track subTexture="sliderBar" alpha="1"/>
+        <knobidle subTexture="blackButton" alpha="1"/>
+        <knobpush subTexture="blackButton" alpha="1"/>
+        <knobhover subTexture="blackButton" alpha="1"/>
+    </leoNewTypeSlider>
+
+    <leoNewTypeSlider name="sfnNumberSlider" x="0" y="175" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" uTL="0" vTL="1" uBR="1" vBR="0" tooltip="number of lines" orientation="horizontal" minValue="0" maxValue="50" defaultPos="30" text="NUM LINES">
+        <trail subTexture="sliderFilledBar" alpha="1"/>
+        <track subTexture="sliderBar" alpha="1"/>
+        <knobidle subTexture="blackButton" alpha="1"/>
+        <knobpush subTexture="blackButton" alpha="1"/>
+        <knobhover subTexture="blackButton" alpha="1"/>
+    </leoNewTypeSlider>
+    
+    <leoButton name="sfnRegenerateButton" x="40" y="220" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="regenerate">
+        <idle subTexture="plasticMaterial" alpha="1"/>
+        <push subTexture="plasticMaterial" alpha="1"/>
+        <hover subTexture="plasticMaterial" alpha="1"/>
+    </leoButton>
+    
+    <leoButton name="sfnGenerateMeshButton" x="110" y="220" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="generate 3d mesh">
+        <idle subTexture="plasticMaterial" alpha="1"/>
+        <push subTexture="plasticMaterial" alpha="1"/>
+        <hover subTexture="plasticMaterial" alpha="1"/>
+    </leoButton>
+</leoPanel-->
+	
+</gui>

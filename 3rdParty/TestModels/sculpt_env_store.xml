@@ -1,0 +1,18 @@
+<Sculpt_Env>
+
+<Scene>
+	<Mesh id="Store" url="TestModels/store_scene/store_scene.obj" />
+	
+	<SceneNode name="DynamicRoot" />
+	<SceneNode name="StaticRoot" static="1">
+		<TransformMat>
+			0.001 0 0 1.15
+			0 0.001 0 -0.1
+			0 0 0.001 -0.1
+			0 0 0 1
+		</TransformMat>
+		<MeshInstance mesh="Store" />
+	</SceneNode>
+</Scene>
+
+</Sculpt_Env>

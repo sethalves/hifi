@@ -1,0 +1,1599 @@
+<gui width="1024" height="1024" textureAtlasFile="res/gui/atlas2_01.png">
+
+
+    <!-- LEFT MENU - MODES -->	
+	
+	<!-- EXIT, MINIMiZE
+	<leoButton name="exitButton" x="-70" y="74" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="EXIT"  >
+            <idle	subTexture="xButton" alpha="0.7"/>
+            <push subTexture="xButton" alpha="1"/>
+            <hover subTexture="xButton" alpha="0.9"/>
+	</leoButton>
+
+	<leoButton name="minimizeButton" x="-140" y="74" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Minimize"  >
+            <idle	subTexture="engraveMinusButton" alpha="0.7"/>
+            <push subTexture="engraveMinusButton" alpha="1"/>
+            <hover subTexture="engraveMinusButton" alpha="0.9"/>
+	</leoButton>
+-->
+
+    <leoButton name="poweredBy" x="05" y="05" width="75" height="20" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+            <idle	subTexture="poweredByLeopoly" alpha="1"/>
+            <push subTexture="poweredByLeopoly" alpha="1"/>
+            <hover subTexture="poweredByLeopoly" alpha="1"/>
+	</leoButton>
+
+
+<!-- MODES FRAME -->	
+    <leoPanel name="modesFrame" x="10" y="240" width="50" height="105" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+	
+        <leoMenuRadioButton name="sculptModeButton" x="0" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="1" targetFrame="sculptFrame, toolSizeSlider, toolStrengthSlider">
+		<state id="0">
+            <idle subTexture="sculptModeButton" alpha="0.7"/>
+            <push subTexture="sculptModeButton" alpha="1"/>
+            <hover subTexture="sculptModeButton" alpha="0.9"/>
+			</state>
+            <state id="1">
+			<idle subTexture="sculptModeButton" alpha="1"/>
+            <push subTexture="sculptModeButton" alpha="1"/>
+            <hover subTexture="sculptModeButton" alpha="1"/>
+			</state>
+        </leoMenuRadioButton>
+		<leoLabel name="sculptModeLabel" x="60" y="75" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Sculpt" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>			
+
+		
+		<leoMenuRadioButton name="paintModeButton" x="0" y="120" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" targetFrame="colorFrame, toolSizeSlider, toolStrengthSlider">
+            <state id="0">
+                <idle subTexture="paintButton"  alpha="0.7"/>
+                <push subTexture="paintButton"  alpha="1"/>
+                <hover subTexture="paintButton" alpha="0.9"/>
+			</state>
+            <state id="1">
+                <idle subTexture="paintButton" alpha="1"/>
+                <push subTexture="paintButton" alpha="1"/>
+                <hover subTexture="paintButton" alpha="1"/>
+			</state>
+        </leoMenuRadioButton>
+		<leoLabel name="paintModeLabel" x="60" y="135" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Paint" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>
+        
+		<leoMenuRadioButton name="reformButton" x="0" y="180" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="0" targetFrame="reformFrame">
+            <state id="0">
+			    <idle subTexture="shapeShifterModeButton"  alpha="0.7"/>
+				<push subTexture="shapeShifterModeButton"  alpha="1"/>
+				<hover subTexture="shapeShifterModeButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="shapeShifterModeButton" alpha="1"/>
+				<push subTexture="shapeShifterModeButton" alpha="1"/>
+				<hover subTexture="shapeShifterModeButton" alpha="1"/>
+            </state>
+        </leoMenuRadioButton>
+		<leoLabel name="formShifterModeLabel" x="60" y="195" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Formshifter" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>	
+
+		<!-- material -->		
+		<leoMenuRadioButton name="materialPreviewButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="0" targetFrame="materialFrame">
+            <state id="0">
+				<idle subTexture="materialModeButton"  alpha="0.7"/>
+				<push subTexture="materialModeButton"  alpha="1"/>
+				<hover subTexture="materialModeButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="materialModeButton" alpha="1"/>
+				<push subTexture="materialModeButton" alpha="1"/>
+				<hover subTexture="materialModeButton" alpha="1"/>
+            </state>
+        </leoMenuRadioButton>
+		<leoLabel name="materialModeLabel" x="60" y="15" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="0" zValue="0.600000" tooltip="" text="Material" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>
+		
+
+	<!-- ide tenni az uj engrave gombokat -->
+			<!-- text input -->
+		<leoMenuRadioButton name="textInputModeButton" x="0" y="240" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="0" targetFrame="txtEnFrame">
+            <state id="0">
+				<idle subTexture="textInputButton"  alpha="0.6"/>
+				<push subTexture="textInputButton"  alpha="1"/>
+				<hover subTexture="textInputButton" alpha="0.8"/>
+            </state>
+            <state id="1">
+				<idle subTexture="textInputButton" alpha="1"/>
+				<push subTexture="textInputButton" alpha="1"/>
+				<hover subTexture="textInputButton" alpha="1"/>
+            </state>
+        </leoMenuRadioButton>
+		<leoLabel name="textInputModeLabel" x="60" y="255" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Text" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>				
+
+		<!-- custom image input -->
+		<leoMenuRadioButton name="customPatternModeButton" x="0" y="300" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="0" targetFrame="imgEnFrame">
+            <state id="0">
+				<idle subTexture="customPatternButton"  alpha="0.6"/>
+				<push subTexture="customPatternButton"  alpha="1"/>
+				<hover subTexture="customPatternButton" alpha="0.8"/>
+            </state>
+            <state id="1">
+				<idle subTexture="customPatternButton" alpha="1"/>
+				<push subTexture="customPatternButton" alpha="1"/>
+				<hover subTexture="customPatternButton" alpha="1"/>
+            </state>
+        </leoMenuRadioButton>
+		<leoLabel name="customPatternModeLabel" x="60" y="315" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Image" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>		
+
+		<!-- engrave emboss mode button -->
+		<leoMenuRadioButton name="engraveEmbossModeButton" x="0" y="360" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="0" targetFrame="patEnFrame">
+            <state id="0">
+            <idle subTexture="engravePatternButton"  alpha="0.6"/>
+            <push subTexture="engravePatternButton"  alpha="1"/>
+            <hover subTexture="engravePatternButton" alpha="0.8"/>
+            </state>
+            <state id="1">
+                <idle subTexture="engravePatternButton" alpha="1"/>
+            <push subTexture="engravePatternButton" alpha="1"/>
+            <hover subTexture="engravePatternButton" alpha="1"/>
+            </state>
+        </leoMenuRadioButton>
+		<leoLabel name="engraveEmbossModeLabel" x="60" y="375" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="1" zValue="0.600000" tooltip="" text="Pattern" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>		
+    </leoPanel>
+	
+
+<!-- 3D PRINT/RESET BUTTONS FRAME -->		
+    <leoPanel name="resetSceneFrame" x="10" y="10" width="200" height="239" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoButton name="resetSceneButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" tooltip="Reset Scene">
+            <idle subTexture="resetSceneButton" alpha="0.7"/>
+            <push subTexture="resetSceneButton" alpha="1"/>
+            <hover subTexture="resetSceneButton" alpha="0.9"/>
+        </leoButton>
+		
+        <leoButton name="resetToDefaultButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" tooltip="Reset Object">
+            <idle subTexture="resetObjectButton" alpha="0.7"/>
+            <push subTexture="resetObjectButton" alpha="1"/>
+            <hover subTexture="resetObjectButton" alpha="0.9"/>
+        </leoButton>
+        
+        <leoToggleButton name="toggleWireFrameButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Toggle Wireframe" ticked="0">
+            <state id="0">
+                <idle subTexture="wireFrameButton" alpha="0.7"/>
+                <push subTexture="wireFrameButton" alpha="1"/>
+                <hover subTexture="wireFrameButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="wireFrameButton" alpha="0.7"/>
+                <push subTexture="wireFrameButton" alpha="1"/>
+                <hover subTexture="wireFrameButton" alpha="0.9"/>
+            </state>
+        </leoToggleButton>			
+		
+<!--        <leoToggleButton name="3dViewButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Swap Eyes" ticked="0">
+            <state id="0">
+                <idle subTexture="3dInterlacedRightButton" alpha="0.7"/>
+                <push subTexture="3dInterlacedRightButton" alpha="1"/>
+                <hover subTexture="3dInterlacedRightButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="3dInterlacedLeftButton" alpha="0.7"/>
+                <push subTexture="3dInterlacedLeftButton" alpha="1"/>
+                <hover subTexture="3dInterlacedLeftButton" alpha="0.9"/>
+            </state>
+        </leoToggleButton>	-->
+	</leoPanel>
+    
+<!-- main menu frame -->
+	<leoPanel name="mainMenuFrame" x="-380" y="10" width="242" height="60" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.400000" tooltip="" bgColor="rgb(51,0,0,77)" paintInside="0">
+
+        <leoButton name="templateSelectorButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Templates"  >
+            <idle	subTexture="templateButton" alpha="0.7"/>
+            <push subTexture="templateButton" alpha="1"/>
+            <hover subTexture="templateButton" alpha="0.9"/>
+        </leoButton>
+		
+		<!-- UPLOAD -->
+		<leoButton name="uploadButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Save" >
+            <idle	subTexture="uploadButton" alpha="0.7"/>
+            <push subTexture="uploadButton" alpha="1"/>
+            <hover subTexture="uploadButton" alpha="0.9"/>
+        </leoButton>
+		
+		
+		<leoButton name="importButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Import" >
+            <idle subTexture="importButton" alpha="0.7"/>
+            <push subTexture="importButton" alpha="1"/>
+            <hover subTexture="importButton" alpha="0.9"/>
+        </leoButton>
+		
+        <leoButton name="exportButton" x="180" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Export" >
+            <idle subTexture="exportButton" alpha="0.7"/>
+            <push subTexture="exportButton" alpha="1"/>
+            <hover subTexture="exportButton" alpha="0.9"/>
+        </leoButton>
+		
+		<leoButton name="3dPrintButton" x="240" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="order object test" >
+            <idle subTexture="orderButton" alpha="0.7"/>
+            <push subTexture="orderButton" alpha="1"/>
+            <hover subTexture="orderButton" alpha="0.9"/>
+        </leoButton>
+		<leoButton name="shareButton" x="300" y="5" width="38" height="38" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Share" >
+            <idle subTexture="shareOnWebButton" alpha="0.7"/>
+            <push subTexture="shareOnWebButton" alpha="1"/>
+            <hover subTexture="shareOnWebButton" alpha="0.9"/>
+        </leoButton>		
+
+		<leoButton name="helpButton" x="360" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" tooltip="Help">
+            <idle subTexture="helpButton" alpha="0.7"/>
+            <push subTexture="helpButton" alpha="1"/>
+            <hover subTexture="helpButton" alpha="0.9"/>
+        </leoButton>
+		
+
+    </leoPanel>
+	
+<!--  NAVIGATION LABELS  -->
+    <leoPanel name="navigationFrame" x="10" y="-60" width="64" height="150" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoButton name="zoomNavigationButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Zoom by rotating the stylus and holding&#10; the right button at the same time"  >
+            <idle subTexture="naviHelpZoomButton" alpha="0.5"/>
+            <push subTexture="naviHelpZoomButton" alpha="0.5"/>
+            <hover subTexture="naviHelpZoomButton" alpha="0.5"/>
+        </leoButton>
+        <leoButton name="panNavigationButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Move the object&#10;with the secondary button"  >
+            <idle subTexture="naviHelpMoveButton" alpha="0.5"/>
+            <push subTexture="naviHelpMoveButton" alpha="0.5"/>
+            <hover subTexture="naviHelpMoveButton" alpha="0.5"/>
+        </leoButton>
+        <leoButton name="rotateNavigationButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Use the primary buttton&#10;to manipulate and rotate &#10;the object"  >
+            <idle subTexture="naviHelpRotateButton" alpha="0.5"/>
+            <push subTexture="naviHelpRotateButton" alpha="0.5"/>
+            <hover subTexture="naviHelpRotateButton" alpha="0.5"/>
+        </leoButton>
+    </leoPanel>
+    
+	
+<!--	MATERIAL FRAME -->
+	<leoPanel name="materialFrame" x="-184" y="-60" width="442" height="60" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" tooltip="" bgColor="rgb(51,0,0,77)" paintInside="0">
+		
+		<leoToggleButton name="lightButton" x="380" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Lighting"  ticked="0">
+            <state id="0">
+                <idle subTexture="lightFromUpButton" alpha="0.7"/>
+                <push subTexture="lightFromUpButton" alpha="1"/>
+                <hover subTexture="lightFromUpButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="lightFromRightButton" alpha="0.7"/>
+                <push subTexture="lightFromRightButton" alpha="1"/>
+                <hover subTexture="lightFromRightButton" alpha="0.9"/>
+            </state>
+            <state id="2">
+                <idle subTexture="lightFromLeftButton" alpha="0.7"/>
+                <push subTexture="lightFromLeftButton" alpha="1"/>
+                <hover subTexture="lightFromLeftButton" alpha="0.9"/>
+            </state>
+        </leoToggleButton>
+		
+		
+	
+		<!-- MATERIAL RADIO BUTTONS -->				
+		<leoRadioButton name="multiColorButton" x="300" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Multicolor" groupId="4" ticked="1">
+			<state id="0">
+						<idle subTexture="multiMaterial" alpha="0.5"/>
+						<push subTexture="multiMaterial" alpha="1"/>
+						<hover subTexture="multiMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="multiMaterial" alpha="1"/>
+						<push subTexture="multiMaterial" alpha="1"/>
+						<hover subTexture="multiMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="goldButton" x="240" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Gold" groupId="4" ticked="0">
+			<state id="0">
+						<idle subTexture="goldMaterial" alpha="0.5"/>
+						<push subTexture="goldMaterial" alpha="1"/>
+						<hover subTexture="goldMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="goldMaterial" alpha="1"/>
+						<push subTexture="goldMaterial" alpha="1"/>
+						<hover subTexture="goldMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="silverButton" x="180" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Silver" groupId="4" ticked="0">
+			<state id="0">
+						<idle subTexture="silverMaterial" alpha="0.5"/>
+						<push subTexture="silverMaterial" alpha="1"/>
+						<hover subTexture="silverMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="silverMaterial" alpha="1"/>
+						<push subTexture="silverMaterial" alpha="1"/>
+						<hover subTexture="silverMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="ceramicButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Ceramic" groupId="4" ticked="0">
+			<state id="0">
+						<idle subTexture="ceramicMaterial" alpha="0.5"/>
+						<push subTexture="ceramicMaterial" alpha="1"/>
+						<hover subTexture="ceramicMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="ceramicMaterial" alpha="1"/>
+						<push subTexture="ceramicMaterial" alpha="1"/>
+						<hover subTexture="ceramicMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="stoneButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Stone" groupId="4" ticked="0">
+			<state id="0">
+						<idle subTexture="stoneMaterial" alpha="0.5"/>
+						<push subTexture="stoneMaterial" alpha="1"/>
+						<hover subTexture="stoneMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="stoneMaterial" alpha="1"/>
+						<push subTexture="stoneMaterial" alpha="1"/>
+						<hover subTexture="stoneMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+		<leoRadioButton name="plasticButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Plastic" groupId="4" ticked="0">
+			<state id="0">
+						<idle subTexture="plasticMaterial" alpha="0.5"/>
+						<push subTexture="plasticMaterial" alpha="1"/>
+						<hover subTexture="plasticMaterial" alpha="0.9"/>
+			</state>
+			<state id="1">
+						<idle subTexture="plasticMaterial" alpha="1"/>
+						<push subTexture="plasticMaterial" alpha="1"/>
+						<hover subTexture="plasticMaterial" alpha="1"/>
+			</state>
+		</leoRadioButton>
+    </leoPanel>	
+
+<!-- UNDO REDO FRAME -->	
+    <leoPanel name="undoRedoFrame" x="-53" y="10" width="105" height="50" horizontalAnchor="center" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoButton name="undoButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Undo"  >
+            <idle subTexture="undoButton" alpha="0.6"/>
+            <push subTexture="undoButton" alpha="1"/>
+            <hover subTexture="undoButton" alpha="0.9"/>
+        </leoButton>
+        <leoButton name="redoButton" x="55" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Redo"  >
+            <idle subTexture="redoButton" alpha="0.6"/>
+            <push subTexture="redoButton" alpha="1"/>
+            <hover subTexture="redoButton" alpha="0.9"/>
+        </leoButton>
+    </leoPanel>
+
+<!-- SCULPT FRAME -->	
+    <leoPanel name="sculptFrame" x="-240" y="-120" width="660" height="110" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoRadioButton name="pullButton" x="0" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="pull" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="pullButton" alpha="0.7"/>
+                <push subTexture="pullButton" alpha="1"/>
+                <hover subTexture="pullButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="pullButton" alpha="1"/>
+                <push subTexture="pullButton" alpha="1"/>
+                <hover subTexture="pullButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="pushButton" x="60" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Push" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="pushButton" alpha="0.7"/>
+                <push subTexture="pushButton" alpha="1"/>
+                <hover subTexture="pushButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="pushButton" alpha="1"/>
+                <push subTexture="pushButton" alpha="1"/>
+                <hover subTexture="pushButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="eraseButton" x="120" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Erase" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="eraseButton" alpha="0.7"/>
+                <push subTexture="eraseButton" alpha="1"/>
+                <hover subTexture="eraseButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="eraseButton" alpha="1"/>
+                <push subTexture="eraseButton" alpha="1"/>
+                <hover subTexture="eraseButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="smoothButton" x="180" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Smooth" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="smoothButton" alpha="0.7"/>
+                <push subTexture="smoothButton" alpha="1"/>
+                <hover subTexture="smoothButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="smoothButton" alpha="1"/>
+                <push subTexture="smoothButton" alpha="1"/>
+                <hover subTexture="smoothButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="flattenButton" x="240" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Flatten" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="flattenButton" alpha="0.7"/>
+                <push subTexture="flattenButton" alpha="1"/>
+                <hover subTexture="flattenButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="flattenButton" alpha="1"/>
+                <push subTexture="flattenButton" alpha="1"/>
+                <hover subTexture="flattenButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="edgeButton" x="300" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Edge" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="edgeButton" alpha="0.7"/>
+                <push subTexture="edgeButton" alpha="1"/>
+                <hover subTexture="edgeButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="edgeButton" alpha="1"/>
+                <push subTexture="edgeButton" alpha="1"/>
+                <hover subTexture="edgeButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="sculptButton" x="360" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Sculpt" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="sculptButton" alpha="0.7"/>
+                <push subTexture="sculptButton" alpha="1"/>
+                <hover subTexture="sculptButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="sculptButton" alpha="1"/>
+                <push subTexture="sculptButton" alpha="1"/>
+                <hover subTexture="sculptButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+       <!-- sculpt mirror --> 
+        <leoToggleButton name="sculptMirrorButton" x="440" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Mirror" ticked="0">
+            <state id="0">
+                <idle subTexture="mirrorLeftButton" alpha="0.7"/>
+                <push subTexture="mirrorLeftButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="mirrorLeftButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="mirrorBothButton" alpha="1"/>
+                <push subTexture="mirrorBothButton" alpha="1"/>
+                <hover subTexture="mirrorBothButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+		
+<!-- 			rotate toggle button -->
+        <leoToggleButton name="sculptRotateButton" x="500" y="60" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Rotate" ticked="0">
+            <state id="0">
+                <idle subTexture="rotateObjectButton" alpha="0.7"/>
+                <push subTexture="rotateObjectButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="rotateObjectButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="rotateObjectButton" alpha="1"/>
+                <push subTexture="rotateObjectButton" alpha="1"/>
+                <hover subTexture="rotateObjectButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+    </leoPanel>
+    
+<!-- COLOR AND ENGRAVE FRAME -->    
+	<leoPanel name="colorFrame" role="colorSelectorFrame" x="-240" y="-120" width="660" height="100" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+            <leoProgressButton name="colorIndicatorButton" role="colorIndicatorButton" x="260" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="colorIndicatorButton" alpha="1"/>
+                <push subTexture="colorIndicatorButton" alpha="1"/>
+                <hover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="blackButton" role="blackButton" x="-330" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="blackColorButton" alpha="1"/>
+                <push subTexture="blackColorButton" alpha="1"/>
+                <hover subTexture="blackColorButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="greyButton" role="greyButton" x="-274" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greyButton" alpha="1"/>
+                <push subTexture="greyButton" alpha="1"/>
+                <hover subTexture="greyButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="brownButton" role="brownButton" x="-218" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="brownButton" alpha="1"/>
+                <push subTexture="brownButton" alpha="1"/>
+                <hover subTexture="brownButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="purpleButton" role="purpleButton" x="-162" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="purpleButton" alpha="1"/>
+                <push subTexture="purpleButton" alpha="1"/>
+                <hover subTexture="purpleButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="pinkButton" role="pinkButton" x="-106" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="pinkButton" alpha="1"/>
+                <push subTexture="pinkButton" alpha="1"/>
+                <hover subTexture="pinkButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="darkBlueButton" role="darkBlueButton" x="-50" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="darkBlueButton" alpha="1"/>
+                <push subTexture="darkBlueButton" alpha="1"/>
+                <hover subTexture="darkBlueButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="lightBlueButton" role="lightBlueButton" x="-78" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="lightBlueButton" alpha="1"/>
+                <push subTexture="lightBlueButton" alpha="1"/>
+                <hover subTexture="lightBlueButton" alpha="1"/>											<!-- rossz -->
+            </leoProgressButton>
+            <leoProgressButton name="whiteButton" role="whiteButton" x="-358" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="whiteButton" alpha="1"/>
+                <push subTexture="whiteButton" alpha="1"/>
+                <hover subTexture="whiteButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="yellowButton" role="yellowButton" x="-302" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="yellowButton" alpha="1"/>
+                <push subTexture="yellowButton" alpha="1"/>
+                <hover subTexture="yellowButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="redButton" role="redButton" x="-190" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="redButton" alpha="1"/>
+                <push subTexture="redButton" alpha="1"/>
+                <hover subTexture="redButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="greenButton" role="greenButton" x="-134" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greenButton" alpha="1"/>
+                <push subTexture="greenButton" alpha="1"/>
+                <hover subTexture="greenButton" alpha="1"/>
+            </leoProgressButton>
+            <leoProgressButton name="orangeButton" role="orangeButton" x="-246" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="orangeButton" alpha="1"/>
+                <push subTexture="orangeButton" alpha="1"/>
+                <hover subTexture="orangeButton" alpha="1"/>
+            </leoProgressButton>
+            <leoButton name="colorPickerButton" role="colorPickerButton" x="232" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Color Picker"  >
+                <idle subTexture="pickColorButton" alpha="0.3"/>
+                <push subTexture="pickColorButton" alpha="1"/>
+                <hover subTexture="pickColorButton" alpha="0.5"/>
+            </leoButton>
+            <leoSlider name="hueSlider" role="hueSlider" x="10" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Hue" orientation="horizontal" minValue="0" maxValue="100" defaultPos="25.29411888">
+                <track subTexture="hueBar" alpha="1"/>
+                <knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="saturationSlider" role="saturationSlider" x="10" y="35" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Saturation" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="sliderFilledBar" alpha="1"/>
+                <knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="lightnessSlider" role="lightnessSlider" x="10" y="70" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Brightness" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="sliderFilledBar" alpha="1"/>
+				<knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+			
+		<!-- PAINT MIRROR --> 
+		<leoToggleButton name="paintMirrorButton" x="680" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0">
+			<state id="0">
+				<idle subTexture="mirrorLeftButton" alpha="0.7"/>
+				<push subTexture="mirrorLeftButton" alpha="1"/>
+				<hover subTexture="mirrorLeftButton" alpha="0.9"/>
+			</state>
+			<state id="1">
+				<idle subTexture="mirrorBothButton" alpha="1"/>
+				<push subTexture="mirrorBothButton" alpha="1"/>
+				<hover subTexture="mirrorBothButton" alpha="1"/>
+			</state>
+		</leoToggleButton>	
+		
+<!-- 			rotate toggle button -->
+        <leoToggleButton name="paintRotateButton" x="740" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Rotate" ticked="0">
+            <state id="0">
+                <idle subTexture="rotateObjectButton" alpha="0.7"/>
+                <push subTexture="rotateObjectButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="rotateObjectButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="rotateObjectButton" alpha="1"/>
+                <push subTexture="rotateObjectButton" alpha="1"/>
+                <hover subTexture="rotateObjectButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+	</leoPanel>
+
+
+<!-- SLIDERS BRUSH -->
+    <leoPanel name="slidersFrame1" x="-210" y="-80" width="210" height="70" horizontalAnchor="right" verticalAnchor="bottom" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoNewTypeSlider name="toolSizeSlider" x="0" y="40" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="" orientation="horizontal" minValue="0" maxValue="1" defaultPos="0.3" text="TOOL SIZE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+        </leoNewTypeSlider>
+        <leoNewTypeSlider name="toolStrengthSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="" orientation="horizontal" minValue="0" maxValue="1" defaultPos="1" text="TOOL STRENGTH" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+        </leoNewTypeSlider>
+        
+        <leoNewTypeSlider name="stampDepthSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="" orientation="horizontal" minValue="-1.6" maxValue="1.6" defaultPos="-0.5" snapValues="0" snapThreshold="0.1" trailOriginValue="0" tooltipValueFactor="6.25" tooltipValueOffset="0" text="STAMP DEPTH" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+        </leoNewTypeSlider>
+    </leoPanel>
+	
+
+<!-- REFORM FRAME -->    
+    <leoPanel name="reformFrame" x="-416" y="-75" width="882" height="73" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(128,128,0,255)" tooltip="" paintInside="0">
+        <!-- RING -->
+		<leoPanel name="ringReformFrame" x="-356" y="-70" width="680" height="69" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,0)" tooltip="" paintInside="0">
+            <leoPanel name="ringSidesFrame" x="-340" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,0)" tooltip="" boundMenuButton="ringSidesButton" paintInside="0">
+                <leoNewTypeSlider name="ringSidesSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Sides" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.066667" text="SIDES" tooltipValueFactor="32.0" tooltipValueOffset="3.0" precision="0" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringSidesOffsetSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Sides offset" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.805556" text="SIDES OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringResolutionSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Ring resolution" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.533333" text="RING RESOLUTION" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+            
+            <leoPanel name="ringInnerRadiusFrame" x="-320" y="-50" width="200" height="180" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringInnerRadiusButton" paintInside="0">
+			<leoNewTypeSlider name="ringInnerRadiusSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Inner radius" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.466667" text="INNER RADIUS" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            
+            <leoPanel name="ringOuterRadiusFrame" x="-250" y="-50" width="200" height="180" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringOuterRadiusButton" paintInside="0">
+			<leoNewTypeSlider name="ringOuterRadiusSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Outer radius" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.400000" text="OUTER RADIUS" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            
+            <leoPanel name="ringTwistFrame" x="-180" y="-50" width="200" height="180" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringTwistButton" paintInside="0">
+			<leoNewTypeSlider name="ringTwistSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Twist" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.300000" text="TWIST" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            
+            <leoPanel name="ringAspectRatioFrame" x="-110" y="-50" width="200" height="180" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringAspectRatioButton" paintInside="0">
+			<leoNewTypeSlider name="ringAspectRatioSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Aspect ratio" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.311111" text="ASPECT RATIO" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            
+            <leoPanel name="ringWaveZFrame" x="-340" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringWaveZButton" paintInside="0">
+                <leoNewTypeSlider name="ringWaveZFreqSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.000000" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveZAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.650000" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveZOffsSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.744444" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+            <leoPanel name="ringWaveYFrame" x="-340" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringWaveYButton" paintInside="0">
+                <leoNewTypeSlider name="ringWaveYFreqSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.427778" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveYAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.822222" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveYOffsSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.655556" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+            <leoPanel name="ringWaveXFrame" x="-340" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="ringWaveXButton" paintInside="0">
+                <leoNewTypeSlider name="ringWaveXFreqSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.711111" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveXAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.566667" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="ringWaveXOffsSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="horizontal" minValue="0.000000" maxValue="1.000000" defaultPos="0.744444" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+            
+            
+            
+            <!-- ring buttons -->
+            <leoMenuRadioButton name="ringSidesButton" x="-321" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="1" targetFrame="ringSidesFrame">
+                <idle subTexture="ringMainSidesButton"  alpha="0.6"/>
+				<push subTexture="ringMainSidesButton"  alpha="1"/>
+				<hover subTexture="ringMainSidesButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringInnerRadiusButton" x="-251" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringInnerRadiusFrame" >
+                <idle subTexture="ringInnerRadiusButton"  alpha="0.6"/>
+				<push subTexture="ringInnerRadiusButton"  alpha="1"/>
+				<hover subTexture="ringInnerRadiusButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringOuterRadiusButton" x="-181" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringOuterRadiusFrame" >
+                <idle subTexture="ringOuterRadiusButton"  alpha="0.6"/>
+				<push subTexture="ringOuterRadiusButton"  alpha="1"/>
+				<hover subTexture="ringOuterRadiusButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringTwistButton" x="-111" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringTwistFrame" >
+                <idle subTexture="twistButton"  alpha="0.6"/>
+				<push subTexture="twistButton"  alpha="1"/>
+				<hover subTexture="twistButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringAspectRatioButton" x="-41" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringAspectRatioFrame" >
+                <idle subTexture="aspectRatioButton"  alpha="0.6"/>
+				<push subTexture="aspectRatioButton"  alpha="1"/>
+				<hover subTexture="aspectRatioButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringWaveXButton" x="29" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringWaveXFrame">
+                <idle subTexture="waveXButton"  alpha="0.6"/>
+				<push subTexture="waveXButton"  alpha="1"/>
+				<hover subTexture="waveXButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringWaveYButton" x="99" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringWaveYFrame">
+                <idle subTexture="waveYButton"  alpha="0.6"/>
+				<push subTexture="waveYButton"  alpha="1"/>
+				<hover subTexture="waveYButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="ringWaveZButton" x="170" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="50" ticked="0" targetFrame="ringWaveZFrame">
+                <idle subTexture="waveZButton"  alpha="0.6"/>
+				<push subTexture="waveZButton"  alpha="1"/>
+				<hover subTexture="waveZButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoButton name="ringResetButton" x="300" y="-64" width="50" height="50" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Reset" >
+                <idle subTexture="resetslidersButton"  alpha="0.6"/>
+				<push subTexture="resetslidersButton"  alpha="1"/>
+				<hover subTexture="resetslidersButton" alpha="0.8"/>
+            </leoButton>
+        </leoPanel>
+		
+		<!-- CYLINDER FRAME -->
+        <leoPanel name="cylinderReformFrame" x="-356" y="-70" width="791" height="69" horizontalAnchor="center" verticalAnchor="bottom" visible="1" zValue="0.400000" bgColor="rgb(179,0,0,179)" tooltip="" paintInside="0">
+
+            <leoPanel name="cylinderSidesFrame" x="-240" y="-50" width="440" height="50" horizontalAnchor="center" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderSidesButton" paintInside="0">
+                <leoNewTypeSlider name="cylinderSidesSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Sides" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.027778"  text="SIDES" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderVerticalResSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Vertical resolution" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.688889"  text="VERTICAL RESOLUTION" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+			
+            <leoPanel name="cylinderWaveXFrame" x="-335" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderWaveXButton" paintInside="0">
+                <leoNewTypeSlider name="cylinderWaveXFreqSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.711111" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveXAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.566667" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveXOffsSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.744444" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+			
+            <leoPanel name="cylinderWaveYFrame" x="-335" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderWaveYButton" paintInside="0">
+                <leoNewTypeSlider name="cylinderWaveYFreqSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.427778" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveYAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.822222" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveYOffsSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.655556" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+			
+            <leoPanel name="cylinderWaveZFrame" x="-335" y="-50" width="660" height="50" horizontalAnchor="center" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderWaveZButton" paintInside="0">
+                <leoNewTypeSlider name="cylinderWaveZOffsSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave offset" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.744444" text="WAVE OFFSET" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveZAmpSlider" x="220" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave amplitude" orientation="vertical" minValue="0.000000" maxValue="0.1000000" defaultPos="0.0650000" text="WAVE AMPLITUDE" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+                <leoNewTypeSlider name="cylinderWaveZFreqSlider" x="440" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Wave frequency" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.000000" text="WAVE FREQUENCY" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+                </leoNewTypeSlider>
+            </leoPanel>
+			
+            <leoPanel name="cylinderThicknessFrame" x="510" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderThicknessButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderThicknessSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Thickness" orientation="vertical" minValue="0.100000" maxValue="1.000000" defaultPos="0.827778" text="THICKNESS" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+			<leoPanel name="cylinderHeightFrame" x="-10" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderHeightButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderHeightSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Height" orientation="vertical" minValue="0.050000" maxValue="3.500000" defaultPos="0.500000" text="HEIGHT" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            <leoPanel name="cylinderBaseRadiusFrame" x="55" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderBaseRadiusButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderBaseRadiusSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Base radius" orientation="vertical" minValue="0.080000" maxValue="1.600000" defaultPos="0.622222" text="BASE RADIUS" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            <leoPanel name="cylinderTopRadiusFrame" x="120" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderTopRadiusButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderTopRadiusSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Top radius" orientation="vertical" minValue="0.080000" maxValue="1.600000" defaultPos="0.511111" text="TOP RADIUS" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+            <leoPanel name="cylinderTwistFrame" x="189" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderTwistButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderTwistSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Twist" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="1.000000" text="TWIST" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+			<leoPanel name="cylinderAspectRatioFrame" x="250" y="-50" width="200" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" boundMenuButton="cylinderAspectRatioButton" paintInside="0">
+			<leoNewTypeSlider name="cylinderAspectRatioSlider" x="0" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"  uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Aspect ratio" orientation="vertical" minValue="0.000000" maxValue="1.000000" defaultPos="0.311111" text="ASPECT RATIO" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(190, 190, 190, 160)" alpha="1"/>
+			<knobidle subTexture="blackButton" alpha="1" color="rgb(160,160,160,160)"/>
+			<knobpush subTexture="blackButton" alpha="1" color="rgb(220,220,220,160)"/>
+			<knobhover subTexture="blackButton" alpha="1" color="rgb(200,200,200,160)"/>
+            </leoNewTypeSlider>
+			</leoPanel>
+			
+			<!-- cylinder buttons -->
+            <leoMenuRadioButton name="cylinderSidesButton" x="0" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="1" targetFrame="cylinderSidesFrame">
+                <idle subTexture="ringMainSidesButton"  alpha="0.6"/>
+				<push subTexture="ringMainSidesButton"  alpha="1"/>
+				<hover subTexture="ringMainSidesButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderHeightButton" x="65" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderHeightFrame" >
+                <idle subTexture="cylinderHeightButton"  alpha="0.6"/>
+				<push subTexture="cylinderHeightButton"  alpha="1"/>
+				<hover subTexture="cylinderHeightButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderBaseRadiusButton" x="130" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderBaseRadiusFrame" >
+                <idle subTexture="cylinderBaseRadiusButton"  alpha="0.6"/>
+				<push subTexture="cylinderBaseRadiusButton"  alpha="1"/>
+				<hover subTexture="cylinderBaseRadiusButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderTopRadiusButton" x="195" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderTopRadiusFrame" >
+                <idle subTexture="cylinderTopRadiusButton"  alpha="0.6"/>
+				<push subTexture="cylinderTopRadiusButton"  alpha="1"/>
+				<hover subTexture="cylinderTopRadiusButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderTwistButton" x="264" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderTwistFrame" >
+                <idle subTexture="twistButton"  alpha="0.6"/>
+				<push subTexture="twistButton"  alpha="1"/>
+				<hover subTexture="twistButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderAspectRatioButton" x="325" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderAspectRatioFrame" >
+                <idle subTexture="aspectRatioButton"  alpha="0.6"/>
+				<push subTexture="aspectRatioButton"  alpha="1"/>
+				<hover subTexture="aspectRatioButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderWaveXButton" x="390" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderWaveXFrame" >
+                <idle subTexture="waveXButton"  alpha="0.6"/>
+				<push subTexture="waveXButton"  alpha="1"/>
+				<hover subTexture="waveXButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderWaveYButton" x="455" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderWaveYFrame">
+                <idle subTexture="waveYButton"  alpha="0.6"/>
+				<push subTexture="waveYButton"  alpha="1"/>
+				<hover subTexture="waveYButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderWaveZButton" x="520" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  groupId="51" ticked="0" targetFrame="cylinderWaveZFrame">
+                <idle subTexture="waveZButton"  alpha="0.6"/>
+				<push subTexture="waveZButton"  alpha="1"/>
+				<hover subTexture="waveZButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoMenuRadioButton name="cylinderThicknessButton" x="585" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="51" ticked="0" targetFrame="cylinderThicknessFrame" >
+                <idle subTexture="cylinderThicknessButton"  alpha="0.6"/>
+				<push subTexture="cylinderThicknessButton"  alpha="1"/>
+				<hover subTexture="cylinderThicknessButton" alpha="0.8"/>
+            </leoMenuRadioButton>
+            <leoToggleButton name="openClosedButton" x="650" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Open/Closed"  ticked="0">
+                <state id="0">
+                    <idle subTexture="toggleOpenCylinderButton"  alpha="0.6"/>
+				<push subTexture="toggleOpenCylinderButton"  alpha="1"/>
+				<hover subTexture="toggleOpenCylinderButton" alpha="0.8"/>
+                </state>
+                <state id="1">
+                    <idle subTexture="toggleClosedCylinderButton"  alpha="0.6"/>
+				<push subTexture="toggleClosedCylinderButton"  alpha="1"/>
+				<hover subTexture="toggleClosedCylinderButton" alpha="0.8"/>
+                </state>
+            </leoToggleButton>
+            <leoButton name="cylinderResetButton" x="770" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Reset" >
+                <idle subTexture="resetslidersButton"  alpha="0.6"/>
+				<push subTexture="resetslidersButton"  alpha="1"/>
+				<hover subTexture="resetslidersButton" alpha="0.8"/>
+            </leoButton>
+        <!-- SWITCH BETWEEN RING AND CYLINDER -->    
+        </leoPanel>
+        <leoToggleButton name="ringcylinderButton" x="-50" y="-64" width="50" height="50" horizontalAnchor="left" verticalAnchor="bottom" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Ring/Cylinder"  ticked="1">
+            <state id="0">
+            <idle subTexture="toggleCylinderButton" alpha="0.6"/>
+            <push subTexture="toggleCylinderButton" alpha="1"/>
+            <hover subTexture="toggleCylinderButton" alpha="0.8"/>
+			</state>
+            <state id="1">
+			<idle subTexture="toggleRingButton" alpha="0.6"/>
+            <push subTexture="toggleRingButton" alpha="1"/>
+            <hover subTexture="toggleRingButton" alpha="0.8"/>
+			</state>
+        </leoToggleButton>
+    </leoPanel>
+    
+	
+									<!-- PATTERN AND COLOR FRAMES -->
+									
+
+	
+<!-- engrave pattern panelek -->
+
+
+				<!-- NEW ENGRAVE TYPE FRAMES -->
+				
+<!-- text engrave frame -->
+    <leoPanel name="txtEnFrame" x="-300" y="-110" width="840" height="180" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		<!-- colorTextFrame -->	
+        <leoPanel name="colorTextFrame" role="colorSelectorFrame" x="0" y="0" width="660" height="100" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+            <leoButton name="colorTextIndicatorButton" role="colorIndicatorButton" x="260" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="colorIndicatorButton" alpha="1"/>
+                <push subTexture="colorIndicatorButton" alpha="1"/>
+                <hover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="blackTextButton" role="blackButton" x="-330" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="blackColorButton" alpha="1"/>
+                <push subTexture="blackColorButton" alpha="1"/>
+                <hover subTexture="blackColorButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="greyTextButton" role="greyButton" x="-274" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greyButton" alpha="1"/>
+                <push subTexture="greyButton" alpha="1"/>
+                <hover subTexture="greyButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="brownTextButton" role="brownButton" x="-218" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="brownButton" alpha="1"/>
+                <push subTexture="brownButton" alpha="1"/>
+                <hover subTexture="brownButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="purpleTextButton" role="purpleButton" x="-162" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="purpleButton" alpha="1"/>
+                <push subTexture="purpleButton" alpha="1"/>
+                <hover subTexture="purpleButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="pinkTextButton" role="pinkButton" x="-106" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="pinkButton" alpha="1"/>
+                <push subTexture="pinkButton" alpha="1"/>
+                <hover subTexture="pinkButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="darkBlueTextButton" role="darkBlueButton" x="-50" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="darkBlueButton" alpha="1"/>
+                <push subTexture="darkBlueButton" alpha="1"/>
+                <hover subTexture="darkBlueButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="lightBlueTextButton" role="lightBlueButton" x="-78" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="lightBlueButton" alpha="1"/>
+                <push subTexture="lightBlueButton" alpha="1"/>
+                <hover subTexture="lightBlueButton" alpha="1"/>											<!-- rossz -->
+            </leoButton>
+            <leoButton name="whiteTextButton" role="whiteButton" x="-358" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="whiteButton" alpha="1"/>
+                <push subTexture="whiteButton" alpha="1"/>
+                <hover subTexture="whiteButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="yellowTextButton" role="yellowButton" x="-302" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="yellowButton" alpha="1"/>
+                <push subTexture="yellowButton" alpha="1"/>
+                <hover subTexture="yellowButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="redTextButton" role="redButton" x="-190" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="redButton" alpha="1"/>
+                <push subTexture="redButton" alpha="1"/>
+                <hover subTexture="redButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="greenTextButton" role="greenButton" x="-134" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greenButton" alpha="1"/>
+                <push subTexture="greenButton" alpha="1"/>
+                <hover subTexture="greenButton" alpha="1"/>
+            </leoButton>
+            <leoButton name="orangeTextButton" role="orangeButton" x="-246" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="orangeButton" alpha="1"/>
+                <push subTexture="orangeButton" alpha="1"/>
+                <hover subTexture="orangeButton" alpha="1"/>
+            </leoButton>
+<!--            <leoButton name="colorPickerTextButton" role="colorPickerButton" x="232" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Color Picker"  >
+                <idle subTexture="pickColorButton" alpha="0.3"/>
+                <push subTexture="pickColorButton" alpha="1"/>
+                <hover subTexture="pickColorButton" alpha="0.5"/>
+            </leoButton>  -->
+            <leoSlider name="hueTextSlider" role="hueSlider" x="10" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Hue" orientation="horizontal" minValue="0" maxValue="100" defaultPos="25.29411888">
+                <track subTexture="hueBar" alpha="1"/>
+                <knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="saturationTextSlider" role="saturationSlider" x="10" y="35" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Saturation" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="sliderFilledBar" alpha="1"/>
+                <knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="lightnessTextSlider" role="lightnessSlider" x="10" y="70" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Brightness" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="sliderFilledBar" alpha="1"/>
+				<knobidle subTexture="colorIndicatorButton" alpha="1"/>
+                <knobpush subTexture="colorIndicatorButton" alpha="1"/>
+                <knobhover subTexture="colorIndicatorButton" alpha="1"/>
+            </leoSlider>
+        </leoPanel>
+
+		<!-- text engrave switch frame -->
+	    <leoPanel name="txtSwitchFrame" x="690" y="50" width="180" height="60" horizontalAnchor="top" verticalAnchor="left" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		
+		<!-- TEXT INPUT BUTTON -->
+			<leoButton name="textInputButton" x="200" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="textInputButton" alpha="0.7"/>
+				<push subTexture="textInputButton" alpha="1"/>
+				<hover subTexture="textInputButton" alpha="0.9"/>
+			</leoButton>
+		
+		<!-- GREY ENGRAVE text BUTTON -->			
+			<leoMenuRadioButton name="textGreyEngraveButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="11" targetFrame="toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patGreyEnButton" alpha="0.7"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="0.9"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patGreyEnButton" alpha="1"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR ENGRAVE text BUTTON -->
+			<leoMenuRadioButton name="textColorEngraveButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="1" groupId="11" targetFrame="colorTextFrame, toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patColorEnButton" alpha="0.7"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="0.9"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patColorEnButton" alpha="1"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR paint text BUTTON -->				
+			<leoMenuRadioButton name="textColorPaintButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="11" targetFrame="colorTextFrame, toolSizeSlider">
+				<state id="0">
+					<idle subTexture="patPaintPatternButton" alpha="0.7"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="0.9"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patPaintPatternButton" alpha="1"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		</leoPanel>
+
+	</leoPanel>	
+	
+
+
+<!-- image engrave frame -->	
+    <leoPanel name="imgEnFrame" x="-340" y="-110" width="840" height="180" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		<!-- image engrave switch frame -->
+	    <leoPanel name="imgSwitchFrame" x="690" y="50" width="180" height="60" horizontalAnchor="top" verticalAnchor="left" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		
+		<!-- image INPUT BUTTON -->
+			<leoButton name="customPatternButton" x="200" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="customPatternButton" alpha="0.3"/>
+				<push subTexture="customPatternButton" alpha="1"/>
+				<hover subTexture="customPatternButton" alpha="0.5"/>
+			</leoButton>
+			<!-- buttonrimsmall
+			<leoButton name="imgInputButton1" x="200" y="-50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="buttonRimSmall" alpha="0.3"/>
+				<push subTexture="buttonRimSmall" alpha="1"/>
+				<hover subTexture="buttonRimSmall" alpha="0.5"/>
+			</leoButton>  -->
+		<!-- GREY ENGRAVE image BUTTON -->			
+			<leoMenuRadioButton name="imgGreyEngraveButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="31" targetFrame="toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patGreyEnButton" alpha="0.6"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patGreyEnButton" alpha="1"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR ENGRAVE image BUTTON -->
+			<leoMenuRadioButton name="imgColorEngraveButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="1" groupId="31" targetFrame="toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patColorEnButton" alpha="0.6"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patColorEnButton" alpha="1"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR paint image BUTTON -->				
+			<leoMenuRadioButton name="imgColorPaintButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="31" targetFrame="toolSizeSlider">
+				<state id="0">
+					<idle subTexture="patPaintPatternButton" alpha="0.6"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patPaintPatternButton" alpha="1"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		</leoPanel>
+    </leoPanel>
+
+				
+<!-- pattern engrave frame -->
+    <leoPanel name="patEnFrame" x="-340" y="-170" width="840" height="180" horizontalAnchor="center" verticalAnchor="bottom" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		<!-- color pattern frame -->
+		<leoPanel name="colorPatternFrame" role="colorSelectorFrame" x="0" y="0" width="660" height="100" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+			<leoButton name="colorPatternIndicatorButton" role="colorIndicatorButton" x="260" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="colorIndicatorButton" alpha="1"/>
+				<push subTexture="colorIndicatorButton" alpha="1"/>
+				<hover subTexture="colorIndicatorButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="blackPatternButton" role="blackButton" x="-330" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="blackColorButton" alpha="1"/>
+				<push subTexture="blackColorButton" alpha="1"/>
+				<hover subTexture="blackColorButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="greyPatternButton" role="greyButton" x="-274" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="greyButton" alpha="1"/>
+				<push subTexture="greyButton" alpha="1"/>
+				<hover subTexture="greyButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="brownPatternButton" role="brownButton" x="-218" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="brownButton" alpha="1"/>
+				<push subTexture="brownButton" alpha="1"/>
+				<hover subTexture="brownButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="purplePatternButton" role="purpleButton" x="-162" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="purpleButton" alpha="1"/>
+				<push subTexture="purpleButton" alpha="1"/>
+				<hover subTexture="purpleButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="pinkPatternButton" role="pinkButton" x="-106" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="pinkButton" alpha="1"/>
+				<push subTexture="pinkButton" alpha="1"/>
+				<hover subTexture="pinkButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="darkBluePatternButton" role="darkBlueButton" x="-50" y="50" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="darkBlueButton" alpha="1"/>
+				<push subTexture="darkBlueButton" alpha="1"/>
+				<hover subTexture="darkBlueButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="lightBluePatternButton" role="lightBlueButton" x="-78" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="lightBlueButton" alpha="1"/>
+				<push subTexture="lightBlueButton" alpha="1"/>
+				<hover subTexture="lightBlueButton" alpha="1"/>											<!-- rossz -->
+			</leoButton>
+			<leoButton name="whitePatternButton" role="whiteButton" x="-358" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="whiteButton" alpha="1"/>
+				<push subTexture="whiteButton" alpha="1"/>
+				<hover subTexture="whiteButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="yellowPatternButton" role="yellowButton" x="-302" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="yellowButton" alpha="1"/>
+				<push subTexture="yellowButton" alpha="1"/>
+				<hover subTexture="yellowButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="redPatternButton" role="redButton" x="-190" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="redButton" alpha="1"/>
+				<push subTexture="redButton" alpha="1"/>
+				<hover subTexture="redButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="greenPatternButton" role="greenButton" x="-134" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="greenButton" alpha="1"/>
+				<push subTexture="greenButton" alpha="1"/>
+				<hover subTexture="greenButton" alpha="1"/>
+			</leoButton>
+			<leoButton name="orangePatternButton" role="orangeButton" x="-246" y="0" width="50" height="50" horizontalAnchor="right" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="orangeButton" alpha="1"/>
+				<push subTexture="orangeButton" alpha="1"/>
+				<hover subTexture="orangeButton" alpha="1"/>
+			</leoButton>
+<!--			<leoButton name="colorPickerPatternButton" role="colorPickerButton" x="232" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Color Picker"  >
+				<idle subTexture="pickColorButton" alpha="0.3"/>
+				<push subTexture="pickColorButton" alpha="1"/>
+				<hover subTexture="pickColorButton" alpha="0.5"/>
+			</leoButton> -->
+			<leoSlider name="huePatternSlider" role="hueSlider" x="10" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Hue" orientation="horizontal" minValue="0" maxValue="100" defaultPos="25.29411888">
+				<track subTexture="hueBar" alpha="1"/>
+				<knobidle subTexture="colorIndicatorButton" alpha="1"/>
+				<knobpush subTexture="colorIndicatorButton" alpha="1"/>
+				<knobhover subTexture="colorIndicatorButton" alpha="1"/>
+			</leoSlider>
+			<leoSlider name="saturationPatternSlider" role="saturationSlider" x="10" y="35" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Saturation" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+				<track subTexture="sliderFilledBar" alpha="1"/>
+				<knobidle subTexture="colorIndicatorButton" alpha="1"/>
+				<knobpush subTexture="colorIndicatorButton" alpha="1"/>
+				<knobhover subTexture="colorIndicatorButton" alpha="1"/>
+			</leoSlider>
+			<leoSlider name="lightnessPatternSlider" role="lightnessSlider" x="10" y="70" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Brightness" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+				<track subTexture="sliderFilledBar" alpha="1"/>
+				<knobidle subTexture="colorIndicatorButton" alpha="1"/>
+				<knobpush subTexture="colorIndicatorButton" alpha="1"/>
+				<knobhover subTexture="colorIndicatorButton" alpha="1"/>
+			</leoSlider>
+		</leoPanel>
+				
+		<!-- 	MAIN PATTERNS FRAME -->
+		<leoPanel name="mainPatternFrame" x="0" y="110" width="550" height="100" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+			<leoPanel name="patternScissorFrame" x="70" y="0" width="540" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,128,128)" tooltip="" paintInside="1"/>
+			<leoButton name="leftArrowButton" x="10" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="leftArrowButton" alpha="0.6"/>
+				<push subTexture="leftArrowButton" alpha="1"/>
+				<hover  subTexture="leftArrowButton" alpha="0.8"/>
+			</leoButton>
+			<leoButton name="rightArrowButton" x="610" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+				<idle subTexture="rightArrowButton" alpha="0.6"/>
+				<push subTexture="rightArrowButton" alpha="1"/>
+				<hover subTexture="rightArrowButton" alpha="0.8"/>
+			</leoButton>
+		</leoPanel>	
+
+		<!-- pattern engrave switch frame -->
+	    <leoPanel name="patSwitchFrame" x="690" y="110" width="180" height="60" horizontalAnchor="top" verticalAnchor="left" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+		
+		<!-- GREY ENGRAVE text BUTTON -->			
+			<leoMenuRadioButton name="patternGreyEngraveButton" x="0" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="21" targetFrame="toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patGreyEnButton" alpha="0.6"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patGreyEnButton" alpha="1"/>
+					<push subTexture="patGreyEnButton" alpha="1"/>
+					<hover subTexture="patGreyEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR ENGRAVE text BUTTON -->
+			<leoMenuRadioButton name="patternColorEngraveButton" x="60" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="1" groupId="21" targetFrame="colorPatternFrame, toolSizeSlider, stampDepthSlider">
+				<state id="0">
+					<idle subTexture="patColorEnButton" alpha="0.6"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patColorEnButton" alpha="1"/>
+					<push subTexture="patColorEnButton" alpha="1"/>
+					<hover subTexture="patColorEnButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		<!-- COLOR paint text BUTTON -->				
+			<leoMenuRadioButton name="patternColorPaintButton" x="120" y="0" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0" groupId="21" targetFrame="colorPatternFrame, toolSizeSlider">
+				<state id="0">
+					<idle subTexture="patPaintPatternButton" alpha="0.6"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="0.8"/>
+				</state>
+				<state id="1">
+					<idle subTexture="patPaintPatternButton" alpha="1"/>
+					<push subTexture="patPaintPatternButton" alpha="1"/>
+					<hover subTexture="patPaintPatternButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		</leoPanel>
+		
+    </leoPanel>
+		
+    
+<!-- VISIBILITY -->    
+    
+    <visibilityConstraints>
+
+		<!-- reform button -->
+
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+
+
+		
+		<constraint>
+            <event sourceComponentName="materialPreviewButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="hide"/>
+        </constraint>
+		
+		<!-- slider frame content back on visible -->
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="show"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="show"/>
+        </constraint>
+
+
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="fadeIn"/>
+        </constraint>
+ 
+ <!--  proba     -->
+        <constraint>
+            <event sourceComponentName="engraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint> 
+		
+		
+		<constraint>
+            <event sourceComponentName="engraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="paintEngraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="fadeIn"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintEngraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+		
+		
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="fadeIn"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="fadeIn"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="show"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="show"/>
+        </constraint>
+		
+	<!-- emulateclick -->
+		<!-- txtEnFrame switch panel emu click -->
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textColorPaintButton" actionName="emulateClick"/>
+        </constraint>
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<!-- image engrave swich panel emu click -->
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgColorPaintButton" actionName="emulateClick"/>
+        </constraint>
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<!-- pattern engrave swich panel emu click -->
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternColorPaintButton" actionName="emulateClick"/>
+        </constraint> 
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint> 
+		
+		
+		<!-- cylinder/ring toggle -->
+		<constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="ringReformFrame" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="ringReformFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="cylinderReformFrame" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="cylinderReformFrame" actionName="hide"/>
+        </constraint>
+        
+    </visibilityConstraints>
+	
+	
+</gui>

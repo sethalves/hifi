@@ -1,0 +1,291 @@
+<GuiCommands>
+
+<!-- reset to default -->
+<GuiCmd component="resetToDefaultButton" event="clicked" command="ResetObject" />
+<!-- EXIT -->
+<GuiCmd component="exitButton" event="clicked" command="Exit" />
+<GuiCmd component="minimizeButton" event="clicked" command="Minimize" />
+
+<GuiCmd component="templateSelectorButton" event="clicked" command="OpenTemplateSelector"/>
+<GuiCmd component="uploadButton" event="clicked" command="OpenSEPSideBar" />
+
+<GuiCmd component="undoButton" event="clicked" command="Undo"></GuiCmd>
+<GuiCmd component="redoButton" event="clicked" command="Redo"></GuiCmd>
+
+
+<!-- main menu -->
+<GuiCmd component="helpButton" event="clicked" command="ShowHelp"></GuiCmd>
+<!--<GuiCmd component="autorotateButton" event="clicked" command="ToggleCameraAutoRotMode"></GuiCmd>-->
+<GuiCmd component="resetSceneButton" event="clicked" command="ResetCameraDefaultView"></GuiCmd>
+<GuiCmd component="snapButton" event="clicked" command="SetCameraSnap" value="toggleState"></GuiCmd>
+<GuiCmd component="3dViewButton" event="clicked" command="ToggleStereo"></GuiCmd>
+
+<GuiCmd component="importButton" event="clicked" command="ImportFile" value="obj"></GuiCmd>
+<GuiCmd component="exportButton" event="clicked" command="ExportFile" value="obj"></GuiCmd>
+
+<!-- material -->
+<GuiCmd component="materialPreviewButton" event="clicked" command="SetMaterialViewMode"></GuiCmd>
+<GuiCmd component="lightButton" event="clicked" command="SetLighting" value="toggleState"></GuiCmd>
+
+<GuiCmd component="plasticButton" event="clicked" command="SetMaterial" value="plastic"></GuiCmd>
+<GuiCmd component="stoneButton" event="clicked" command="SetMaterial" value="alumide"></GuiCmd>
+<GuiCmd component="ceramicButton" event="clicked" command="SetMaterial" value="ceramics"></GuiCmd>
+<GuiCmd component="silverButton" event="clicked" command="SetMaterial" value="silver"></GuiCmd>
+<GuiCmd component="goldButton" event="clicked" command="SetMaterial" value="gold"></GuiCmd>
+<GuiCmd component="multiColorButton" event="clicked" command="SetMaterial" value="multicolor"></GuiCmd>
+<GuiCmd component="lightButton" event="clicked" command="SetLighting" value="toggleState"></GuiCmd>
+
+
+<!-- sculpt mode -->
+<GuiCmd component="sculptModeButton" event="clicked" command="SetSculptMode"></GuiCmd>
+
+<GuiCmd component="pullButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="pull"></Command>
+</GuiCmd>
+
+<GuiCmd component="pushButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="push"></Command>
+</GuiCmd>
+
+<GuiCmd component="sculptButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="sculpt"></Command>
+</GuiCmd>
+
+<GuiCmd component="eraseButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="delete"></Command>
+</GuiCmd>
+
+<GuiCmd component="flattenButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="flatten"></Command>
+</GuiCmd>
+
+<GuiCmd component="edgeButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="edge"></Command>
+</GuiCmd>
+
+<GuiCmd component="smoothButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="SetSculptBrush" value="smooth"></Command>
+</GuiCmd>
+
+<GuiCmd component="sculptMirrorButton" event="clicked">
+    <Command cmd="SetSculptMode"></Command>
+    <Command cmd="ToggleSculptMirror" ></Command>
+</GuiCmd>
+<!-- sculpt mode brushes END -->
+
+<!-- paint mode -->
+<!-- <GuiCmd component="paintModeButton" event="clicked" command="SetPaintMode"></GuiCmd> -->
+<GuiCmd component="engraveModeButton" event="clicked" command="SetEngraveMode"></GuiCmd>
+<GuiCmd component="paintEngraveModeButton" event="clicked" command="SetPaintEngraveMode"></GuiCmd>
+<GuiCmd component="colorPickerButton" event="clicked" command="SetColorPickMode"></GuiCmd>
+<GuiCmd component="paintMirrorButton" event="clicked" command="TogglePaintMirror"></GuiCmd>
+
+<!--									GUI COMMANDS FROM FIGURINE -->
+    
+    <GuiCmd component="paintModeButton" event="clicked">
+        <Command cmd="SetPaintMode"></Command>
+        <Command cmd="SetPaintStyle" value="sphere"></Command>
+    </GuiCmd>
+
+<!--    <GuiCmd component="rotateButton" event="clicked" command="ToggleObjectAutoRotMode"></GuiCmd> -->
+    <GuiCmd component="sculptRotateButton" event="clicked" command="ToggleObjectAutoRotMode"></GuiCmd>
+    
+    <!--<GuiCmd component="warningOkButton" event="clicked" command="SetEngraveMode"></GuiCmd>-->
+    <GuiCmd component="dummyEngraveButton" event="clicked" command="SetEngraveMode"></GuiCmd>
+    <GuiCmd component="dummyColorOnlyButton" event="clicked" command="SetPaintEngraveMode" />
+    
+    <GuiCmd component="engraveEmbossButton" event="clicked" command="SetStampMode" value="toggleState"></GuiCmd>
+
+	<!--  text input, freehand custom pattern -->
+    <GuiCmd component="textInputButton" event="clicked" command="OpenEngraveTextEditor" />
+    <GuiCmd component="freeHandButton" event="clicked" command="OpenEngraveFreehand" />
+<!--    <GuiCmd component="imgInputButton" event="clicked" command="SelectPattern" value="custom" /> -->
+    <GuiCmd component="customPatternButton" event="clicked" command="ImportFile" value="image" />
+
+<!-- new modes change MODES -->
+	<!-- text input mode -->
+	<GuiCmd component="textInputModeButton" event="clicked" command="SetEngraveMode"></GuiCmd>
+		<!-- swich panel -->
+		<GuiCmd component="textGreyEngraveButton" event="clicked" command="SetEngraveMode" value="text"></GuiCmd>
+		<GuiCmd component="textColorEngraveButton" event="clicked" command="SetPaintEngraveMode" value="text"></GuiCmd>
+		<GuiCmd component="textColorPaintButton" event="clicked">
+			<Command cmd="SetPaintEngraveMode" value="text"></Command>
+			<Command cmd="SetStampDepth" value="0"></Command>
+		</GuiCmd>
+	<GuiCmd component="colorTextPickerButton" event="clicked" command="SetColorPickMode"></GuiCmd>
+
+	<!-- custom pattern mode -->
+	<GuiCmd component="customPatternModeButton" event="clicked" command="SetEngraveMode"></GuiCmd>
+	<GuiCmd component="customPatternModeButton" event="onUnCheck" command="Hide"/>
+		<!-- swich panel -->
+		<GuiCmd component="imgGreyEngraveButton" event="clicked" command="SetEngraveMode" value="custom"></GuiCmd>
+		<GuiCmd component="imgColorEngraveButton" event="clicked" command="SetPaintEngraveMode" value="custom"></GuiCmd>
+		<GuiCmd component="imgColorPaintButton" event="clicked">
+			<Command cmd="SetPaintEngraveMode" value="custom"></Command>
+			<Command cmd="SetStampDepth" value="0"></Command>
+		</GuiCmd>
+	<GuiCmd component="colorPatternPickerButton" event="clicked" command="SetColorPickMode"></GuiCmd>
+		
+		<!-- load image -->
+
+	<!-- engrave pattern mode -->
+	<GuiCmd component="engraveEmbossModeButton" event="clicked" command="SetEngraveMode"></GuiCmd>
+		<!-- swich panel -->
+		<GuiCmd component="patternGreyEngraveButton" event="clicked" command="SetEngraveMode" value="lastRegularPattern"></GuiCmd>
+		<GuiCmd component="patternColorEngraveButton" event="clicked" command="SetPaintEngraveMode" value="lastRegularPattern"></GuiCmd>
+		<GuiCmd component="patternColorPaintButton" event="clicked">
+			<Command cmd="SetPaintEngraveMode" value="lastRegularPattern"></Command>
+			<Command cmd="SetStampDepth" value="0"></Command>
+		</GuiCmd>
+
+
+    <GuiCmd component="rightArrowButton" event="clicked" command="ScrollPatternsLeft"></GuiCmd>
+    <GuiCmd component="leftArrowButton" event="clicked" command="ScrollPatternsRight"></GuiCmd>
+    
+	<GuiCmd component="stampDepthSlider" event="sliderValueChanged" command="SetStampDepth" value="sliderValue"></GuiCmd>
+	<GuiCmd component="stampDepthSlider" event="sliderReleased" command="SetStampDepth" value="sliderValue"></GuiCmd>
+    
+    <!-- 
+	<GuiCmd component="SSAOsliderRadius" event="sliderValueChanged" command="SSAO0" value="sliderValue"></GuiCmd>
+	<GuiCmd component="SSAOsliderRangeRadius" event="sliderValueChanged" command="SSAO1" value="sliderValue"></GuiCmd>
+	<GuiCmd component="SSAOsliderBlurRadius" event="sliderValueChanged" command="SSAO2" value="sliderValue"></GuiCmd>
+	<GuiCmd component="SSAOsliderIntensity" event="sliderValueChanged" command="SSAO+" value="sliderValue"></GuiCmd>
+	<GuiCmd component="SSAOsliderBrighten" event="sliderValueChanged" command="SSAO3" value="sliderValue"></GuiCmd>
+	<GuiCmd component="SSAOsliderNumSample" event="sliderValueChanged" command="SSAO4" value="sliderValue"></GuiCmd>
+	-->
+	
+    <GuiCmd component="toolSizeSlider" event="sliderValueChanged" command="SetBrushSize" value="sliderValue"></GuiCmd>
+    <GuiCmd component="toolStrengthSlider" event="sliderValueChanged" command="SetBrushStrength" value="sliderValue"></GuiCmd>
+	<GuiCmd component="toolStrengthSlider" event="sliderReleased" command="SetBrushStrength" value="sliderValue"></GuiCmd>
+    <GuiCmd component="toolSizeSlider.sliderKnob" event="pressed" command="ShowBrushRing" value="true"></GuiCmd>
+    <GuiCmd component="toolSizeSlider.sliderKnob" event="released" command="ShowBrushRing" value="false"></GuiCmd>
+    <GuiCmd component="toolStrengthSlider.sliderKnob" event="pressed" command="ShowBrushRing" value="true"></GuiCmd>
+    <GuiCmd component="toolStrengthSlider.sliderKnob" event="released" command="ShowBrushRing" value="false"></GuiCmd>
+    
+    <GuiCmd component="redButton" event="setOff" command="PaintEntireMesh" value="1 0 0 1"></GuiCmd>
+    <GuiCmd component="whiteButton" event="setOff" command="PaintEntireMesh" value="1 1 1 1"></GuiCmd>
+    <GuiCmd component="yellowButton" event="setOff" command="PaintEntireMesh" value="1 1 0 1"></GuiCmd>
+    <GuiCmd component="orangeButton" event="setOff" command="PaintEntireMesh" value="1 0.5255 0 1"></GuiCmd>
+    <GuiCmd component="redButton" event="setOff" command="PaintEntireMesh" value="0.8157 0 0 1"></GuiCmd>
+    <GuiCmd component="greenButton" event="setOff" command="PaintEntireMesh" value="0 0.7608 0 1"></GuiCmd>
+    <GuiCmd component="lightBlueButton" event="setOff" command="PaintEntireMesh" value="0 0.6706 1 1"></GuiCmd>
+    <GuiCmd component="darkBlueButton" event="setOff" command="PaintEntireMesh" value="0 0.1216 1 1"></GuiCmd>
+    <GuiCmd component="pinkButton" event="setOff" command="PaintEntireMesh" value="1 0.4196 1 1"></GuiCmd>
+    <GuiCmd component="purpleButton" event="setOff" command="PaintEntireMesh" value="0.4706 0 0.6941 1"></GuiCmd>
+    <GuiCmd component="brownButton" event="setOff" command="PaintEntireMesh" value="0.5451 0.2784 0 1"></GuiCmd>
+    <GuiCmd component="greyButton" event="setOff" command="PaintEntireMesh" value="0.5 0.5 0.5 1"></GuiCmd>
+    <GuiCmd component="blackButton" event="setOff" command="PaintEntireMesh" value="0.1176 0.1176 0.1176 1"></GuiCmd>
+    <GuiCmd component="colorIndicatorButton" event="setOff" command="PaintEntireMesh"></GuiCmd>
+    
+	
+	<!--
+    <GuiCmd component="pullButton" event="clicked" command="SetSculptBrush" value="pull"></GuiCmd>
+    <GuiCmd component="pushButton" event="clicked" command="SetSculptBrush" value="push"></GuiCmd>
+    <GuiCmd component="sculptButton" event="clicked" command="SetSculptBrush" value="sculpt"></GuiCmd>
+    <GuiCmd component="eraseButton" event="clicked" command="SetSculptBrush" value="delete"></GuiCmd>
+    <GuiCmd component="flattenButton" event="clicked" command="SetSculptBrush" value="flatten"></GuiCmd>
+    <GuiCmd component="edgeButton" event="clicked" command="SetSculptBrush" value="edge"></GuiCmd>
+    <GuiCmd component="smoothButton" event="clicked" command="SetSculptBrush" value="smooth"></GuiCmd>
+    <GuiCmd component="sculptMirrorButton" event="clicked" command="ToggleSculptMirror"></GuiCmd>
+-->
+	<!-- kurva komment -->
+	<!-- Reform mode stuff -->
+	<GuiCmd component="reformButton" event="clicked" command="SetShapeShifterMode"></GuiCmd>
+	<GuiCmd component="ringcylinderButton" event="clicked">
+		<Command cmd="SetShapeShifterBaseShape" value="toggleState ringCylinder" />
+		<Command cmd="SaveShapeShifterState" />
+	</GuiCmd>
+	<GuiCmd component="cylinderSidesSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue sides"></GuiCmd>
+	<GuiCmd component="cylinderSidesSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderVerticalResSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue verticalResolution"></GuiCmd>
+	<GuiCmd component="cylinderVerticalResSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderHeightSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue length"></GuiCmd>
+	<GuiCmd component="cylinderHeightSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderBaseRadiusSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue baseRadius"></GuiCmd>
+	<GuiCmd component="cylinderBaseRadiusSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderTopRadiusSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue topRadius"></GuiCmd>
+	<GuiCmd component="cylinderTopRadiusSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderTwistSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue twistNum"></GuiCmd>
+	<GuiCmd component="cylinderTwistSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderAspectRatioSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue aspectRatio"></GuiCmd>
+	<GuiCmd component="cylinderAspectRatioSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveXFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXFreq"></GuiCmd>
+	<GuiCmd component="cylinderWaveXFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveXAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXMagnitude"></GuiCmd>
+	<GuiCmd component="cylinderWaveXAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveXOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXOffset"></GuiCmd>
+	<GuiCmd component="cylinderWaveXOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveYFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYFreq"></GuiCmd>
+	<GuiCmd component="cylinderWaveYFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveYAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYMagnitude"></GuiCmd>
+	<GuiCmd component="cylinderWaveYAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveYOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYOffset"></GuiCmd>
+	<GuiCmd component="cylinderWaveYOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveZFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomFreq"></GuiCmd>
+	<GuiCmd component="cylinderWaveZFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveZAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomMagnitude"></GuiCmd>
+	<GuiCmd component="cylinderWaveZAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderWaveZOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomOffset"></GuiCmd>
+	<GuiCmd component="cylinderWaveZOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="cylinderThicknessSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue thickness"></GuiCmd>
+	<GuiCmd component="cylinderThicknessSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="openClosedButton" event="clicked">
+		<Command cmd="SetShapeShifterBaseShape" value="toggleState cylinderOpenClose" />
+		<Command cmd="SaveShapeShifterState" />
+	</GuiCmd>
+	<GuiCmd component="cylinderResetButton" event="clicked" command="ResetShapeShifter"></GuiCmd>
+	<GuiCmd component="ringSidesSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue sides"></GuiCmd>
+	<GuiCmd component="ringSidesSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringSidesOffsetSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue sidesOffset"></GuiCmd>
+	<GuiCmd component="ringSidesOffsetSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringResolutionSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue ringResolution"></GuiCmd>
+	<GuiCmd component="ringResolutionSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringInnerRadiusSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue innerRadius"></GuiCmd>
+	<GuiCmd component="ringInnerRadiusSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringOuterRadiusSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue outerRadius"></GuiCmd>
+	<GuiCmd component="ringOuterRadiusSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringTwistSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue twistNum"></GuiCmd>
+	<GuiCmd component="ringTwistSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringAspectRatioSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue aspectRatio"></GuiCmd>
+	<GuiCmd component="ringAspectRatioSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveXFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXFreq"></GuiCmd>
+	<GuiCmd component="ringWaveXFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveXAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXMagnitude"></GuiCmd>
+	<GuiCmd component="ringWaveXAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveXOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveXOffset"></GuiCmd>
+	<GuiCmd component="ringWaveXOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveYFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYFreq"></GuiCmd>
+	<GuiCmd component="ringWaveYFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveYAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYMagnitude"></GuiCmd>
+	<GuiCmd component="ringWaveYAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveYOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveYOffset"></GuiCmd>
+	<GuiCmd component="ringWaveYOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveZFreqSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomFreq"></GuiCmd>
+	<GuiCmd component="ringWaveZFreqSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveZAmpSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomMagnitude"></GuiCmd>
+	<GuiCmd component="ringWaveZAmpSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringWaveZOffsSlider" event="sliderValueChanged" command="SetShapeShifterParam" value="sliderValue waveZoomOffset"></GuiCmd>
+	<GuiCmd component="ringWaveZOffsSlider" event="sliderReleased" command="SaveShapeShifterState"></GuiCmd>
+	<GuiCmd component="ringResetButton" event="clicked" command="ResetShapeShifter"></GuiCmd>
+
+
+<!-- sharing functions -->
+    <GuiCmd component="shareButton" event="clicked" command="UploadObject" value="share"></GuiCmd>
+    <GuiCmd component="uploadButton" event="clicked" command="UploadObject" value="export"></GuiCmd>	
+
+<!-- toggle wireframe -->
+    <GuiCmd component="toggleWireFrameButton" event="clicked" command="ToggleWireframe"></GuiCmd>	
+
+    <GuiCmd component="paintRotateButton" event="clicked" command="ToggleObjectAutoRotMode"></GuiCmd>
+
+<!-- order object -->
+    <GuiCmd component="3dPrintButton" event="clicked" command="OpenOrderBar" value="order_01"></GuiCmd>
+    
+</GuiCommands>

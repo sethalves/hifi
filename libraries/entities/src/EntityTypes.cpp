@@ -29,6 +29,7 @@
 #include "PolyVoxEntityItem.h"
 #include "PolyLineEntityItem.h"
 #include "ShapeEntityItem.h"
+#include "LeoPolyObjectEntityItem.h"
 
 QMap<EntityTypes::EntityType, QString> EntityTypes::_typeToNameMap;
 QMap<QString, EntityTypes::EntityType> EntityTypes::_nameToTypeMap;
@@ -47,6 +48,7 @@ REGISTER_ENTITY_TYPE(Zone)
 REGISTER_ENTITY_TYPE(Line)
 REGISTER_ENTITY_TYPE(PolyVox)
 REGISTER_ENTITY_TYPE(PolyLine)
+REGISTER_ENTITY_TYPE(LeoPolyObject)
 REGISTER_ENTITY_TYPE(Shape)
 REGISTER_ENTITY_TYPE_WITH_FACTORY(Box, ShapeEntityItem::boxFactory)
 REGISTER_ENTITY_TYPE_WITH_FACTORY(Sphere, ShapeEntityItem::sphereFactory)

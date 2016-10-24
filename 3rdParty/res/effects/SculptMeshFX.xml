@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LeoFX>
+    <CopyStates>res/effects/DefaultStates.xml</CopyStates>
+
+    <Program>
+        <VertexShader>
+            <Include>res/shaders/CubicCurve.glsl</Include>
+            <Include>res/shaders/Deformer.glsl</Include>
+            <Main>res/shaders/SculptMeshShader.vs</Main>
+        </VertexShader>
+        <FragmentShader>
+            <Include>res/shaders/Common.glsl</Include>
+			<Include>res/shaders/FloatPackUnpack.glsl</Include>
+			<Include>res/shaders/shadow.glsl</Include>
+            <Main>res/shaders/SculptMeshShader.fs</Main>
+        </FragmentShader>
+    </Program>
+    
+    <RasterizerState>
+        <DepthOffsetUnits>2.0</DepthOffsetUnits>
+        <DepthOffsetFactor>2.0</DepthOffsetFactor>
+    </RasterizerState>
+</LeoFX>

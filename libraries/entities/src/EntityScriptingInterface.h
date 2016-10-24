@@ -131,6 +131,13 @@ public slots:
     /// this function will not find any models in script engine contexts which don't have access to models
     Q_INVOKABLE QVector<QUuid> findEntitiesInBox(const glm::vec3& corner, const glm::vec3& dimensions) const;
 
+    //sculptEntity
+    Q_INVOKABLE void sculptEntity(QUuid entityID);
+
+    //issuecommand for SculptDll
+    Q_INVOKABLE void issueSculptDLLCommand(QString command, QString value);
+
+
     /// finds models within the frustum
     /// the frustum must have the following properties:
     /// - position

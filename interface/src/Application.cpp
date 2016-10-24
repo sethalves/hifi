@@ -93,6 +93,8 @@
 #include <plugins/CodecPlugin.h>
 #include <RecordingScriptingInterface.h>
 #include <RenderableWebEntityItem.h>
+#include <RenderableModelEntityItem.h>
+#include <RenderableLeoPolyObjectEntityItem.h>
 #include <RenderShadowTask.h>
 #include <RenderDeferredTask.h>
 #include <ResourceCache.h>
@@ -161,6 +163,7 @@
 #include "FrameTimingsScriptingInterface.h"
 #include <GPUIdent.h>
 #include <gl/GLHelpers.h>
+#include <Plugin.h>
 
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
@@ -2120,6 +2123,55 @@ void Application::paintGL() {
 
     uint64_t lastPaintDuration = usecTimestampNow() - lastPaintBegin;
     _frameTimingsScriptingInterface.addValue(lastPaintDuration);
+
+    static bool inited = false;
+    if (!inited)
+    {
+        LeoPolyPlugin::Instance().SculptApp_init();
+        while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
+        {
+            LeoPolyPlugin::Instance().SculptApp_Frame();
+        }
+        inited = true;
+    }
+    //app->initializeStep1(0);
+
+
+    if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
+    {
+        EntityItemID entityUnderSculptID;
+        entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
+        entityUnderSculptID.data2 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2;
+        entityUnderSculptID.data3 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data3;
+        for (int i = 0; i < 8; i++)
+            entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
+
+        // LeoPolyPlugin::Instance().SculptApp_exportFile("lolka.obj");
+        //while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
+        LeoPolyPlugin::Instance().SculptApp_Frame();
+
+        static bool looool = false;
+        //if (!looool)
+        {
+            auto tree = getEntities()->getTree();
+            RenderableLeoPolyObjectEntityItem* edited = (RenderableLeoPolyObjectEntityItem*)tree->findByID(entityUnderSculptID).get();
+            if (edited)
+            {
+                tree->withWriteLock([&] {
+                    edited->updateGeometryFromLeoPlugin();
+                });
+            }
+            looool = true;
+        }
+
+    }
+
+    /*static bool exported = false;
+    if (!exported)
+    {
+    LeoPolyPlugin::Instance().SculptApp_exportFile("lolka.obj");
+    exported = true;
+    }*/
 }
 
 void Application::runTests() {

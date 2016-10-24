@@ -25,6 +25,7 @@
 #include "QVariantGLM.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
+#include <Plugin.h>
 
 
 EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership) :
@@ -1375,3 +1376,47 @@ void EntityScriptingInterface::setCostMultiplier(float value) {
     costMultiplier = value;
 }
 
+void EntityScriptingInterface::issueSculptDLLCommand(QString command, QString value)
+{
+    LeoPolyPlugin::Instance().SculptApp_issueAppCmd(command.toStdString().c_str(), value.toStdString().c_str());
+}
+
+void EntityScriptingInterface::sculptEntity(QUuid id)
+{
+    EntityItemID entityID(id);
+    bool shouldDelete = true;
+
+    // If we have a local entity tree set, then also update it.
+    if (_entityTree) {
+        _entityTree->withWriteLock([&] {
+            EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
+            if (entity) {
+
+                auto props = EntityItemProperties();
+                props.setType(EntityTypes::LeoPolyObject);
+                EntityItemID leoId = EntityItemID(addEntity(props, true));
+
+                auto newEntity = _entityTree->findEntityByEntityItemID(leoId);
+                if (newEntity)
+                {
+                    newEntity->setName(entity->getName());
+                    newEntity->setDescription(QString(entity->getName() + " under sculpting"));
+                    newEntity->setPosition(entity->getPosition());
+                    newEntity->setScale(entity->getScale());
+                    //newEntity->setRotation(entity->getRotation());
+                    // newEntity->setDimensions(entity->getDimensions());
+                }
+                // auto newEntity=_entityTree->addEntity(leoId, props);
+                //  
+                LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 = leoId.data1;
+                LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2 = leoId.data2;
+                LeoPolyPlugin::Instance().CurrentlyUnderEdit.data3 = leoId.data3;
+                LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4 = new unsigned char[8];
+                for (int i = 0; i < 8; i++)
+                    LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i] = leoId.data4[i];
+                return;
+
+            }
+        });
+    }
+}

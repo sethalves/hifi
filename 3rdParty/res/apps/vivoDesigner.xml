@@ -1,0 +1,24 @@
+<AppProperties id="vivoDesigner">
+
+	<CopyProperties url="res/apps/default.xml" />
+    
+    <Background type="gradient">
+        <color0>0.70196 0.70196 0.90196 1</color0>
+        <color1>0.70196 0.70196 0.90196 1</color1>
+        <color2>1 1 1 1</color2>
+        <color3>1 1 1 1</color3>
+    </Background>
+    
+    <Shortcuts url="res/shortcuts/vivoShortcuts.xml" />
+    
+    <Gui url="res/gui/emptyUI_v02.xml" />
+    <GuiCommands url="res/gui/GuiCommands_v02.xml" />
+    <Sprites url="res/gui/sprites.xml" />
+
+	<StartMode>materialView</StartMode>
+
+    <StartCommands>
+        <AppCmd cmd="SetRenderStyle" value="autoSmooth" />
+		<AppCmd cmd="SetGuiCommandsOnlyMode" />	
+    </StartCommands>
+</AppProperties>

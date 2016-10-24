@@ -1,0 +1,59 @@
+newmtl tree6
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_06.png
+
+newmtl tree7
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_07.png
+
+newmtl tree4
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_04.png
+
+newmtl tree1
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_01.png
+
+newmtl tree2
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_02.png
+
+newmtl tree3
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_03.png
+
+newmtl house
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_10_House.png
+
+newmtl tree5
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_05.png
+
+newmtl background
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd BackGround_Tree.png
+
+newmtl tree10
+Ka 0.6000 0.6000 0.6000
+Kd 0.6000 0.6000 0.6000
+Ks 0.0000 0.0000 0.0000
+map_Kd Tree_10_Tree.png

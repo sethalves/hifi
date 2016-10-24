@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LeoFX>
+    <CopyStates>res/effects/DefaultStates.xml</CopyStates>
+
+    <Program>
+        <VertexShader>
+            <Main>res/shaders/SkyBox.vs</Main>
+        </VertexShader>
+        <FragmentShader>
+            <Main>res/shaders/SkyBox.fs</Main>
+        </FragmentShader>
+    </Program>
+    
+	<RasterizerState>
+        <CullMode>front</CullMode>
+    </RasterizerState>
+	
+    <DepthState>
+        <DepthComparisonFunc>lequal</DepthComparisonFunc>
+    </DepthState>
+	
+	
+	
+</LeoFX>

@@ -1,0 +1,62 @@
+<AppShortcuts>
+    <Shortcuts>
+        <Shortcut key="A" command="ToggleAntialias"></Shortcut>
+		<Shortcut key="A" shift="true" command="ToggleSSAO"></Shortcut>
+        <Shortcut key="B" shift="true" command="ToggleSkyboxVisible" />
+        <Shortcut key="C" shift="true" command="CreateScreenShot"></Shortcut>
+        <Shortcut key="C" command="ToggleMouseCameraFixedPlaneRot" />
+        <Shortcut key="D" shift="true" command="ResetCameraClosestView"></Shortcut>
+        <Shortcut key="G" shift="true" command="ToggleGroundVisible"></Shortcut>
+        <Shortcut key="H" command="ShowHelp"></Shortcut>
+        <Shortcut key="I" command="ImportFile" onlyInCIRMI="true"></Shortcut>
+        <Shortcut key="K" command="ToggleObjectTransform" />
+        <Shortcut key="K" shift="true" command="ToggleSurfaceApprox" onlyInCIRMI="true" />
+        <Shortcut key="N" shift="true" command="CreateScreenShot" value="transparent"></Shortcut>
+        <Shortcut key="U" command="UploadObject"></Shortcut>
+        <Shortcut key="O" command="ToggleCameraAutoRotMode"></Shortcut>
+        <Shortcut key="R" shift="true" command="ToggleRenderStyle"></Shortcut>
+        <Shortcut key="K" command="ToggleObjectTransform" />
+        <Shortcut key="W" command="ToggleWireframe"></Shortcut>
+        <Shortcut key="X" command="ResetCameraDefaultView"></Shortcut>
+        <Shortcut key="Y" command="Redo"></Shortcut>
+        <Shortcut key="Z" command="Undo"></Shortcut>
+        <Shortcut key="+" command="IncreaseBrushSize"></Shortcut>
+        <Shortcut key="-" command="DecreaseBrushSize"></Shortcut>
+        <Shortcut key="+" shift="true" command="IncreaseBrushStrength"></Shortcut>
+        <Shortcut key="-" shift="true" command="DecreaseBrushStrength"></Shortcut>
+        <Shortcut key="*" event="press" command="EnableScaleUp" value="true"></Shortcut>
+        <Shortcut key="*" event="release" command="EnableScaleUp" value="false"></Shortcut>
+        <Shortcut key="/" event="press" command="EnableScaleDown" value="true"></Shortcut>
+        <Shortcut key="/" event="release" command="EnableScaleDown" value="false"></Shortcut>
+        <Shortcut key="left" event="press" command="SetCameraAutoRotMode" value="left true"></Shortcut>
+        <Shortcut key="left" event="release" command="SetCameraAutoRotMode" value="left false"></Shortcut>
+        <Shortcut key="right" event="press" command="SetCameraAutoRotMode" value="right true"></Shortcut>
+        <Shortcut key="right" event="release" command="SetCameraAutoRotMode" value="right false"></Shortcut>
+        <Shortcut key="up" event="press" command="SetCameraAutoRotMode" value="up true"></Shortcut>
+        <Shortcut key="up" event="release" command="SetCameraAutoRotMode" value="up false"></Shortcut>
+        <Shortcut key="down" event="press" command="SetCameraAutoRotMode" value="down true"></Shortcut>
+        <Shortcut key="down" event="release" command="SetCameraAutoRotMode" value="down false"></Shortcut>
+        <Shortcut key="F" shift="true" command="ToggleShowInfo" />
+        
+        <Shortcut key="1" command="SetMaterial" value="plastic" />
+        <Shortcut key="2" command="SetMaterial" value="ceramics" />
+        <Shortcut key="3" command="SetMaterial" value="alumide" />
+        <Shortcut key="4" command="SetMaterial" value="silver" />
+        <Shortcut key="5" command="SetMaterial" value="gold" />
+        <Shortcut key="6" command="SetMaterial" value="multicolor" />
+        <Shortcut key="L" command="ToggleLighting" />
+        
+        <Shortcut key="1" shift="true" command="SetSimplifyMode" value="amorf" /> 
+        <Shortcut key="2" shift="true" command="SetSimplifyMode" value="geometric" /> 
+        <Shortcut key="3" shift="true" command="SetSimplifyMode" value="mixed" /> 
+        
+    </Shortcuts>
+    
+    <Shortcuts mode="Engrave">
+        <Shortcut key="T" command="SelectPattern" value="text"></Shortcut>
+        <Shortcut key="C" command="SelectPattern" value="freehand"></Shortcut>
+        <Shortcut key="F" command="SelectPattern" value="file"></Shortcut>
+        <Shortcut key="T" shift="true" command="OpenEngraveTextEditor"></Shortcut>
+        <Shortcut key="C" shift="true" command="OpenEngraveFreehand"></Shortcut>
+    </Shortcuts>
+</AppShortcuts>
