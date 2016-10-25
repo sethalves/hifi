@@ -32,6 +32,7 @@
 #include "RenderableLightEntityItem.h"
 #include "RenderableModelEntityItem.h"
 #include "RenderableParticleEffectEntityItem.h"
+#include "RenderableLeoPolyObjectEntityItem.h"
 #include "RenderableTextEntityItem.h"
 #include "RenderableWebEntityItem.h"
 #include "RenderableZoneEntityItem.h"
@@ -70,6 +71,7 @@ EntityTreeRenderer::EntityTreeRenderer(bool wantScripts, AbstractViewStateInterf
     REGISTER_ENTITY_TYPE_WITH_FACTORY(Shape, RenderableShapeEntityItem::factory)
     REGISTER_ENTITY_TYPE_WITH_FACTORY(Box, RenderableShapeEntityItem::boxFactory)
     REGISTER_ENTITY_TYPE_WITH_FACTORY(Sphere, RenderableShapeEntityItem::sphereFactory)
+    REGISTER_ENTITY_TYPE_WITH_FACTORY(LeoPolyObject, RenderableLeoPolyObjectEntityItem::factory)
 
     _currentHoverOverEntityID = UNKNOWN_ENTITY_ID;
     _currentClickingOnEntityID = UNKNOWN_ENTITY_ID;

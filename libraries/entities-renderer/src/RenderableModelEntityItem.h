@@ -16,6 +16,7 @@
 #include <QStringList>
 
 #include <ModelEntityItem.h>
+#include <Plugin.h>
 
 class Model;
 class EntityTreeRenderer;
@@ -96,6 +97,136 @@ public:
 
     // Transparency is handled in ModelMeshPartPayload
     bool isTransparent() override { return false; }
+
+    virtual void setUnderSculpting(bool value)
+    {
+        if (value)
+        {
+            QVector<glm::vec3> vertices;
+            QVector<glm::vec3> normals;
+            QVector<glm::vec2> texCoords;
+            QVector<int> indices;
+            QVector<std::string> matStringsPerTriangles;
+            QVector<unsigned short> matIndexesPerTriangles;
+            ModelPointer act = getModel(_myRenderer);
+            auto geometry = act->getFBXGeometry();
+
+            std::string baseUrl = act->getURL().toString().toStdString().substr(0, act->getURL().toString().toStdString().find_last_of("\\/"));
+
+            std::vector<LeoPlugin::IncomingMaterial> materialsToSend;
+            foreach(const FBXMaterial mat, geometry.materials)
+            {
+                LeoPlugin::IncomingMaterial actMat;
+                if (!mat.albedoTexture.filename.isEmpty() && mat.albedoTexture.content.isEmpty() &&
+                    !_textures.contains(mat.albedoTexture.filename))
+                {
+                    actMat.diffuseTextureUrl = baseUrl + "//" + mat.albedoTexture.filename.toStdString();
+                }
+                /*if (!mat.normalTexture.filename.isEmpty() && mat.normalTexture.content.isEmpty() &&
+                !_textures.contains(mat.normalTexture.filename))
+                {
+
+                _texturesURLs.push_back(baseUrl + "\\" + mat.normalTexture.filename.toStdString());
+                }
+                if (!mat.specularTexture.filename.isEmpty() && mat.specularTexture.content.isEmpty() &&
+                !_textures.contains(mat.specularTexture.filename))
+                {
+                _texturesURLs.push_back(baseUrl + "\\" + mat.specularTexture.filename.toStdString());
+                }
+                if (!mat.emissiveTexture.filename.isEmpty() && mat.emissiveTexture.content.isEmpty() &&
+                !_textures.contains(mat.emissiveTexture.filename))
+                {
+                _texturesURLs.push_back(baseUrl + "\\" + mat.emissiveTexture.filename.toStdString());
+                }*/
+                for (int i = 0; i < 3; i++)
+                {
+                    actMat.diffuseColor[i] = mat.diffuseColor[i];
+                    actMat.emissiveColor[i] = mat.emissiveColor[i];
+                    actMat.specularColor[i] = mat.specularColor[i];
+                }
+                actMat.diffuseColor[3] = 1;
+                actMat.emissiveColor[3] = 0;
+                actMat.specularColor[3] = 0;
+                actMat.materialID = mat.materialID.toStdString();
+                actMat.name = mat.name.toStdString();
+                materialsToSend.push_back(actMat);
+            }
+            for (auto actmesh : act->getGeometry()->getFBXGeometry().meshes)
+            {
+                vertices.append(actmesh.vertices);
+                normals.append(actmesh.normals);
+                texCoords.append(actmesh.texCoords);
+                for (auto subMesh : actmesh.parts)
+                {
+                    int startIndex = indices.size();
+                    if (subMesh.triangleIndices.size() > 0)
+                    {
+                        indices.append(subMesh.triangleIndices);
+                    }
+                    if (subMesh.quadTrianglesIndices.size() > 0)
+                    {
+                        indices.append(subMesh.quadTrianglesIndices);
+                    }
+                    else
+                        if (subMesh.quadIndices.size() > 0)
+                        {
+                            assert(subMesh.quadIndices.size() % 4 == 0);
+                            for (int i = 0; i < subMesh.quadIndices.size() / 4; i++)
+                            {
+                                indices.push_back(subMesh.quadIndices[i * 4]);
+                                indices.push_back(subMesh.quadIndices[i * 4 + 1]);
+                                indices.push_back(subMesh.quadIndices[i * 4 + 2]);
+
+                                indices.push_back(subMesh.quadIndices[i * 4 + 3]);
+                                indices.push_back(subMesh.quadIndices[i * 4]);
+                                indices.push_back(subMesh.quadIndices[i * 4 + 1]);
+                            }
+                        }
+                    for (int i = 0; i < (indices.size() - startIndex) / 3; i++)
+                    {
+                        matStringsPerTriangles.push_back(subMesh.materialID.toStdString());
+                    }
+
+                }
+            }
+            float* verticesFlattened = new float[vertices.size() * 3];
+            float *normalsFlattened = new float[normals.size() * 3];
+            float *texCoordsFlattened = new float[texCoords.size() * 2];
+            int *indicesFlattened = new int[indices.size()];
+            for (int i = 0; i < vertices.size(); i++)
+            {
+
+                verticesFlattened[i * 3] = vertices[i].x;
+                verticesFlattened[i * 3 + 1] = vertices[i].y;
+                verticesFlattened[i * 3 + 2] = vertices[i].z;
+
+                normalsFlattened[i * 3] = normals[i].x;
+                normalsFlattened[i * 3 + 1] = normals[i].y;
+                normalsFlattened[i * 3 + 2] = normals[i].z;
+
+                texCoordsFlattened[i * 2] = texCoords[i].x;
+                texCoordsFlattened[i * 2 + 1] = texCoords[i].y;
+            }
+            for (int i = 0; i < indices.size(); i++)
+            {
+                indicesFlattened[i] = indices[i];
+            }
+            matIndexesPerTriangles.resize(matStringsPerTriangles.size());
+            for (int matInd = 0; matInd < materialsToSend.size(); matInd++)
+            {
+                for (int i = 0; i < matStringsPerTriangles.size(); i++)
+                {
+                    if (matStringsPerTriangles[i] == materialsToSend[matInd].materialID)
+                    {
+                        matIndexesPerTriangles[i] = matInd;
+                    }
+                }
+            }
+            LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(), texCoordsFlattened, texCoords.size(), &/*getEntityToWorldMatrix()[0][0]*/glm::mat4::tmat4x4()[0][0], materialsToSend, matIndexesPerTriangles.toStdVector());
+
+        }
+
+    }
 
 private:
     QVariantMap parseTexturesToMap(QString textures);

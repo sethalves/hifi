@@ -17,6 +17,7 @@
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
+#include "..\libraries\entities-renderer\src\RenderableLeoPolyObjectEntityItem.h"
 #include "EntityActionInterface.h"
 #include "EntitySimulation.h"
 #include "EntityTree.h"
@@ -1392,9 +1393,10 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
             EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
             if (entity) {
 
+                    entity->setUnderSculpting(true);
                 auto props = EntityItemProperties();
                 props.setType(EntityTypes::LeoPolyObject);
-                EntityItemID leoId = EntityItemID(addEntity(props, true));
+                EntityItemID leoId = EntityItemID(addEntity(props));
 
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);
                 if (newEntity)
@@ -1403,6 +1405,8 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                     newEntity->setDescription(QString(entity->getName() + " under sculpting"));
                     newEntity->setPosition(entity->getPosition());
                     newEntity->setScale(entity->getScale());
+                    ((RenderableLeoPolyObjectEntityItem*)newEntity.get())->setLeoPolyURLData(QString("http://hifi.leopoly.develop/SculptObjects/" + newEntity->getName()).toLocal8Bit());
+                    ((RenderableLeoPolyObjectEntityItem*)newEntity.get())->compressVolumeDataAndSendEditPacket();
                     //newEntity->setRotation(entity->getRotation());
                     // newEntity->setDimensions(entity->getDimensions());
                 }

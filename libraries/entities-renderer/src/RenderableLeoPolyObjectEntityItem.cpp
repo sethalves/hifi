@@ -166,12 +166,12 @@ bool RenderableLeoPolyObjectEntityItem::isEdged(PolyVoxEntityItem::PolyVoxSurfac
     return false;
 }
 
-void RenderableLeoPolyObjectEntityItem::setVoxelData(QByteArray voxelData) {
+void RenderableLeoPolyObjectEntityItem::setLeoPolyURLData(QByteArray LeoPolyURLData) {
     // compressed voxel information from the entity-server
     withWriteLock([&] {
-        if (_voxelData != voxelData) {
-            _voxelData = voxelData;
-            _voxelDataDirty = true;
+        if (_LeoPolyURLData != LeoPolyURLData) {
+            _LeoPolyURLData = LeoPolyURLData;
+            _LeoPolyURLDataDirty = true;
         }
     });
 }
@@ -197,7 +197,7 @@ void RenderableLeoPolyObjectEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle
             }
             _volData = nullptr;
             _voxelSurfaceStyle = voxelSurfaceStyle;
-            _voxelDataDirty = true;
+            _LeoPolyURLDataDirty = true;
             volSizeChanged = true;
         } else {
             _volDataDirty = true;
@@ -538,7 +538,7 @@ bool RenderableLeoPolyObjectEntityItem::isReadyToComputeShape() {
     // we determine if we are ready to compute the physics shape by actually doing so.
     // if _voxelDataDirty or _volDataDirty is set, don't do this yet -- wait for their
     // threads to finish before creating the collision shape.
-    if (_meshDirty && !_voxelDataDirty && !_volDataDirty) {
+    if (_meshDirty && !_LeoPolyURLDataDirty && !_volDataDirty) {
         _meshDirty = false;
         computeShapeInfoWorker();
         return false;
@@ -582,10 +582,10 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
     bool voxelDataDirty;
     bool volDataDirty;
     withWriteLock([&] {
-        voxelDataDirty = _voxelDataDirty;
+        voxelDataDirty = _LeoPolyURLDataDirty;
         volDataDirty = _volDataDirty;
-        if (_voxelDataDirty) {
-            _voxelDataDirty = false;
+        if (_LeoPolyURLDataDirty) {
+            _LeoPolyURLDataDirty = false;
         }
         else if (_volDataDirty) {
             _volDataDirty = false;
@@ -752,7 +752,7 @@ void RenderableLeoPolyObjectEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolume
             return;
         }
 
-        _voxelDataDirty = true;
+        _LeoPolyURLDataDirty = true;
         _voxelVolumeSize = voxelVolumeSize;
 
         if (_volData) {
@@ -887,7 +887,7 @@ void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
     auto entity = std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(getThisPointer());
 
     withReadLock([&] {
-        voxelData = _voxelData;
+        voxelData = _LeoPolyURLData;
     });
 
     QtConcurrent::run([=] {
@@ -902,7 +902,7 @@ void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
             voxelZSize == 0 || voxelZSize > PolyVoxEntityItem::MAX_VOXEL_DIMENSION) {
             qDebug() << "voxelSize is not reasonable, skipping decompressions."
                      << voxelXSize << voxelYSize << voxelZSize << getName() << getID();
-            entity->setVoxelDataDirty(false);
+            entity->setLeoPolyURLDataDirty(false);
             return;
         }
         int rawSize = voxelXSize * voxelYSize * voxelZSize;
@@ -916,7 +916,7 @@ void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
             qDebug() << "PolyVox decompress -- size is (" << voxelXSize << voxelYSize << voxelZSize << ")"
                      << "so expected uncompressed length of" << rawSize << "but length is" << uncompressedData.size()
                      << getName() << getID();
-            entity->setVoxelDataDirty(false);
+            entity->setLeoPolyURLDataDirty(false);
             return;
         }
 
@@ -991,7 +991,7 @@ void RenderableLeoPolyObjectEntityItem::compressVolumeDataAndSendEditPacket() {
         entity->setLastEdited(now);
         entity->setLastBroadcast(now);
 
-        std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(entity)->setVoxelData(newVoxelData);
+        std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(entity)->setLeoPolyURLData(newVoxelData);
 
         tree->withReadLock([&] {
             EntityItemProperties properties = entity->getProperties();
@@ -1341,7 +1341,7 @@ void RenderableLeoPolyObjectEntityItem::setCollisionPoints(ShapeInfo::PointColle
     // include the registrationPoint in the shape key, because the offset is already
     // included in the points and the shapeManager wont know that the shape has changed.
     withWriteLock([&] {
-            QString shapeKey = QString(_voxelData.toBase64()) + "," +
+        QString shapeKey = QString(_LeoPolyURLData.toBase64()) + "," +
                 QString::number(_registrationPoint.x) + "," +
                 QString::number(_registrationPoint.y) + "," +
                 QString::number(_registrationPoint.z);

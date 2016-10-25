@@ -448,6 +448,9 @@ public:
 
     virtual void emitScriptEvent(const QVariant& message) {}
 
+    virtual void setUnderSculpting(bool value)
+    {}
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

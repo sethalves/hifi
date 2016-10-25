@@ -211,7 +211,7 @@ public:
                         BoxFace& face, glm::vec3& surfaceNormal,
                         void** intersectedObject, bool precisionPicking) const override;
 
-    virtual void setVoxelData(QByteArray voxelData) override;
+    virtual void setLeoPolyURLData(QByteArray LeoPolyURLData) override;
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize) override;
     virtual void setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) override;
 
@@ -276,7 +276,7 @@ public:
 
     // Transparent polyvox didn't seem to be working so disable for now
     bool isTransparent() override { return false; }
-
+    void compressVolumeDataAndSendEditPacket();
 private:
     // The PolyVoxEntityItem class has _voxelData which contains dimensions and compressed voxel data.  The dimensions
     // may not match _voxelVolumeSize.
@@ -306,7 +306,7 @@ private:
 
     // these are run off the main thread
     void decompressVolumeData();
-    void compressVolumeDataAndSendEditPacket();
+    
     virtual void getMesh() override; // recompute mesh
     void computeShapeInfoWorker();
     static bool isEdged(PolyVoxEntityItem::PolyVoxSurfaceStyle surfaceStyle);
