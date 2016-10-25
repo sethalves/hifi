@@ -811,7 +811,7 @@ function setupModelMenus() {
         });
         modelMenuAddedDelete = true;
     }
-if (!Menu.menuItemExists("Edit", "Sculpt Model")) {
+	if (!Menu.menuItemExists("Edit", "Sculpt Model")) {
         Menu.addMenuItem({
             menuName: "Edit",
             menuItemName: "Sculpt Model",
@@ -926,13 +926,14 @@ if (!Menu.menuItemExists("Edit", "Sculpt Model")) {
 
 setupModelMenus(); // do this when first running our script.
 
+
 function cleanupModelMenus() {
     Menu.removeSeparator("Edit", "Entities");
     if (modelMenuAddedDelete) {
         // delete our menuitems
         Menu.removeMenuItem("Edit", "Delete");
     }
-
+Menu.removeMenuItem("Edit", "Sculpt Model");
     Menu.removeMenuItem("Edit", "Entity List...");
     Menu.removeMenuItem("Edit", "Allow Selecting of Large Models");
     Menu.removeMenuItem("Edit", "Allow Selecting of Small Models");
@@ -1050,6 +1051,27 @@ function deleteSelectedEntities() {
     }
 }
 
+function sculptSelectedEntities() {
+    if (SelectionManager.hasSelection()) {
+        selectedParticleEntity = 0;
+        particleExplorerTool.destroyWebView();
+        SelectionManager.saveProperties();
+        //var savedProperties = [];
+        for (var i = 0; i < selectionManager.selections.length; i++) {
+            var entityID = SelectionManager.selections[i];
+         //   var initialProperties = SelectionManager.savedProperties[entityID];
+         //   SelectionManager.savedProperties[entityID];
+         //   savedProperties.push({
+        //        entityID: entityID,
+        //        properties: initialProperties
+         //   });
+            Entities.sculptEntity(entityID);
+        }
+        SelectionManager.clearSelections();
+       // pushCommandForSelections([], savedProperties);
+    }
+}
+
 function toggleSelectedEntitiesLocked() {
     if (SelectionManager.hasSelection()) {
         var locked = !Entities.getEntityProperties(SelectionManager.selections[0], ["locked"]).locked;
@@ -1087,6 +1109,8 @@ function handeMenuEvent(menuItem) {
         Entities.setLightsArePickable(Menu.isOptionChecked("Allow Selecting of Lights"));
     } else if (menuItem === "Delete") {
         deleteSelectedEntities();
+	}else if (menuItem === "Sculpt Model") {
+        sculptSelectedEntities();
     } else if (menuItem === "Export Entities") {
         if (!selectionManager.hasSelection()) {
             Window.notifyEditError("No entities have been selected.");
@@ -1743,4 +1767,4 @@ entityListTool.webView.webEventReceived.connect(function (data) {
     }
 });
 
-}()); // END LOCAL_SCOPE
+}()); // END LOCAL_SCOPE 

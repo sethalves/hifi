@@ -54,8 +54,8 @@ class LeoPolyObjectEntityItem : public EntityItem {
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
     virtual glm::vec3 getVoxelVolumeSize() const;
 
-    virtual void setVoxelData(QByteArray voxelData);
-    virtual const QByteArray getVoxelData() const;
+    virtual void setLeoPolyURLData(QByteArray LeoPolyURLData);
+    virtual const QByteArray getLeoPolyURLData() const;
 
     enum PolyVoxSurfaceStyle {
         SURFACE_MARCHING_CUBES,
@@ -128,14 +128,14 @@ class LeoPolyObjectEntityItem : public EntityItem {
 
     virtual void rebakeMesh() {};
 
-    void setVoxelDataDirty(bool value) { withWriteLock([&] { _voxelDataDirty = value; }); }
+    void setLeoPolyURLDataDirty(bool value) { withWriteLock([&] { _LeoPolyURLDataDirty = value; }); }
     virtual void getMesh() {}; // recompute mesh
 
  protected:
     glm::vec3 _voxelVolumeSize; // this is always 3 bytes
 
-    QByteArray _voxelData;
-    bool _voxelDataDirty; // _voxelData has changed, things that depend on it should be updated
+    QByteArray _LeoPolyURLData;
+    bool _LeoPolyURLDataDirty; // _voxelData has changed, things that depend on it should be updated
 
     PolyVoxSurfaceStyle _voxelSurfaceStyle;
 
