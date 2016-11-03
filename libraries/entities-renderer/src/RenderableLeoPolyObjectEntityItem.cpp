@@ -166,15 +166,26 @@ bool RenderableLeoPolyObjectEntityItem::isEdged(PolyVoxEntityItem::PolyVoxSurfac
     return false;
 }
 
-void RenderableLeoPolyObjectEntityItem::setLeoPolyURLData(QByteArray LeoPolyURLData) {
+void RenderableLeoPolyObjectEntityItem::setLeoPolyURLData(QString LeoPolyURLData) {
     // compressed voxel information from the entity-server
     withWriteLock([&] {
-        if (_LeoPolyURLData != LeoPolyURLData) {
-            _LeoPolyURLData = LeoPolyURLData;
-            _LeoPolyURLDataDirty = true;
+        if (_leoPolyURLData != LeoPolyURLData) {
+            _leoPolyURLData = LeoPolyURLData;
         }
     });
 }
+
+
+void RenderableLeoPolyObjectEntityItem::setVoxelData(QByteArray voxelData) {
+    // compressed voxel information from the entity-server
+    withWriteLock([&] {
+        if (_voxelData != voxelData) {
+            _voxelData = voxelData;
+            _voxelDataDirty = true;
+        }
+    });
+}
+
 
 void RenderableLeoPolyObjectEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
     // this controls whether the polyvox surface extractor does marching-cubes or makes a cubic mesh.  It
@@ -197,7 +208,8 @@ void RenderableLeoPolyObjectEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle
             }
             _volData = nullptr;
             _voxelSurfaceStyle = voxelSurfaceStyle;
-            _LeoPolyURLDataDirty = true;
+            _voxelDataDirty = true;
+            //_LeoPolyURLDataDirty = true;
             volSizeChanged = true;
         } else {
             _volDataDirty = true;
@@ -538,7 +550,7 @@ bool RenderableLeoPolyObjectEntityItem::isReadyToComputeShape() {
     // we determine if we are ready to compute the physics shape by actually doing so.
     // if _voxelDataDirty or _volDataDirty is set, don't do this yet -- wait for their
     // threads to finish before creating the collision shape.
-    if (_meshDirty && !_LeoPolyURLDataDirty && !_volDataDirty) {
+    if (_meshDirty && !_voxelDataDirty && !_volDataDirty) {
         _meshDirty = false;
         computeShapeInfoWorker();
         return false;
@@ -582,15 +594,19 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
     bool voxelDataDirty;
     bool volDataDirty;
     withWriteLock([&] {
-        voxelDataDirty = _LeoPolyURLDataDirty;
+        voxelDataDirty = _voxelDataDirty;
         volDataDirty = _volDataDirty;
-        if (_LeoPolyURLDataDirty) {
-            _LeoPolyURLDataDirty = false;
+        if (_voxelDataDirty) {
+            _voxelDataDirty = false;
         }
         else if (_volDataDirty) {
             _volDataDirty = false;
         }
     });
+
+    if (voxelDataDirty) {
+        getMesh();
+    }
 
     model::MeshPointer mesh;
     glm::vec3 voxelVolumeSize;
@@ -618,10 +634,8 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
 
         _pipeline = gpu::Pipeline::create(program, state);
     }
-
     gpu::Batch& batch = *args->_batch;
     batch.setPipeline(_pipeline);
-
 
     Transform transform(getEntityToWorldMatrix());
     batch.setModelTransform(transform);
@@ -752,7 +766,7 @@ void RenderableLeoPolyObjectEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolume
             return;
         }
 
-        _LeoPolyURLDataDirty = true;
+        _voxelDataDirty = true;
         _voxelVolumeSize = voxelVolumeSize;
 
         if (_volData) {
@@ -884,10 +898,10 @@ bool RenderableLeoPolyObjectEntityItem::updateOnCount(int x, int y, int z, uint8
 void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
     // take compressed data and expand it into _volData.
     QByteArray voxelData;
-    auto entity = std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(getThisPointer());
+    auto entity = std::static_pointer_cast<RenderablePolyVoxEntityItem>(getThisPointer());
 
     withReadLock([&] {
-        voxelData = _LeoPolyURLData;
+        voxelData = _voxelData;
     });
 
     QtConcurrent::run([=] {
@@ -901,8 +915,8 @@ void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
             voxelYSize == 0 || voxelYSize > PolyVoxEntityItem::MAX_VOXEL_DIMENSION ||
             voxelZSize == 0 || voxelZSize > PolyVoxEntityItem::MAX_VOXEL_DIMENSION) {
             qDebug() << "voxelSize is not reasonable, skipping decompressions."
-                     << voxelXSize << voxelYSize << voxelZSize << getName() << getID();
-            entity->setLeoPolyURLDataDirty(false);
+                << voxelXSize << voxelYSize << voxelZSize << getName() << getID();
+            entity->setVoxelDataDirty(false);
             return;
         }
         int rawSize = voxelXSize * voxelYSize * voxelZSize;
@@ -914,14 +928,19 @@ void RenderableLeoPolyObjectEntityItem::decompressVolumeData() {
 
         if (uncompressedData.size() != rawSize) {
             qDebug() << "PolyVox decompress -- size is (" << voxelXSize << voxelYSize << voxelZSize << ")"
-                     << "so expected uncompressed length of" << rawSize << "but length is" << uncompressedData.size()
-                     << getName() << getID();
-            entity->setLeoPolyURLDataDirty(false);
+                << "so expected uncompressed length of" << rawSize << "but length is" << uncompressedData.size()
+                << getName() << getID();
+            entity->setVoxelDataDirty(false);
             return;
         }
 
         entity->setVoxelsFromData(uncompressedData, voxelXSize, voxelYSize, voxelZSize);
     });
+}
+
+void updateMeshFromURL(QString url)
+{
+
 }
 
 void RenderableLeoPolyObjectEntityItem::setVoxelsFromData(QByteArray uncompressedData,
@@ -962,8 +981,8 @@ void RenderableLeoPolyObjectEntityItem::compressVolumeDataAndSendEditPacket() {
         int rawSize = voxelXSize * voxelYSize * voxelZSize;
         QByteArray uncompressedData = QByteArray(rawSize, '\0');
 
-        auto polyVoxEntity = std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(entity);
-        polyVoxEntity->forEachVoxelValue(voxelXSize, voxelYSize, voxelZSize, [&] (int x, int y, int z, uint8_t uVoxelValue) {
+        auto polyVoxEntity = std::static_pointer_cast<RenderablePolyVoxEntityItem>(entity);
+        polyVoxEntity->forEachVoxelValue(voxelXSize, voxelYSize, voxelZSize, [&](int x, int y, int z, uint8_t uVoxelValue) {
             int uncompressedIndex =
                 z * voxelYSize * voxelXSize +
                 y * voxelXSize +
@@ -991,7 +1010,7 @@ void RenderableLeoPolyObjectEntityItem::compressVolumeDataAndSendEditPacket() {
         entity->setLastEdited(now);
         entity->setLastBroadcast(now);
 
-        std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(entity)->setLeoPolyURLData(newVoxelData);
+        std::static_pointer_cast<RenderablePolyVoxEntityItem>(entity)->setVoxelData(newVoxelData);
 
         tree->withReadLock([&] {
             EntityItemProperties properties = entity->getProperties();
@@ -1104,81 +1123,105 @@ void RenderableLeoPolyObjectEntityItem::copyUpperEdgesFromNeighbors() {
 }
 
 void RenderableLeoPolyObjectEntityItem::getMesh() {
-    // use _volData to make a renderable mesh
-    PolyVoxSurfaceStyle voxelSurfaceStyle;
-    withReadLock([&] {
-        voxelSurfaceStyle = _voxelSurfaceStyle;
-    });
 
-    cacheNeighbors();
-    copyUpperEdgesFromNeighbors();
+    EntityItemID entityUnderSculptID;
+    if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
+    {
+        entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
+        entityUnderSculptID.data2 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2;
+        entityUnderSculptID.data3 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data3;
+        for (int i = 0; i < 8; i++)
+            entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
+    }
+    if (getEntityItemID() == entityUnderSculptID)
+        return;
 
     auto entity = std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(getThisPointer());
+    entity->withReadLock([&] {
+   
+        QtConcurrent::run([entity] {
+    QUrl fbxUrl(entity->getLeoPolyURLData()); //TODO LOAD OBJ
+    auto x = fbxUrl.toString().toStdString();
+    
+    QNetworkReply* reply = OBJReader().request(fbxUrl, false);  // Just a convenience hack for synchronoud http request
+    auto fbxHttpCode = !reply->isFinished() ? -1 : reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    
+    FBXGeometry::Pointer geometry;
+    geometry.reset(OBJReader().readOBJ(reply->readAll(), QVariantHash(), fbxUrl));
+    if (geometry->meshes.size() == 0)
+        return;
 
+    model::MeshPointer mesh(new model::Mesh());
+    std::vector<PolyVox::PositionMaterialNormal> verticesNormalsMaterials;
+    
+    for (int meshInd = 0; meshInd < geometry->meshes.size(); meshInd++)
+    {
+        for (int i = 0; i < geometry->meshes[meshInd].vertices.size(); i++)
+        {
+            PolyVox::Vector3DFloat actVert = PolyVox::Vector3DFloat(geometry->meshes[meshInd].vertices[i].x, geometry->meshes[meshInd].vertices[i].y, geometry->meshes[meshInd].vertices[i ].z);
+            PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(geometry->meshes[meshInd].normals[i ].x, geometry->meshes[meshInd].normals[i ].y, geometry->meshes[meshInd].normals[i ].z);
+            verticesNormalsMaterials.push_back(PolyVox::PositionMaterialNormal(actVert, actNorm, 0));
+        }
+    }
 
-    QtConcurrent::run([entity, voxelSurfaceStyle] {
-        model::MeshPointer mesh(new model::Mesh());
+    // convert PolyVox mesh to a Sam mesh
+    QVector<int> vecIndices;
 
-        // A mesh object to hold the result of surface extraction
-        PolyVox::SurfaceMesh<PolyVox::PositionMaterialNormal> polyVoxMesh;
-
-        entity->withReadLock([&] {
-            PolyVox::SimpleVolume<uint8_t>* volData = entity->getVolData();
-            switch (voxelSurfaceStyle) {
-                case PolyVoxEntityItem::SURFACE_EDGED_MARCHING_CUBES: {
-                    PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t>> surfaceExtractor
-                        (volData, volData->getEnclosingRegion(), &polyVoxMesh);
-                    surfaceExtractor.execute();
-                    break;
-                }
-                case PolyVoxEntityItem::SURFACE_MARCHING_CUBES: {
-                    PolyVox::MarchingCubesSurfaceExtractor<PolyVox::SimpleVolume<uint8_t>> surfaceExtractor
-                        (volData, volData->getEnclosingRegion(), &polyVoxMesh);
-                    surfaceExtractor.execute();
-                    break;
-                }
-                case PolyVoxEntityItem::SURFACE_EDGED_CUBIC: {
-                    PolyVox::CubicSurfaceExtractorWithNormals<PolyVox::SimpleVolume<uint8_t>> surfaceExtractor
-                        (volData, volData->getEnclosingRegion(), &polyVoxMesh);
-                    surfaceExtractor.execute();
-                    break;
-                }
-                case PolyVoxEntityItem::SURFACE_CUBIC: {
-                    PolyVox::CubicSurfaceExtractorWithNormals<PolyVox::SimpleVolume<uint8_t>> surfaceExtractor
-                        (volData, volData->getEnclosingRegion(), &polyVoxMesh);
-                    surfaceExtractor.execute();
-                    break;
+    for (auto subMesh : geometry->meshes[0].parts)
+    {
+        if (subMesh.triangleIndices.size() > 0)
+        {
+            vecIndices.append(subMesh.triangleIndices);
+        }
+        if (subMesh.quadTrianglesIndices.size() > 0)
+        {
+            vecIndices.append(subMesh.quadTrianglesIndices);
+        }
+        else
+            if (subMesh.quadIndices.size() > 0)
+            {
+                assert(subMesh.quadIndices.size() % 4 == 0);
+                for (int i = 0; i < subMesh.quadIndices.size() / 4; i++)
+                {
+                    vecIndices.push_back(subMesh.quadIndices[i * 4]);
+                    vecIndices.push_back(subMesh.quadIndices[i * 4 + 1]);
+                    vecIndices.push_back(subMesh.quadIndices[i * 4 + 2]);
+                    
+                    vecIndices.push_back(subMesh.quadIndices[i * 4 + 3]);
+                    vecIndices.push_back(subMesh.quadIndices[i * 4]);
+                    vecIndices.push_back(subMesh.quadIndices[i * 4 + 1]);
                 }
             }
-        });
 
-        // convert PolyVox mesh to a Sam mesh
-        const std::vector<uint32_t>& vecIndices = polyVoxMesh.getIndices();
+    }
+
+   
         auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
-                                                         (gpu::Byte*)vecIndices.data());
+            (gpu::Byte*)vecIndices.data());
         auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
         auto indexBufferView = new gpu::BufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
         mesh->setIndexBuffer(*indexBufferView);
 
-        const std::vector<PolyVox::PositionMaterialNormal>& vecVertices = polyVoxMesh.getVertices();
-        auto vertexBuffer = std::make_shared<gpu::Buffer>(vecVertices.size() * sizeof(PolyVox::PositionMaterialNormal),
-                                                          (gpu::Byte*)vecVertices.data());
+        auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(PolyVox::PositionMaterialNormal),
+            (gpu::Byte*)verticesNormalsMaterials.data());
         auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
         gpu::Resource::Size vertexBufferSize = 0;
         if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
             vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
         }
         auto vertexBufferView = new gpu::BufferView(vertexBufferPtr, 0, vertexBufferSize,
-                                                    sizeof(PolyVox::PositionMaterialNormal),
-                                                    gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
+            sizeof(PolyVox::PositionMaterialNormal),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
         mesh->setVertexBuffer(*vertexBufferView);
         mesh->addAttribute(gpu::Stream::NORMAL,
-                           gpu::BufferView(vertexBufferPtr,
-                                           sizeof(float) * 3,
-                                           vertexBufferPtr->getSize() - sizeof(float) * 3,
-                                           sizeof(PolyVox::PositionMaterialNormal),
-                                           gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+            gpu::BufferView(vertexBufferPtr,
+            sizeof(float) * 3,
+            vertexBufferPtr->getSize() - sizeof(float) * 3,
+            sizeof(PolyVox::PositionMaterialNormal),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+
         entity->setMesh(mesh);
+    });
     });
 }
 
@@ -1341,7 +1384,7 @@ void RenderableLeoPolyObjectEntityItem::setCollisionPoints(ShapeInfo::PointColle
     // include the registrationPoint in the shape key, because the offset is already
     // included in the points and the shapeManager wont know that the shape has changed.
     withWriteLock([&] {
-        QString shapeKey = QString(_LeoPolyURLData.toBase64()) + "," +
+        QString shapeKey = QString(_voxelData.toBase64()) + "," +
                 QString::number(_registrationPoint.x) + "," +
                 QString::number(_registrationPoint.y) + "," +
                 QString::number(_registrationPoint.z);

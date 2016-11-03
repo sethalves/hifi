@@ -25,6 +25,7 @@
 const glm::vec3 LeoPolyObjectEntityItem::DEFAULT_VOXEL_VOLUME_SIZE = glm::vec3(32, 32, 32);
 const float LeoPolyObjectEntityItem::MAX_VOXEL_DIMENSION = 128.0f;
 const QByteArray LeoPolyObjectEntityItem::DEFAULT_VOXEL_DATA(LeoPolyObjectEntityItem::makeEmptyVoxelData());
+const QString LeoPolyObjectEntityItem::DEFAULT_LEOPOLYURL_DATA(LeoPolyObjectEntityItem::makeEmptyLeoPolyURLData());
 const LeoPolyObjectEntityItem::PolyVoxSurfaceStyle LeoPolyObjectEntityItem::DEFAULT_VOXEL_SURFACE_STYLE =
     LeoPolyObjectEntityItem::SURFACE_EDGED_CUBIC;
 const QString LeoPolyObjectEntityItem::DEFAULT_X_TEXTURE_URL = QString("");
@@ -51,11 +52,17 @@ QByteArray LeoPolyObjectEntityItem::makeEmptyVoxelData(quint16 voxelXSize, quint
     return newVoxelData;
 }
 
+QString LeoPolyObjectEntityItem::makeEmptyLeoPolyURLData()
+{
+    return QString("");
+}
+
 LeoPolyObjectEntityItem::LeoPolyObjectEntityItem(const EntityItemID& entityItemID) :
     EntityItem(entityItemID),
     _voxelVolumeSize(LeoPolyObjectEntityItem::DEFAULT_VOXEL_VOLUME_SIZE),
-    _LeoPolyURLData(LeoPolyObjectEntityItem::DEFAULT_VOXEL_DATA),
-    _LeoPolyURLDataDirty(true),
+    _voxelData(LeoPolyObjectEntityItem::DEFAULT_VOXEL_DATA),
+    _leoPolyURLData(LeoPolyObjectEntityItem::DEFAULT_LEOPOLYURL_DATA),
+    _voxelDataDirty(true),
     _voxelSurfaceStyle(LeoPolyObjectEntityItem::DEFAULT_VOXEL_SURFACE_STYLE),
     _xTextureURL(LeoPolyObjectEntityItem::DEFAULT_X_TEXTURE_URL),
     _yTextureURL(LeoPolyObjectEntityItem::DEFAULT_Y_TEXTURE_URL),
@@ -110,7 +117,9 @@ glm::vec3 LeoPolyObjectEntityItem::getVoxelVolumeSize() const {
 
 EntityItemProperties LeoPolyObjectEntityItem::getProperties(EntityPropertyFlags desiredProperties) const {
     EntityItemProperties properties = EntityItem::getProperties(desiredProperties); // get the properties from our base class
-
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelVolumeSize, getVoxelVolumeSize);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelData, getVoxelData);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(voxelSurfaceStyle, getVoxelSurfaceStyle);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(xTextureURL, getXTextureURL);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(yTextureURL, getYTextureURL);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(zTextureURL, getZTextureURL);
@@ -120,13 +129,15 @@ EntityItemProperties LeoPolyObjectEntityItem::getProperties(EntityPropertyFlags 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(xPNeighborID, getXPNeighborID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(yPNeighborID, getYPNeighborID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(zPNeighborID, getZPNeighborID);
-
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(leoPolyURLData, getLeoPolyURLData);
     return properties;
 }
 
 bool LeoPolyObjectEntityItem::setProperties(const EntityItemProperties& properties) {
     bool somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
-
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelVolumeSize, setVoxelVolumeSize);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelData, setVoxelData);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(voxelSurfaceStyle, setVoxelSurfaceStyle);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(xTextureURL, setXTextureURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(yTextureURL, setYTextureURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(zTextureURL, setZTextureURL);
@@ -136,7 +147,7 @@ bool LeoPolyObjectEntityItem::setProperties(const EntityItemProperties& properti
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(xPNeighborID, setXPNeighborID);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(yPNeighborID, setYPNeighborID);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(zPNeighborID, setZPNeighborID);
-
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(leoPolyURLData, setLeoPolyURLData);
     if (somethingChanged) {
         bool wantDebug = false;
         if (wantDebug) {
@@ -159,7 +170,7 @@ int LeoPolyObjectEntityItem::readEntitySubclassDataFromBuffer(const unsigned cha
     const unsigned char* dataAt = data;
 
     READ_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, glm::vec3, setVoxelVolumeSize);
-    READ_ENTITY_PROPERTY(PROP_VOXEL_DATA, QByteArray, setLeoPolyURLData);
+    READ_ENTITY_PROPERTY(PROP_VOXEL_DATA, QByteArray, setVoxelData);
     READ_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, uint16_t, setVoxelSurfaceStyle);
     READ_ENTITY_PROPERTY(PROP_X_TEXTURE_URL, QString, setXTextureURL);
     READ_ENTITY_PROPERTY(PROP_Y_TEXTURE_URL, QString, setYTextureURL);
@@ -170,7 +181,7 @@ int LeoPolyObjectEntityItem::readEntitySubclassDataFromBuffer(const unsigned cha
     READ_ENTITY_PROPERTY(PROP_X_P_NEIGHBOR_ID, EntityItemID, setXPNeighborID);
     READ_ENTITY_PROPERTY(PROP_Y_P_NEIGHBOR_ID, EntityItemID, setYPNeighborID);
     READ_ENTITY_PROPERTY(PROP_Z_P_NEIGHBOR_ID, EntityItemID, setZPNeighborID);
-
+    READ_ENTITY_PROPERTY(PROP_LEOPOLY_URL_DATA, QString, setLeoPolyURLData);
     return bytesRead;
 }
 
@@ -203,7 +214,7 @@ void LeoPolyObjectEntityItem::appendSubclassData(OctreePacketData* packetData, E
     bool successPropertyFits = true;
 
     APPEND_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, getVoxelVolumeSize());
-    APPEND_ENTITY_PROPERTY(PROP_VOXEL_DATA, getLeoPolyURLData());
+    APPEND_ENTITY_PROPERTY(PROP_VOXEL_DATA, getVoxelData());
     APPEND_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, (uint16_t) getVoxelSurfaceStyle());
     APPEND_ENTITY_PROPERTY(PROP_X_TEXTURE_URL, getXTextureURL());
     APPEND_ENTITY_PROPERTY(PROP_Y_TEXTURE_URL, getYTextureURL());
@@ -214,6 +225,7 @@ void LeoPolyObjectEntityItem::appendSubclassData(OctreePacketData* packetData, E
     APPEND_ENTITY_PROPERTY(PROP_X_P_NEIGHBOR_ID, getXPNeighborID());
     APPEND_ENTITY_PROPERTY(PROP_Y_P_NEIGHBOR_ID, getYPNeighborID());
     APPEND_ENTITY_PROPERTY(PROP_Z_P_NEIGHBOR_ID, getZPNeighborID());
+    APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_URL_DATA, getLeoPolyURLData());
 }
 
 void LeoPolyObjectEntityItem::debugDump() const {
@@ -224,17 +236,31 @@ void LeoPolyObjectEntityItem::debugDump() const {
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
 }
 
-void LeoPolyObjectEntityItem::setLeoPolyURLData(QByteArray LeoPolyURLData) {
+void LeoPolyObjectEntityItem::setLeoPolyURLData(QString LeoPolyURLData) {
     withWriteLock([&] {
-        _LeoPolyURLData = LeoPolyURLData;
-        _LeoPolyURLDataDirty = true;
+        _leoPolyURLData = LeoPolyURLData;
     });
 }
 
-const QByteArray LeoPolyObjectEntityItem::getLeoPolyURLData() const {
+const QString LeoPolyObjectEntityItem::getLeoPolyURLData() const {
+    QString leoPolyURLDataCopy;
+    withReadLock([&] {
+        leoPolyURLDataCopy = _leoPolyURLData;
+    });
+    return leoPolyURLDataCopy;
+}
+
+void LeoPolyObjectEntityItem::setVoxelData(QByteArray voxelData) {
+    withWriteLock([&] {
+        _voxelData = voxelData;
+        _voxelDataDirty = true;
+    });
+}
+
+const QByteArray LeoPolyObjectEntityItem::getVoxelData() const {
     QByteArray voxelDataCopy;
     withReadLock([&] {
-        voxelDataCopy = _LeoPolyURLData;
+        voxelDataCopy = _voxelData;
     });
     return voxelDataCopy;
 }

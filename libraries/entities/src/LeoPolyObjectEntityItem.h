@@ -22,40 +22,47 @@ class LeoPolyObjectEntityItem : public EntityItem {
 
     ALLOW_INSTANTIATION // This class can be instantiated
 
-    // methods for getting/setting all properties of an entity
-    virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const override;
+        // methods for getting/setting all properties of an entity
+        virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const override;
     virtual bool setProperties(const EntityItemProperties& properties) override;
 
     // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const override;
 
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
-                                    EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
-                                    EntityPropertyFlags& requestedProperties,
-                                    EntityPropertyFlags& propertyFlags,
-                                    EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount,
-                                    OctreeElement::AppendState& appendState) const override;
+        EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
+        EntityPropertyFlags& requestedProperties,
+        EntityPropertyFlags& propertyFlags,
+        EntityPropertyFlags& propertiesDidntFit,
+        int& propertyCount,
+        OctreeElement::AppendState& appendState) const override;
 
     virtual int readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
-                                                 ReadBitstreamToTreeParams& args,
-                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData,
-                                                 bool& somethingChanged) override;
+        ReadBitstreamToTreeParams& args,
+        EntityPropertyFlags& propertyFlags, bool overwriteLocalData,
+        bool& somethingChanged) override;
 
-    // never have a ray intersection pick a LeoPolyObjectEntityItem.
+    // never have a ray intersection pick a PolyVoxEntityItem.
     virtual bool supportsDetailedRayIntersection() const override { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                                             bool& keepSearching, OctreeElementPointer& element, float& distance,
-                                             BoxFace& face, glm::vec3& surfaceNormal,
-                                             void** intersectedObject, bool precisionPicking) const override { return false; }
+        bool& keepSearching, OctreeElementPointer& element, float& distance,
+        BoxFace& face, glm::vec3& surfaceNormal,
+        void** intersectedObject, bool precisionPicking) const override {
+        return false;
+    }
 
     virtual void debugDump() const override;
 
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize);
     virtual glm::vec3 getVoxelVolumeSize() const;
 
-    virtual void setLeoPolyURLData(QByteArray LeoPolyURLData);
-    virtual const QByteArray getLeoPolyURLData() const;
+    virtual void setVoxelData(QByteArray voxelData);
+
+    virtual void setLeoPolyURLData(QString voxelData);
+
+    virtual const QByteArray getVoxelData() const;
+
+    virtual const QString getLeoPolyURLData() const;
 
     enum PolyVoxSurfaceStyle {
         SURFACE_MARCHING_CUBES,
@@ -66,13 +73,14 @@ class LeoPolyObjectEntityItem : public EntityItem {
 
     virtual void setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) { _voxelSurfaceStyle = voxelSurfaceStyle; }
     // this other version of setVoxelSurfaceStyle is needed for SET_ENTITY_PROPERTY_FROM_PROPERTIES
-    void setVoxelSurfaceStyle(uint16_t voxelSurfaceStyle) { setVoxelSurfaceStyle((PolyVoxSurfaceStyle) voxelSurfaceStyle); }
+    void setVoxelSurfaceStyle(uint16_t voxelSurfaceStyle) { setVoxelSurfaceStyle((PolyVoxSurfaceStyle)voxelSurfaceStyle); }
     virtual PolyVoxSurfaceStyle getVoxelSurfaceStyle() const { return _voxelSurfaceStyle; }
 
     static const glm::vec3 DEFAULT_VOXEL_VOLUME_SIZE;
     static const float MAX_VOXEL_DIMENSION;
 
     static const QByteArray DEFAULT_VOXEL_DATA;
+    static const QString DEFAULT_LEOPOLYURL_DATA;
     static const PolyVoxSurfaceStyle DEFAULT_VOXEL_SURFACE_STYLE;
 
     // coords are in voxel-volume space
@@ -93,6 +101,8 @@ class LeoPolyObjectEntityItem : public EntityItem {
     virtual bool setVoxel(int x, int y, int z, uint8_t toValue) { return false; }
 
     static QByteArray makeEmptyVoxelData(quint16 voxelXSize = 16, quint16 voxelYSize = 16, quint16 voxelZSize = 16);
+
+    static QString makeEmptyLeoPolyURLData();
 
     static const QString DEFAULT_X_TEXTURE_URL;
     virtual void setXTextureURL(QString xTextureURL) { _xTextureURL = xTextureURL; }
@@ -128,14 +138,15 @@ class LeoPolyObjectEntityItem : public EntityItem {
 
     virtual void rebakeMesh() {};
 
-    void setLeoPolyURLDataDirty(bool value) { withWriteLock([&] { _LeoPolyURLDataDirty = value; }); }
+    void setVoxelDataDirty(bool value) { withWriteLock([&] { _voxelDataDirty = value; }); }
     virtual void getMesh() {}; // recompute mesh
 
- protected:
+protected:
     glm::vec3 _voxelVolumeSize; // this is always 3 bytes
 
-    QByteArray _LeoPolyURLData;
-    bool _LeoPolyURLDataDirty; // _voxelData has changed, things that depend on it should be updated
+    QByteArray _voxelData;
+    QString  _leoPolyURLData;
+    bool _voxelDataDirty; // _voxelData has changed, things that depend on it should be updated
 
     PolyVoxSurfaceStyle _voxelSurfaceStyle;
 
@@ -144,13 +155,13 @@ class LeoPolyObjectEntityItem : public EntityItem {
     QString _zTextureURL;
 
     // for non-edged surface styles, these are used to compute the high-axis edges
-    EntityItemID _xNNeighborID{UNKNOWN_ENTITY_ID};
-    EntityItemID _yNNeighborID{UNKNOWN_ENTITY_ID};
-    EntityItemID _zNNeighborID{UNKNOWN_ENTITY_ID};
+    EntityItemID _xNNeighborID{ UNKNOWN_ENTITY_ID };
+    EntityItemID _yNNeighborID{ UNKNOWN_ENTITY_ID };
+    EntityItemID _zNNeighborID{ UNKNOWN_ENTITY_ID };
 
-    EntityItemID _xPNeighborID{UNKNOWN_ENTITY_ID};
-    EntityItemID _yPNeighborID{UNKNOWN_ENTITY_ID};
-    EntityItemID _zPNeighborID{UNKNOWN_ENTITY_ID};
+    EntityItemID _xPNeighborID{ UNKNOWN_ENTITY_ID };
+    EntityItemID _yPNeighborID{ UNKNOWN_ENTITY_ID };
+    EntityItemID _zPNeighborID{ UNKNOWN_ENTITY_ID };
 };
 
 #endif // hifi_LeoPolyObjectEntityItem_h

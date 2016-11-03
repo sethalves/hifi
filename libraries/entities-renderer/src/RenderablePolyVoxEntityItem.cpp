@@ -153,6 +153,7 @@ void RenderablePolyVoxEntityItem::setVoxelData(QByteArray voxelData) {
     });
 }
 
+
 void RenderablePolyVoxEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
     // this controls whether the polyvox surface extractor does marching-cubes or makes a cubic mesh.  It
     // also determines if the extra "edged" layer is used.

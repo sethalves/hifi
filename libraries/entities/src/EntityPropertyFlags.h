@@ -88,6 +88,7 @@ enum EntityPropertyList {
     PROP_VOXEL_VOLUME_SIZE,
     PROP_VOXEL_DATA,
     PROP_VOXEL_SURFACE_STYLE,
+    
 
     //for lines
     PROP_LINE_WIDTH,
@@ -224,6 +225,7 @@ enum EntityPropertyList {
     // other properties which will never overlap with each other. 
     PROP_EMITTING_PARTICLES = PROP_ANIMATION_PLAYING,
 
+    PROP_LEOPOLY_URL_DATA,
     // WARNING!!! DO NOT ADD PROPS_xxx here unless you really really meant to.... Add them UP above
 };
 
