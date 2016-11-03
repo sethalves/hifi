@@ -2138,7 +2138,12 @@ void Application::paintGL() {
 
 
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
-    {
+    {  
+        auto myAvatar = getMyAvatar();
+        auto myAvatarMatrix = createMatFromQuatAndPos(myAvatar->getOrientation(), myAvatar->getPosition());
+        auto worldToSensorMatrix =glm::transpose(/*glm::inverse*/(myAvatar->getSensorToWorldMatrix()));
+ 
+        LeoPolyPlugin::Instance().setWorldToSensorMat(const_cast<float*>(glm::value_ptr(worldToSensorMatrix)));
         EntityItemID entityUnderSculptID;
         entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
         entityUnderSculptID.data2 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2;
@@ -2149,20 +2154,36 @@ void Application::paintGL() {
         // LeoPolyPlugin::Instance().SculptApp_exportFile("lolka.obj");
         //while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
         LeoPolyPlugin::Instance().SculptApp_Frame();
-
-        static bool looool = false;
+        static bool loool = false;
         //if (!looool)
         {
             auto tree = getEntities()->getTree();
-            RenderableLeoPolyObjectEntityItem* edited = (RenderableLeoPolyObjectEntityItem*)tree->findByID(entityUnderSculptID).get();
-            if (edited)
+
+            tree->withWriteLock([&]
             {
-                tree->withWriteLock([&] {
+                RenderableLeoPolyObjectEntityItem* edited = (RenderableLeoPolyObjectEntityItem*)tree->findByID(entityUnderSculptID).get();
+                if (edited)
+                {
                     edited->updateGeometryFromLeoPlugin();
-                });
-            }
-            looool = true;
+                    if (!loool)
+                    {
+                        string uploadPath = "\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\";
+                        string urlPath = edited->getLeoPolyURLData().toStdString();
+                        const size_t last_slash_idx = urlPath.find_last_of("\\/");
+                        if (std::string::npos != last_slash_idx)
+                        {
+                            urlPath.erase(0, last_slash_idx + 1);
+                        }
+                        LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath+urlPath).c_str());
+                        loool = true;
+                    }
+                }
+            });
+
         }
+
+        
+        
 
     }
 

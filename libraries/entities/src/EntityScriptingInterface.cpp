@@ -17,7 +17,7 @@
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
-#include "..\libraries\entities-renderer\src\RenderableLeoPolyObjectEntityItem.h"
+#include "..\libraries\entities\src\LeoPolyObjectEntityItem.h"
 #include "EntityActionInterface.h"
 #include "EntitySimulation.h"
 #include "EntityTree.h"
@@ -797,7 +797,7 @@ bool EntityScriptingInterface::setVoxels(QUuid entityID,
     }
 
     EntityTypes::EntityType entityType = entity->getType();
-    if (entityType != EntityTypes::PolyVox) {
+    if (entityType != EntityTypes::PolyVox && entityType != EntityTypes::LeoPolyObject) {
         return false;
     }
 
@@ -1394,21 +1394,22 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
             if (entity) {
 
                     entity->setUnderSculpting(true);
-                auto props = EntityItemProperties();
+                auto props = EntityItemProperties(entity->getProperties());
+                props.setDescription(QString(entity->getName() + " under sculpting"));
                 props.setType(EntityTypes::LeoPolyObject);
+                props.setLeoPolyURLData(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(entity->getCreated()) + ".obj"));
                 EntityItemID leoId = EntityItemID(addEntity(props));
 
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);
                 if (newEntity)
                 {
-                    newEntity->setName(entity->getName());
-                    newEntity->setDescription(QString(entity->getName() + " under sculpting"));
-                    newEntity->setPosition(entity->getPosition());
-                    newEntity->setScale(entity->getScale());
-                    ((RenderableLeoPolyObjectEntityItem*)newEntity.get())->setLeoPolyURLData(QString("http://hifi.leopoly.develop/SculptObjects/" + newEntity->getName()).toLocal8Bit());
-                    ((RenderableLeoPolyObjectEntityItem*)newEntity.get())->compressVolumeDataAndSendEditPacket();
-                    //newEntity->setRotation(entity->getRotation());
-                    // newEntity->setDimensions(entity->getDimensions());
+                    
+                   // newEntity->setPosition(entity->getPosition());
+                   // newEntity->setScale(entity->getScale());
+                    //((LeoPolyObjectEntityItem*)newEntity.get())->compressVolumeDataAndSendEditPacket();
+                    
+                   // newEntity->setRotation(entity->getRotation());
+                   // newEntity->setDimensions(entity->getDimensions());
                 }
                 // auto newEntity=_entityTree->addEntity(leoId, props);
                 //  

@@ -72,6 +72,8 @@ public:
     LEOPLUGIN_DLL_API void SculptApp_getMeshInfo(float* data);
     LEOPLUGIN_DLL_API void setControllerStatesInput(short index, unsigned int deviceIndex, double buttons[4], double dPadX, double dPadY, double poseMat[16]);
     LEOPLUGIN_DLL_API void setCameraStateInput(double headPoseMat[16], double eyePoseA[16], double eyePoseB[16], double eyeProjA[16], double eyeProjB[16], double nearDist, double farDist);
+    LEOPLUGIN_DLL_API void setCameraMatrix(float matrix[16]);
+    LEOPLUGIN_DLL_API void setWorldToSensorMat(float matrix[16]);
     LEOPLUGIN_DLL_API void importFromRawData(float* vertices, unsigned int numVertices, int* indices, unsigned int numIndices, float* normals, unsigned int numNormals, float* texCoords, unsigned int numTexCoords, float worldMat[16], std::vector<IncomingMaterial> metrials,std::vector<unsigned short> triangleMatInds);
     LEOPLUGIN_DLL_API void getSculptMeshNUmberDatas(unsigned int& numVertices, unsigned int& numIndices, unsigned int& numNormals);
     LEOPLUGIN_DLL_API void getRawSculptMeshData(float* vertices, int* indices, float* normals);

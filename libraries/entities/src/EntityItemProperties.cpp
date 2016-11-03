@@ -337,6 +337,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
     CHECK_PROPERTY_CHANGE(PROP_DPI, dpi);
 
+    CHECK_PROPERTY_CHANGE(PROP_LEOPOLY_URL_DATA, leoPolyURLData);
+
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
     changedProperties += _skybox.getChangedProperties();
@@ -509,7 +511,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     }
 
     // PolyVoxel only
-    if (_type == EntityTypes::PolyVox) {
+    if (_type == EntityTypes::PolyVox || _type==EntityTypes::LeoPolyObject) {
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_VOXEL_VOLUME_SIZE, voxelVolumeSize);
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_VOXEL_DATA, voxelData);
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_VOXEL_SURFACE_STYLE, voxelSurfaceStyle);
@@ -534,7 +536,10 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_STROKE_WIDTHS, strokeWidths);
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_TEXTURES, textures);
     }
-
+    if (_type == EntityTypes::LeoPolyObject)
+    {
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LEOPOLY_URL_DATA, leoPolyURLData);
+    }
     // Sitting properties support
     if (!skipDefaults) {
         QScriptValue sittingPoints = engine->newObject();
@@ -746,6 +751,8 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(dpi, uint16_t, setDPI);
 
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(leoPolyURLData, QString, setLeoPolyURLData);
+
     _lastEdited = usecTimestampNow();
 }
 
@@ -872,6 +879,8 @@ void EntityItemProperties::merge(const EntityItemProperties& other) {
     COPY_PROPERTY_IF_CHANGED(owningAvatarID);
 
     COPY_PROPERTY_IF_CHANGED(dpi);
+
+    COPY_PROPERTY_IF_CHANGED(leoPolyURLData)
 
     _lastEdited = usecTimestampNow();
 }
@@ -1051,6 +1060,8 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_PROPERTY_TO_MAP(PROP_GHOSTING_ALLOWED, GhostingAllowed, ghostingAllowed, bool);
 
         ADD_PROPERTY_TO_MAP(PROP_DPI, DPI, dpi, uint16_t);
+
+        ADD_PROPERTY_TO_MAP(PROP_LEOPOLY_URL_DATA, LeoPolyURLData, leoPolyURLData, QString);
 
         // FIXME - these are not yet handled
         //ADD_PROPERTY_TO_MAP(PROP_CREATED, Created, created, quint64);
@@ -1298,7 +1309,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
                 APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, properties.getGhostingAllowed());
             }
 
-            if (properties.getType() == EntityTypes::PolyVox) {
+            if (properties.getType() == EntityTypes::PolyVox || properties.getType() == EntityTypes::LeoPolyObject) {
                 APPEND_ENTITY_PROPERTY(PROP_VOXEL_VOLUME_SIZE, properties.getVoxelVolumeSize());
                 APPEND_ENTITY_PROPERTY(PROP_VOXEL_DATA, properties.getVoxelData());
                 APPEND_ENTITY_PROPERTY(PROP_VOXEL_SURFACE_STYLE, properties.getVoxelSurfaceStyle());
@@ -1337,6 +1348,11 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
+
+            if (properties.getType() == EntityTypes::LeoPolyObject)
+            {
+                APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_URL_DATA, properties.getLeoPolyURLData());
+            }
         }
 
         if (propertyCount > 0) {
@@ -1591,7 +1607,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
     }
 
-    if (properties.getType() == EntityTypes::PolyVox) {
+    if (properties.getType() == EntityTypes::PolyVox || properties.getType() == EntityTypes::LeoPolyObject) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_VOXEL_VOLUME_SIZE, glm::vec3, setVoxelVolumeSize);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_VOXEL_DATA, QByteArray, setVoxelData);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_VOXEL_SURFACE_STYLE, uint16_t, setVoxelSurfaceStyle);
@@ -1626,6 +1642,11 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
         properties.getType() == EntityTypes::Box ||
         properties.getType() == EntityTypes::Sphere) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SHAPE, QString, setShape);
+    }
+
+    if (properties.getType() == EntityTypes::LeoPolyObject)
+    {
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LEOPOLY_URL_DATA, QString, setLeoPolyURLData);
     }
 
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
@@ -1795,6 +1816,8 @@ void EntityItemProperties::markAllChanged() {
     _owningAvatarIDChanged = true;
 
     _dpiChanged = true;
+
+    _leoPolyURLDataChanged =true;
 }
 
 // The minimum bounding box for the entity.
@@ -2136,6 +2159,11 @@ QList<QString> EntityItemProperties::listChangedProperties() {
 
     if (shapeChanged()) {
         out += "shape";
+    }
+
+    if (leoPolyURLDataChanged())
+    {
+        out += "leoPolyURLData";
     }
 
     getAnimation().listChangedProperties(out);

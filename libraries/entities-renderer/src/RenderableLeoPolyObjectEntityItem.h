@@ -26,6 +26,10 @@
 #include <Plugin.h>
 #include "RenderablePolyVoxEntityItem.h"
 #include "LeoPolyObjectEntityItem.h"
+#include "OBJReader.h"
+#include <PolyVoxCore/SurfaceMesh.h>
+#include <PolyVoxCore/SimpleVolume.h>
+#include <PolyVoxCore/Material.h>
 
 class LeoPolyObjectPayload {
 public:
@@ -66,8 +70,8 @@ public:
             LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals);
 
 
-         
-            float scaleGuess = 1.0f;
+            model::MeshPointer mesh(new model::Mesh());
+          //  float scaleGuess = 1.0f;
 
             bool needsMaterialLibrary = false;
 
@@ -75,29 +79,29 @@ public:
             // add a new meshPart to the geometry's single mesh.
 
 //            delete _mesh.get();
-            FBXMesh* mesh =new FBXMesh();
-            mesh->meshIndex = 0;
+           // FBXMesh* mesh =new FBXMesh();
+           // mesh->meshIndex = 0;
 
-            FBXCluster cluster;
-            cluster.jointIndex = 0;
-            cluster.inverseBindMatrix = glm::mat4(1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0,
-                0, 0, 0, 1);
-            mesh->clusters.append(cluster);
-            mesh->parts.push_back(FBXMeshPart());
-            for (int i = 0; i < numVertices; i++)
-            {
-                mesh->vertices << glm::vec3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
-            }
-            for (int i = 0; i < numIndices; i++)
-            {
-                mesh->parts[0].triangleIndices << indices[i];
-            }
-            for (int i = 0; i < numNormals; i++)
-            {
-                mesh->normals << glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
-            }
+           // FBXCluster cluster;
+           // cluster.jointIndex = 0;
+           // cluster.inverseBindMatrix = glm::mat4(1, 0, 0, 0,
+           //     0, 1, 0, 0,
+           //     0, 0, 1, 0,
+           //     0, 0, 0, 1);
+           // mesh->clusters.append(cluster);
+           // mesh->parts.push_back(FBXMeshPart());
+           // for (int i = 0; i < numVertices; i++)
+           // {
+           //     mesh->vertices << glm::vec3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
+           // }
+           // for (int i = 0; i < numIndices; i++)
+           // {
+           //     mesh->parts[0].triangleIndices << indices[i];
+           // }
+           // for (int i = 0; i < numNormals; i++)
+           // {
+           //     mesh->normals << glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+           // }
             //                for (int i = 0, meshPartCount = 0; i < mesh.parts.count(); i++, meshPartCount++) 
             //                {
             //                    FBXMeshPart& meshPart = mesh.parts[i];
@@ -163,20 +167,66 @@ public:
             //                }
             //
             // if we got a hint about units, scale all the points
-            if (scaleGuess != 1.0f) {
-                for (int i = 0; i < mesh->vertices.size(); i++) {
+
+            std::vector<PolyVox::PositionMaterialNormal> verticesNormalsMaterials;
+
+            for (int i = 0; i < numVertices; i++)
+            {
+                PolyVox::Vector3DFloat actVert = PolyVox::Vector3DFloat(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
+                PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+                verticesNormalsMaterials.push_back(PolyVox::PositionMaterialNormal(actVert, actNorm, 0));
+            }
+
+           /* if (scaleGuess != 1.0f)
+            {
+                for (int i = 0; i < mesh->vertices.size(); i++)
+                {
                     mesh->vertices[i] *= scaleGuess;
                 }
             }
 
+            
+
             mesh->meshExtents.reset();
             for(int i = 0; i < mesh->vertices.size();i++) {
                 mesh->meshExtents.addPoint(mesh->vertices[i]);
+            }*/
+
+            // convert PolyVox mesh to a Sam mesh
+            std::vector<uint32_t> vecIndices;
+
+            for (int i = 0; i < numIndices; i++)
+            {
+                vecIndices.push_back(indices[i]);
             }
 
-            FBXReader::buildModelMesh(*mesh, "");
+            auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
+                (gpu::Byte*)vecIndices.data());
+            auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
+            auto indexBufferView = new gpu::BufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
+            mesh->setIndexBuffer(*indexBufferView);
+
+            auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(PolyVox::PositionMaterialNormal),
+                (gpu::Byte*)verticesNormalsMaterials.data());
+            auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
+            gpu::Resource::Size vertexBufferSize = 0;
+            if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
+                vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
+            }
+            auto vertexBufferView = new gpu::BufferView(vertexBufferPtr, 0, vertexBufferSize,
+                sizeof(PolyVox::PositionMaterialNormal),
+                gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
+            mesh->setVertexBuffer(*vertexBufferView);
+            mesh->addAttribute(gpu::Stream::NORMAL,
+                gpu::BufferView(vertexBufferPtr,
+                sizeof(float) * 3,
+                vertexBufferPtr->getSize() - sizeof(float) * 3,
+                sizeof(PolyVox::PositionMaterialNormal),
+                gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+
+            //FBXReader::buildModelMesh(*mesh, "");
            
-            setMesh(mesh->_mesh);
+            setMesh(mesh);
            
             //_mesh =model::MeshPointer(mesh->_mesh);
             _meshDirty = true;
@@ -210,8 +260,8 @@ public:
                         bool& keepSearching, OctreeElementPointer& element, float& distance, 
                         BoxFace& face, glm::vec3& surfaceNormal,
                         void** intersectedObject, bool precisionPicking) const override;
-
-    virtual void setLeoPolyURLData(QByteArray LeoPolyURLData) override;
+    virtual void setVoxelData(QByteArray voxelData) override;
+    virtual void setLeoPolyURLData(QString LeoPolyURLData) override;
     virtual void setVoxelVolumeSize(glm::vec3 voxelVolumeSize) override;
     virtual void setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) override;
 
@@ -266,6 +316,7 @@ public:
                            std::function<void(int, int, int, uint8_t)> thunk);
 
     void setMesh(model::MeshPointer mesh);
+    void updateMeshFromURL(QString url);
     void setCollisionPoints(ShapeInfo::PointCollection points, AABox box);
     PolyVox::SimpleVolume<uint8_t>* getVolData() { return _volData; }
 
@@ -326,5 +377,7 @@ private:
 };
 
 
+bool inUserBounds(const PolyVox::SimpleVolume<uint8_t>* vol, LeoPolyObjectEntityItem::PolyVoxSurfaceStyle surfaceStyle,
+    int x, int y, int z);
 
 #endif // hifi_RenderableLeoPolyObjectEntityItem_h

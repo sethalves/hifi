@@ -38,6 +38,7 @@
 #include "LineEntityItem.h"
 #include "ParticleEffectEntityItem.h"
 #include "PolyVoxEntityItem.h"
+#include "LeoPolyObjectEntityItem.h"
 #include "SimulationOwner.h"
 #include "SkyboxPropertyGroup.h"
 #include "StagePropertyGroup.h"
@@ -218,6 +219,8 @@ public:
     DEFINE_PROPERTY_REF(PROP_OWNING_AVATAR_ID, OwningAvatarID, owningAvatarID, QUuid, UNKNOWN_ENTITY_ID);
 
     DEFINE_PROPERTY_REF(PROP_DPI, DPI, dpi, uint16_t, ENTITY_ITEM_DEFAULT_DPI);
+
+    DEFINE_PROPERTY_REF(PROP_LEOPOLY_URL_DATA, LeoPolyURLData, leoPolyURLData, QString, LeoPolyObjectEntityItem::DEFAULT_LEOPOLYURL_DATA);
 
     static QString getBackgroundModeString(BackgroundMode mode);
 
@@ -455,6 +458,8 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, ClientOnly, clientOnly, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, OwningAvatarID, owningAvatarID, "");
+
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LeoPolyURLData, leoPolyURLData, "");
 
     properties.getAnimation().debugDump();
     properties.getSkybox().debugDump();
