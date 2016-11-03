@@ -66,6 +66,7 @@ public:
     void reinsertObject(ObjectMotionState* object);
 
     void stepSimulation();
+    void harvestPerformanceStats();
     void updateContactMap();
 
     bool hasOutgoingChanges() const { return _hasOutgoingChanges; }
@@ -96,6 +97,7 @@ public:
 
 private:
     void addObjectToDynamicsWorld(ObjectMotionState* motionState);
+    void recursivelyHarvestPerformanceStats(CProfileIterator* profileIterator, QString contextName);
 
     /// \brief bump any objects that touch this one, then remove contact info
     void bumpAndPruneContacts(ObjectMotionState* motionState);
