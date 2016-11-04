@@ -1123,7 +1123,7 @@ void RenderableLeoPolyObjectEntityItem::copyUpperEdgesFromNeighbors() {
 }
 
 void RenderableLeoPolyObjectEntityItem::getMesh() {
-
+    //delete _mesh.get();
     EntityItemID entityUnderSculptID;
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
     {
@@ -1143,23 +1143,23 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
     QUrl fbxUrl(entity->getLeoPolyURLData()); //TODO LOAD OBJ
     auto x = fbxUrl.toString().toStdString();
     
-    QNetworkReply* reply = OBJReader().request(fbxUrl, false);  // Just a convenience hack for synchronoud http request
+    QNetworkReply* reply = OBJReader().request(fbxUrl, false);  
     auto fbxHttpCode = !reply->isFinished() ? -1 : reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     
-    FBXGeometry::Pointer geometry;
-    geometry.reset(OBJReader().readOBJ(reply->readAll(), QVariantHash(), fbxUrl));
-    if (geometry->meshes.size() == 0)
+
+    auto geom = OBJReader().readOBJ(reply->readAll(), QVariantHash(), fbxUrl);
+        if (geom->meshes.size() == 0)
         return;
 
     model::MeshPointer mesh(new model::Mesh());
     std::vector<PolyVox::PositionMaterialNormal> verticesNormalsMaterials;
     
-    for (int meshInd = 0; meshInd < geometry->meshes.size(); meshInd++)
+    for (int meshInd = 0; meshInd < geom->meshes.size(); meshInd++)
     {
-        for (int i = 0; i < geometry->meshes[meshInd].vertices.size(); i++)
+        for (int i = 0; i < geom->meshes[meshInd].vertices.size(); i++)
         {
-            PolyVox::Vector3DFloat actVert = PolyVox::Vector3DFloat(geometry->meshes[meshInd].vertices[i].x, geometry->meshes[meshInd].vertices[i].y, geometry->meshes[meshInd].vertices[i ].z);
-            PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(geometry->meshes[meshInd].normals[i ].x, geometry->meshes[meshInd].normals[i ].y, geometry->meshes[meshInd].normals[i ].z);
+            PolyVox::Vector3DFloat actVert = PolyVox::Vector3DFloat(geom->meshes[meshInd].vertices[i].x, geom->meshes[meshInd].vertices[i].y, geom->meshes[meshInd].vertices[i].z);
+            PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(geom->meshes[meshInd].normals[i].x, geom->meshes[meshInd].normals[i].y, geom->meshes[meshInd].normals[i].z);
             verticesNormalsMaterials.push_back(PolyVox::PositionMaterialNormal(actVert, actNorm, 0));
         }
     }
@@ -1167,7 +1167,7 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
     // convert PolyVox mesh to a Sam mesh
     QVector<int> vecIndices;
 
-    for (auto subMesh : geometry->meshes[0].parts)
+    for (auto subMesh : geom->meshes[0].parts)
     {
         if (subMesh.triangleIndices.size() > 0)
         {

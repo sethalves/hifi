@@ -1396,6 +1396,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                     entity->setUnderSculpting(true);
                 auto props = EntityItemProperties(entity->getProperties());
                 props.setDescription(QString(entity->getName() + " under sculpting"));
+                
                 props.setType(EntityTypes::LeoPolyObject);
                 props.setLeoPolyURLData(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(entity->getCreated()) + ".obj"));
                 EntityItemID leoId = EntityItemID(addEntity(props));
@@ -1403,7 +1404,8 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);
                 if (newEntity)
                 {
-                    
+                    newEntity->setTransform(entity->getTransform());
+                    newEntity->setLastEdited(secTimestampNow());
                    // newEntity->setPosition(entity->getPosition());
                    // newEntity->setScale(entity->getScale());
                     //((LeoPolyObjectEntityItem*)newEntity.get())->compressVolumeDataAndSendEditPacket();
