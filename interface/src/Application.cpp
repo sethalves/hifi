@@ -2124,6 +2124,7 @@ void Application::paintGL() {
     uint64_t lastPaintDuration = usecTimestampNow() - lastPaintBegin;
     _frameTimingsScriptingInterface.addValue(lastPaintDuration);
 
+    /*Will be removed from here ¡ */
     static bool inited = false;
     if (!inited)
     {
@@ -2134,7 +2135,6 @@ void Application::paintGL() {
         }
         inited = true;
     }
-    //app->initializeStep1(0);
 
 
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
@@ -2151,8 +2151,6 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        // LeoPolyPlugin::Instance().SculptApp_exportFile("lolka.obj");
-        //while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
         LeoPolyPlugin::Instance().SculptApp_Frame();
         static bool loool = false;
         //if (!looool)
@@ -2187,12 +2185,7 @@ void Application::paintGL() {
 
     }
 
-    /*static bool exported = false;
-    if (!exported)
-    {
-    LeoPolyPlugin::Instance().SculptApp_exportFile("lolka.obj");
-    exported = true;
-    }*/
+    /*Will be removed from here ^ */
 }
 
 void Application::runTests() {
