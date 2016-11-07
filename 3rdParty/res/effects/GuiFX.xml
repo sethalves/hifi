@@ -14,7 +14,6 @@
     
     <DepthState>
         <DepthComparisonFunc>lequal</DepthComparisonFunc>
-		<DepthRange>0.0001 0.001</DepthRange>
     </DepthState>
 
     

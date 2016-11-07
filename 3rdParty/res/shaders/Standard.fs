@@ -15,6 +15,11 @@ uniform vec3 lightDir;              // direction of light in view space
 uniform vec3 lightAmbientColor;
 uniform vec3 lightDirectColor;
 
+uniform bool useSecondaryLight;
+uniform vec3 light2Dir;
+uniform vec3 light2AmbientColor;
+uniform vec3 light2DirectColor;
+
 uniform bool useShadowMap;
 uniform sampler2D shadowMap;
 
@@ -25,6 +30,13 @@ uniform sampler2D specularEnvMap;           // a specular environment map (refle
 
 // for visualize picked/selected state or other stuff
 uniform vec4 postColor;     // final color rgb will be lerp(finalColor.rgb, postColor.rgb, postColor.w);
+
+uniform bool useDiffTextureAndDiffColorOnly;
+
+uniform bool useBloomEffect;
+
+uniform bool useCustomMaxTexCoord;
+uniform vec2 customTextureCoord;
 
 //#define USE_GAMMA_CORRECTION
 
@@ -101,20 +113,49 @@ void main()
     gl_FragColor = vec4(packNUFtoNUI16(fDepth), encodedNormal);
     
 #else
-
-    vec3 N = normalize(viewNormal);
-    vec3 V = normalize(viewPos);
-    
-    vec3 diffCol;
+    vec4 diffCol;
     if (useDiffuseTex)
     {
-        diffCol = texture2D(diffuseTex, uv).xyz;
-        diffCol = inverseGammaCorrection(diffCol);
+		if(useCustomMaxTexCoord)
+		{
+			if(uv.x>customTextureCoord.x || uv.y> customTextureCoord.y)
+			{
+				discard;
+				return;
+			}
+		}
+		diffCol = texture2D(diffuseTex, uv);
+		if(useDiffTextureAndDiffColorOnly)
+		{
+		diffCol.xyz =diffuseColor.xyz* inverseGammaCorrection(diffCol.xyz);
+		// alpha cut
+			if (diffCol.w < 0.5)
+			{
+				discard;
+				return;
+			}
+		gl_FragColor = diffCol;
+		return;
+		}
+		else
+		{
+        diffCol.xyz = inverseGammaCorrection(diffCol.xyz);
+		}
     }
     else
     {
-        diffCol = diffuseColor.rgb;
+        diffCol = diffuseColor;
     }
+	
+	// alpha cut
+	if (diffCol.w < 0.5)
+	{
+		discard;
+		return;
+	}
+	
+	vec3 N = normalize(viewNormal);
+    vec3 V = normalize(viewPos);
     
     vec3 color = vec3(0.0, 0.0, 0.0);
 	
@@ -145,12 +186,34 @@ void main()
     color += calculateReflectance(
         N, V,
         lightDir, lightAmbientColor, ld,
-        diffCol, specularColor.rgb, specularColor.w);
-    
+        diffCol.xyz, specularColor.rgb, specularColor.w);
+		
+		if(useSecondaryLight)
+		{
+			color += calculateReflectance(
+				N, V,
+				light2Dir, light2AmbientColor, light2DirectColor,
+				diffCol.xyz, specularColor.rgb, specularColor.w);
+		}
     //color = gammaCorrection(color);
     
     color = mix(color, postColor.rgb, postColor.w);
-    gl_FragColor = vec4(color, diffuseColor.w);
+	if(useBloomEffect)
+	{
+		 float brightness = dot(color.rgb, vec3(0.3126, 0.7152, 0.0722));
+		if(brightness > 1.0)
+		{
+			gl_FragColor = vec4(color.rgb, 1.0);
+			return;
+		}
+		else
+		{
+			gl_FragColor = vec4(1.0,1.0,1.0, 0.0);
+			return;
+		}
+		
+	}
+    gl_FragColor = vec4(color, diffCol.w);
     
 #endif
 }
