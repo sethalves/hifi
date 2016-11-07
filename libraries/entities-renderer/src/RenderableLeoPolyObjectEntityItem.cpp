@@ -637,7 +637,7 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
     gpu::Batch& batch = *args->_batch;
     batch.setPipeline(_pipeline);
 
-    Transform transform(getEntityToWorldMatrix());
+    Transform transform(getTransform());
     batch.setModelTransform(transform);
     batch.setInputFormat(mesh->getVertexFormat());
     batch.setInputBuffer(gpu::Stream::POSITION, mesh->getVertexBuffer());
@@ -1138,7 +1138,6 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
 
     auto entity = std::static_pointer_cast<RenderableLeoPolyObjectEntityItem>(getThisPointer());
     entity->withReadLock([&] {
-   
         QtConcurrent::run([entity] {
     QUrl fbxUrl(entity->getLeoPolyURLData()); //TODO LOAD OBJ
     auto x = fbxUrl.toString().toStdString();
@@ -1164,6 +1163,7 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
         }
     }
 
+    
     // convert PolyVox mesh to a Sam mesh
     QVector<int> vecIndices;
 
@@ -1194,8 +1194,7 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
             }
 
     }
-
-   
+    
         auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
             (gpu::Byte*)vecIndices.data());
         auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
@@ -1219,7 +1218,6 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
             vertexBufferPtr->getSize() - sizeof(float) * 3,
             sizeof(PolyVox::PositionMaterialNormal),
             gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
-
         entity->setMesh(mesh);
     });
     });
@@ -1230,6 +1228,7 @@ void RenderableLeoPolyObjectEntityItem::setMesh(model::MeshPointer mesh) {
     bool neighborsNeedUpdate;
     withWriteLock([&] {
         _dirtyFlags |= Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS;
+        _mesh.reset();
         _mesh = mesh;
         _meshDirty = true;
         _meshInitialized = true;

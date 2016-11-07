@@ -2142,9 +2142,9 @@ void Application::paintGL() {
     {  
         auto myAvatar = getMyAvatar();
         auto myAvatarMatrix = createMatFromQuatAndPos(myAvatar->getOrientation(), myAvatar->getPosition());
-        auto worldToSensorMatrix =glm::transpose(/*glm::inverse*/(myAvatar->getSensorToWorldMatrix()));
+        auto sensorToWorldMatrix =glm::transpose((myAvatar->getSensorToWorldMatrix()));
  
-        LeoPolyPlugin::Instance().setWorldToSensorMat(const_cast<float*>(glm::value_ptr(worldToSensorMatrix)));
+        LeoPolyPlugin::Instance().setSensorToWorldMat(const_cast<float*>(glm::value_ptr(sensorToWorldMatrix)));
         EntityItemID entityUnderSculptID;
         entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
         entityUnderSculptID.data2 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2;

@@ -1,0 +1,15 @@
+<Sculpt_Env>
+
+<Scene>
+	<SceneNode name="DynamicRoot" />
+	<SceneNode name="StaticRoot" static="1">
+		<TransformMat>
+			1.0 0 0 0.0
+			0 1.0 0 0.0
+			0 0 1.0 0.0
+			0 0 0 1
+		</TransformMat>
+	</SceneNode>
+</Scene>
+
+</Sculpt_Env>

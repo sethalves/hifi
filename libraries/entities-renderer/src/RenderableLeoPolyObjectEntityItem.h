@@ -69,105 +69,12 @@ public:
             indices = new int[numIndices];
             LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals);
 
-
+            
             model::MeshPointer mesh(new model::Mesh());
           //  float scaleGuess = 1.0f;
-
             bool needsMaterialLibrary = false;
 
-            // call parseOBJGroup as long as it's returning true.  Each successful call will
-            // add a new meshPart to the geometry's single mesh.
-
-//            delete _mesh.get();
-           // FBXMesh* mesh =new FBXMesh();
-           // mesh->meshIndex = 0;
-
-           // FBXCluster cluster;
-           // cluster.jointIndex = 0;
-           // cluster.inverseBindMatrix = glm::mat4(1, 0, 0, 0,
-           //     0, 1, 0, 0,
-           //     0, 0, 1, 0,
-           //     0, 0, 0, 1);
-           // mesh->clusters.append(cluster);
-           // mesh->parts.push_back(FBXMeshPart());
-           // for (int i = 0; i < numVertices; i++)
-           // {
-           //     mesh->vertices << glm::vec3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
-           // }
-           // for (int i = 0; i < numIndices; i++)
-           // {
-           //     mesh->parts[0].triangleIndices << indices[i];
-           // }
-           // for (int i = 0; i < numNormals; i++)
-           // {
-           //     mesh->normals << glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
-           // }
-            //                for (int i = 0, meshPartCount = 0; i < mesh.parts.count(); i++, meshPartCount++) 
-            //                {
-            //                    FBXMeshPart& meshPart = mesh.parts[i];
-            //                    FaceGroup faceGroup = faceGroups[meshPartCount];
-            //                    bool specifiesUV = false;
-            //                    foreach(OBJFace face, faceGroup) {
-            //                        glm::vec3 v0 = checked_at(vertices, face.vertexIndices[0]);
-            //                        glm::vec3 v1 = checked_at(vertices, face.vertexIndices[1]);
-            //                        glm::vec3 v2 = checked_at(vertices, face.vertexIndices[2]);
-            //                        meshPart.triangleIndices.append(mesh.vertices.count()); // not face.vertexIndices into vertices
-            //                        mesh.vertices << v0;
-            //                        meshPart.triangleIndices.append(mesh.vertices.count());
-            //                        mesh.vertices << v1;
-            //                        meshPart.triangleIndices.append(mesh.vertices.count());
-            //                        mesh.vertices << v2;
-            //
-            //                        glm::vec3 n0, n1, n2;
-            //                        if (face.normalIndices.count()) {
-            //                            n0 = checked_at(normals, face.normalIndices[0]);
-            //                            n1 = checked_at(normals, face.normalIndices[1]);
-            //                            n2 = checked_at(normals, face.normalIndices[2]);
-            //                        }
-            //                        else { // generate normals from triangle plane if not provided
-            //                            n0 = n1 = n2 = glm::cross(v1 - v0, v2 - v0);
-            //                        }
-            //                        mesh.normals << n0 << n1 << n2;
-            //                        if (face.textureUVIndices.count()) {
-            //                            specifiesUV = true;
-            //                            mesh.texCoords <<
-            //                                checked_at(textureUVs, face.textureUVIndices[0]) <<
-            //                                checked_at(textureUVs, face.textureUVIndices[1]) <<
-            //                                checked_at(textureUVs, face.textureUVIndices[2]);
-            //                        }
-            //                        else {
-            //                            glm::vec2 corner(0.0f, 1.0f);
-            //                            mesh.texCoords << corner << corner << corner;
-            //                        }
-            //                    }
-            //                    // All the faces in the same group will have the same name and material.
-            //                    OBJFace leadFace = faceGroup[0];
-            //                    QString groupMaterialName = leadFace.materialName;
-            //                    if (groupMaterialName.isEmpty() && specifiesUV) {
-            //#ifdef WANT_DEBUG
-            //                        qCDebug(modelformat) << "OBJ Reader WARNING: " << url
-            //                            << " needs a texture that isn't specified. Using default mechanism.";
-            //#endif
-            //                        groupMaterialName = SMART_DEFAULT_MATERIAL_NAME;
-            //                    }
-            //                    if (!groupMaterialName.isEmpty()) {
-            //                        OBJMaterial& material = materials[groupMaterialName];
-            //                        if (specifiesUV) {
-            //                            material.userSpecifiesUV = true; // Note might not be true in a later usage.
-            //                        }
-            //                        if (specifiesUV || (0 != groupMaterialName.compare("none", Qt::CaseInsensitive))) {
-            //                            // Blender has a convention that a material named "None" isn't really used (or defined).
-            //                            material.used = true;
-            //                            needsMaterialLibrary =false;
-            //                        }
-            //                        materials[groupMaterialName] = material;
-            //                        meshPart.materialID = groupMaterialName;
-            //                    }
-            //
-            //                }
-            //
-            // if we got a hint about units, scale all the points
-
+          
             std::vector<PolyVox::PositionMaterialNormal> verticesNormalsMaterials;
 
             for (int i = 0; i < numVertices; i++)
@@ -176,36 +83,7 @@ public:
                 PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
                 verticesNormalsMaterials.push_back(PolyVox::PositionMaterialNormal(actVert, actNorm, 0));
             }
-
-           /* if (scaleGuess != 1.0f)
-            {
-                for (int i = 0; i < mesh->vertices.size(); i++)
-                {
-                    mesh->vertices[i] *= scaleGuess;
-                }
-            }
-
-            
-
-            mesh->meshExtents.reset();
-            for(int i = 0; i < mesh->vertices.size();i++) {
-                mesh->meshExtents.addPoint(mesh->vertices[i]);
-            }*/
-
-            // convert PolyVox mesh to a Sam mesh
-            std::vector<uint32_t> vecIndices;
-
-            for (int i = 0; i < numIndices; i++)
-            {
-                vecIndices.push_back(indices[i]);
-            }
-
-            auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
-                (gpu::Byte*)vecIndices.data());
-            auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
-            auto indexBufferView = new gpu::BufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
-            mesh->setIndexBuffer(*indexBufferView);
-
+  
             auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(PolyVox::PositionMaterialNormal),
                 (gpu::Byte*)verticesNormalsMaterials.data());
             auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
@@ -224,18 +102,34 @@ public:
                 sizeof(PolyVox::PositionMaterialNormal),
                 gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
 
-            //FBXReader::buildModelMesh(*mesh, "");
+            verticesNormalsMaterials.clear();
+
+
+            std::vector<uint32_t> vecIndices;
+
+            for (int i = 0; i < numIndices; i++)
+            {
+                vecIndices.push_back(indices[i]);
+            }
+            
+
+            auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
+                (gpu::Byte*)vecIndices.data());
+            
+            auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
+
+            auto indexBufferView = new gpu::BufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
+            mesh->setIndexBuffer(*indexBufferView);
+
+            vecIndices.clear();
            
             setMesh(mesh);
            
-            //_mesh =model::MeshPointer(mesh->_mesh);
             _meshDirty = true;
             delete[] vertices;
             delete[] normals;
             delete[] indices;
-            //rig
-            // auto x = FBXGeometry::Pointer(geometryPtr);
-            //                _model->getGeometry().reset(x)
+
         }
 
     }

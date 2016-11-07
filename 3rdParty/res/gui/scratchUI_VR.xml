@@ -1,0 +1,639 @@
+<gui width="1050" height="1350" textureAtlasFile="res/gui/atlas_vr.png">
+
+
+<!-- fake scissor frame -->
+<leoPanel name="patternScissorFrame" x="-1000" y="0" width="600" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,128,128)" tooltip="" paintInside="1"/>
+
+<!-- HELP -->
+	<leoPanel name="helpFrame" generateMesh="1" x="1050" y="150" width="1050" height="750" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.800000" bgColor="rgb(160,160,160,90)" tooltip="" paintInside="0" subTexture="helpScreen" >
+	</leoPanel>
+
+<!-- GALLERY -->
+	<leoPanel name="galleryFrame" generateMesh="1" x="50" y="450" width="900" height="150" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.800000" bgColor="rgb(160,160,160,90)" tooltip="" paintInside="0" >
+		<leoButton name="galleryLeftButton" x="0" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="leftArrowButton" alpha="0.7"/>
+			<push subTexture="leftArrowButton" alpha="1"/>
+			<hover subTexture="leftArrowButton" alpha="0.9"/>
+		</leoButton>
+		<leoButton name="galleryButton1" x="150" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="fakeButton" alpha="0.1"/>
+			<push subTexture="fakeButton" alpha="0.7"/>
+			<hover subTexture="fakeButton" alpha="0.4"/>
+		</leoButton>
+		<leoButton name="galleryButton2" x="300" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="fakeButton" alpha="0.1"/>
+			<push subTexture="fakeButton" alpha="0.7"/>
+			<hover subTexture="fakeButton" alpha="0.4"/>
+		</leoButton>
+		<leoButton name="galleryButton3" x="450" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="fakeButton" alpha="0.1"/>
+			<push subTexture="fakeButton" alpha="0.7"/>
+			<hover subTexture="fakeButton" alpha="0.4"/>
+		</leoButton>
+		<leoButton name="galleryButton4" x="600" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="fakeButton" alpha="0.1"/>
+			<push subTexture="fakeButton" alpha="0.7"/>
+			<hover subTexture="fakeButton" alpha="0.4"/>
+		</leoButton>
+		<leoButton name="galleryRightButton" x="750" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)">
+			<idle subTexture="rightArrowButton" alpha="0.7"/>
+			<push subTexture="rightArrowButton" alpha="1"/>
+			<hover subTexture="rightArrowButton" alpha="0.9"/>
+		</leoButton>
+	</leoPanel>
+
+
+
+    <!-- LEFT MENU - MODES -->	
+
+
+<!-- MODES FRAME -->	
+    <leoPanel name="mainMenuFrame" x="0" y="0" width="1050" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+	
+		<!-- UNDO REDO FRAME -->	
+		<leoPanel name="undoRedoFrame" x="0" y="0" width="300" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+			<leoButton name="undoButton" x="0" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Undo"  >
+				<idle subTexture="undoButton" alpha="0.6"/>
+				<push subTexture="undoButton" alpha="1"/>
+				<hover subTexture="undoButton" alpha="0.9"/>
+			</leoButton>
+			<leoButton name="redoButton" x="150" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Redo"  >
+				<idle subTexture="redoButton" alpha="0.6"/>
+				<push subTexture="redoButton" alpha="1"/>
+				<hover subTexture="redoButton" alpha="0.9"/>
+			</leoButton>
+		</leoPanel>
+
+<!-- 			help button -->
+        <leoToggleButton name="helpButton" x="300" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Help" ticked="0">
+            <state id="0">
+                <idle subTexture="helpButton" alpha="0.7"/>
+                <push subTexture="helpButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="helpButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="helpButton" alpha="1"/>
+                <push subTexture="helpButton" alpha="1"/>
+                <hover subTexture="helpButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+		
+       <!-- sculpt mirror --> 
+        <leoToggleButton name="sculptMirrorButton" x="450" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Mirror" ticked="0">
+            <state id="0">
+                <idle subTexture="mirrorLeftButton" alpha="0.7"/>
+                <push subTexture="mirrorLeftButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="mirrorLeftButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="mirrorBothButton" alpha="1"/>
+                <push subTexture="mirrorBothButton" alpha="1"/>
+                <hover subTexture="mirrorBothButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+		
+
+        <leoButton name="3DPrintButton" x="600" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" tooltip="3D Print">
+            <idle subTexture="3DPrintButton" alpha="0.7"/>
+            <push subTexture="3DPrintButton" alpha="1"/>
+            <hover subTexture="3DPrintButton" alpha="0.9"/>
+        </leoButton>
+		
+		<!-- FILE menu IMPORT/EXPORT 
+		<leoButton name="importButton" x="750" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Import" >
+				<idle subTexture="importButton" alpha="0.7"/>
+				<push subTexture="importButton" alpha="1"/>
+				<hover subTexture="importButton" alpha="0.9"/>
+        </leoButton>
+		-->
+		<leoMenuRadioButton name="importButton" x="750" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Import" targetFrame="galleryFrame" groupId="1" ticked="0">
+				<idle subTexture="importButton" alpha="0.7"/>
+				<push subTexture="importButton" alpha="1"/>
+				<hover subTexture="importButton" alpha="0.9"/>
+        </leoMenuRadioButton>
+		
+        <leoButton name="exportButton" x="900" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Export" >
+            <idle subTexture="exportButton" alpha="0.7"/>
+            <push subTexture="exportButton" alpha="1"/>
+            <hover subTexture="exportButton" alpha="0.9"/>
+        </leoButton>
+		
+		<!-- csik -->
+		<leoPanel name="csik0" generateMesh="1" x="0" y="160" width="1050" height="10" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(255,255,255,120)" tooltip="" paintInside="0">
+		</leoPanel>
+		<!-- hatso panel atlatszo -->
+		<leoPanel name="csik1" generateMesh="1" x="0" y="160" width="1050" height="1020" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.100000" bgColor="rgb(255,255,255,70)" tooltip="" paintInside="0">
+		</leoPanel>
+		<leoPanel name="csik2" generateMesh="1" x="0" y="360" width="1050" height="10" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(255,255,255,120)" tooltip="" paintInside="0">
+		</leoPanel>
+		
+		
+		<!-- MODES -->
+		<leoPanel name="modesFrame" x="0" y="190" width="1050" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+			
+			<leoMenuRadioButton name="sculptModeButton" x="60" y="0" width="450" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" ticked="1" targetFrame="sculptFrame, slidersFrame1">
+			<state id="0">
+				<idle subTexture="sculptModeButton" alpha="0.7"/>
+				<push subTexture="sculptModeButton" alpha="1"/>
+				<hover subTexture="sculptModeButton" alpha="0.9"/>
+				</state>
+				<state id="1">
+				<idle subTexture="sculptModeButton" alpha="1"/>
+				<push subTexture="sculptModeButton" alpha="1"/>
+				<hover subTexture="sculptModeButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+
+			<leoMenuRadioButton name="paintModeButton" x="550" y="0" width="450" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" groupId="1" targetFrame="colorFrame, slidersFrame1">
+				<state id="0">
+					<idle subTexture="paintModeButton"  alpha="0.7"/>
+					<push subTexture="paintModeButton"  alpha="1"/>
+					<hover subTexture="paintModeButton" alpha="0.9"/>
+				</state>
+				<state id="1">
+					<idle subTexture="paintModeButton" alpha="1"/>
+					<push subTexture="paintModeButton" alpha="1"/>
+					<hover subTexture="paintModeButton" alpha="1"/>
+				</state>
+			</leoMenuRadioButton>
+		</leoPanel>
+	</leoPanel>
+	
+
+
+<!-- SCULPT FRAME -->	
+    <leoPanel name="sculptFrame" x="0" y="465" width="1050" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+        <leoRadioButton name="pullButton" x="0" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="pullButton" alpha="0.7"/>
+                <push subTexture="pullButton" alpha="1"/>
+                <hover subTexture="pullButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="pullButton" alpha="1"/>
+                <push subTexture="pullButton" alpha="1"/>
+                <hover subTexture="pullButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="pushButton" x="150" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="pushButton" alpha="0.7"/>
+                <push subTexture="pushButton" alpha="1"/>
+                <hover subTexture="pushButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="pushButton" alpha="1"/>
+                <push subTexture="pushButton" alpha="1"/>
+                <hover subTexture="pushButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="eraseButton" x="300" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="eraseButton" alpha="0.7"/>
+                <push subTexture="eraseButton" alpha="1"/>
+                <hover subTexture="eraseButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="eraseButton" alpha="1"/>
+                <push subTexture="eraseButton" alpha="1"/>
+                <hover subTexture="eraseButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="smoothButton" x="450" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="smoothButton" alpha="0.7"/>
+                <push subTexture="smoothButton" alpha="1"/>
+                <hover subTexture="smoothButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="smoothButton" alpha="1"/>
+                <push subTexture="smoothButton" alpha="1"/>
+                <hover subTexture="smoothButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="flattenButton" x="600" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="flattenButton" alpha="0.7"/>
+                <push subTexture="flattenButton" alpha="1"/>
+                <hover subTexture="flattenButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="flattenButton" alpha="1"/>
+                <push subTexture="flattenButton" alpha="1"/>
+                <hover subTexture="flattenButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="edgeButton" x="750" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="edgeButton" alpha="0.7"/>
+                <push subTexture="edgeButton" alpha="1"/>
+                <hover subTexture="edgeButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="edgeButton" alpha="1"/>
+                <push subTexture="edgeButton" alpha="1"/>
+                <hover subTexture="edgeButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+        <leoRadioButton name="sculptButton" x="900" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" groupId="2" ticked="0">
+            <state id="0">
+                <idle subTexture="sculptButton" alpha="0.7"/>
+                <push subTexture="sculptButton" alpha="1"/>
+                <hover subTexture="sculptButton" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="sculptButton" alpha="1"/>
+                <push subTexture="sculptButton" alpha="1"/>
+                <hover subTexture="sculptButton" alpha="1"/>
+            </state>
+        </leoRadioButton>
+    </leoPanel>
+    
+<!-- COLOR AND ENGRAVE FRAME -->    
+	<leoPanel name="colorFrame" role="colorSelectorFrame" x="0" y="390" width="1050" height="300" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.400000" bgColor="rgb(51,0,0,77)" tooltip="" paintInside="0">
+
+			<!-- szinek -->
+            <leoButton name="blackButton" role="blackButton" x="0" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="blackButton" alpha="0.7"/>
+                <push subTexture="blackButton" alpha="1"/>
+                <hover subTexture="blackButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="greyButton" role="greyButton" x="150" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greyButton" alpha="0.7"/>
+                <push subTexture="greyButton" alpha="1"/>
+                <hover subTexture="greyButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="brownButton" role="brownButton" x="300" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="brownButton" alpha="0.7"/>
+                <push subTexture="brownButton" alpha="1"/>
+                <hover subTexture="brownButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="purpleButton" role="purpleButton" x="450" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="purpleButton" alpha="0.7"/>
+                <push subTexture="purpleButton" alpha="1"/>
+                <hover subTexture="purpleButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="pinkButton" role="pinkButton" x="600" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="pinkButton" alpha="0.7"/>
+                <push subTexture="pinkButton" alpha="1"/>
+                <hover subTexture="pinkButton" alpha="0.82"/>
+            </leoButton>
+			<leoButton name="greenButton" role="greenButton" x="750" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="greenButton" alpha="0.7"/>
+                <push subTexture="greenButton" alpha="1"/>
+                <hover subTexture="greenButton" alpha="0.82"/>
+            </leoButton>
+			
+			<!-- masodik sor -->
+            <leoButton name="darkBlueButton" role="darkBlueButton" x="0" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="darkBlueButton" alpha="0.7"/>
+                <push subTexture="darkBlueButton" alpha="1"/>
+                <hover subTexture="darkBlueButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="lightBlueButton" role="lightBlueButton" x="150" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="lightBlueButton" alpha="0.7"/>
+                <push subTexture="lightBlueButton" alpha="1"/>
+                <hover subTexture="lightBlueButton" alpha="0.82"/>											<!-- rossz -->
+            </leoButton>
+            <leoButton name="whiteButton" role="whiteButton" x="300" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="whiteButton" alpha="0.7"/>
+                <push subTexture="whiteButton" alpha="1"/>
+                <hover subTexture="whiteButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="yellowButton" role="yellowButton" x="450" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="yellowButton" alpha="0.7"/>
+                <push subTexture="yellowButton" alpha="1"/>
+                <hover subTexture="yellowButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="redButton" role="redButton" x="600" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="redButton" alpha="0.7"/>
+                <push subTexture="redButton" alpha="1"/>
+                <hover subTexture="redButton" alpha="0.82"/>
+            </leoButton>
+            <leoButton name="orangeButton" role="orangeButton" x="750" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="orangeButton" alpha="0.7"/>
+                <push subTexture="orangeButton" alpha="1"/>
+                <hover subTexture="orangeButton" alpha="0.82"/>
+            </leoButton>
+            <!--<leoToggleButton name="colorPickerButton" role="colorPickerButton" x="900" y="0" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Color Picker"  >
+                <idle subTexture="colorPickerButton" alpha="0.3"/>
+                <push subTexture="colorPickerButton" alpha="1"/>
+                <hover subTexture="colorPickerButton" alpha="0.5"/>
+            </leoToggleButton>-->
+			
+			<!-- COLOR INDICATOR -->
+			<leoButton name="colorIndicatorButton" x="900" y="150" width="150" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip=""  >
+                <idle subTexture="whiteButton" alpha="1"/>
+                <push subTexture="whiteButton" alpha="1"/>
+                <hover subTexture="whiteButton" alpha="1"/>
+            </leoButton>
+			
+			<!-- sliders invisible for VR-->
+            <leoSlider name="hueSlider" role="hueSlider" x="10" y="0" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Hue" orientation="horizontal" minValue="0" maxValue="100" defaultPos="25.29411888">
+                <track subTexture="colorPickerButton" alpha="1"/>
+                <knobidle subTexture="colorPickerButton" alpha="1"/>
+                <knobpush subTexture="colorPickerButton" alpha="1"/>
+                <knobhover subTexture="colorPickerButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="saturationSlider" role="saturationSlider" x="10" y="35" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Saturation" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="colorPickerButton" alpha="1"/>
+                <knobidle subTexture="colorPickerButton" alpha="1"/>
+                <knobpush subTexture="colorPickerButton" alpha="1"/>
+                <knobhover subTexture="colorPickerButton" alpha="1"/>
+            </leoSlider>
+            <leoSlider name="lightnessSlider" role="lightnessSlider" x="10" y="70" width="200" height="30" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="Brightness" orientation="horizontal" minValue="0" maxValue="100" defaultPos="0">
+                <track subTexture="colorPickerButton" alpha="1"/>
+				<knobidle subTexture="colorPickerButton" alpha="1"/>
+                <knobpush subTexture="colorPickerButton" alpha="1"/>
+                <knobhover subTexture="colorPickerButton" alpha="1"/>
+            </leoSlider>
+
+			
+			
+		<!-- PAINT MIRROR --> 
+		<leoToggleButton name="paintMirrorButton" x="680" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="" ticked="0">
+			<state id="0">
+				<idle subTexture="mirrorLeftButton" alpha="0.7"/>
+				<push subTexture="mirrorLeftButton" alpha="1"/>
+				<hover subTexture="mirrorLeftButton" alpha="0.9"/>
+			</state>
+			<state id="1">
+				<idle subTexture="mirrorBothButton" alpha="1"/>
+				<push subTexture="mirrorBothButton" alpha="1"/>
+				<hover subTexture="mirrorBothButton" alpha="1"/>
+			</state>
+		</leoToggleButton>	
+		
+<!-- 			rotate toggle button -->
+        <leoToggleButton name="paintRotateButton" x="740" y="50" width="50" height="50" horizontalAnchor="left" verticalAnchor="top" visible="0" zValue="0.500000" bgColor="rgb(0,0,0,0)" tooltip="Rotate" ticked="0">
+            <state id="0">
+                <idle subTexture="rotateObjectButton" alpha="0.7"/>
+                <push subTexture="rotateObjectButton" vBR="0.8242189884" alpha="1"/>
+                <hover subTexture="rotateObjectButton" vBR="0.8242189884" alpha="0.9"/>
+            </state>
+            <state id="1">
+                <idle subTexture="rotateObjectButton" alpha="1"/>
+                <push subTexture="rotateObjectButton" alpha="1"/>
+                <hover subTexture="rotateObjectButton" alpha="1"/>
+            </state>
+        </leoToggleButton>
+	</leoPanel>
+
+
+<!-- SLIDERS BRUSH -->
+    <leoPanel name="slidersFrame1" x="0" y="710" width="210" height="300" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(0,0,0,77)" tooltip="" paintInside="0">
+		<!-- TEXTS FOR SLIDERS -->
+		<leoPanel name="toolSizeText" generateMesh="1" x="0" y="0" width="300" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(255,255,255,70)" tooltip="" paintInside="0" subTexture="sizeText">
+		</leoPanel>
+		<leoPanel name="toolStrengthText" generateMesh="1" x="0" y="150" width="300" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.400000" bgColor="rgb(255,255,255,120)" tooltip="" paintInside="0" subTexture="strengthText">
+		</leoPanel>
+
+
+		<!-- TOOL SIZE -->
+        <leoNewTypeSlider name="toolSizeSlider" x="300" y="0" width="600" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000"   uTL="0" vTL="1" uBR="1" vBR="0" tooltip="" orientation="horizontal" minValue="0" maxValue="1" defaultPos="0.3" text="" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(255, 255, 255, 170)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(255, 255, 255, 200)" alpha="1"/>
+			<knobidle subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+			<knobpush subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+			<knobhover subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+        </leoNewTypeSlider>
+		<leoLabel name="toolSizeLabel" x="-150" y="75" width="120" height="60" horizontalAnchor="left" verticalAnchor="center" visible="0" zValue="0.600000" tooltip="" text="TOOL SIZE" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>			
+
+        <leoNewTypeSlider name="toolStrengthSlider" x="300" y="150" width="600" height="150" horizontalAnchor="left" verticalAnchor="top" visible="1" zValue="0.500000" uTL="0" vTL="1" uBR="1" vBR="0" tooltip="" orientation="horizontal" minValue="0" maxValue="1" defaultPos="1" text="" fontColor="rgb(20,20,20,200)">
+            <trail subTexture="sliderFilledBar" color="rgb(255, 255, 255, 170)" alpha="1"/>
+			<track subTexture="sliderBar" color="rgb(255, 255, 255, 200)" alpha="1"/>
+			<knobidle subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+			<knobpush subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+			<knobhover subTexture="sliderKnob" alpha="1" color="rgb(0,0,0,200)"/>
+        </leoNewTypeSlider>
+		<leoLabel name="toolStrengthLabel" x="250" y="95" width="40" height="20" horizontalAnchor="left" verticalAnchor="center" visible="0" zValue="0.600000" tooltip="" text="TOOL STRENGTH" rowWeights="1 0 0 0" vTextAlignment="top" hTextAlignment="top" horizontalOffset="-5" verticalOffset="0" fontColor="rgb(5,5,5,255)" bgColor="rgb(255,255,255,0)" fillet="1" iconColor="rgb(28,28,28,0)"/>	
+ 
+    </leoPanel>
+	
+
+									<!-- PATTERN AND COLOR FRAMES -->
+
+									
+<!-- engrave pattern panelek -->
+
+
+				<!-- NEW ENGRAVE TYPE FRAMES -->
+
+
+<!-- VISIBILITY -->    
+    
+    <visibilityConstraints>
+
+	
+		<!-- import file visibility
+		<constraint>
+            <event sourceComponentName="importButton" eventName="onClick"/>
+            <action targetComponentName="galleryFrame" actionName="show"/>
+        </constraint>
+		
+		<constraint>
+            <event sourceComponentName="importButton" eventName="onClick"/>
+            <action targetComponentName="sculptFrame" actionName="hide"/>
+        </constraint>
+		
+		<constraint>
+            <event sourceComponentName="importButton" eventName="onClick"/>
+            <action targetComponentName="colorFrame" actionName="hide"/>
+        </constraint>
+		 -->
+		
+		<!-- reform button -->
+
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="reformButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+
+
+		
+		<constraint>
+            <event sourceComponentName="materialPreviewButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="hide"/>
+        </constraint>
+		
+		<!-- slider frame content back on visible -->
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="show"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="show"/>
+        </constraint>
+
+
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="fadeIn"/>
+        </constraint>
+ 
+ <!--  proba     -->
+        <constraint>
+            <event sourceComponentName="engraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint> 
+		
+		
+		<constraint>
+            <event sourceComponentName="engraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+        
+        <constraint>
+            <event sourceComponentName="paintEngraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="fadeIn"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="paintEngraveModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="hide"/>
+        </constraint>
+		
+		
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolSizeSlider" actionName="fadeIn"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="toolStrengthSlider" actionName="fadeIn"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<constraint>
+            <event sourceComponentName="paintModeButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="show"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="sculptModeButton" eventName="onCheck"/>
+            <action targetComponentName="slidersFrame1" actionName="show"/>
+        </constraint>
+		
+	<!-- emulateclick -->
+		<!-- txtEnFrame switch panel emu click -->
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="textColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="textColorPaintButton" actionName="emulateClick"/>
+        </constraint>
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="textInputModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<!-- image engrave swich panel emu click -->
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="imgColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="imgColorPaintButton" actionName="emulateClick"/>
+        </constraint>
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="customPatternModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint>
+		
+		<!-- pattern engrave swich panel emu click -->
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternGreyEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternGreyEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternColorEngraveButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternColorEngraveButton" actionName="emulateClick"/>
+        </constraint>
+		<constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onClick"/>
+            <guard type="leaf" guardComponentName="patternColorPaintButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="patternColorPaintButton" actionName="emulateClick"/>
+        </constraint> 
+		<!-- hiding stampDepthSlider if sticker button checked -->
+        <constraint>
+            <event sourceComponentName="engraveEmbossModeButton" eventName="onCheck"/>
+            <action targetComponentName="stampDepthSlider" actionName="hide"/>
+        </constraint> 
+		
+		
+		<!-- cylinder/ring toggle -->
+		<constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="ringReformFrame" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="ringReformFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="cylinderReformFrame" actionName="show"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="ringcylinderButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="ringcylinderButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="cylinderReformFrame" actionName="hide"/>
+        </constraint>
+		
+		
+		<!-- HELP FRAME 		-->
+        <constraint>
+            <event sourceComponentName="helpButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="helpButton" guardConditionName="activeState" guardConditionValue="0"/>
+            <action targetComponentName="helpFrame" actionName="hide"/>
+        </constraint>
+        <constraint>
+            <event sourceComponentName="helpButton" eventName="onToggleStateChange"/>
+            <guard type="leaf" guardComponentName="helpButton" guardConditionName="activeState" guardConditionValue="1"/>
+            <action targetComponentName="helpFrame" actionName="fadeIn"/>
+        </constraint>
+		
+
+        
+    </visibilityConstraints>
+	
+	
+</gui>

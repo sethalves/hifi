@@ -222,7 +222,7 @@ public:
                     }
                 }
             }
-            LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(), texCoordsFlattened, texCoords.size(),const_cast<float*>(glm::value_ptr(glm::transpose(getTransform().getMatrix()))), materialsToSend, matIndexesPerTriangles.toStdVector());
+            LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(), texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(getTransform().getMatrix()))), materialsToSend, matIndexesPerTriangles.toStdVector());
             delete[] verticesFlattened;
             delete[] indicesFlattened;
             delete[] normalsFlattened;
