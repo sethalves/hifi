@@ -9,6 +9,7 @@ uniform bool useAO;
 uniform sampler2D uOcclusionMap;
 uniform sampler2D shadowMap;
 uniform sampler2D shadowMap2;
+
 varying vec4 shadowCoord;
 varying vec4 shadowCoord2;
 
@@ -67,7 +68,10 @@ uniform float vmfScale;
 
 // other
 uniform vec2 screenSize;
+uniform bool useBloomEffect;
 
+uniform samplerCube uCubemapTexture;
+uniform bool useEnvCubeMapTexture;
 
 //#define USE_GAMMA_CORRECTION
 
@@ -246,6 +250,20 @@ void main()
         
         // combined result
         color += diffLC * diffuse.xyz + specLC * fresnel(specularColor.xyz, dot(V, N));
+		
+		if(useEnvCubeMapTexture)
+		{		
+			vec3 incident_eye = normalize (viewPos);
+            //vec3 normal = normalize (viewMat*vec4(0,0,1,0));
+
+            vec3 reflected = reflect (incident_eye, N);
+			reflected = normalize((reflected + vec3(0.0, 0.0, 1.0)) / 2.0);
+            // convert from eye to world space
+
+            reflected = vec3 (inverse (viewMat) * vec4 (-reflected, 0.0));
+			reflected.z*=-1.0;
+            color += texture(uCubemapTexture, reflected );
+		}
     }
     
     for (int i = 0; i < MAX_LIGHTS; ++i)
@@ -307,7 +325,7 @@ void main()
     else
     {
         cursor.xyz = cursorColor;
-        cursor.a = calculateCursorStrength(cursorCnt, cursorPos, cursorRadius, modelPos);
+        cursor.a = 0.0;//calculateCursorStrength(cursorCnt, cursorPos, cursorRadius, modelPos);
     }
     
     bool masked = useVertColor && vertColor.x > 0.9999;
@@ -335,6 +353,20 @@ void main()
     {
         color = mix(color, vec3(0.5, 0.2, 0.2), 0.5);
     }
-	
+	if(useBloomEffect)
+	{
+		 float brightness = dot(color.rgb, vec3(0.3126, 0.7152, 0.0722));
+		if(brightness > 1.0)
+		{
+			gl_FragColor = vec4(color.rgb, 1.0);
+			return;
+		}
+		else
+		{
+			gl_FragColor = vec4(1.0,1.0,1.0, 0.0);
+			return;
+		}
+		
+	}
 	gl_FragColor = vec4(color, diffuseColor.a);
 }

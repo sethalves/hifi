@@ -67,10 +67,16 @@ float shadow(vec4 shadowCoord, sampler2D shadowMap, vec3 n, vec3 l, float intens
     poissonDisk[63] = vec2(-0.178564, -0.596057);
 
     const float bias = 0.002; //0.002;
-    const int numSamples = 4;
+    const int numSamples = 32;
     const float sampleWindowSize = 1024.0;
     
     float visibility = 0.0;
+	
+	vec2 test = shadowCoord.xy / shadowCoord.w;
+	if (test.x < 0.0 || test.x > 1.0 || test.y < 0.0 || test.y > 1.0)
+	{
+		return 1.0;
+	}
 
     for (int i=0; i < numSamples; i++)
     {

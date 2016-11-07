@@ -98,6 +98,7 @@
     <Diffuse> 1.0 0.95 0.73 </Diffuse>
     <Specular> 0.7 0.7 0.7 </Specular>
     <ShininessRange> 256.0 512.0 </ShininessRange>
+	<PaintVisible />
 </Material>
 
 <Material name="silver">

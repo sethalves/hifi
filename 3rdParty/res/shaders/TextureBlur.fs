@@ -1,6 +1,6 @@
 uniform sampler2D colorTex;
 uniform vec2 uvOffset;
-
+uniform float stepMultiplier;
 varying vec2 fTexCoord0;
 
 
@@ -42,9 +42,16 @@ void main()
     vec4 offsetColor;
     
     for (int i = 0; i < 25; ++i)
-    {
-        offsetColor = texture2D(colorTex, fTexCoord0 + uvOffset * kernelOffsets[i]);
-        offsetColor.rgb *= offsetColor.a;
+    {   
+		if(stepMultiplier!=1.0)
+		{
+			offsetColor = textureLod(colorTex, fTexCoord0 + uvOffset * kernelOffsets[i]*stepMultiplier,stepMultiplier-1);
+		}
+		else
+		{
+		offsetColor = texture2D(colorTex, fTexCoord0 + uvOffset * kernelOffsets[i]);
+        //offsetColor.rgb *= offsetColor.a;
+		}
         offsetColor *= kernelWeights[i];
         color += offsetColor;
     }

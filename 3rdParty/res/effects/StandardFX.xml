@@ -23,6 +23,5 @@
         <DepthTestEnabled>true</DepthTestEnabled>
         <DepthWriteEnabled>true</DepthWriteEnabled>
         <DepthComparisonFunc>less</DepthComparisonFunc>
-        <DepthRange>0 0.0001</DepthRange>
     </DepthState>
 </LeoFX>
