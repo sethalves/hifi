@@ -1223,12 +1223,92 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
     });
 }
 
+void RenderableLeoPolyObjectEntityItem::updateGeometryFromLeoPlugin()
+{
+
+    //if (_mesh)
+    {
+
+        //removeFromScene
+        float* vertices, *normals;
+        int *indices;
+        unsigned int numVertices, numNormals, numIndices;
+        LeoPolyPlugin::Instance().getSculptMeshNUmberDatas(numVertices, numIndices, numNormals);
+        vertices = new float[numVertices * 3];
+        normals = new float[numNormals * 3];
+        indices = new int[numIndices];
+        LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals);
+
+
+        model::MeshPointer mesh(new model::Mesh());
+        //  float scaleGuess = 1.0f;
+        bool needsMaterialLibrary = false;
+
+
+        std::vector<PolyVox::PositionMaterialNormal> verticesNormalsMaterials;
+
+        for (unsigned int i = 0; i < numVertices; i++)
+        {
+            PolyVox::Vector3DFloat actVert = PolyVox::Vector3DFloat(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
+            PolyVox::Vector3DFloat actNorm = PolyVox::Vector3DFloat(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            verticesNormalsMaterials.push_back(PolyVox::PositionMaterialNormal(actVert, actNorm, 0));
+        }
+
+        auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(PolyVox::PositionMaterialNormal),
+            (gpu::Byte*)verticesNormalsMaterials.data());
+        auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
+        gpu::Resource::Size vertexBufferSize = 0;
+        if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
+            vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
+        }
+        auto vertexBufferView = new gpu::BufferView(vertexBufferPtr, 0, vertexBufferSize,
+            sizeof(PolyVox::PositionMaterialNormal),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
+        mesh->setVertexBuffer(*vertexBufferView);
+        mesh->addAttribute(gpu::Stream::NORMAL,
+            gpu::BufferView(vertexBufferPtr,
+            sizeof(float) * 3,
+            vertexBufferPtr->getSize() - sizeof(float) * 3,
+            sizeof(PolyVox::PositionMaterialNormal),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+
+        verticesNormalsMaterials.clear();
+
+
+        std::vector<uint32_t> vecIndices;
+
+        for (unsigned int i = 0; i < numIndices; i++)
+        {
+            vecIndices.push_back(indices[i]);
+        }
+
+
+        auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t),
+            (gpu::Byte*)vecIndices.data());
+
+        auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
+
+        auto indexBufferView = new gpu::BufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
+        mesh->setIndexBuffer(*indexBufferView);
+
+        vecIndices.clear();
+
+        setMesh(mesh);
+
+        _meshDirty = true;
+        delete[] vertices;
+        delete[] normals;
+        delete[] indices;
+
+    }
+
+}
+
 void RenderableLeoPolyObjectEntityItem::setMesh(model::MeshPointer mesh) {
     // this catches the payload from getMesh
     bool neighborsNeedUpdate;
     withWriteLock([&] {
         _dirtyFlags |= Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS;
-        _mesh.reset();
         _mesh = mesh;
         _meshDirty = true;
         _meshInitialized = true;

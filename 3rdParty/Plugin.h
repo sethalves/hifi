@@ -9,7 +9,7 @@
 #else
 #  define LEOPLUGIN_DLL_API __declspec(dllimport)
 #endif
-LEOPLUGIN_DLL_API
+
 class LeoPlugin
 {
 

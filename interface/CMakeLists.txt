@@ -147,6 +147,7 @@ elseif (WIN32)
       COMMAND "mt.exe" -manifest "${CMAKE_CURRENT_SOURCE_DIR}/interface.exe.manifest" -inputresource:"$<TARGET_FILE:${TARGET_NAME}>"\;\#1 -outputresource:"$<TARGET_FILE:${TARGET_NAME}>"\;\#1
       COMMENT "Adding OS version support manifest to exe"
     )
+	
   endif()
 
 elseif (ANDROID)
@@ -287,6 +288,23 @@ if (APPLE)
   fixup_interface()
 
 else (APPLE)
+
+   # copy the resources files beside the executable
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+    "${3RDPARTY_INCLUDE_DIR}res"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>/res
+   COMMAND "${CMAKE_COMMAND}" -E copy_directory
+   "${3RDPARTY_INCLUDE_DIR}TestModels"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>/TestModels
+    COMMAND "${CMAKE_COMMAND}" -E copy
+   "${3RDPARTY_INCLUDE_DIR}SculptAppDLL.dll"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>
+    COMMAND "${CMAKE_COMMAND}" -E copy
+   "${3RDPARTY_INCLUDE_DIR}Libcurl.dll"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>
+  )
+
   # copy the resources files beside the executable
   add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
