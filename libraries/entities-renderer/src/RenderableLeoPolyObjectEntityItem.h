@@ -189,6 +189,7 @@ private:
     static bool inUserBounds(const PolyVox::SimpleVolume<uint8_t>* vol, PolyVoxEntityItem::PolyVoxSurfaceStyle surfaceStyle,
         int x, int y, int z);
     static EntityItemPointer lookUpNeighbor(EntityTreePointer tree, EntityItemID neighborID, EntityItemWeakPointer& currentWP);
+    void createShaderPipeline();
 };
 
 

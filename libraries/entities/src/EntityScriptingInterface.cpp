@@ -1393,7 +1393,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
             EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
             if (entity) {
 
-                    entity->setUnderSculpting(true);
+                entity->sendToLeoEngine();
                 auto props = EntityItemProperties(entity->getProperties());
                 props.setDescription(QString(entity->getName() + " under sculpting"));
                 props.setPosition(entity->getPosition());
@@ -1402,12 +1402,15 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setType(EntityTypes::LeoPolyObject);
                 props.setCreated(secTimestampNow());
                 props.setLeoPolyURLData(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(props.getCreated()) + ".obj"));
+                props.setRegistrationPoint(entity->getRegistrationPoint());
                 EntityItemID leoId = EntityItemID(addEntity(props));
 
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);
                 if (newEntity)
                 {
                     newEntity->setTransform(entity->getTransform());
+                    newEntity->setScale(entity->getScale());
+                    newEntity->setRegistrationPoint(entity->getRegistrationPoint());
                     queueEntityMessage(PacketType::EntityEdit, leoId, newEntity->getProperties());
                 }
                 // auto newEntity=_entityTree->addEntity(leoId, props);

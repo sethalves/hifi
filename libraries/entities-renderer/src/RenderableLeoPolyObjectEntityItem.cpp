@@ -586,6 +586,26 @@ void RenderableLeoPolyObjectEntityItem::setZTextureURL(QString zTextureURL) {
     }*/
 }
 
+void RenderableLeoPolyObjectEntityItem::createShaderPipeline() {
+    gpu::ShaderPointer vertexShader = gpu::Shader::createVertex(std::string(polyvox_vert));
+    gpu::ShaderPointer pixelShader = gpu::Shader::createPixel(std::string(polyvox_frag));
+
+    gpu::Shader::BindingSet slotBindings;
+    slotBindings.insert(gpu::Shader::Binding(std::string("materialBuffer"), MATERIAL_GPU_SLOT));
+    slotBindings.insert(gpu::Shader::Binding(std::string("xMap"), 0));
+    slotBindings.insert(gpu::Shader::Binding(std::string("yMap"), 1));
+    slotBindings.insert(gpu::Shader::Binding(std::string("zMap"), 2));
+
+    gpu::ShaderPointer program = gpu::Shader::createProgram(vertexShader, pixelShader);
+    gpu::Shader::makeProgram(*program, slotBindings);
+
+    auto state = std::make_shared<gpu::State>();
+    state->setCullMode(gpu::State::CULL_BACK);
+    state->setDepthTest(true, true, gpu::LESS_EQUAL);
+
+    _pipeline = gpu::Pipeline::create(program, state);
+}
+
 void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
     PerformanceTimer perfTimer("RenderablePolyVoxEntityItem::render");
     assert(getType() == EntityTypes::LeoPolyObject);
@@ -604,7 +624,7 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
         }
     });
 
-    if (voxelDataDirty) {
+    if (!_mesh || !_mesh->getVertexBuffer()._buffer || !_mesh->getIndexBuffer()._buffer) {
         getMesh();
     }
 
@@ -615,29 +635,32 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
         voxelVolumeSize = _voxelVolumeSize;
     });
 
+    if (!mesh || !mesh->getVertexBuffer()._buffer || !mesh->getIndexBuffer()._buffer)
+    {
+        return;
+    }
+
     if (!_pipeline) {
-        gpu::ShaderPointer vertexShader = gpu::Shader::createVertex(std::string(polyvox_vert));
-        gpu::ShaderPointer pixelShader = gpu::Shader::createPixel(std::string(polyvox_frag));
-
-        gpu::Shader::BindingSet slotBindings;
-        slotBindings.insert(gpu::Shader::Binding(std::string("materialBuffer"), MATERIAL_GPU_SLOT));
-        slotBindings.insert(gpu::Shader::Binding(std::string("xMap"), 0));
-        slotBindings.insert(gpu::Shader::Binding(std::string("yMap"), 1));
-        slotBindings.insert(gpu::Shader::Binding(std::string("zMap"), 2));
-
-        gpu::ShaderPointer program = gpu::Shader::createProgram(vertexShader, pixelShader);
-        gpu::Shader::makeProgram(*program, slotBindings);
-
-        auto state = std::make_shared<gpu::State>();
-        state->setCullMode(gpu::State::CULL_BACK);
-        state->setDepthTest(true, true, gpu::LESS_EQUAL);
-
-        _pipeline = gpu::Pipeline::create(program, state);
+        createShaderPipeline();
     }
     gpu::Batch& batch = *args->_batch;
     batch.setPipeline(_pipeline);
-
     Transform transform(getTransform());
+
+    auto meshBounds = mesh->evalMeshBound();
+
+    // determine the correct scale to fit mesh into entity bounds, set transform accordingly
+    auto entityScale = getScale();
+    auto meshBoundsScale = meshBounds.getScale();
+    auto fitInBounds = entityScale / meshBoundsScale;
+    transform.setScale(fitInBounds);
+
+    // make sure the registration point on the model aligns with the registration point in the entity. 
+    auto registrationPoint = getRegistrationPoint(); // vec3(0) to vec3(1) for the entity space
+    auto lowestBounds = meshBounds.getMinimum();
+    glm::vec3 adjustLowestBounds = ((registrationPoint * meshBoundsScale) + lowestBounds) * -1.0f;
+    transform.postTranslate(adjustLowestBounds);
+
     batch.setModelTransform(transform);
     batch.setInputFormat(mesh->getVertexFormat());
     batch.setInputBuffer(gpu::Stream::POSITION, mesh->getVertexBuffer());
@@ -647,34 +670,13 @@ void RenderableLeoPolyObjectEntityItem::render(RenderArgs* args) {
         mesh->getVertexBuffer()._stride);
     batch.setIndexBuffer(gpu::UINT32, mesh->getIndexBuffer()._buffer, 0);
 
-    if (!_xTextureURL.isEmpty() && !_xTexture) {
-        _xTexture = DependencyManager::get<TextureCache>()->getTexture(_xTextureURL);
-    }
-    if (!_yTextureURL.isEmpty() && !_yTexture) {
-        _yTexture = DependencyManager::get<TextureCache>()->getTexture(_yTextureURL);
-    }
-    if (!_zTextureURL.isEmpty() && !_zTexture) {
-        _zTexture = DependencyManager::get<TextureCache>()->getTexture(_zTextureURL);
-    }
+    batch.setResourceTexture(0, DependencyManager::get<TextureCache>()->getWhiteTexture());
+    batch.setResourceTexture(1, DependencyManager::get<TextureCache>()->getWhiteTexture());
+    batch.setResourceTexture(2, DependencyManager::get<TextureCache>()->getWhiteTexture());
 
-    if (_xTexture) {
-        batch.setResourceTexture(0, _xTexture->getGPUTexture());
-    }
-    else {
-        batch.setResourceTexture(0, DependencyManager::get<TextureCache>()->getWhiteTexture());
-    }
-    if (_yTexture) {
-        batch.setResourceTexture(1, _yTexture->getGPUTexture());
-    }
-    else {
-        batch.setResourceTexture(1, DependencyManager::get<TextureCache>()->getWhiteTexture());
-    }
-    if (_zTexture) {
-        batch.setResourceTexture(2, _zTexture->getGPUTexture());
-    }
-    else {
-        batch.setResourceTexture(2, DependencyManager::get<TextureCache>()->getWhiteTexture());
-    }
+    // FIXME - this voxelVolumeSizeLocation is cruft.
+    int voxelVolumeSizeLocation = _pipeline->getProgram()->getUniforms().findLocation("voxelVolumeSize");
+    batch._glUniform3f(voxelVolumeSizeLocation, 16.0, 16.0, 16.0);
     batch.drawIndexed(gpu::TRIANGLES, (gpu::uint32)mesh->getNumIndices(), 0);
 }
 
@@ -1225,7 +1227,7 @@ void RenderableLeoPolyObjectEntityItem::getMesh() {
 
 void RenderableLeoPolyObjectEntityItem::updateGeometryFromLeoPlugin()
 {
-
+  
     //if (_mesh)
     {
 
@@ -1239,7 +1241,7 @@ void RenderableLeoPolyObjectEntityItem::updateGeometryFromLeoPlugin()
         indices = new int[numIndices];
         LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals);
 
-
+        _mesh = NULL;
         model::MeshPointer mesh(new model::Mesh());
         //  float scaleGuess = 1.0f;
         bool needsMaterialLibrary = false;
@@ -1273,8 +1275,6 @@ void RenderableLeoPolyObjectEntityItem::updateGeometryFromLeoPlugin()
             gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
 
         verticesNormalsMaterials.clear();
-
-
         std::vector<uint32_t> vecIndices;
 
         for (unsigned int i = 0; i < numIndices; i++)
@@ -1295,7 +1295,7 @@ void RenderableLeoPolyObjectEntityItem::updateGeometryFromLeoPlugin()
 
         setMesh(mesh);
 
-        _meshDirty = true;
+        //_meshDirty = true;
         delete[] vertices;
         delete[] normals;
         delete[] indices;

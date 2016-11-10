@@ -448,8 +448,7 @@ public:
 
     virtual void emitScriptEvent(const QVariant& message) {}
 
-    virtual void setUnderSculpting(bool value)
-    {}
+    virtual void sendToLeoEngine(){}
 
 protected:
 
