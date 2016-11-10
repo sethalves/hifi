@@ -61,6 +61,10 @@ void EntityItemProperties::calculateNaturalPosition(const glm::vec3& min, const 
     _naturalPosition = max - halfDimension;
 }
 
+void EntityItemProperties::setCreatedToNow() {
+    _created = usecTimestampNow();
+}
+
 void EntityItemProperties::setCreated(QDateTime &v) {
     _created = v.toMSecsSinceEpoch() * 1000; // usec per msec
 }

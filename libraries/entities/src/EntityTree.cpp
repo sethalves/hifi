@@ -900,6 +900,65 @@ void EntityTree::fixupTerseEditLogging(EntityItemProperties& properties, QList<Q
     }
 }
 
+void EntityTree::initEntityEditFilterEngine() {
+    _entityEditFilterEngine.evaluate(_entityEditFilter);
+    auto global = _entityEditFilterEngine.globalObject();
+    _entityEditFilterFunction = global.property("filter");
+    _hasEntityEditFilter = _entityEditFilterFunction.isFunction();
+}
+
+EntityItemProperties EntityTree::filterProperties(const EntityItemProperties& propertiesIn) {
+    if (!_hasEntityEditFilter) {
+        return propertiesIn;
+    }
+    EntityItemProperties propertiesOut { propertiesIn };
+
+    QScriptValue filterProps = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, true); // maybe true??
+    QScriptValueList args;
+    args << filterProps;
+    QScriptValue result = _entityEditFilterEngine.newObject();
+    result = _entityEditFilterFunction.call(_nullObjectForFilter, args);
+    propertiesOut.copyFromScriptValue(result, false);
+    return propertiesOut;
+}
+
+void EntityTree::runEntityFilterTest() {
+    qDebug() << "Run entity edit filter test....";
+    static const int TEST_ITERATIONS = 10000;
+    quint64 start = usecTimestampNow();
+
+    if (!_entityEditFilter.isEmpty()) {
+        initEntityEditFilterEngine();
+    }
+
+    // Note: We could think about ways to generalize this for testing more properties
+    EntityItemProperties testProperties;
+    testProperties.setCreatedToNow();
+    testProperties.setColor(xColor { 0, 0, 0 });
+    testProperties.setPosition(glm::vec3(10,10,10));
+    EntityItemProperties testResults;
+
+    for (int i = 0; i < TEST_ITERATIONS; i++) {
+        if (!_entityEditFilter.isEmpty()) {
+            testResults = filterProperties(testProperties);
+        }
+    }
+    quint64 finish = usecTimestampNow();
+    auto elapsedTime = (finish - start);
+    float averageTime = (float)elapsedTime / (float)TEST_ITERATIONS;
+    QScriptValue testValues = testProperties.copyToScriptValue(&_entityEditFilterEngine, true);
+    QScriptValue results = testResults.copyToScriptValue(&_entityEditFilterEngine, true);
+
+    qDebug() << "     Edit Filter Function:" << _entityEditFilter;
+    qDebug() << "Test iterations completed:" << TEST_ITERATIONS;
+    qDebug() << "   Time to complete tests:" << elapsedTime << "usecs";
+    qDebug() << "                  Average:" << averageTime << "usecs per test";
+    qDebug() << "               Test Value:" << testValues.toVariant();
+    qDebug() << "             Final Result:" << results.toVariant();
+}
+
+
+
 int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned char* editData, int maxLength,
                                      const SharedNodePointer& senderNode) {
 

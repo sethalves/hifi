@@ -64,6 +64,7 @@ public:
 
 
     void setEntityMaxTmpLifetime(float maxTmpEntityLifetime) { _maxTmpEntityLifetime = maxTmpEntityLifetime; }
+    void setEntityEditFilter(const QString& entityEditFilter) { _entityEditFilter = entityEditFilter; }
 
     /// Implements our type specific root element factory
     virtual OctreeElementPointer createNewElement(unsigned char* octalCode = NULL) override;
@@ -258,6 +259,8 @@ public:
 
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
 
+    void runEntityFilterTest();
+
     static const float DEFAULT_MAX_TMP_ENTITY_LIFETIME;
 
 public slots:
@@ -342,6 +345,15 @@ protected:
     QHash<QUuid, QSet<EntityItemID>> _childrenOfAvatars;  // which entities are children of which avatars
 
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
+
+    void initEntityEditFilterEngine();
+    EntityItemProperties filterProperties(const EntityItemProperties& propertiesIn);
+
+    QString _entityEditFilter;
+    bool _hasEntityEditFilter { false };
+    QScriptEngine _entityEditFilterEngine;
+    QScriptValue _entityEditFilterFunction;
+    QScriptValue _nullObjectForFilter;
 };
 
 #endif // hifi_EntityTree_h

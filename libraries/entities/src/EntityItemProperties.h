@@ -267,6 +267,7 @@ public:
     void setQueryAACubeDirty() { _queryAACubeChanged = true; }
 
     void setCreated(QDateTime& v);
+    void setCreatedToNow();
 
     bool hasTerseUpdateChanges() const;
     bool hasMiscPhysicsChanges() const;

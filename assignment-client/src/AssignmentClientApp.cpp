@@ -93,6 +93,9 @@ AssignmentClientApp::AssignmentClientApp(int argc, char* argv[]) :
     const QCommandLineOption logDirectoryOption(ASSIGNMENT_LOG_DIRECTORY, "directory to store logs", "log-directory");
     parser.addOption(logDirectoryOption);
 
+    const QCommandLineOption runFilterTestOption("runFilterTest", "runs the edit entity filter test if run as an Entity Server");
+    parser.addOption(runFilterTestOption);
+
     if (!parser.parse(QCoreApplication::arguments())) {
         qCritical() << parser.errorText() << endl;
         parser.showHelp();

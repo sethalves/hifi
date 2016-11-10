@@ -922,10 +922,15 @@ bool OctreeServer::readOptionBool(const QString& optionName, const QJsonObject& 
     result = false; // assume it doesn't exist
     bool optionAvailable = false;
     QString argName = "--" + optionName;
-    bool argExists = cmdOptionExists(_argc, _argv, qPrintable(argName));
-    if (argExists) {
+
+    auto commandLineOptions = QCoreApplication::arguments();
+    if (commandLineOptions.contains(argName)) {
         optionAvailable = true;
-        result = argExists;
+        result = true;
+        qDebug() << "From command line arguments: " << qPrintable(argName) << ":" << result;
+    } else if (cmdOptionExists(_argc, _argv, qPrintable(argName))) {
+        optionAvailable = true;
+        result = true;
         qDebug() << "From payload arguments: " << qPrintable(argName) << ":" << result;
     } else if (settingsSectionObject.contains(optionName)) {
         optionAvailable = true;

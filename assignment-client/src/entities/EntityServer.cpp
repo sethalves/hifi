@@ -278,6 +278,17 @@ void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectio
 
     tree->setWantEditLogging(wantEditLogging);
     tree->setWantTerseEditLogging(wantTerseEditLogging);
+
+    QString entityEditFilter;
+    if (readOptionString("entityEditFilter", settingsSectionObject, entityEditFilter)) {
+        tree->setEntityEditFilter(entityEditFilter);
+    }
+
+    bool runFilterTest = false;
+    if (readOptionBool("runFilterTest", settingsSectionObject, runFilterTest)) {
+        tree->runEntityFilterTest();
+    }
+
 }
 
 void EntityServer::nodeAdded(SharedNodePointer node) {
