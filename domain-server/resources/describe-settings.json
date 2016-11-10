@@ -1076,6 +1076,14 @@
           "advanced": true
         },
         {
+          "name": "entityScriptSourceWhitelist",
+          "label": "Entity Scripts Allowed from:",
+          "help": "The domains that entity scripts are allowed from. A comma separated list of domains that entity scripts are allowed from, if someone attempts to create and entity or edit an entity to have a different domain, it will be rejected. If left blank, any domain is allowed.",
+          "placeholder": "",
+          "default": "",
+          "advanced": true
+        },
+        {
           "name": "entityEditFilter",
           "label": "Filter Entity Edits",
           "help": "Check all entity edits against this filter function.",

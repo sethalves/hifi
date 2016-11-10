@@ -65,6 +65,7 @@ public:
 
     void setEntityMaxTmpLifetime(float maxTmpEntityLifetime) { _maxTmpEntityLifetime = maxTmpEntityLifetime; }
     void setEntityEditFilter(const QString& entityEditFilter) { _entityEditFilter = entityEditFilter; }
+    void setEntityScriptSourceWhitelist(const QString& entityScriptSourceWhitelist);
 
     /// Implements our type specific root element factory
     virtual OctreeElementPointer createNewElement(unsigned char* octalCode = NULL) override;
@@ -354,6 +355,8 @@ protected:
     QScriptEngine _entityEditFilterEngine;
     QScriptValue _entityEditFilterFunction;
     QScriptValue _nullObjectForFilter;
+
+    QStringList _entityScriptSourceWhitelist;
 };
 
 #endif // hifi_EntityTree_h

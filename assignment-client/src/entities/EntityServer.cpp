@@ -279,6 +279,13 @@ void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectio
     tree->setWantEditLogging(wantEditLogging);
     tree->setWantTerseEditLogging(wantTerseEditLogging);
 
+    QString entityScriptSourceWhitelist;
+    if (readOptionString("entityScriptSourceWhitelist", settingsSectionObject, entityScriptSourceWhitelist)) {
+        tree->setEntityScriptSourceWhitelist(entityScriptSourceWhitelist);
+    } else {
+        tree->setEntityScriptSourceWhitelist("");
+    }
+
     QString entityEditFilter;
     if (readOptionString("entityEditFilter", settingsSectionObject, entityEditFilter)) {
         tree->setEntityEditFilter(entityEditFilter);
