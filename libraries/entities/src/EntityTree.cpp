@@ -914,16 +914,28 @@ void EntityTree::initEntityEditFilterEngine() {
 
 EntityItemProperties EntityTree::filterProperties(const EntityItemProperties& propertiesIn) {
     if (!_hasEntityEditFilter) {
+        qDebug() << __FUNCTION__ << "no filter function...";
         return propertiesIn;
     }
+    qDebug() << __FUNCTION__ << "filter function...";
     EntityItemProperties propertiesOut { propertiesIn };
 
-    QScriptValue filterProps = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, true); // maybe true??
+    qDebug() << __FUNCTION__ << propertiesIn.getCreated();
+    QScriptValue filterProps = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, false, true);
     QScriptValueList args;
     args << filterProps;
+    qDebug() << __FUNCTION__ << "filterProps:" << filterProps.toVariant();
+
     QScriptValue result = _entityEditFilterEngine.newObject();
     result = _entityEditFilterFunction.call(_nullObjectForFilter, args);
+
+
     propertiesOut.copyFromScriptValue(result, false);
+
+    // force editor to get an update too
+    const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
+    propertiesOut.setLastEdited(propertiesIn.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
+
     return propertiesOut;
 }
 
@@ -1046,6 +1058,18 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             // If we got a valid edit packet, then it could be a new entity or it could be an update to
             // an existing entity... handle appropriately
             if (validEditPacket) {
+                qDebug() << "properties:" << properties;
+                QScriptValue originalValues = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
+                qDebug() << "originalValues:" << originalValues.toVariant();
+
+                // enforce any edit filters
+                properties = filterProperties(properties);
+                QScriptValue filteredResult = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
+
+                qDebug() << "properties:" << properties;
+                qDebug() << "filteredResult:" << filteredResult.toVariant();
+
+
                 // search for the entity by EntityItemID
                 startLookup = usecTimestampNow();
                 EntityItemPointer existingEntity = findEntityByEntityItemID(entityItemID);

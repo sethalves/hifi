@@ -294,6 +294,8 @@ void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectio
     bool runFilterTest = false;
     if (readOptionBool("runFilterTest", settingsSectionObject, runFilterTest)) {
         tree->runEntityFilterTest();
+    } else {
+        tree->initEntityEditFilterEngine();
     }
 
 }

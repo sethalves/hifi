@@ -261,6 +261,7 @@ public:
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
 
     void runEntityFilterTest();
+    void initEntityEditFilterEngine();
 
     static const float DEFAULT_MAX_TMP_ENTITY_LIFETIME;
 
@@ -347,7 +348,6 @@ protected:
 
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
 
-    void initEntityEditFilterEngine();
     EntityItemProperties filterProperties(const EntityItemProperties& propertiesIn);
 
     QString _entityEditFilter;
