@@ -912,31 +912,22 @@ void EntityTree::initEntityEditFilterEngine() {
     _hasEntityEditFilter = _entityEditFilterFunction.isFunction();
 }
 
-EntityItemProperties EntityTree::filterProperties(const EntityItemProperties& propertiesIn) {
+bool EntityTree::filterProperties(const EntityItemProperties& propertiesIn, EntityItemProperties& propertiesOut, bool& wasChanged) {
     if (!_hasEntityEditFilter) {
-        qDebug() << __FUNCTION__ << "no filter function...";
-        return propertiesIn;
+        propertiesOut = propertiesIn;
+        wasChanged = false; // not changed
+        return true; // allowed
     }
-    qDebug() << __FUNCTION__ << "filter function...";
-    EntityItemProperties propertiesOut { propertiesIn };
-
-    qDebug() << __FUNCTION__ << propertiesIn.getCreated();
-    QScriptValue filterProps = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, false, true);
+    QScriptValue inputValues = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, false, true);
     QScriptValueList args;
-    args << filterProps;
-    qDebug() << __FUNCTION__ << "filterProps:" << filterProps.toVariant();
+    args << inputValues;
 
     QScriptValue result = _entityEditFilterEngine.newObject();
     result = _entityEditFilterFunction.call(_nullObjectForFilter, args);
 
-
     propertiesOut.copyFromScriptValue(result, false);
-
-    // force editor to get an update too
-    const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
-    propertiesOut.setLastEdited(propertiesIn.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
-
-    return propertiesOut;
+    wasChanged = result.equals(inputValues); // not changed
+    return result.isObject(); // filters should return null or false to completely reject edit or add
 }
 
 void EntityTree::runEntityFilterTest() {
@@ -957,7 +948,8 @@ void EntityTree::runEntityFilterTest() {
 
     for (int i = 0; i < TEST_ITERATIONS; i++) {
         if (!_entityEditFilter.isEmpty()) {
-            testResults = filterProperties(testProperties);
+            bool wasChanged = false;
+            bool allowed = filterProperties(testProperties, testResults, wasChanged);
         }
     }
     quint64 finish = usecTimestampNow();
@@ -999,6 +991,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             quint64 startLookup = 0, endLookup = 0;
             quint64 startUpdate = 0, endUpdate = 0;
             quint64 startCreate = 0, endCreate = 0;
+            quint64 startFilter = 0, endFilter = 0;
             quint64 startLogging = 0, endLogging = 0;
 
             const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
@@ -1058,17 +1051,28 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             // If we got a valid edit packet, then it could be a new entity or it could be an update to
             // an existing entity... handle appropriately
             if (validEditPacket) {
-                qDebug() << "properties:" << properties;
+                startFilter= usecTimestampNow();
+                //qDebug() << "properties:" << properties;
                 QScriptValue originalValues = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
                 qDebug() << "originalValues:" << originalValues.toVariant();
 
                 // enforce any edit filters
-                properties = filterProperties(properties);
+                bool wasChanged = false;
+                bool allowed = filterProperties(properties, properties, wasChanged);
                 QScriptValue filteredResult = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
 
-                qDebug() << "properties:" << properties;
+                //qDebug() << "properties:" << properties;
                 qDebug() << "filteredResult:" << filteredResult.toVariant();
 
+                if (wasChanged) {
+                    qDebug() << "filteredResult CHANGED... bump the time!!";
+                    if (properties.getLastEdited() == UNKNOWN_CREATED_TIME) {
+                        properties.setLastEdited(usecTimestampNow());
+                    }
+                    properties.setLastEdited(properties.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
+                }
+
+                endFilter = usecTimestampNow();
 
                 // search for the entity by EntityItemID
                 startLookup = usecTimestampNow();
