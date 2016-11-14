@@ -448,8 +448,8 @@ public:
 
     virtual void emitScriptEvent(const QVariant& message) {}
 
+    //Sends the actual geometry data to the LeoEngine
     virtual void sendToLeoEngine(){}
-
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

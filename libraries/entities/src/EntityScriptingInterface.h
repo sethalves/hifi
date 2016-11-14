@@ -26,6 +26,7 @@
 #include <PointerEvent.h>
 
 #include "PolyVoxEntityItem.h"
+#include "LeoPolyEntityItem.h"
 #include "LineEntityItem.h"
 #include "PolyLineEntityItem.h"
 #include "EntityTree.h"
@@ -33,6 +34,7 @@
 #include "EntityEditPacketSender.h"
 #include "EntitiesScriptEngineProvider.h"
 #include "EntityItemProperties.h"
+#include <Plugin.h>
 
 class EntityTree;
 
@@ -113,6 +115,12 @@ public slots:
     /// deletes a model
     Q_INVOKABLE void deleteEntity(QUuid entityID);
 
+    //sculptEntity
+    Q_INVOKABLE void sculptEntity(QUuid entityID);
+
+    //issuecommand for SculptDll
+    Q_INVOKABLE void issueSculptDLLCommand(QString command, QString value);
+
     /// Allows a script to call a method on an entity's script. The method will execute in the entity script
     /// engine. If the entity does not have an entity script or the method does not exist, this call will have
     /// no effect.
@@ -130,13 +138,6 @@ public slots:
     /// finds models within the box specified by the corner and dimensions
     /// this function will not find any models in script engine contexts which don't have access to models
     Q_INVOKABLE QVector<QUuid> findEntitiesInBox(const glm::vec3& corner, const glm::vec3& dimensions) const;
-
-    //sculptEntity
-    Q_INVOKABLE void sculptEntity(QUuid entityID);
-
-    //issuecommand for SculptDll
-    Q_INVOKABLE void issueSculptDLLCommand(QString command, QString value);
-
 
     /// finds models within the frustum
     /// the frustum must have the following properties:

@@ -5,6 +5,5 @@ link_hifi_libraries(avatars shared audio octree model fbx networking animation)
 target_bullet()
 
 include_hifi_library_headers(render)
-
-include_directories(${3RDPARTY_INCLUDE_DIR})
-target_link_libraries(entities ${3RDPARTY_INCLUDE_DIR}/SculptAppDLL.lib)
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC ${LEOPOLY_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} ${POLYVOX_LIBRARIES} ${LEOPOLY_LIBRARIES})

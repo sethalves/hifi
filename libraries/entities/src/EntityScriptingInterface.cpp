@@ -17,7 +17,6 @@
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
-#include "..\libraries\entities\src\LeoPolyObjectEntityItem.h"
 #include "EntityActionInterface.h"
 #include "EntitySimulation.h"
 #include "EntityTree.h"
@@ -26,7 +25,7 @@
 #include "QVariantGLM.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
-#include <Plugin.h>
+#include "LeoPolyEntityItem.h"
 
 
 EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership) :
@@ -350,6 +349,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             return;
         }
 
+
         auto nodeList = DependencyManager::get<NodeList>();
         if (entity->getClientOnly() && entity->getOwningAvatarID() != nodeList->getSessionUUID()) {
             // don't edit other avatar's avatarEntities
@@ -462,6 +462,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             });
         }
     });
+
     queueEntityMessage(PacketType::EntityEdit, entityID, properties);
     return id;
 }
@@ -797,7 +798,7 @@ bool EntityScriptingInterface::setVoxels(QUuid entityID,
     }
 
     EntityTypes::EntityType entityType = entity->getType();
-    if (entityType != EntityTypes::PolyVox && entityType != EntityTypes::LeoPolyObject) {
+    if (entityType != EntityTypes::PolyVox) {
         return false;
     }
 
@@ -1399,9 +1400,9 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setPosition(entity->getPosition());
                 props.setDimensions(entity->getDimensions());
                 props.setRotation(entity->getRotation());
-                props.setType(EntityTypes::LeoPolyObject);
+                props.setType(EntityTypes::LeoPoly);
                 props.setCreated(secTimestampNow());
-                props.setLeoPolyURLData(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(props.getCreated()) + ".obj"));
+                props.setLeoPolyURL(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(props.getCreated()) + ".obj"));
                 props.setRegistrationPoint(entity->getRegistrationPoint());
                 EntityItemID leoId = EntityItemID(addEntity(props));
 

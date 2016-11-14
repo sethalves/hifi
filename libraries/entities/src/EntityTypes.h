@@ -49,8 +49,8 @@ public:
         PolyVox,
         PolyLine,
         Shape,
-        LeoPolyObject,
-        LAST = LeoPolyObject
+        LeoPoly,
+        LAST = LeoPoly
     } EntityType;
 
     static const QString& getEntityTypeName(EntityType entityType);

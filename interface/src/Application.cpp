@@ -94,7 +94,7 @@
 #include <RecordingScriptingInterface.h>
 #include <RenderableWebEntityItem.h>
 #include <RenderableModelEntityItem.h>
-#include <RenderableLeoPolyObjectEntityItem.h>
+#include <RenderableLeoPolyEntityItem.h>
 #include <RenderShadowTask.h>
 #include <RenderDeferredTask.h>
 #include <ResourceCache.h>
@@ -163,7 +163,6 @@
 #include "FrameTimingsScriptingInterface.h"
 #include <GPUIdent.h>
 #include <gl/GLHelpers.h>
-#include <Plugin.h>
 
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
@@ -2147,11 +2146,11 @@ void Application::paintGL() {
 
 
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
-    {  
+    {
         auto myAvatar = getMyAvatar();
         auto myAvatarMatrix = createMatFromQuatAndPos(myAvatar->getOrientation(), myAvatar->getPosition());
-        auto sensorToWorldMatrix =glm::transpose((myAvatar->getSensorToWorldMatrix()));
- 
+        auto sensorToWorldMatrix = glm::transpose(myAvatar->getSensorToWorldMatrix());
+
         LeoPolyPlugin::Instance().setSensorToWorldMat(const_cast<float*>(glm::value_ptr(sensorToWorldMatrix)));
         EntityItemID entityUnderSculptID;
         entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
@@ -2160,7 +2159,7 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        LeoPolyPlugin::Instance().SculptApp_Frame();
+        
         static bool loool = false;
         //if (!looool)
         {
@@ -2168,20 +2167,20 @@ void Application::paintGL() {
 
             tree->withWriteLock([&]
             {
-                RenderableLeoPolyObjectEntityItem* edited = (RenderableLeoPolyObjectEntityItem*)tree->findByID(entityUnderSculptID).get();
+                RenderableLeoPolyEntityItem* edited = (RenderableLeoPolyEntityItem*)tree->findByID(entityUnderSculptID).get();
                 if (edited)
                 {
-                    edited->updateGeometryFromLeoPlugin();
+                   // edited->update(0);
                     if (!loool)
                     {
                         string uploadPath = "\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\";
-                        string urlPath = edited->getLeoPolyURLData().toStdString();
+                        string urlPath = edited->getLeoPolyURL().toStdString();
                         const size_t last_slash_idx = urlPath.find_last_of("\\/");
                         if (std::string::npos != last_slash_idx)
                         {
                             urlPath.erase(0, last_slash_idx + 1);
                         }
-                        LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath+urlPath).c_str());
+                        LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath + urlPath).c_str());
                         loool = true;
                     }
                 }
@@ -2189,8 +2188,8 @@ void Application::paintGL() {
 
         }
 
-        
-        
+
+
 
     }
 

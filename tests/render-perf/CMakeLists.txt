@@ -16,7 +16,3 @@ package_libraries_for_deployment()
 
 
 target_bullet()
-
-
-include_directories(${3RDPARTY_INCLUDE_DIR})
-target_link_libraries(render-perf-test ${3RDPARTY_INCLUDE_DIR}/SculptAppDLL.lib)

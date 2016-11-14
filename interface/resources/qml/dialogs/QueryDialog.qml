@@ -118,9 +118,6 @@ ModalWindow {
             }
         }
 
-        property alias keyboardOverride: root.keyboardOverride
-        property alias keyboardRaised: root.keyboardRaised
-        property alias punctuationMode: root.punctuationMode
         Keyboard {
             id: keyboard
             raised: keyboardEnabled && keyboardRaised

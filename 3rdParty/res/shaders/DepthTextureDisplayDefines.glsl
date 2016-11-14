@@ -1,2 +1,0 @@
-#define DISPLAY_DEPTH_TEXTURE
-//#define LINEARIZE_DEPTH

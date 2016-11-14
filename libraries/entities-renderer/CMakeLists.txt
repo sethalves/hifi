@@ -5,9 +5,8 @@ link_hifi_libraries(shared gpu procedural model model-networking script-engine r
 
 target_bullet()
 
-add_dependency_external_projects(polyvox)
+add_dependency_external_projects(polyvox leopoly)
 find_package(PolyVox REQUIRED)
-target_include_directories(${TARGET_NAME} SYSTEM PUBLIC ${POLYVOX_INCLUDE_DIRS} ${3RDPARTY_INCLUDE_DIR})
-target_link_libraries(${TARGET_NAME} ${POLYVOX_LIBRARIES})
-target_link_libraries(entities-renderer ${3RDPARTY_INCLUDE_DIR}/SculptAppDLL.lib)
-
+find_package(LeoPoly REQUIRED)
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC ${POLYVOX_INCLUDE_DIRS} ${LEOPOLY_INCLUDE_DIRS})
+target_link_libraries(${TARGET_NAME} ${POLYVOX_LIBRARIES} ${LEOPOLY_LIBRARIES})
