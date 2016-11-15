@@ -1100,6 +1100,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                     endLogging = usecTimestampNow();
 
                     startUpdate = usecTimestampNow();
+                    properties.setLastEditedBy(senderNode->getUUID());
                     updateEntity(entityItemID, properties, senderNode);
                     existingEntity->markAsChangedOnServer();
                     endUpdate = usecTimestampNow();
@@ -1108,6 +1109,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                     if (senderNode->getCanRez() || senderNode->getCanRezTmp()) {
                         // this is a new entity... assign a new entityID
                         properties.setCreated(properties.getLastEdited());
+                        properties.setLastEditedBy(senderNode->getUUID());
                         startCreate = usecTimestampNow();
                         EntityItemPointer newEntity = addEntity(entityItemID, properties);
                         endCreate = usecTimestampNow();
