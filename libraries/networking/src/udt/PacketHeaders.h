@@ -100,6 +100,8 @@ public:
         MoreEntityShapes,
         NodeKickRequest,
         NodeMuteRequest,
+        EntityEditCAS,
+        EntityEditRejected,
         LAST_PACKET_TYPE = NodeMuteRequest
     };
 };
@@ -124,6 +126,7 @@ void sendWrongProtocolVersionsSignature(bool sendWrongVersion); /// for debuggin
 uint qHash(const PacketType& key, uint seed);
 QDebug operator<<(QDebug debug, const PacketType& type);
 
+/*
 const PacketVersion VERSION_OCTREE_HAS_FILE_BREAKS = 1;
 const PacketVersion VERSION_ENTITIES_HAVE_ANIMATION = 1;
 const PacketVersion VERSION_ROOT_ELEMENT_HAS_DATA = 2;
@@ -190,6 +193,12 @@ const PacketVersion VERSION_MODEL_ENTITIES_SUPPORT_SIMPLE_HULLS = 62;
 const PacketVersion VERSION_WEB_ENTITIES_SUPPORT_DPI = 63;
 const PacketVersion VERSION_ENTITIES_ARROW_ACTION = 64;
 const PacketVersion VERSION_ENTITIES_LAST_EDITED_BY = 65;
+*/
+
+enum class EntitiesPacketVersion : PacketVersion {
+    LastEditedBy = 65,
+    CASAndEditRejected = 66,
+};
 
 enum class AssetServerPacketVersion: PacketVersion {
     VegasCongestionControl = 19

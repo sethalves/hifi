@@ -76,5 +76,6 @@ const QString ENTITY_ITEM_DEFAULT_NAME = QString("");
 const uint16_t ENTITY_ITEM_DEFAULT_DPI = 30;
 
 const QUuid ENTITY_ITEM_DEFAULT_LAST_EDITED_BY = QUuid();
+const QUuid ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT = QUuid();
 
 #endif // hifi_EntityItemPropertiesDefaults_h

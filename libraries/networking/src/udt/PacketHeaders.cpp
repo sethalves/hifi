@@ -48,7 +48,9 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityData:
-            return VERSION_ENTITIES_LAST_EDITED_BY;
+        case PacketType::EntityEditCAS:
+        case PacketType::EntityEditRejected:
+            return static_cast<PacketVersion>(EntitiesPacketVersion::CASAndEditRejected);
         case PacketType::AvatarIdentity:
         case PacketType::AvatarData:
         case PacketType::BulkAvatarData:

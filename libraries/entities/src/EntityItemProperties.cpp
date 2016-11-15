@@ -232,6 +232,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     EntityPropertyFlags changedProperties;
 
     CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_BY, lastEditedBy);
+    //CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerprint); // read only! Set by server!!
     CHECK_PROPERTY_CHANGE(PROP_POSITION, position);
     CHECK_PROPERTY_CHANGE(PROP_DIMENSIONS, dimensions);
     CHECK_PROPERTY_CHANGE(PROP_ROTATION, rotation);
@@ -374,6 +375,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     }
 
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LAST_EDITED_BY, lastEditedBy);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerPrint);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_POSITION, position);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_DIMENSIONS, dimensions);
     if (!skipDefaults) {
