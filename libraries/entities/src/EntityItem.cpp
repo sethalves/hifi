@@ -375,44 +375,11 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     BufferParser parser(data, bytesLeftToRead);
 
-#ifdef DEBUG
-#define VALIDATE_ENTITY_ITEM_PARSER 1
-#endif
-
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    int bytesRead = 0;
-    int originalLength = bytesLeftToRead;
-    // TODO: figure out a way to avoid the big deep copy below.
-    QByteArray originalDataBuffer((const char*)data, originalLength); // big deep copy!
-    const unsigned char* dataAt = data;
-#endif
-
     // id
     parser.readUuid(_id);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedID = originalDataBuffer.mid(bytesRead, NUM_BYTES_RFC4122_UUID); // maximum possible size
-        QUuid id = QUuid::fromRfc4122(encodedID);
-        dataAt += encodedID.size();
-        bytesRead += encodedID.size();
-        Q_ASSERT(id == _id);
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
 
     // type
     parser.readCompressedCount<quint32>((quint32&)_type);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    QByteArray encodedType = originalDataBuffer.mid(bytesRead); // maximum possible size
-    ByteCountCoded<quint32> typeCoder = encodedType;
-    encodedType = typeCoder; // determine true length
-    dataAt += encodedType.size();
-    bytesRead += encodedType.size();
-    quint32 type = typeCoder;
-    EntityTypes::EntityType oldType = (EntityTypes::EntityType)type;
-    Q_ASSERT(oldType == _type);
-    Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-#endif
 
     bool overwriteLocalData = true; // assume the new content overwrites our local data
     quint64 now = usecTimestampNow();
@@ -422,16 +389,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     {
         quint64 createdFromBuffer = 0;
         parser.readValue(createdFromBuffer);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-        {
-            quint64 createdFromBuffer2 = 0;
-            memcpy(&createdFromBuffer2, dataAt, sizeof(createdFromBuffer2));
-            dataAt += sizeof(createdFromBuffer2);
-            bytesRead += sizeof(createdFromBuffer2);
-            Q_ASSERT(createdFromBuffer2 == createdFromBuffer);
-            Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-        }
-#endif
         if (_created == UNKNOWN_CREATED_TIME) {
             // we don't yet have a _created timestamp, so we accept this one
             createdFromBuffer -= clockSkew;
@@ -463,16 +420,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // TODO: we could make this encoded as a delta from _created
     // _lastEdited
     parser.readValue(lastEditedFromBuffer);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        quint64 lastEditedFromBuffer2 = 0;
-        memcpy(&lastEditedFromBuffer2, dataAt, sizeof(lastEditedFromBuffer2));
-        dataAt += sizeof(lastEditedFromBuffer2);
-        bytesRead += sizeof(lastEditedFromBuffer2);
-        Q_ASSERT(lastEditedFromBuffer2 == lastEditedFromBuffer);
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
     quint64 lastEditedFromBufferAdjusted = lastEditedFromBuffer == 0 ? 0 : lastEditedFromBuffer - clockSkew;
     if (lastEditedFromBufferAdjusted > now) {
         lastEditedFromBufferAdjusted = now;
@@ -549,18 +496,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // last updated is stored as ByteCountCoded delta from lastEdited
     quint64 updateDelta;
     parser.readCompressedCount(updateDelta);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedUpdateDelta = originalDataBuffer.mid(bytesRead); // maximum possible size
-        ByteCountCoded<quint64> updateDeltaCoder = encodedUpdateDelta;
-        quint64 updateDelta2 = updateDeltaCoder;
-        Q_ASSERT(updateDelta == updateDelta2);
-        encodedUpdateDelta = updateDeltaCoder; // determine true length
-        dataAt += encodedUpdateDelta.size();
-        bytesRead += encodedUpdateDelta.size();
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
 
     if (overwriteLocalData) {
         _lastUpdated = lastEditedFromBufferAdjusted + updateDelta; // don't adjust for clock skew since we already did that
@@ -576,18 +511,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // last simulated is stored as ByteCountCoded delta from lastEdited
     quint64 simulatedDelta;
     parser.readCompressedCount(simulatedDelta);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedSimulatedDelta = originalDataBuffer.mid(bytesRead); // maximum possible size
-        ByteCountCoded<quint64> simulatedDeltaCoder = encodedSimulatedDelta;
-        quint64 simulatedDelta2 = simulatedDeltaCoder;
-        Q_ASSERT(simulatedDelta2 == simulatedDelta);
-        encodedSimulatedDelta = simulatedDeltaCoder; // determine true length
-        dataAt += encodedSimulatedDelta.size();
-        bytesRead += encodedSimulatedDelta.size();
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
 
     if (overwriteLocalData) {
         lastSimulatedFromBufferAdjusted = lastEditedFromBufferAdjusted + simulatedDelta; // don't adjust for clock skew since we already did that
@@ -614,23 +537,9 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // Property Flags
     EntityPropertyFlags propertyFlags;
     parser.readFlags(propertyFlags);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedPropertyFlags = originalDataBuffer.mid(bytesRead); // maximum possible size
-        EntityPropertyFlags propertyFlags2 = encodedPropertyFlags;
-        dataAt += propertyFlags.getEncodedLength();
-        bytesRead += propertyFlags.getEncodedLength();
-        Q_ASSERT(propertyFlags2 == propertyFlags);
-        Q_ASSERT(parser.offset() == (unsigned int)bytesRead);
-    }
-#endif
 
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    Q_ASSERT(parser.data() + parser.offset() == dataAt);
-#else
     const unsigned char* dataAt = parser.data() + parser.offset();
     int bytesRead = (int)parser.offset();
-#endif
 
     auto nodeList = DependencyManager::get<NodeList>();
     const QUuid& myNodeID = nodeList->getSessionUUID();
