@@ -1128,10 +1128,6 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         // encode our ID as a byte count coded byte stream
         QByteArray encodedID = id.toRfc4122(); // NUM_BYTES_RFC4122_UUID
 
-        // encode our ID as a byte count coded byte stream
-        ByteCountCoded<quint32> tokenCoder;
-        QByteArray encodedToken;
-
         // encode our type as a byte count coded byte stream
         ByteCountCoded<quint32> typeCoder = (quint32)properties.getType();
         QByteArray encodedType = typeCoder;
@@ -1160,9 +1156,6 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         bool successLastEditedFits = packetData->appendValue(lastEdited);
 
         bool successIDFits = packetData->appendRawData(encodedID);
-        if (successIDFits) {
-            successIDFits = packetData->appendRawData(encodedToken);
-        }
         bool successTypeFits = packetData->appendRawData(encodedType);
 
         // NOTE: We intentionally do not send "created" times in edit messages. This is because:
@@ -1440,7 +1433,7 @@ bool EntityItemProperties::decodeEntityEditPacket(PacketType packetType, const u
     processedBytes += bytesToReadOfOctcode;
 
     // Edit packets have a last edited time stamp immediately following the octcode.
-    // NOTE: the edit times have been set by the editor to match out clock, so we don't need to adjust
+    // NOTE: the edit times have been set by the editor to match our clock, so we don't need to adjust
     // these times for clock skew at this point.
     quint64 lastEdited;
     memcpy(&lastEdited, dataAt, sizeof(lastEdited));
