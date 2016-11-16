@@ -297,9 +297,35 @@ void RenderableLeoPolyEntityItem::getMesh() {
     // getMesh() will only produce a mesh of the current entity is not currently under edit.
     // if the current entity is under edit, then it's assumed that the _mesh will be updated
     // but calling updateGeometryFromLeoPlugin()...
-    if (getEntityItemID() == entityUnderSculptID) {
+    if (getEntityItemID() == entityUnderSculptID) 
+    {
         LeoPolyPlugin::Instance().SculptApp_Frame();
         updateGeometryFromLeoPlugin();
+        bool success;
+        Transform transform = getTransformToCenter(success);
+        if (!success) {
+            return;
+        }
+        withWriteLock([&] {
+            // get the bounds of the mesh, so we can scale it into the bounds of the entity
+            int numMeshParts = (int)_mesh->getNumParts();
+            auto meshBounds = _mesh->evalMeshBound();
+
+            // determine the correct scale to fit mesh into entity bounds, set transform accordingly
+            auto entityScale = getScale();
+            auto meshBoundsScale = meshBounds.getScale();
+            auto fitInBounds = entityScale / meshBoundsScale;
+            transform.setScale(fitInBounds);
+
+            // make sure the registration point on the model aligns with the registration point in the entity. 
+            auto registrationPoint = getRegistrationPoint(); // vec3(0) to vec3(1) for the entity space
+            auto lowestBounds = meshBounds.getMinimum();
+            glm::vec3 adjustLowestBounds = ((registrationPoint * meshBoundsScale) + lowestBounds) * -1.0f;
+            transform.postTranslate(adjustLowestBounds);
+
+
+            LeoPolyPlugin::Instance().setSculptMeshMatrix(const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))));
+        });
         return;
     }
 
@@ -330,6 +356,22 @@ void RenderableLeoPolyEntityItem::setUnderSculpting(bool value) {
     // TODO -- how do we want to enable/disable sculpting...
 }
 
+
+void RenderableLeoPolyEntityItem::doExportCurrentState()
+{
+    std::string uploadPath = "\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\";//TODO: Will be replaced
+    std::string urlPath = getLeoPolyURL().toStdString();
+    const size_t last_slash_idx = urlPath.find_last_of("\\/");
+    if (std::string::npos != last_slash_idx)
+    {
+        urlPath.erase(0, last_slash_idx + 1);
+    }
+    LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath + urlPath).c_str());
+    while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
+    {
+        LeoPolyPlugin::Instance().SculptApp_Frame();
+    }
+}
 
 // This will take the _modelResource and convert it into a "flattened form" that can be used by the LeoPoly DLL
 void RenderableLeoPolyEntityItem::importToLeoPoly() {

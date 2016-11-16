@@ -1460,7 +1460,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setRotation(entity->getRotation());
                 props.setType(EntityTypes::LeoPoly);
                 props.setCreated(secTimestampNow());
-                props.setLeoPolyURL(QString(/*"\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\"*/"http://leopoly.develop/hifi/SculptObjects/" + QString::number(props.getCreated()) + ".obj"));
+                props.setLeoPolyURL(QString("http://leopoly.develop/hifi/SculptObjects/" + QString::number(props.getCreated()) + ".obj"));
                 props.setRegistrationPoint(entity->getRegistrationPoint());
                 EntityItemID leoId = EntityItemID(addEntity(props));
 

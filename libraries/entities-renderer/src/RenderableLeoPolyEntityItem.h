@@ -86,6 +86,8 @@ public:
 
     void setUnderSculpting(bool value); // makes the current entity become the actively sculpted entity
 
+    void doExportCurrentState()override;
+
 private:
     class VertexNormalMaterial {
     public:

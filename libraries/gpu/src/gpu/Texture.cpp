@@ -10,11 +10,13 @@
 //
 
 
-#include <QtCore/QDebug>
-
 #include "Texture.h"
 
 #include <glm/gtc/constants.hpp>
+#include <glm/gtx/component_wise.hpp>
+
+#include <QtCore/QDebug>
+#include <QtCore/QThread>
 
 #include <NumericalConstants.h>
 
@@ -31,27 +33,29 @@ std::atomic<uint32_t> Texture::_textureCPUCount{ 0 };
 std::atomic<Texture::Size> Texture::_textureCPUMemoryUsage{ 0 };
 std::atomic<Texture::Size> Texture::_allowedCPUMemoryUsage { 0 };
 
-std::atomic<bool> Texture::_enableSparseTextures { false };
-std::atomic<bool> Texture::_enableIncrementalTextureTransfers { false };
+
+#define MIN_CORES_FOR_INCREMENTAL_TEXTURES 5
 bool recommendedSparseTextures = (QThread::idealThreadCount() >= MIN_CORES_FOR_INCREMENTAL_TEXTURES);
+
 std::atomic<bool> Texture::_enableSparseTextures { recommendedSparseTextures };
+
+struct ReportTextureState {
+    ReportTextureState() {
+        qDebug() << "[TEXTURE TRANSFER SUPPORT]"
+            << "\n\tidealThreadCount:" << QThread::idealThreadCount()
             << "\n\tRECOMMENDED enableSparseTextures:" << recommendedSparseTextures;
+    }
+} report;
 
 void Texture::setEnableSparseTextures(bool enabled) {
 #ifdef Q_OS_WIN
     qDebug() << "[TEXTURE TRANSFER SUPPORT] SETTING - Enable Sparse Textures and Dynamic Texture Management:" << enabled;
     _enableSparseTextures = enabled;
-    if (!_enableIncrementalTextureTransfers && _enableSparseTextures) {
-        qDebug() << "[TEXTURE TRANSFER SUPPORT] WARNING - Sparse texture management requires incremental texture transfer enabled.";
-    }
 #else
     qDebug() << "[TEXTURE TRANSFER SUPPORT] Sparse Textures and Dynamic Texture Management not supported on this platform.";
 #endif
 }
 
-    if (!_enableIncrementalTextureTransfers && _enableSparseTextures) {
-        qDebug() << "[TEXTURE TRANSFER SUPPORT] WARNING - Sparse texture management requires incremental texture transfer enabled.";
-    }
 void Texture::updateTextureCPUMemoryUsage(Size prevObjectSize, Size newObjectSize) {
     if (prevObjectSize == newObjectSize) {
         return;
@@ -407,12 +411,18 @@ uint16 Texture::evalDimNumMips(uint16 size) {
     return 1 + (uint16) val;
 }
 
+static const double LOG_2 = log(2.0);
+
+uint16 Texture::evalNumMips(const Vec3u& dimensions) {
+    double largerDim = glm::compMax(dimensions);
+    double val = log(largerDim) / LOG_2;
+    return 1 + (uint16)val;
+}
+
 // The number mips that the texture could have if all existed
 // = log2(max(width, height, depth))
 uint16 Texture::evalNumMips() const {
-    double largerDim = std::max(std::max(_width, _height), _depth);
-    double val = log(largerDim)/log(2.0);
-    return 1 + (uint16) val;
+    return evalNumMips({ _width, _height, _depth });
 }
 
 bool Texture::assignStoredMip(uint16 level, const Element& format, Size size, const Byte* bytes) {

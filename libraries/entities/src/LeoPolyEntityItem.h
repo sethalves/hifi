@@ -56,6 +56,8 @@ class LeoPolyEntityItem : public EntityItem {
 
     static const QString DEFAULT_LEOPOLY_URL;
 
+    virtual void doExportCurrentState(){};
+
  protected:
 
     QString _leoPolyURL;

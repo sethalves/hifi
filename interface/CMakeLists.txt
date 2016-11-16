@@ -313,6 +313,17 @@ else (APPLE)
     set(EXECUTABLE_COMPONENT ${CLIENT_COMPONENT})
 
     optional_win_executable_signing()
+
+	 # copy the resources files beside the executable
+  add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+    "${LEOPOLY_INCLUDE_DIRS}/res"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>/res
+   COMMAND "${CMAKE_COMMAND}" -E copy_directory
+   "${LEOPOLY_INCLUDE_DIRS}/TestModels"
+   $<TARGET_FILE_DIR:${TARGET_NAME}>/TestModels
+  )
+
   endif()
 endif (APPLE)
 

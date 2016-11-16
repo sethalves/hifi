@@ -2149,20 +2149,43 @@ void Application::paintGL() {
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
     {
         auto myAvatar = getMyAvatar();
-        auto myAvatarMatrix = createMatFromQuatAndPos(myAvatar->getOrientation(), myAvatar->getPosition());
-        auto sensorToWorldMatrix = glm::transpose(myAvatar->getSensorToWorldMatrix());
 
-        LeoPolyPlugin::Instance().setSensorToWorldMat(const_cast<float*>(glm::value_ptr(sensorToWorldMatrix)));
+        double buttons[] = { _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RT_CLICK), 0, 0, 0 };
+        auto rightHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
+        auto leftHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
+
+
+        double dArray[16] = { 0.0 };
+        glm::mat4 rightHandMat = glm::transpose(Transform(rightHandPose.getRotation(), Transform::Vec3(1, 1, 1), rightHandPose.getTranslation()).getMatrix());
+        glm::mat4 leftHandMat = glm::transpose(Transform(leftHandPose.getRotation(), Transform::Vec3(1, 1, 1), leftHandPose.getTranslation()).getMatrix());
+        const float *pSource = const_cast<float*>(glm::value_ptr(rightHandMat));
+        for (int i = 0; i < 16; ++i)
+            dArray[i] = pSource[i];
+        
+        LeoPolyPlugin::Instance().setControllerStatesInput(0, 0, buttons,
+            _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RS_X),
+            _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RS_Y), dArray);
+
+        buttons[0] = _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::LT_CLICK);
+
+        pSource = const_cast<float*>(glm::value_ptr(leftHandMat));
+        for (int i = 0; i < 16; ++i)
+            dArray[i] = pSource[i];
+
+        LeoPolyPlugin::Instance().setControllerStatesInput(1, 1, buttons,
+            _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::LS_X),
+            _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::LS_Y),
+            dArray);
         EntityItemID entityUnderSculptID;
+
         entityUnderSculptID.data1 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1;
         entityUnderSculptID.data2 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data2;
         entityUnderSculptID.data3 = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data3;
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        
-        static bool loool = false;
-        //if (!looool)
+        static double time = GetCurrentTime();
+        if (time + 2000< GetCurrentTime())
         {
             auto tree = getEntities()->getTree();
 
@@ -2171,19 +2194,12 @@ void Application::paintGL() {
                 RenderableLeoPolyEntityItem* edited = (RenderableLeoPolyEntityItem*)tree->findByID(entityUnderSculptID).get();
                 if (edited)
                 {
-                   // edited->update(0);
-                    if (!loool)
-                    {
-                        string uploadPath = "\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\";
-                        string urlPath = edited->getLeoPolyURL().toStdString();
-                        const size_t last_slash_idx = urlPath.find_last_of("\\/");
-                        if (std::string::npos != last_slash_idx)
-                        {
-                            urlPath.erase(0, last_slash_idx + 1);
-                        }
-                        LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath + urlPath).c_str());
-                        loool = true;
-                    }
+
+                        edited->doExportCurrentState();
+                        time = GetCurrentTime();
+                        auto sender = qApp->getEntityEditPacketSender();
+                        sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
+                        edited->setLastBroadcast(time);
                 }
             });
 
