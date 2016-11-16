@@ -2184,26 +2184,22 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        static unsigned time = usecTimestampNow();
-        if (time + 2000< usecTimestampNow())
-        {
             auto tree = getEntities()->getTree();
 
             tree->withWriteLock([&]
             {
                 RenderableLeoPolyEntityItem* edited = (RenderableLeoPolyEntityItem*)tree->findByID(entityUnderSculptID).get();
-                if (edited)
+                if (edited && edited->getLastBroadcast()+2000000<usecTimestampNow())
                 {
 
                         edited->doExportCurrentState();
-                        time = usecTimestampNow();
                         auto sender = qApp->getEntityEditPacketSender();
                         sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
-                        edited->setLastBroadcast(time);
+                        edited->setLastBroadcast(usecTimestampNow());
                 }
             });
 
-        }
+        
 
 
 
