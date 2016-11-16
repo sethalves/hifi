@@ -2184,8 +2184,8 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        static double time = GetCurrentTime();
-        if (time + 2000< GetCurrentTime())
+        static double time = usecTimestampNow();
+        if (time + 2000< usecTimestampNow())
         {
             auto tree = getEntities()->getTree();
 
@@ -2196,7 +2196,7 @@ void Application::paintGL() {
                 {
 
                         edited->doExportCurrentState();
-                        time = GetCurrentTime();
+                        time = usecTimestampNow();
                         auto sender = qApp->getEntityEditPacketSender();
                         sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
                         edited->setLastBroadcast(time);
