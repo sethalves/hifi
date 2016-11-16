@@ -2184,7 +2184,7 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-        static double time = usecTimestampNow();
+        static unsigned time = usecTimestampNow();
         if (time + 2000< usecTimestampNow())
         {
             auto tree = getEntities()->getTree();
