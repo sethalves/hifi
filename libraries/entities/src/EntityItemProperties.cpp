@@ -232,7 +232,6 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     EntityPropertyFlags changedProperties;
 
     CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_BY, lastEditedBy);
-    //CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerprint); // read only! Set by server!!
     CHECK_PROPERTY_CHANGE(PROP_POSITION, position);
     CHECK_PROPERTY_CHANGE(PROP_DIMENSIONS, dimensions);
     CHECK_PROPERTY_CHANGE(PROP_ROTATION, rotation);
@@ -342,8 +341,6 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
 
     CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
     CHECK_PROPERTY_CHANGE(PROP_DPI, dpi);
-
-    CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerPrint);
 
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
@@ -1349,10 +1346,6 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
-
-            if (command == PacketType::EntityEditCAS) {
-                APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, properties.getLastEditedFingerPrint());
-            }
         }
 
         if (propertyCount > 0) {
@@ -1648,10 +1641,6 @@ bool EntityItemProperties::decodeEntityEditPacket(PacketType packetType, const u
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ACTION_DATA, QByteArray, setActionData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ALPHA, float, setAlpha);
-
-    if (packetType == PacketType::EntityEditCAS) {
-        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LAST_EDITED_FINGERPRINT, QUuid, setLastEditedFingerPrint);
-    }
 
     return valid;
 }
