@@ -343,6 +343,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
     CHECK_PROPERTY_CHANGE(PROP_DPI, dpi);
 
+    CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerPrint);
+
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
     changedProperties += _skybox.getChangedProperties();
@@ -1347,6 +1349,10 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
+
+            if (command == PacketType::EntityEditCAS) {
+                APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, properties.getLastEditedFingerPrint());
+            }
         }
 
         if (propertyCount > 0) {
@@ -1423,10 +1429,9 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 //
 // TODO: Implement support for paged properties, spanning MTU, and custom properties
 //
-// TODO: Implement support for script and visible properties.
-//
-bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int bytesToRead, int& processedBytes,
-                                                  EntityItemID& entityID, EntityItemProperties& properties) {
+bool EntityItemProperties::decodeEntityEditPacket(PacketType packetType, const unsigned char* data, int bytesToRead, 
+                                                  int& processedBytes, EntityItemID& entityID, 
+                                                  EntityItemProperties& properties) {
     bool valid = false;
 
     const unsigned char* dataAt = data;
@@ -1643,6 +1648,10 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ACTION_DATA, QByteArray, setActionData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ALPHA, float, setAlpha);
+
+    if (packetType == PacketType::EntityEditCAS) {
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LAST_EDITED_FINGERPRINT, QUuid, setLastEditedFingerPrint);
+    }
 
     return valid;
 }

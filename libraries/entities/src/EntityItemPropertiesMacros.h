@@ -410,6 +410,12 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
         void set##N(const T& value) { _##n = value; _##n##Changed = true; } \
     DEFINE_CORE(N, n, T, V)
 
+#define DEBUG_DEFINE_PROPERTY_REF(P, N, n, T, V)        \
+    public: \
+        const T& get##N() const { qDebug() << "get" #N; return _##n; } \
+        void set##N(const T& value) { qDebug() << "set" #N;  _##n = value; _##n##Changed = true; } \
+    DEFINE_CORE(N, n, T, V)
+
 #define DEFINE_PROPERTY_REF_WITH_SETTER(P, N, n, T, V)        \
     public: \
         const T& get##N() const { return _##n; } \

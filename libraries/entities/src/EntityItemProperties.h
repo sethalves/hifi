@@ -220,7 +220,7 @@ public:
     DEFINE_PROPERTY_REF(PROP_DPI, DPI, dpi, uint16_t, ENTITY_ITEM_DEFAULT_DPI);
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
-    DEFINE_PROPERTY_REF(PROP_LAST_EDITED_FINGERPRINT, LastEditedFingerPrint, lastEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
+    DEBUG_DEFINE_PROPERTY_REF(PROP_LAST_EDITED_FINGERPRINT, LastEditedFingerPrint, lastEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
 
     static QString getBackgroundModeString(BackgroundMode mode);
 
@@ -243,7 +243,7 @@ public:
 
     static bool encodeEraseEntityMessage(const EntityItemID& entityItemID, QByteArray& buffer);
 
-    static bool decodeEntityEditPacket(const unsigned char* data, int bytesToRead, int& processedBytes,
+    static bool decodeEntityEditPacket(PacketType packetType, const unsigned char* data, int bytesToRead, int& processedBytes,
                                        EntityItemID& entityID, EntityItemProperties& properties);
 
     bool localRenderAlphaChanged() const { return _localRenderAlphaChanged; }

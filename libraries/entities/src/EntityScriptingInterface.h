@@ -87,35 +87,87 @@ public:
     ActivityTracking getActivityTracking() const { return _activityTracking; }
 public slots:
 
-    // returns true if the DomainServer will allow this Node/Avatar to make changes
+    /**jsdoc
+    * @function Entities.canAdjustLocks
+    * @return true if the DomainServer will allow this Node/Avatar to make changes
+    */
     Q_INVOKABLE bool canAdjustLocks();
 
-    // returns true if the DomainServer will allow this Node/Avatar to rez new entities
+    /**jsdoc
+    * @function Entities.canRez
+    * @return true if the DomainServer will allow this Node/Avatar to rez new entities
+    */
     Q_INVOKABLE bool canRez();
+
+    /**jsdoc
+    * @function Entities.canRezTmp
+    * @return true if the DomainServer will allow this Node/Avatar to rez temporary new entities
+    */
     Q_INVOKABLE bool canRezTmp();
 
-    /// adds a model with the specific properties
+    /**jsdoc
+    * adds an entity with the specific properties
+    * @function Entities.addEntity
+    * @return id of the entity added
+    */
     Q_INVOKABLE QUuid addEntity(const EntityItemProperties& properties, bool clientOnly = false);
 
-    /// temporary method until addEntity can be used from QJSEngine
+    /**jsdoc
+    * adds a model type entity with the specific properties
+    * @function Entities.addModelEntity
+    * @return id of the entity added
+    */
     Q_INVOKABLE QUuid addModelEntity(const QString& name, const QString& modelUrl, const QString& shapeType, bool dynamic,
                                      const glm::vec3& position, const glm::vec3& gravity);
 
-    /// gets the current model properties for a specific model
-    /// this function will not find return results in script engine contexts which don't have access to models
+    /**jsdoc
+    * gets the current properties for a specific entity
+    * this function will not find return results in script engine contexts which don't have access to models
+    * @function Entities.getEntityProperties
+    * @return the properties of the entity
+    */
     Q_INVOKABLE EntityItemProperties getEntityProperties(QUuid entityID);
+
+    /**jsdoc
+    * gets the current value for specific properties for a specific entity
+    * this function will not find return results in script engine contexts which don't have access to models
+    * @function Entities.getEntityProperties
+    * @return the properties of the entity
+    */
     Q_INVOKABLE EntityItemProperties getEntityProperties(QUuid identity, EntityPropertyFlags desiredProperties);
 
-    /// edits a model updating only the included properties, will return the identified EntityItemID in case of
-    /// successful edit, if the input entityID is for an unknown model this function will have no effect
+    /**jsdoc
+    * edits an entity updating only the included properties, will return the identified EntityItemID in case of
+    * successful edit, if the input entityID is for an unknown model this function will have no effect
+    * @function Entities.editEntity
+    * @return the properties id of the entity
+    */
     Q_INVOKABLE QUuid editEntity(QUuid entityID, const EntityItemProperties& properties);
 
-    /// deletes a model
+    /**jsdoc
+    * edits an entity using the compare and swap algorithm, updating only the included properties, and only
+    * if the current client has the most recent values for the entity being edited. will return the identified 
+    * EntityItemID in case of successful edit, if the input entityID is for an unknown model this function 
+    * will have no effect, if the client did not have the most recent values for entity properties, the
+    * edit will be rejected by the server, and the client state will eventually return to the correct current
+    * state.
+    * @function Entities.editEntityCompareAndSwap
+    * @return the properties id of the entity
+    */
+    Q_INVOKABLE QUuid editEntityCompareAndSwap(QUuid entityID, const EntityItemProperties& properties);
+
+    /**jsdoc
+    * deleted an entity from the scene
+    * @function Entities.deleteEntity
+    */
     Q_INVOKABLE void deleteEntity(QUuid entityID);
 
-    /// Allows a script to call a method on an entity's script. The method will execute in the entity script
-    /// engine. If the entity does not have an entity script or the method does not exist, this call will have
-    /// no effect.
+    /**jsdoc
+    * Allows a script to call a method on an entity's script. The method will execute in the entity script
+    * engine. If the entity does not have an entity script or the method does not exist, this call will have
+    * no effect.
+    * @function Entities.callEntityMethod
+    */
     Q_INVOKABLE void callEntityMethod(QUuid entityID, const QString& method, const QStringList& params = QStringList());
 
     /// finds the closest model to the center point, within the radius
@@ -252,6 +304,7 @@ signals:
     void webEventReceived(const EntityItemID& entityItemID, const QVariant& message);
 
 private:
+    QUuid editEntityWorker(QUuid id, const EntityItemProperties& scriptSideProperties, PacketType packetType);
     bool actionWorker(const QUuid& entityID, std::function<bool(EntitySimulationPointer, EntityItemPointer)> actor);
     bool setVoxels(QUuid entityID, std::function<bool(PolyVoxEntityItem&)> actor);
     bool setPoints(QUuid entityID, std::function<bool(LineEntityItem&)> actor);

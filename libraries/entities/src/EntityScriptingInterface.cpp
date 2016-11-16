@@ -311,7 +311,15 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
     return convertLocationToScriptSemantics(results);
 }
 
+QUuid EntityScriptingInterface::editEntityCompareAndSwap(QUuid id, const EntityItemProperties& scriptSideProperties) {
+    return editEntityWorker(id, scriptSideProperties, PacketType::EntityEditCAS);
+}
+
 QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties) {
+    return editEntityWorker(id, scriptSideProperties, PacketType::EntityEdit);
+}
+
+QUuid EntityScriptingInterface::editEntityWorker(QUuid id, const EntityItemProperties& scriptSideProperties, PacketType packetType) {
     _activityTracking.editedEntityCount++;
 
     EntityItemProperties properties = scriptSideProperties;
@@ -324,9 +332,11 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
     EntityItemID entityID(id);
     if (!_entityTree) {
-        queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+        // note: for EntityEditCAS this will almost surely fail, because the local client
+        // doesn't know the last edit finger print
+        queueEntityMessage(packetType, entityID, properties);
 
-        //if there is no local entity entity tree, no existing velocity, use 0.
+        // if there is no local entity entity tree, no existing velocity, use 0.
         float cost = calculateCost(density * volume, oldVelocity, newVelocity);
         cost *= costMultiplier;
 
@@ -339,14 +349,16 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
         return id;
     }
-    // If we have a local entity tree set, then also update it.
-
+    // If we have a local entity tree set, then also update it, and make sure to get the last
+    // known EditedFingerPrint to include for any EntityEditCAS edits.
+    QUuid lastEditedFingerPrint;
     bool updatedEntity = false;
     _entityTree->withWriteLock([&] {
         EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
         if (!entity) {
             return;
         }
+        lastEditedFingerPrint = entity->getLastEditedFingerPrint();
 
         auto nodeList = DependencyManager::get<NodeList>();
         if (entity->getClientOnly() && entity->getOwningAvatarID() != nodeList->getSessionUUID()) {
@@ -453,14 +465,16 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                         EntityItemProperties newQueryCubeProperties;
                         newQueryCubeProperties.setQueryAACube(descendant->getQueryAACube());
                         newQueryCubeProperties.setLastEdited(properties.getLastEdited());
-                        queueEntityMessage(PacketType::EntityEdit, descendant->getID(), newQueryCubeProperties);
+                        newQueryCubeProperties.setLastEditedFingerPrint(entityDescendant->getLastEditedFingerPrint());
+                        queueEntityMessage(packetType, descendant->getID(), newQueryCubeProperties);
                         entityDescendant->setLastBroadcast(usecTimestampNow());
                     }
                 }
             });
         }
     });
-    queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+    properties.setLastEditedFingerPrint(lastEditedFingerPrint);
+    queueEntityMessage(packetType, entityID, properties);
     return id;
 }
 
