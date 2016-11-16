@@ -33,6 +33,9 @@ std::atomic<Texture::Size> Texture::_allowedCPUMemoryUsage { 0 };
 
 std::atomic<bool> Texture::_enableSparseTextures { false };
 std::atomic<bool> Texture::_enableIncrementalTextureTransfers { false };
+bool recommendedSparseTextures = (QThread::idealThreadCount() >= MIN_CORES_FOR_INCREMENTAL_TEXTURES);
+std::atomic<bool> Texture::_enableSparseTextures { recommendedSparseTextures };
+            << "\n\tRECOMMENDED enableSparseTextures:" << recommendedSparseTextures;
 
 void Texture::setEnableSparseTextures(bool enabled) {
 #ifdef Q_OS_WIN
@@ -46,19 +49,9 @@ void Texture::setEnableSparseTextures(bool enabled) {
 #endif
 }
 
-void Texture::setEnableIncrementalTextureTransfers(bool enabled) {
-#ifdef Q_OS_WIN
-    qDebug() << "[TEXTURE TRANSFER SUPPORT] SETTING - Enable Incremental Texture Transfer:" << enabled;
-    _enableIncrementalTextureTransfers = enabled;
     if (!_enableIncrementalTextureTransfers && _enableSparseTextures) {
         qDebug() << "[TEXTURE TRANSFER SUPPORT] WARNING - Sparse texture management requires incremental texture transfer enabled.";
     }
-#else
-    qDebug() << "[TEXTURE TRANSFER SUPPORT] Incremental Texture Transfer not supported on this platform.";
-#endif
-}
-
-
 void Texture::updateTextureCPUMemoryUsage(Size prevObjectSize, Size newObjectSize) {
     if (prevObjectSize == newObjectSize) {
         return;
@@ -72,10 +65,6 @@ void Texture::updateTextureCPUMemoryUsage(Size prevObjectSize, Size newObjectSiz
 
 bool Texture::getEnableSparseTextures() { 
     return _enableSparseTextures.load(); 
-}
-
-bool Texture::getEnableIncrementalTextureTransfers() { 
-    return _enableIncrementalTextureTransfers.load(); 
 }
 
 uint32_t Texture::getTextureCPUCount() {
