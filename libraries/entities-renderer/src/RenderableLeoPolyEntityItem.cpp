@@ -191,7 +191,7 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     }
 
     // get the bounds of the mesh, so we can scale it into the bounds of the entity
-    int numMeshParts = (int)mesh->getNumParts();
+    //int numMeshParts = (int)mesh->getNumParts();
     auto meshBounds = mesh->evalMeshBound();
 
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
@@ -308,7 +308,7 @@ void RenderableLeoPolyEntityItem::getMesh() {
         }
         withWriteLock([&] {
             // get the bounds of the mesh, so we can scale it into the bounds of the entity
-            int numMeshParts = (int)_mesh->getNumParts();
+            //int numMeshParts = (int)_mesh->getNumParts();
             auto meshBounds = _mesh->evalMeshBound();
 
             // determine the correct scale to fit mesh into entity bounds, set transform accordingly

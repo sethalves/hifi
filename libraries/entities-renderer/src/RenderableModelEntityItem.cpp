@@ -1331,7 +1331,7 @@ void RenderableModelEntityItem::sendToLeoEngine()
         indicesFlattened[i] = indices[i];
     }
     matIndexesPerTriangles.resize(matStringsPerTriangles.size());
-    for (int matInd = 0; matInd < materialsToSend.size(); matInd++)
+    for (unsigned int matInd = 0; matInd < materialsToSend.size(); matInd++)
     {
         for (int i = 0; i < matStringsPerTriangles.size(); i++)
         {
@@ -1346,7 +1346,7 @@ void RenderableModelEntityItem::sendToLeoEngine()
     model::Box meshBounds;
     for (int i = 0; i < _model->getFBXGeometry().meshes.size(); i++)
     {
-        meshBounds+= _model->getFBXGeometry().meshes[i]._mesh->evalMeshBound();
+        meshBounds += _model->getFBXGeometry().meshes[i]._mesh->evalMeshBound();
     }
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
     auto entityScale = getScale();

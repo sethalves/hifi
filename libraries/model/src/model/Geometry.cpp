@@ -137,7 +137,7 @@ Box Mesh::evalPartsBound(int partStart, int partEnd) const {
 Box Mesh::evalMeshBound() const {
     Box box;
     auto vertices = &_vertexBuffer.get<Vec3>(0);
-    for (auto index = 0; index<_vertexBuffer.getNumElements(); index++)
+    for (unsigned int index = 0; index<_vertexBuffer.getNumElements(); index++)
     {
         box += vertices[index];
     }

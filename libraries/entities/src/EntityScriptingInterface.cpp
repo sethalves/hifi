@@ -1444,7 +1444,6 @@ void EntityScriptingInterface::issueSculptDLLCommand(QString command, QString va
 void EntityScriptingInterface::sculptEntity(QUuid id)
 {
     EntityItemID entityID(id);
-    bool shouldDelete = true;
 
     // If we have a local entity tree set, then also update it.
     if (_entityTree) {

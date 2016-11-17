@@ -2149,11 +2149,11 @@ void Application::paintGL() {
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
     {
         auto myAvatar = getMyAvatar();
-
+        
         double buttons[] = { _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RT_CLICK), 0, 0, 0 };
         auto rightHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
         auto leftHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
-
+        
 
         double dArray[16] = { 0.0 };
         glm::mat4 rightHandMat = glm::transpose(Transform(rightHandPose.getRotation(), Transform::Vec3(1, 1, 1), rightHandPose.getTranslation()).getMatrix());
