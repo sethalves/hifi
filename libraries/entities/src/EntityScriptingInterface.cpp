@@ -324,6 +324,9 @@ QUuid EntityScriptingInterface::editEntityWorker(QUuid id, const EntityItemPrope
 
     EntityItemProperties properties = scriptSideProperties;
 
+    QUuid newEditedFingerPrint = QUuid::createUuid();
+    properties.setNewEditedFingerPrint(newEditedFingerPrint);
+
     auto dimensions = properties.getDimensions();
     float volume = dimensions.x * dimensions.y * dimensions.z;
     auto density = properties.getDensity();
@@ -359,6 +362,7 @@ QUuid EntityScriptingInterface::editEntityWorker(QUuid id, const EntityItemPrope
             return;
         }
         lastEditedFingerPrint = entity->getLastEditedFingerPrint();
+        qDebug() << __FUNCTION__ << "got lastEditedFingerPrint:" << lastEditedFingerPrint;
 
         auto nodeList = DependencyManager::get<NodeList>();
         if (entity->getClientOnly() && entity->getOwningAvatarID() != nodeList->getSessionUUID()) {
@@ -466,6 +470,7 @@ QUuid EntityScriptingInterface::editEntityWorker(QUuid id, const EntityItemPrope
                         newQueryCubeProperties.setQueryAACube(descendant->getQueryAACube());
                         newQueryCubeProperties.setLastEdited(properties.getLastEdited());
                         newQueryCubeProperties.setLastEditedFingerPrint(entityDescendant->getLastEditedFingerPrint());
+                        newQueryCubeProperties.setNewEditedFingerPrint(newEditedFingerPrint);
                         queueEntityMessage(packetType, descendant->getID(), newQueryCubeProperties);
                         entityDescendant->setLastBroadcast(usecTimestampNow());
                     }
@@ -474,6 +479,10 @@ QUuid EntityScriptingInterface::editEntityWorker(QUuid id, const EntityItemPrope
         }
     });
     properties.setLastEditedFingerPrint(lastEditedFingerPrint);
+
+    qDebug() << __FUNCTION__ << "lastEditedFingerPrint:" << lastEditedFingerPrint;
+    qDebug() << __FUNCTION__ << "newEditedFingerPrint:" << newEditedFingerPrint;
+
     queueEntityMessage(packetType, entityID, properties);
     return id;
 }

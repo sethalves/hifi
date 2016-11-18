@@ -232,6 +232,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     EntityPropertyFlags changedProperties;
 
     CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_BY, lastEditedBy);
+    CHECK_PROPERTY_CHANGE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerPrint);
+    CHECK_PROPERTY_CHANGE(PROP_NEW_EDITED_FINGERPRINT, newEditedFingerPrint);
     CHECK_PROPERTY_CHANGE(PROP_POSITION, position);
     CHECK_PROPERTY_CHANGE(PROP_DIMENSIONS, dimensions);
     CHECK_PROPERTY_CHANGE(PROP_ROTATION, rotation);
@@ -375,6 +377,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LAST_EDITED_BY, lastEditedBy);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LAST_EDITED_FINGERPRINT, lastEditedFingerPrint);
+    // COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_NEW_EDITED_FINGERPRINT, newEditedFingerPrint); // NOTE: this is explictly not copyied TO the script values
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_POSITION, position);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_DIMENSIONS, dimensions);
     if (!skipDefaults) {
@@ -619,6 +622,11 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     }
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(lastEditedBy, QUuid, setLastEditedBy);
+
+    // NOTE: This properties are explicitly left out
+    //COPY_PROPERTY_FROM_QSCRIPTVALUE(lastEditedFingerPrint, QUuid, setLastEditedFingerPrint);
+    //COPY_PROPERTY_FROM_QSCRIPTVALUE(newEditedFingerPrint, QUuid, setNewEditedFingerPrint);
+
     COPY_PROPERTY_FROM_QSCRIPTVALUE(position, glmVec3, setPosition);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(dimensions, glmVec3, setDimensions);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(rotation, glmQuat, setRotation);
@@ -759,6 +767,11 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
 
 void EntityItemProperties::merge(const EntityItemProperties& other) {
     COPY_PROPERTY_IF_CHANGED(lastEditedBy);
+
+    // FIXME -- do we really want these?
+    COPY_PROPERTY_IF_CHANGED(lastEditedFingerPrint);
+    COPY_PROPERTY_IF_CHANGED(newEditedFingerPrint);
+
     COPY_PROPERTY_IF_CHANGED(position);
     COPY_PROPERTY_IF_CHANGED(dimensions);
     COPY_PROPERTY_IF_CHANGED(rotation);
@@ -1098,7 +1111,7 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
 //
 // TODO: Implement support for script and visible properties.
 //
-bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItemID id, const EntityItemProperties& properties,
+bool EntityItemProperties::encodeEntityEditPacket(PacketType packetType, EntityItemID id, const EntityItemProperties& properties,
                                                   QByteArray& buffer) {
     OctreePacketData ourDataPacket(false, buffer.size()); // create a packetData object to add out packet details too.
     OctreePacketData* packetData = &ourDataPacket; // we want a pointer to this so we can use our APPEND_ENTITY_PROPERTY macro
@@ -1124,8 +1137,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
         // Now add our edit content details...
 
-        // id
-        // encode our ID as a byte count coded byte stream
+        // id - encode our ID as a byte array in RFC4122 format
         QByteArray encodedID = id.toRfc4122(); // NUM_BYTES_RFC4122_UUID
 
         // encode our type as a byte count coded byte stream
@@ -1172,7 +1184,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         int propertyCount = 0;
 
         bool headerFits = successIDFits && successTypeFits && successLastEditedFits
-        && successLastUpdatedFits && successPropertyFlagsFits;
+                          && successLastUpdatedFits && successPropertyFlagsFits;
 
         int startOfEntityItemData = packetData->getUncompressedByteOffset();
 
@@ -1183,6 +1195,12 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             // These items would go here once supported....
             //      PROP_PAGED_PROPERTY,
             //      PROP_CUSTOM_PROPERTIES_INCLUDED,
+
+            // edit finger prints
+            APPEND_ENTITY_PROPERTY(PROP_NEW_EDITED_FINGERPRINT, properties.getNewEditedFingerPrint());
+            if (packetType == PacketType::EntityEditCAS) {
+                APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, properties.getLastEditedFingerPrint());
+            }
 
             APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, properties._simulationOwner.toByteArray());
             APPEND_ENTITY_PROPERTY(PROP_POSITION, properties.getPosition());
@@ -1483,6 +1501,12 @@ bool EntityItemProperties::decodeEntityEditPacket(PacketType packetType, const u
     dataAt += propertyFlags.getEncodedLength();
     processedBytes += propertyFlags.getEncodedLength();
 
+    // edit finger prints
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_NEW_EDITED_FINGERPRINT, QUuid, setNewEditedFingerPrint);
+    if (packetType == PacketType::EntityEditCAS) {
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LAST_EDITED_FINGERPRINT, QUuid, setLastEditedFingerPrint);
+    }
+
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SIMULATION_OWNER, QByteArray, setSimulationOwner);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_POSITION, glm::vec3, setPosition);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_DIMENSIONS, glm::vec3, setDimensions);  // NOTE: PROP_RADIUS obsolete
@@ -1669,6 +1693,11 @@ bool EntityItemProperties::encodeEraseEntityMessage(const EntityItemID& entityIt
 
 void EntityItemProperties::markAllChanged() {
     _lastEditedByChanged = true;
+
+    // FIXME - do we want these??
+    _lastEditedFingerPrintChanged = true;
+    _newEditedFingerPrintChanged = true;
+
     _simulationOwnerChanged = true;
     _positionChanged = true;
     _dimensionsChanged = true;

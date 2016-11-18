@@ -246,9 +246,9 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
         propertyFlags -= PROP_LAST_ITEM; // clear the last item for now, we may or may not set it as the actual item
 
-        // These items would go here once supported....
-        //      PROP_PAGED_PROPERTY,
-        //      PROP_CUSTOM_PROPERTIES_INCLUDED,
+        // always place this FIRST!!!
+        qDebug() << __FUNCTION__ << "about to write: PROP_LAST_EDITED_FINGERPRINT:" << getLastEditedFingerPrint() << "id:" << getID();
+        APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, getLastEditedFingerPrint());
 
         APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, _simulationOwner.toByteArray());
         APPEND_ENTITY_PROPERTY(PROP_POSITION, getLocalPosition());
@@ -284,7 +284,6 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, getParentJointIndex());
         APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, getQueryAACube());
         APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, getLastEditedBy());
-        APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, getLastEditedFingerPrint());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -517,14 +516,14 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         if (lastSimulatedFromBufferAdjusted > now) {
             lastSimulatedFromBufferAdjusted = now;
         }
-        #ifdef WANT_DEBUG
+        #if 1 // def WANT_DEBUG
             qCDebug(entities) << "                            _lastEdited:" << debugTime(_lastEdited, now);
             qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
             qCDebug(entities) << "        lastSimulatedFromBufferAdjusted:" << debugTime(lastSimulatedFromBufferAdjusted, now);
         #endif
     }
 
-    #ifdef WANT_DEBUG
+    #if 1 // def WANT_DEBUG
         if (overwriteLocalData) {
             qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... changed entity:" << getEntityItemID();
             qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
@@ -544,6 +543,20 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     auto nodeList = DependencyManager::get<NodeList>();
     const QUuid& myNodeID = nodeList->getSessionUUID();
     bool weOwnSimulation = _simulationOwner.matchesValidID(myNodeID);
+
+    QUuid currentLastEditedFromPacketFromEntity = getLastEditedFingerPrint();
+
+    // this is first!! because we need it to determine over-write behavior
+    QUuid lastEditedFromPacket;
+    ALWAYS_READ_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, QUuid, [&lastEditedFromPacket](QUuid fromBuffer) {
+        lastEditedFromPacket = fromBuffer;
+    });
+    qDebug() << __FUNCTION__ << "just read: PROP_LAST_EDITED_FINGERPRINT:" << lastEditedFromPacket << "id:" << getID();
+    qDebug() << __FUNCTION__ << "currentLastEditedFromPacketFromEntity:" << currentLastEditedFromPacketFromEntity;
+    qDebug() << __FUNCTION__ << "overwriteLocalData:" << overwriteLocalData;
+
+    setLastEditedFingerPrint(lastEditedFromPacket);
+
 
 
     // pack SimulationOwner and terse update properties near each other
@@ -706,7 +719,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     READ_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, AACube, setQueryAACube);
     READ_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, QUuid, setLastEditedBy);
-    READ_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, QUuid, setLastEditedFingerprint);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
@@ -1205,6 +1217,10 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedBy, setLastEditedBy);
 
+    qDebug() << __FUNCTION__ << "was lastEditedFingerPrint:" << getLastEditedFingerPrint();
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedFingerPrint, setLastEditedFingerPrint);
+    qDebug() << __FUNCTION__ << "-- NOW -- lastEditedFingerPrint:" << getLastEditedFingerPrint();
+
     AACube saveQueryAACube = _queryAACube;
     checkAndAdjustQueryAACube();
     if (saveQueryAACube != _queryAACube) {
@@ -1239,9 +1255,11 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     }
 
     // fingerprint
+    /**
     if (isOnServer()) {
         _lastEditedFingerprint = QUuid::createUuid();
     }
+    **/
 
     return somethingChanged;
 }

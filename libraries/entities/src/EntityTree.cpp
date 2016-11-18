@@ -1133,7 +1133,14 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                         endLogging = usecTimestampNow();
 
                         startUpdate = usecTimestampNow();
+
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "WAS properties.lastEditedFingerPrint:" << properties.getLastEditedFingerPrint();
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "WAS properties.newEditedFingerPrint:" << properties.getNewEditedFingerPrint();
+
                         properties.setLastEditedBy(senderNode->getUUID());
+                        properties.setLastEditedFingerPrint(properties.getNewEditedFingerPrint());
+
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "about to updateEntity() with properties.lastEditedFingerPrint:" << properties.getLastEditedFingerPrint();
                         updateEntity(entityItemID, properties, senderNode);
                         existingEntity->markAsChangedOnServer();
                         endUpdate = usecTimestampNow();

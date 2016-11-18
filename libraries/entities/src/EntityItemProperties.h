@@ -221,6 +221,7 @@ public:
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_FINGERPRINT, LastEditedFingerPrint, lastEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
+    DEFINE_PROPERTY_REF(PROP_NEW_EDITED_FINGERPRINT, NewEditedFingerPrint, newEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
 
     static QString getBackgroundModeString(BackgroundMode mode);
 

@@ -35,6 +35,15 @@
             propertiesDidntFit -= P;                                \
         }
 
+#define ALWAYS_READ_ENTITY_PROPERTY(P,T,S)                                         \
+        if (propertyFlags.getHasProperty(P)) {                                     \
+            T fromBuffer;                                                          \
+            int bytes = OctreePacketData::unpackDataFromBytes(dataAt, fromBuffer); \
+            dataAt += bytes;                                                       \
+            bytesRead += bytes;                                                    \
+            S(fromBuffer);                                                         \
+        }
+
 #define READ_ENTITY_PROPERTY(P,T,S)                                                \
         if (propertyFlags.getHasProperty(P)) {                                     \
             T fromBuffer;                                                          \
