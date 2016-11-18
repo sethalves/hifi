@@ -56,6 +56,9 @@ QScriptValue RayToEntityIntersectionResultToScriptValue(QScriptEngine* engine, c
 void RayToEntityIntersectionResultFromScriptValue(const QScriptValue& object, RayToEntityIntersectionResult& results);
 
 
+/**jsdoc
+ * @namespace Entities
+ */
 /// handles scripting of Entity commands from JS passed to assigned clients
 class EntityScriptingInterface : public OctreeScriptingInterface, public Dependency  {
     Q_OBJECT
@@ -88,59 +91,59 @@ public:
 public slots:
 
     /**jsdoc
-    * @function Entities.canAdjustLocks
-    * @return true if the DomainServer will allow this Node/Avatar to make changes
-    */
+     * Returns `true` if the DomainServer will allow this Node/Avatar to make changes
+     *
+     * @function Entities.canAdjustLocks
+     * @return {bool} `true` if the client can adjust locks, `false` if not.
+     */
     Q_INVOKABLE bool canAdjustLocks();
 
     /**jsdoc
-    * @function Entities.canRez
-    * @return true if the DomainServer will allow this Node/Avatar to rez new entities
-    */
+     * @function Entities.canRez
+     * @return {bool} `true` if the DomainServer will allow this Node/Avatar to rez new entities
+     */
     Q_INVOKABLE bool canRez();
 
     /**jsdoc
-    * @function Entities.canRezTmp
-    * @return true if the DomainServer will allow this Node/Avatar to rez temporary new entities
-    */
+     * @function Entities.canRezTmp
+     * @return {bool} `true` if the DomainServer will allow this Node/Avatar to rez new temporary entities
+     */
     Q_INVOKABLE bool canRezTmp();
 
     /**jsdoc
-    * adds an entity with the specific properties
-    * @function Entities.addEntity
-    * @return id of the entity added
-    */
+     * Add a new entity with the specified properties. If `clientOnly` is true, the entity will
+     * not be sent to the server and will only be visible/accessible on the local client.
+     *
+     * @function Entities.addEntity
+     * @param {EntityItemProperties} properties Properties of the entity to create.
+     * @param {bool} [clientOnly=false] Whether the entity should only exist locally or not.
+     * @return {EntityID} The entity ID of the newly created entity. The ID will be a null
+     *     UUID (`{00000000-0000-0000-0000-000000000000}`) if the entity could not be created.
+     */
     Q_INVOKABLE QUuid addEntity(const EntityItemProperties& properties, bool clientOnly = false);
 
-    /**jsdoc
-    * adds a model type entity with the specific properties
-    * @function Entities.addModelEntity
-    * @return id of the entity added
-    */
+    /// temporary method until addEntity can be used from QJSEngine
+    /// Deliberately not adding jsdoc, only used internally.
     Q_INVOKABLE QUuid addModelEntity(const QString& name, const QString& modelUrl, const QString& shapeType, bool dynamic,
                                      const glm::vec3& position, const glm::vec3& gravity);
 
     /**jsdoc
-    * gets the current properties for a specific entity
-    * this function will not find return results in script engine contexts which don't have access to models
-    * @function Entities.getEntityProperties
-    * @return the properties of the entity
-    */
+     * Return the properties for the specified {EntityID}.
+     * not be sent to the server and will only be visible/accessible on the local client.
+     * @param {EntityItemProperties} properties Properties of the entity to create.
+     * @param {EntityPropertyFlags} [desiredProperties=[]] Array containing the names of the properties you
+     *     would like to get. If the array is empty, all properties will be returned.
+     * @return {EntityItemProperties} The entity properties for the specified entity.
+     */
     Q_INVOKABLE EntityItemProperties getEntityProperties(QUuid entityID);
-
-    /**jsdoc
-    * gets the current value for specific properties for a specific entity
-    * this function will not find return results in script engine contexts which don't have access to models
-    * @function Entities.getEntityProperties
-    * @return the properties of the entity
-    */
     Q_INVOKABLE EntityItemProperties getEntityProperties(QUuid identity, EntityPropertyFlags desiredProperties);
 
     /**jsdoc
-    * edits an entity updating only the included properties, will return the identified EntityItemID in case of
-    * successful edit, if the input entityID is for an unknown model this function will have no effect
+    * Updates an entity with the specified properties.
+    * If the input entityID is for an unknown entity this function will have no effect
+    *
     * @function Entities.editEntity
-    * @return the properties id of the entity
+    * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
     */
     Q_INVOKABLE QUuid editEntity(QUuid entityID, const EntityItemProperties& properties);
 
@@ -151,23 +154,32 @@ public slots:
     * will have no effect, if the client did not have the most recent values for entity properties, the
     * edit will be rejected by the server, and the client state will eventually return to the correct current
     * state.
-    * @function Entities.editEntityCompareAndSwap
-    * @return the properties id of the entity
+    * @function Entities.editEntity
+    * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
     */
     Q_INVOKABLE QUuid editEntityCompareAndSwap(QUuid entityID, const EntityItemProperties& properties);
 
     /**jsdoc
-    * deleted an entity from the scene
-    * @function Entities.deleteEntity
-    */
+     * Deletes an entity.
+     *
+     * @function Entities.deleteEntity
+     * @param {EntityID} entityID The ID of the entity to delete.
+     */
     Q_INVOKABLE void deleteEntity(QUuid entityID);
 
+    /// Allows a script to call a method on an entity's script. The method will execute in the entity script
+    /// engine. If the entity does not have an entity script or the method does not exist, this call will have
+    /// no effect.
     /**jsdoc
-    * Allows a script to call a method on an entity's script. The method will execute in the entity script
-    * engine. If the entity does not have an entity script or the method does not exist, this call will have
-    * no effect.
-    * @function Entities.callEntityMethod
-    */
+     * Call a method on an entity. If it is running an entity script (specified by the `script` property)
+     * and it exposes a property with the specified name `method`, it will be called
+     * using `params` as the list of arguments.
+     *
+     * @function Entities.callEntityMethod
+     * @param {EntityID} entityID The ID of the entity to call the method on.
+     * @param {string} method The name of the method to call.
+     * @param {string[]} params The list of parameters to call the specified method with.
+     */
     Q_INVOKABLE void callEntityMethod(QUuid entityID, const QString& method, const QStringList& params = QStringList());
 
     /// finds the closest model to the center point, within the radius
