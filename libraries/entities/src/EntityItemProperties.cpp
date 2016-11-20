@@ -338,6 +338,8 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
     CHECK_PROPERTY_CHANGE(PROP_DPI, dpi);
 
+    CHECK_PROPERTY_CHANGE(PROP_CAS_UNIQUE, casUnique);
+
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
     changedProperties += _skybox.getChangedProperties();
@@ -601,6 +603,8 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     properties.setProperty("clientOnly", convertScriptValue(engine, getClientOnly()));
     properties.setProperty("owningAvatarID", convertScriptValue(engine, getOwningAvatarID()));
 
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_CAS_UNIQUE, casUnique);
+
     // FIXME - I don't think these properties are supported any more
     //COPY_PROPERTY_TO_QSCRIPTVALUE(localRenderAlpha);
 
@@ -749,6 +753,8 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(dpi, uint16_t, setDPI);
 
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(casUnique, quint64, setCasUnique);
+
     _lastEdited = usecTimestampNow();
 }
 
@@ -876,6 +882,8 @@ void EntityItemProperties::merge(const EntityItemProperties& other) {
     COPY_PROPERTY_IF_CHANGED(owningAvatarID);
 
     COPY_PROPERTY_IF_CHANGED(dpi);
+
+    COPY_PROPERTY_IF_CHANGED(casUnique);
 
     _lastEdited = usecTimestampNow();
 }
@@ -1055,6 +1063,8 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_PROPERTY_TO_MAP(PROP_GHOSTING_ALLOWED, GhostingAllowed, ghostingAllowed, bool);
 
         ADD_PROPERTY_TO_MAP(PROP_DPI, DPI, dpi, uint16_t);
+
+        ADD_PROPERTY_TO_MAP(PROP_CAS_UNIQUE, CasUnique, casUnique, quint64);
 
         // FIXME - these are not yet handled
         //ADD_PROPERTY_TO_MAP(PROP_CREATED, Created, created, quint64);
@@ -1341,6 +1351,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
+            APPEND_ENTITY_PROPERTY(PROP_CAS_UNIQUE, properties.getCasUnique());
         }
 
         if (propertyCount > 0) {
@@ -1637,6 +1648,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ACTION_DATA, QByteArray, setActionData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ALPHA, float, setAlpha);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_CAS_UNIQUE, quint64, setCasUnique);
 
     return valid;
 }
@@ -1800,6 +1812,7 @@ void EntityItemProperties::markAllChanged() {
     _owningAvatarIDChanged = true;
 
     _dpiChanged = true;
+    _casUniqueChanged = true;
 }
 
 // The minimum bounding box for the entity.
@@ -1822,6 +1835,17 @@ AABox EntityItemProperties::getAABox() const {
 bool EntityItemProperties::hasTerseUpdateChanges() const {
     // a TerseUpdate includes the transform and its derivatives
     return _positionChanged || _velocityChanged || _rotationChanged || _angularVelocityChanged || _accelerationChanged;
+}
+
+bool EntityItemProperties::hasNonTerseUpdateChanges() const {
+    EntityItemProperties copy = *this;
+    copy._positionChanged = false;
+    copy._velocityChanged = false;
+    copy._rotationChanged = false;
+    copy._angularVelocityChanged = false;
+    copy._accelerationChanged = false;
+    EntityPropertyFlags changed = copy.getChangedProperties();
+    return !changed.isEmpty();
 }
 
 bool EntityItemProperties::hasMiscPhysicsChanges() const {
@@ -2141,6 +2165,10 @@ QList<QString> EntityItemProperties::listChangedProperties() {
 
     if (shapeChanged()) {
         out += "shape";
+    }
+
+    if (casUniqueChanged()) {
+        out += "casUnique";
     }
 
     getAnimation().listChangedProperties(out);

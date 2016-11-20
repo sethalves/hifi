@@ -1011,26 +1011,40 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                         properties.setScript(existingEntity->getScript());
                     }
 
-                    // if the EntityItem exists, then update it
-                    startLogging = usecTimestampNow();
-                    if (wantEditLogging()) {
-                        qCDebug(entities) << "User [" << senderNode->getUUID() << "] editing entity. ID:" << entityItemID;
-                        qCDebug(entities) << "   properties:" << properties;
-                    }
-                    if (wantTerseEditLogging()) {
-                        QList<QString> changedProperties = properties.listChangedProperties();
-                        fixupTerseEditLogging(properties, changedProperties);
-                        qCDebug(entities) << senderNode->getUUID() << "edit" <<
-                            existingEntity->getDebugName() << changedProperties;
-                    }
-                    endLogging = usecTimestampNow();
+                    if (!properties.casUniqueChanged() ||
+                        properties.getCasUnique() == existingEntity->getCasUnique()) {
 
-                    startUpdate = usecTimestampNow();
-                    properties.setLastEditedBy(senderNode->getUUID());
-                    updateEntity(entityItemID, properties, senderNode);
-                    existingEntity->markAsChangedOnServer();
-                    endUpdate = usecTimestampNow();
-                    _totalUpdates++;
+                        // if the EntityItem exists, then update it
+                        startLogging = usecTimestampNow();
+                        if (wantEditLogging()) {
+                            qCDebug(entities) << "User [" << senderNode->getUUID() << "] editing entity. ID:" << entityItemID;
+                            qCDebug(entities) << "   properties:" << properties;
+                        }
+                        if (wantTerseEditLogging()) {
+                            QList<QString> changedProperties = properties.listChangedProperties();
+                            fixupTerseEditLogging(properties, changedProperties);
+                            qCDebug(entities) << senderNode->getUUID() << "edit" <<
+                                existingEntity->getDebugName() << changedProperties;
+                        }
+                        endLogging = usecTimestampNow();
+
+                        startUpdate = usecTimestampNow();
+                        properties.setLastEditedBy(senderNode->getUUID());
+                        updateEntity(entityItemID, properties, senderNode);
+                        existingEntity->markAsChangedOnServer();
+                        if (properties.hasNonTerseUpdateChanges()) {
+                            existingEntity->changeCasUnique();
+                        }
+                        endUpdate = usecTimestampNow();
+                        _totalUpdates++;
+                    } else {
+                        if (wantEditLogging() || wantTerseEditLogging()) {
+                            qCDebug(entities) << "Edit by user [" << senderNode->getUUID() << "] rejected due to CAS failure:"
+                                              << entityItemID << properties.getCasUnique()
+                                              << existingEntity->getCasUnique();
+                            break;
+                        }
+                    }
                 } else if (message.getType() == PacketType::EntityAdd) {
                     if (senderNode->getCanRez() || senderNode->getCanRezTmp()) {
                         // this is a new entity... assign a new entityID

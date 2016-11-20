@@ -315,6 +315,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
     _activityTracking.editedEntityCount++;
 
     EntityItemProperties properties = scriptSideProperties;
+    bool cas = properties.casUniqueChanged();
 
     auto dimensions = properties.getDimensions();
     float volume = dimensions.x * dimensions.y * dimensions.z;
@@ -386,7 +387,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
         if (cost > _currentAvatarEnergy) {
             updatedEntity = false;
-        } else {
+        } else if (!cas) { // don't update the local tree for a cas (compare-and-swap) edit
             //debit the avatar energy and continue
             updatedEntity = _entityTree->updateEntity(entityID, properties);
             if (updatedEntity) {
@@ -441,7 +442,9 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             if (properties.parentRelatedPropertyChanged() && entity->computePuffedQueryAACube()) {
                 properties.setQueryAACube(entity->getQueryAACube());
             }
-            entity->setLastBroadcast(usecTimestampNow());
+            if (!cas) {
+                entity->setLastBroadcast(usecTimestampNow());
+            }
             properties.setLastEdited(entity->getLastEdited());
 
             // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server

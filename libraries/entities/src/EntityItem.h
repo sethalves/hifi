@@ -452,6 +452,10 @@ public:
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
 
+    quint64 getCasUnique() const { return _casUnique; }
+    void setCasUnique(quint64 value) { _casUnique = value; }
+    void changeCasUnique() { _casUnique++; }
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }
@@ -474,6 +478,7 @@ protected:
     quint64 _lastEditedFromRemoteInRemoteTime; // last time we received an edit from the server (in server-time-frame)
     quint64 _created;
     quint64 _changedOnServer;
+    quint64 _casUnique { 0 };
 
     mutable AABox _cachedAABox;
     mutable AACube _maxAACube;

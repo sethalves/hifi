@@ -141,6 +141,7 @@ public slots:
     /**jsdoc
      * Updates an entity with the specified properties.
      *
+     * @param {EntityItemProperties} properties Properties of the entity to change.
      * @function Entities.editEntity
      * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
      */

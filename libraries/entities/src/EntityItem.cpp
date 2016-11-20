@@ -143,6 +143,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_OWNING_AVATAR_ID;
 
     requestedProperties += PROP_LAST_EDITED_BY;
+    requestedProperties += PROP_CAS_UNIQUE;
 
     return requestedProperties;
 }
@@ -283,6 +284,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, getParentJointIndex());
         APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, getQueryAACube());
         APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, getLastEditedBy());
+        APPEND_ENTITY_PROPERTY(PROP_CAS_UNIQUE, getCasUnique());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -808,6 +810,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     READ_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, AACube, setQueryAACube);
     READ_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, QUuid, setLastEditedBy);
+    READ_ENTITY_PROPERTY(PROP_CAS_UNIQUE, quint64, setCasUnique);
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
@@ -1211,6 +1214,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(owningAvatarID, getOwningAvatarID);
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(lastEditedBy, getLastEditedBy);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(casUnique, getCasUnique);
 
     properties._defaultSettings = false;
 
@@ -1315,6 +1319,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(owningAvatarID, setOwningAvatarID);
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedBy, setLastEditedBy);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(casUnique, setCasUnique);
 
     AACube saveQueryAACube = _queryAACube;
     checkAndAdjustQueryAACube();

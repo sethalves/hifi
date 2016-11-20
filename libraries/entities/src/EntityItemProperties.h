@@ -221,6 +221,8 @@ public:
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
 
+    DEFINE_PROPERTY_REF(PROP_CAS_UNIQUE, CasUnique, casUnique, quint64, 0);
+
     static QString getBackgroundModeString(BackgroundMode mode);
 
 
@@ -272,6 +274,7 @@ public:
     void setCreated(QDateTime& v);
 
     bool hasTerseUpdateChanges() const;
+    bool hasNonTerseUpdateChanges() const;
     bool hasMiscPhysicsChanges() const;
 
     void clearSimulationOwner();
@@ -459,6 +462,8 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, OwningAvatarID, owningAvatarID, "");
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, LastEditedBy, lastEditedBy, "");
+
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, CasUnique, casUnique, "");
 
     properties.getAnimation().debugDump();
     properties.getSkybox().debugDump();
