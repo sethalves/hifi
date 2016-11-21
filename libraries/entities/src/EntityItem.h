@@ -452,7 +452,12 @@ public:
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
 
+    QUuid getLastEditedFingerPrint() const { return _lastEditedFingerPrint; }
+    
+
 protected:
+    bool isOnServer();
+    void setLastEditedFingerPrint(QUuid value) { _lastEditedFingerPrint = value; } // not public on purpose!!
 
     void setSimulated(bool simulated) { _simulated = simulated; }
 
@@ -468,6 +473,7 @@ protected:
     quint64 _lastUpdated; // last time this entity called update(), this includes animations and non-physics changes
     quint64 _lastEdited; // last official local or remote edit time
     QUuid _lastEditedBy; // id of last editor
+    QUuid _lastEditedFingerPrint; // a unique id indicating the last edit operation
     quint64 _lastBroadcast; // the last time we sent an edit packet about this entity
 
     quint64 _lastEditedFromRemote; // last time we received and edit from the server

@@ -103,6 +103,7 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
     switch (packetType) {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
+        case PacketType::EntityEditCAS:
         case PacketType::EntityErase:
             return true;
         default:
@@ -918,6 +919,69 @@ void EntityTree::fixupTerseEditLogging(EntityItemProperties& properties, QList<Q
     }
 }
 
+void EntityTree::initEntityEditFilterEngine() {
+    _entityEditFilterEngine.evaluate(_entityEditFilter);
+    auto global = _entityEditFilterEngine.globalObject();
+    _entityEditFilterFunction = global.property("filter");
+    _hasEntityEditFilter = _entityEditFilterFunction.isFunction();
+}
+
+bool EntityTree::filterProperties(const EntityItemProperties& propertiesIn, EntityItemProperties& propertiesOut, bool& wasChanged) {
+    if (!_hasEntityEditFilter) {
+        propertiesOut = propertiesIn;
+        wasChanged = false; // not changed
+        return true; // allowed
+    }
+    QScriptValue inputValues = propertiesIn.copyToScriptValue(&_entityEditFilterEngine, false, true);
+    QScriptValueList args;
+    args << inputValues;
+
+    QScriptValue result = _entityEditFilterEngine.newObject();
+    result = _entityEditFilterFunction.call(_nullObjectForFilter, args);
+
+    propertiesOut.copyFromScriptValue(result, false);
+    wasChanged = result.equals(inputValues); // not changed
+    return result.isObject(); // filters should return null or false to completely reject edit or add
+}
+
+void EntityTree::runEntityFilterTest() {
+    qDebug() << "Run entity edit filter test....";
+    static const int TEST_ITERATIONS = 10000;
+    quint64 start = usecTimestampNow();
+
+    if (!_entityEditFilter.isEmpty()) {
+        initEntityEditFilterEngine();
+    }
+
+    // Note: We could think about ways to generalize this for testing more properties
+    EntityItemProperties testProperties;
+    testProperties.setCreatedToNow();
+    testProperties.setColor(xColor { 0, 0, 0 });
+    testProperties.setPosition(glm::vec3(10,10,10));
+    EntityItemProperties testResults;
+
+    for (int i = 0; i < TEST_ITERATIONS; i++) {
+        if (!_entityEditFilter.isEmpty()) {
+            bool wasChanged = false;
+            bool allowed = filterProperties(testProperties, testResults, wasChanged);
+        }
+    }
+    quint64 finish = usecTimestampNow();
+    auto elapsedTime = (finish - start);
+    float averageTime = (float)elapsedTime / (float)TEST_ITERATIONS;
+    QScriptValue testValues = testProperties.copyToScriptValue(&_entityEditFilterEngine, true);
+    QScriptValue results = testResults.copyToScriptValue(&_entityEditFilterEngine, true);
+
+    qDebug() << "     Edit Filter Function:" << _entityEditFilter;
+    qDebug() << "Test iterations completed:" << TEST_ITERATIONS;
+    qDebug() << "   Time to complete tests:" << elapsedTime << "usecs";
+    qDebug() << "                  Average:" << averageTime << "usecs per test";
+    qDebug() << "               Test Value:" << testValues.toVariant();
+    qDebug() << "             Final Result:" << results.toVariant();
+}
+
+
+
 int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned char* editData, int maxLength,
                                      const SharedNodePointer& senderNode) {
 
@@ -928,7 +992,8 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
 
     int processedBytes = 0;
     // we handle these types of "edit" packets
-    switch (message.getType()) {
+    auto packetType = message.getType();
+    switch (packetType) {
         case PacketType::EntityErase: {
             QByteArray dataByteArray = QByteArray::fromRawData(reinterpret_cast<const char*>(editData), maxLength);
             processedBytes = processEraseMessageDetails(dataByteArray, senderNode);
@@ -936,11 +1001,13 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
         }
 
         case PacketType::EntityAdd:
+        case PacketType::EntityEditCAS:
         case PacketType::EntityEdit: {
             quint64 startDecode = 0, endDecode = 0;
             quint64 startLookup = 0, endLookup = 0;
             quint64 startUpdate = 0, endUpdate = 0;
             quint64 startCreate = 0, endCreate = 0;
+            quint64 startFilter = 0, endFilter = 0;
             quint64 startLogging = 0, endLogging = 0;
 
             const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
@@ -952,7 +1019,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             EntityItemProperties properties;
             startDecode = usecTimestampNow();
 
-            bool validEditPacket = EntityItemProperties::decodeEntityEditPacket(editData, maxLength, processedBytes,
+            bool validEditPacket = EntityItemProperties::decodeEntityEditPacket(packetType, editData, maxLength, processedBytes,
                                                                                 entityItemID, properties);
             endDecode = usecTimestampNow();
 
@@ -1000,69 +1067,134 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             // If we got a valid edit packet, then it could be a new entity or it could be an update to
             // an existing entity... handle appropriately
             if (validEditPacket) {
+                startFilter= usecTimestampNow();
+                //qDebug() << "properties:" << properties;
+                QScriptValue originalValues = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
+                qDebug() << "originalValues:" << originalValues.toVariant();
+
+                // enforce any edit filters
+                bool wasChanged = false;
+                bool allowed = filterProperties(properties, properties, wasChanged);
+                QScriptValue filteredResult = properties.copyToScriptValue(&_entityEditFilterEngine, true, true);
+
+                //qDebug() << "properties:" << properties;
+                qDebug() << "filteredResult:" << filteredResult.toVariant();
+
+                if (wasChanged) {
+                    qDebug() << "filteredResult CHANGED... bump the time!!";
+                    if (properties.getLastEdited() == UNKNOWN_CREATED_TIME) {
+                        properties.setLastEdited(usecTimestampNow());
+                    }
+                    properties.setLastEdited(properties.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
+                }
+
+                endFilter = usecTimestampNow();
+
                 // search for the entity by EntityItemID
                 startLookup = usecTimestampNow();
                 EntityItemPointer existingEntity = findEntityByEntityItemID(entityItemID);
                 endLookup = usecTimestampNow();
-                if (existingEntity && message.getType() == PacketType::EntityEdit) {
 
-                    if (suppressDisallowedScript) {
-                        properties.setLastEdited(properties.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
-                        properties.setScript(existingEntity->getScript());
-                    }
+                bool editSucceeded = false;
+                auto packetType = message.getType();
 
-                    // if the EntityItem exists, then update it
-                    startLogging = usecTimestampNow();
-                    if (wantEditLogging()) {
-                        qCDebug(entities) << "User [" << senderNode->getUUID() << "] editing entity. ID:" << entityItemID;
-                        qCDebug(entities) << "   properties:" << properties;
-                    }
-                    if (wantTerseEditLogging()) {
-                        QList<QString> changedProperties = properties.listChangedProperties();
-                        fixupTerseEditLogging(properties, changedProperties);
-                        qCDebug(entities) << senderNode->getUUID() << "edit" <<
-                            existingEntity->getDebugName() << changedProperties;
-                    }
-                    endLogging = usecTimestampNow();
-
-                    startUpdate = usecTimestampNow();
-                    properties.setLastEditedBy(senderNode->getUUID());
-                    updateEntity(entityItemID, properties, senderNode);
-                    existingEntity->markAsChangedOnServer();
-                    endUpdate = usecTimestampNow();
-                    _totalUpdates++;
-                } else if (message.getType() == PacketType::EntityAdd) {
-                    if (senderNode->getCanRez() || senderNode->getCanRezTmp()) {
-                        // this is a new entity... assign a new entityID
-                        properties.setCreated(properties.getLastEdited());
-                        properties.setLastEditedBy(senderNode->getUUID());
-                        startCreate = usecTimestampNow();
-                        EntityItemPointer newEntity = addEntity(entityItemID, properties);
-                        endCreate = usecTimestampNow();
-                        _totalCreates++;
-                        if (newEntity) {
-                            newEntity->markAsChangedOnServer();
-                            notifyNewlyCreatedEntity(*newEntity, senderNode);
-
-                            startLogging = usecTimestampNow();
-                            if (wantEditLogging()) {
-                                qCDebug(entities) << "User [" << senderNode->getUUID() << "] added entity. ID:"
-                                                << newEntity->getEntityItemID();
-                                qCDebug(entities) << "   properties:" << properties;
+                switch (packetType) {
+                    case PacketType::EntityEditCAS: {
+                        // If this is a compare and swap, then we need to check the lastedEditedFingerprint
+                        // in the edit message to the current value for the entity. If it doesn't match, this
+                        // is a fail!
+                        if (existingEntity) {
+                            if (existingEntity->getLastEditedFingerPrint() != properties.getLastEditedFingerPrint()) {
+                                if (wantEditLogging()) {
+                                    qCDebug(entities) << "User [" << senderNode->getUUID() << "] attempted to edit entity. ID:"
+                                        << existingEntity->getEntityItemID() << "but compare and swap finger print didn't match."
+                                        << " sent:" << properties.getLastEditedFingerPrint()
+                                        << " expected:" << existingEntity->getLastEditedFingerPrint();
+                                }
+                                break; // fail case
                             }
-                            if (wantTerseEditLogging()) {
-                                QList<QString> changedProperties = properties.listChangedProperties();
-                                fixupTerseEditLogging(properties, changedProperties);
-                                qCDebug(entities) << senderNode->getUUID() << "add" << entityItemID << changedProperties;
-                            }
-                            endLogging = usecTimestampNow();
-
                         }
-                    } else {
-                        qCDebug(entities) << "User without 'rez rights' [" << senderNode->getUUID()
-                                          << "] attempted to add an entity.";
-                    }
-                } else {
+                        if (wantEditLogging()) {
+                            qCDebug(entities) << "User [" << senderNode->getUUID() << "] editing entity. ID:"
+                                << existingEntity->getEntityItemID() << ". Compare and swap finger print matched - allow edit.";
+                        }
+
+                    } // fall through
+
+                    case PacketType::EntityEdit: {
+                        if (!existingEntity) {
+                            break; // fail
+                        }
+
+                        if (suppressDisallowedScript) {
+                            properties.setLastEdited(properties.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
+                            properties.setScript(existingEntity->getScript());
+                        }
+
+                        // if the EntityItem exists, then update it
+                        startLogging = usecTimestampNow();
+                        if (wantEditLogging()) {
+                            qCDebug(entities) << "User [" << senderNode->getUUID() << "] editing entity. ID:" << entityItemID;
+                            qCDebug(entities) << "   properties:" << properties;
+                        }
+                        if (wantTerseEditLogging()) {
+                            QList<QString> changedProperties = properties.listChangedProperties();
+                            fixupTerseEditLogging(properties, changedProperties);
+                            qCDebug(entities) << senderNode->getUUID() << "edit" <<
+                                existingEntity->getDebugName() << changedProperties;
+                        }
+                        endLogging = usecTimestampNow();
+
+                        startUpdate = usecTimestampNow();
+
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "WAS properties.lastEditedFingerPrint:" << properties.getLastEditedFingerPrint();
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "WAS properties.newEditedFingerPrint:" << properties.getNewEditedFingerPrint();
+
+                        properties.setLastEditedBy(senderNode->getUUID());
+                        properties.setLastEditedFingerPrint(properties.getNewEditedFingerPrint());
+
+                        qDebug() << __FUNCTION__ << "line:" << __LINE__ << "about to updateEntity() with properties.lastEditedFingerPrint:" << properties.getLastEditedFingerPrint();
+                        updateEntity(entityItemID, properties, senderNode);
+                        existingEntity->markAsChangedOnServer();
+                        endUpdate = usecTimestampNow();
+                        _totalUpdates++;
+                        editSucceeded = true;
+                    } break;
+                    case PacketType::EntityAdd: {
+                        if (senderNode->getCanRez() || senderNode->getCanRezTmp()) {
+                            // this is a new entity... assign a new entityID
+                            properties.setCreated(properties.getLastEdited());
+                            properties.setLastEditedBy(senderNode->getUUID());
+                            startCreate = usecTimestampNow();
+                            EntityItemPointer newEntity = addEntity(entityItemID, properties);
+                            endCreate = usecTimestampNow();
+                            _totalCreates++;
+                            if (newEntity) {
+                                newEntity->markAsChangedOnServer();
+                                notifyNewlyCreatedEntity(*newEntity, senderNode);
+
+                                startLogging = usecTimestampNow();
+                                if (wantEditLogging()) {
+                                    qCDebug(entities) << "User [" << senderNode->getUUID() << "] added entity. ID:"
+                                                    << newEntity->getEntityItemID();
+                                    qCDebug(entities) << "   properties:" << properties;
+                                }
+                                if (wantTerseEditLogging()) {
+                                    QList<QString> changedProperties = properties.listChangedProperties();
+                                    fixupTerseEditLogging(properties, changedProperties);
+                                    qCDebug(entities) << senderNode->getUUID() << "add" << entityItemID << changedProperties;
+                                }
+                                endLogging = usecTimestampNow();
+                                editSucceeded = true;
+                            }
+                        } else {
+                            qCDebug(entities) << "User without 'rez rights' [" << senderNode->getUUID()
+                                              << "] attempted to add an entity.";
+                        }
+                    } break;
+                }
+
+                if (!editSucceeded) {
                     static QString repeatedMessage =
                         LogHandler::getInstance().addRepeatedMessageRegex("^Edit failed.*");
                     qCDebug(entities) << "Edit failed. [" << message.getType() <<"] " <<

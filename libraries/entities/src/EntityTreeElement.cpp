@@ -882,11 +882,6 @@ bool EntityTreeElement::removeEntityItem(EntityItemPointer entity) {
 // and dirty path marking in one pass.
 int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
             ReadBitstreamToTreeParams& args) {
-    // If we're the root, but this bitstream doesn't support root elements with data, then
-    // return without reading any bytes
-    if (this == _myTree->getRoot().get() && args.bitstreamVersion < VERSION_ROOT_ELEMENT_HAS_DATA) {
-        return 0;
-    }
 
     const unsigned char* dataAt = data;
     int bytesRead = 0;
@@ -909,13 +904,8 @@ int EntityTreeElement::readElementDataFromBuffer(const unsigned char* data, int 
                 EntityItemID entityItemID;
                 EntityItemPointer entityItem = NULL;
 
-                // Old model files don't have UUIDs in them. So we don't want to try to read those IDs from the stream.
-                // Since this can only happen on loading an old file, we can safely treat these as new entity cases,
-                // which will correctly handle the case of creating models and letting them parse the old format.
-                if (args.bitstreamVersion >= VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
-                    entityItemID = EntityItemID::readEntityItemIDFromBuffer(dataAt, bytesLeftToRead);
-                    entityItem = _myTree->findEntityByEntityItemID(entityItemID);
-                }
+                entityItemID = EntityItemID::readEntityItemIDFromBuffer(dataAt, bytesLeftToRead);
+                entityItem = _myTree->findEntityByEntityItemID(entityItemID);
 
                 // If the item already exists in our tree, we want do the following...
                 // 1) allow the existing item to read from the databuffer

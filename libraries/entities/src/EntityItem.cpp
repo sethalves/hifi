@@ -143,6 +143,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_OWNING_AVATAR_ID;
 
     requestedProperties += PROP_LAST_EDITED_BY;
+    requestedProperties += PROP_LAST_EDITED_FINGERPRINT;
 
     return requestedProperties;
 }
@@ -245,9 +246,9 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
         propertyFlags -= PROP_LAST_ITEM; // clear the last item for now, we may or may not set it as the actual item
 
-        // These items would go here once supported....
-        //      PROP_PAGED_PROPERTY,
-        //      PROP_CUSTOM_PROPERTIES_INCLUDED,
+        // always place this FIRST!!!
+        qDebug() << __FUNCTION__ << "about to write: PROP_LAST_EDITED_FINGERPRINT:" << getLastEditedFingerPrint() << "id:" << getID();
+        APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, getLastEditedFingerPrint());
 
         APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, _simulationOwner.toByteArray());
         APPEND_ENTITY_PROPERTY(PROP_POSITION, getLocalPosition());
@@ -352,14 +353,6 @@ int EntityItem::expectedBytes() {
 
 // clients use this method to unpack FULL updates from entity-server
 int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLeftToRead, ReadBitstreamToTreeParams& args) {
-    if (args.bitstreamVersion < VERSION_ENTITIES_SUPPORT_SPLIT_MTU) {
-
-        // NOTE: This shouldn't happen. The only versions of the bit stream that didn't support split mtu buffers should
-        // be handled by the model subclass and shouldn't call this routine.
-        qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... "
-                        "ERROR CASE...args.bitstreamVersion < VERSION_ENTITIES_SUPPORT_SPLIT_MTU";
-        return 0;
-    }
     setSourceUUID(args.sourceUUID);
 
     args.entitiesPerPacket++;
@@ -381,44 +374,11 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     BufferParser parser(data, bytesLeftToRead);
 
-#ifdef DEBUG
-#define VALIDATE_ENTITY_ITEM_PARSER 1
-#endif
-
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    int bytesRead = 0;
-    int originalLength = bytesLeftToRead;
-    // TODO: figure out a way to avoid the big deep copy below.
-    QByteArray originalDataBuffer((const char*)data, originalLength); // big deep copy!
-    const unsigned char* dataAt = data;
-#endif
-
     // id
     parser.readUuid(_id);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedID = originalDataBuffer.mid(bytesRead, NUM_BYTES_RFC4122_UUID); // maximum possible size
-        QUuid id = QUuid::fromRfc4122(encodedID);
-        dataAt += encodedID.size();
-        bytesRead += encodedID.size();
-        Q_ASSERT(id == _id);
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
 
     // type
     parser.readCompressedCount<quint32>((quint32&)_type);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    QByteArray encodedType = originalDataBuffer.mid(bytesRead); // maximum possible size
-    ByteCountCoded<quint32> typeCoder = encodedType;
-    encodedType = typeCoder; // determine true length
-    dataAt += encodedType.size();
-    bytesRead += encodedType.size();
-    quint32 type = typeCoder;
-    EntityTypes::EntityType oldType = (EntityTypes::EntityType)type;
-    Q_ASSERT(oldType == _type);
-    Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-#endif
 
     bool overwriteLocalData = true; // assume the new content overwrites our local data
     quint64 now = usecTimestampNow();
@@ -428,16 +388,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     {
         quint64 createdFromBuffer = 0;
         parser.readValue(createdFromBuffer);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-        {
-            quint64 createdFromBuffer2 = 0;
-            memcpy(&createdFromBuffer2, dataAt, sizeof(createdFromBuffer2));
-            dataAt += sizeof(createdFromBuffer2);
-            bytesRead += sizeof(createdFromBuffer2);
-            Q_ASSERT(createdFromBuffer2 == createdFromBuffer);
-            Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-        }
-#endif
         if (_created == UNKNOWN_CREATED_TIME) {
             // we don't yet have a _created timestamp, so we accept this one
             createdFromBuffer -= clockSkew;
@@ -469,16 +419,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // TODO: we could make this encoded as a delta from _created
     // _lastEdited
     parser.readValue(lastEditedFromBuffer);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        quint64 lastEditedFromBuffer2 = 0;
-        memcpy(&lastEditedFromBuffer2, dataAt, sizeof(lastEditedFromBuffer2));
-        dataAt += sizeof(lastEditedFromBuffer2);
-        bytesRead += sizeof(lastEditedFromBuffer2);
-        Q_ASSERT(lastEditedFromBuffer2 == lastEditedFromBuffer);
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
     quint64 lastEditedFromBufferAdjusted = lastEditedFromBuffer == 0 ? 0 : lastEditedFromBuffer - clockSkew;
     if (lastEditedFromBufferAdjusted > now) {
         lastEditedFromBufferAdjusted = now;
@@ -555,18 +495,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // last updated is stored as ByteCountCoded delta from lastEdited
     quint64 updateDelta;
     parser.readCompressedCount(updateDelta);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedUpdateDelta = originalDataBuffer.mid(bytesRead); // maximum possible size
-        ByteCountCoded<quint64> updateDeltaCoder = encodedUpdateDelta;
-        quint64 updateDelta2 = updateDeltaCoder;
-        Q_ASSERT(updateDelta == updateDelta2);
-        encodedUpdateDelta = updateDeltaCoder; // determine true length
-        dataAt += encodedUpdateDelta.size();
-        bytesRead += encodedUpdateDelta.size();
-        Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-    }
-#endif
 
     if (overwriteLocalData) {
         _lastUpdated = lastEditedFromBufferAdjusted + updateDelta; // don't adjust for clock skew since we already did that
@@ -579,37 +507,23 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     // Newer bitstreams will have a last simulated and a last updated value
     quint64 lastSimulatedFromBufferAdjusted = now;
-    if (args.bitstreamVersion >= VERSION_ENTITIES_HAS_LAST_SIMULATED_TIME) {
-        // last simulated is stored as ByteCountCoded delta from lastEdited
-        quint64 simulatedDelta;
-        parser.readCompressedCount(simulatedDelta);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-        {
-            QByteArray encodedSimulatedDelta = originalDataBuffer.mid(bytesRead); // maximum possible size
-            ByteCountCoded<quint64> simulatedDeltaCoder = encodedSimulatedDelta;
-            quint64 simulatedDelta2 = simulatedDeltaCoder;
-            Q_ASSERT(simulatedDelta2 == simulatedDelta);
-            encodedSimulatedDelta = simulatedDeltaCoder; // determine true length
-            dataAt += encodedSimulatedDelta.size();
-            bytesRead += encodedSimulatedDelta.size();
-            Q_ASSERT(parser.offset() == (unsigned int) bytesRead);
-        }
-#endif
+    // last simulated is stored as ByteCountCoded delta from lastEdited
+    quint64 simulatedDelta;
+    parser.readCompressedCount(simulatedDelta);
 
-        if (overwriteLocalData) {
-            lastSimulatedFromBufferAdjusted = lastEditedFromBufferAdjusted + simulatedDelta; // don't adjust for clock skew since we already did that
-            if (lastSimulatedFromBufferAdjusted > now) {
-                lastSimulatedFromBufferAdjusted = now;
-            }
-            #ifdef WANT_DEBUG
-                qCDebug(entities) << "                            _lastEdited:" << debugTime(_lastEdited, now);
-                qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
-                qCDebug(entities) << "        lastSimulatedFromBufferAdjusted:" << debugTime(lastSimulatedFromBufferAdjusted, now);
-            #endif
+    if (overwriteLocalData) {
+        lastSimulatedFromBufferAdjusted = lastEditedFromBufferAdjusted + simulatedDelta; // don't adjust for clock skew since we already did that
+        if (lastSimulatedFromBufferAdjusted > now) {
+            lastSimulatedFromBufferAdjusted = now;
         }
+        #if 1 // def WANT_DEBUG
+            qCDebug(entities) << "                            _lastEdited:" << debugTime(_lastEdited, now);
+            qCDebug(entities) << "           lastEditedFromBufferAdjusted:" << debugTime(lastEditedFromBufferAdjusted, now);
+            qCDebug(entities) << "        lastSimulatedFromBufferAdjusted:" << debugTime(lastSimulatedFromBufferAdjusted, now);
+        #endif
     }
 
-    #ifdef WANT_DEBUG
+    #if 1 // def WANT_DEBUG
         if (overwriteLocalData) {
             qCDebug(entities) << "EntityItem::readEntityDataFromBuffer()... changed entity:" << getEntityItemID();
             qCDebug(entities) << "                          getLastEdited:" << debugTime(getLastEdited(), now);
@@ -622,27 +536,27 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // Property Flags
     EntityPropertyFlags propertyFlags;
     parser.readFlags(propertyFlags);
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    {
-        QByteArray encodedPropertyFlags = originalDataBuffer.mid(bytesRead); // maximum possible size
-        EntityPropertyFlags propertyFlags2 = encodedPropertyFlags;
-        dataAt += propertyFlags.getEncodedLength();
-        bytesRead += propertyFlags.getEncodedLength();
-        Q_ASSERT(propertyFlags2 == propertyFlags);
-        Q_ASSERT(parser.offset() == (unsigned int)bytesRead);
-    }
-#endif
 
-#ifdef VALIDATE_ENTITY_ITEM_PARSER
-    Q_ASSERT(parser.data() + parser.offset() == dataAt);
-#else
     const unsigned char* dataAt = parser.data() + parser.offset();
     int bytesRead = (int)parser.offset();
-#endif
 
     auto nodeList = DependencyManager::get<NodeList>();
     const QUuid& myNodeID = nodeList->getSessionUUID();
     bool weOwnSimulation = _simulationOwner.matchesValidID(myNodeID);
+
+    QUuid currentLastEditedFromPacketFromEntity = getLastEditedFingerPrint();
+
+    // this is first!! because we need it to determine over-write behavior
+    QUuid lastEditedFromPacket;
+    ALWAYS_READ_ENTITY_PROPERTY(PROP_LAST_EDITED_FINGERPRINT, QUuid, [&lastEditedFromPacket](QUuid fromBuffer) {
+        lastEditedFromPacket = fromBuffer;
+    });
+    qDebug() << __FUNCTION__ << "just read: PROP_LAST_EDITED_FINGERPRINT:" << lastEditedFromPacket << "id:" << getID();
+    qDebug() << __FUNCTION__ << "currentLastEditedFromPacketFromEntity:" << currentLastEditedFromPacketFromEntity;
+    qDebug() << __FUNCTION__ << "overwriteLocalData:" << overwriteLocalData;
+
+    setLastEditedFingerPrint(lastEditedFromPacket);
+
 
 
     // pack SimulationOwner and terse update properties near each other
@@ -787,10 +701,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_DYNAMIC, bool, updateDynamic);
     READ_ENTITY_PROPERTY(PROP_LOCKED, bool, setLocked);
     READ_ENTITY_PROPERTY(PROP_USER_DATA, QString, setUserData);
-
-    if (args.bitstreamVersion >= VERSION_ENTITIES_HAS_MARKETPLACE_ID) {
-        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
-    }
+    READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
 
     READ_ENTITY_PROPERTY(PROP_NAME, QString, setName);
     READ_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
@@ -811,17 +722,6 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
-
-    ////////////////////////////////////
-    // WARNING: Do not add stream content here after the subclass. Always add it before the subclass
-    //
-    // NOTE: we had a bad version of the stream that we added stream data after the subclass. We can attempt to recover
-    // by doing this parsing here... but it's not likely going to fully recover the content.
-    //
-    // TODO: Remove this code once we've sufficiently migrated content past this damaged version
-    if (args.bitstreamVersion == VERSION_ENTITIES_HAS_MARKETPLACE_ID_DAMAGED) {
-        READ_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, QString, setMarketplaceID);
-    }
 
     if (overwriteLocalData && (getDirtyFlags() & (Simulation::DIRTY_TRANSFORM | Simulation::DIRTY_VELOCITIES))) {
         // NOTE: This code is attempting to "repair" the old data we just got from the server to make it more
@@ -1211,6 +1111,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(owningAvatarID, getOwningAvatarID);
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(lastEditedBy, getLastEditedBy);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lastEditedFingerPrint, getLastEditedFingerPrint);
 
     properties._defaultSettings = false;
 
@@ -1316,6 +1217,10 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedBy, setLastEditedBy);
 
+    qDebug() << __FUNCTION__ << "was lastEditedFingerPrint:" << getLastEditedFingerPrint();
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedFingerPrint, setLastEditedFingerPrint);
+    qDebug() << __FUNCTION__ << "-- NOW -- lastEditedFingerPrint:" << getLastEditedFingerPrint();
+
     AACube saveQueryAACube = _queryAACube;
     checkAndAdjustQueryAACube();
     if (saveQueryAACube != _queryAACube) {
@@ -1348,6 +1253,13 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
         }
         _created = timestamp;
     }
+
+    // fingerprint
+    /**
+    if (isOnServer()) {
+        _lastEditedFingerprint = QUuid::createUuid();
+    }
+    **/
 
     return somethingChanged;
 }
@@ -1912,6 +1824,13 @@ bool EntityItem::updateAction(EntitySimulationPointer simulation, const QUuid& a
     });
     return success;
 }
+
+bool EntityItem::isOnServer() {
+    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
+    bool isOnClient = entityTree ? entityTree->getIsClient() : false; // assume we're on server if unknown
+    return !isOnClient;
+}
+
 
 bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& actionID) {
     bool success = false;

@@ -27,8 +27,9 @@ EntityServer::EntityServer(ReceivedMessage& message) :
     _entitySimulation(NULL)
 {
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
-    packetReceiver.registerListenerForTypes({ PacketType::EntityAdd, PacketType::EntityEdit, PacketType::EntityErase },
-                                            this, "handleEntityPacket");
+    packetReceiver.registerListenerForTypes({ PacketType::EntityAdd, PacketType::EntityEdit, 
+                                              PacketType::EntityEditCAS, PacketType::EntityErase },
+                                              this, "handleEntityPacket");
 }
 
 EntityServer::~EntityServer() {
@@ -285,6 +286,19 @@ void EntityServer::readAdditionalConfiguration(const QJsonObject& settingsSectio
     } else {
         tree->setEntityScriptSourceWhitelist("");
     }
+
+    QString entityEditFilter;
+    if (readOptionString("entityEditFilter", settingsSectionObject, entityEditFilter)) {
+        tree->setEntityEditFilter(entityEditFilter);
+    }
+
+    bool runFilterTest = false;
+    if (readOptionBool("runFilterTest", settingsSectionObject, runFilterTest)) {
+        tree->runEntityFilterTest();
+    } else {
+        tree->initEntityEditFilterEngine();
+    }
+
 }
 
 void EntityServer::nodeAdded(SharedNodePointer node) {

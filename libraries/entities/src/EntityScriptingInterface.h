@@ -139,12 +139,25 @@ public slots:
     Q_INVOKABLE EntityItemProperties getEntityProperties(QUuid identity, EntityPropertyFlags desiredProperties);
 
     /**jsdoc
-     * Updates an entity with the specified properties.
-     *
-     * @function Entities.editEntity
-     * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
-     */
+    * Updates an entity with the specified properties.
+    * If the input entityID is for an unknown entity this function will have no effect
+    *
+    * @function Entities.editEntity
+    * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
+    */
     Q_INVOKABLE QUuid editEntity(QUuid entityID, const EntityItemProperties& properties);
+
+    /**jsdoc
+    * edits an entity using the compare and swap algorithm, updating only the included properties, and only
+    * if the current client has the most recent values for the entity being edited. will return the identified 
+    * EntityItemID in case of successful edit, if the input entityID is for an unknown model this function 
+    * will have no effect, if the client did not have the most recent values for entity properties, the
+    * edit will be rejected by the server, and the client state will eventually return to the correct current
+    * state.
+    * @function Entities.editEntity
+    * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
+    */
+    Q_INVOKABLE QUuid editEntityCompareAndSwap(QUuid entityID, const EntityItemProperties& properties);
 
     /**jsdoc
      * Deletes an entity.
@@ -172,8 +185,6 @@ public slots:
     /// finds the closest model to the center point, within the radius
     /// will return a EntityItemID.isKnownID = false if no models are in the radius
     /// this function will not find any models in script engine contexts which don't have access to models
-    /**jsdoc
-     */
     Q_INVOKABLE QUuid findClosestEntity(const glm::vec3& center, float radius) const;
 
     /// finds models within the search sphere specified by the center point and radius
@@ -305,6 +316,7 @@ signals:
     void webEventReceived(const EntityItemID& entityItemID, const QVariant& message);
 
 private:
+    QUuid editEntityWorker(QUuid id, const EntityItemProperties& scriptSideProperties, PacketType packetType);
     bool actionWorker(const QUuid& entityID, std::function<bool(EntitySimulationPointer, EntityItemPointer)> actor);
     bool setVoxels(QUuid entityID, std::function<bool(PolyVoxEntityItem&)> actor);
     bool setPoints(QUuid entityID, std::function<bool(LineEntityItem&)> actor);

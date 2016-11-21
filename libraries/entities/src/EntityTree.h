@@ -64,6 +64,7 @@ public:
 
 
     void setEntityMaxTmpLifetime(float maxTmpEntityLifetime) { _maxTmpEntityLifetime = maxTmpEntityLifetime; }
+    void setEntityEditFilter(const QString& entityEditFilter) { _entityEditFilter = entityEditFilter; }
     void setEntityScriptSourceWhitelist(const QString& entityScriptSourceWhitelist);
 
     /// Implements our type specific root element factory
@@ -83,8 +84,7 @@ public:
     // own definition. Implement these to allow your octree based server to support editing
     virtual bool getWantSVOfileVersions() const override { return true; }
     virtual PacketType expectedDataPacketType() const override { return PacketType::EntityData; }
-    virtual bool canProcessVersion(PacketVersion thisVersion) const override
-                    { return thisVersion >= VERSION_ENTITIES_USE_METERS_AND_RADIANS; }
+    virtual bool canProcessVersion(PacketVersion thisVersion) const override { return true; }
     virtual bool handlesEditPacketType(PacketType packetType) const override;
     void fixupTerseEditLogging(EntityItemProperties& properties, QList<QString>& changedProperties);
     virtual int processEditPacketData(ReceivedMessage& message, const unsigned char* editData, int maxLength,
@@ -105,8 +105,7 @@ public:
     virtual void releaseSceneEncodeData(OctreeElementExtraEncodeData* extraEncodeData) const override;
     virtual bool mustIncludeAllChildData() const override { return false; }
 
-    virtual bool versionHasSVOfileBreaks(PacketVersion thisVersion) const override
-                    { return thisVersion >= VERSION_ENTITIES_HAS_FILE_BREAKS; }
+    virtual bool versionHasSVOfileBreaks(PacketVersion thisVersion) const override { return true; }
 
     virtual void update() override;
 
@@ -261,6 +260,9 @@ public:
 
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
 
+    void runEntityFilterTest();
+    void initEntityEditFilterEngine();
+
     static const float DEFAULT_MAX_TMP_ENTITY_LIFETIME;
 
 public slots:
@@ -345,6 +347,14 @@ protected:
     QHash<QUuid, QSet<EntityItemID>> _childrenOfAvatars;  // which entities are children of which avatars
 
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
+
+    bool filterProperties(const EntityItemProperties& propertiesIn, EntityItemProperties& propertiesOut, bool& wasChanged);
+
+    QString _entityEditFilter;
+    bool _hasEntityEditFilter { false };
+    QScriptEngine _entityEditFilterEngine;
+    QScriptValue _entityEditFilterFunction;
+    QScriptValue _nullObjectForFilter;
 
     QStringList _entityScriptSourceWhitelist;
 };

@@ -73,7 +73,7 @@ public:
     EntityTypes::EntityType getType() const { return _type; }
     void setType(EntityTypes::EntityType type) { _type = type; }
 
-    virtual QScriptValue copyToScriptValue(QScriptEngine* engine, bool skipDefaults) const;
+    virtual QScriptValue copyToScriptValue(QScriptEngine* engine, bool skipDefaults, bool allowUknownCreateTime = false) const;
     virtual void copyFromScriptValue(const QScriptValue& object, bool honorReadOnly);
 
     static QScriptValue entityPropertyFlagsToScriptValue(QScriptEngine* engine, const EntityPropertyFlags& flags);
@@ -220,6 +220,8 @@ public:
     DEFINE_PROPERTY_REF(PROP_DPI, DPI, dpi, uint16_t, ENTITY_ITEM_DEFAULT_DPI);
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
+    DEFINE_PROPERTY_REF(PROP_LAST_EDITED_FINGERPRINT, LastEditedFingerPrint, lastEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
+    DEFINE_PROPERTY_REF(PROP_NEW_EDITED_FINGERPRINT, NewEditedFingerPrint, newEditedFingerPrint, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_FINGERPRINT);
 
     static QString getBackgroundModeString(BackgroundMode mode);
 
@@ -242,7 +244,7 @@ public:
 
     static bool encodeEraseEntityMessage(const EntityItemID& entityItemID, QByteArray& buffer);
 
-    static bool decodeEntityEditPacket(const unsigned char* data, int bytesToRead, int& processedBytes,
+    static bool decodeEntityEditPacket(PacketType packetType, const unsigned char* data, int bytesToRead, int& processedBytes,
                                        EntityItemID& entityID, EntityItemProperties& properties);
 
     bool localRenderAlphaChanged() const { return _localRenderAlphaChanged; }
@@ -270,6 +272,7 @@ public:
     void setQueryAACubeDirty() { _queryAACubeChanged = true; }
 
     void setCreated(QDateTime& v);
+    void setCreatedToNow();
 
     bool hasTerseUpdateChanges() const;
     bool hasMiscPhysicsChanges() const;
