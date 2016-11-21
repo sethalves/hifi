@@ -28,6 +28,9 @@ class LeoPolyEntityItem : public EntityItem {
     void setLeoPolyURL(QString leoPolyURL) { _leoPolyURL = leoPolyURL; }
     QString getLeoPolyURL() const { return _leoPolyURL; }
 
+    void setLeoPolyNeedReload(bool value) { _needReload = value; }
+    bool getLeoPolyNeedReload() const { return _needReload; }
+
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const override;
     virtual bool setProperties(const EntityItemProperties& properties) override;
@@ -58,6 +61,7 @@ class LeoPolyEntityItem : public EntityItem {
     virtual void debugDump() const override;
 
     static const QString DEFAULT_LEOPOLY_URL;
+    static const bool DEFAULT_LEOPOLY_NEED_RELOAD;
 
     virtual void doExportCurrentState(){};
 
@@ -67,6 +71,7 @@ class LeoPolyEntityItem : public EntityItem {
  protected:
 
     QString _leoPolyURL;
+    bool _needReload;
 };
 
 #endif // hifi_LeoPolyEntityItem_h

@@ -111,10 +111,8 @@ void RenderableLeoPolyEntityItem::computeShapeInfo(ShapeInfo& info) {
 void RenderableLeoPolyEntityItem::update(const quint64& now) {
     LeoPolyEntityItem::update(now);
 
-    // TODO - place any "simulation" logic here
-    // for example if SculptApp_Frame() needs to be called every frame, this is how it should be done
-
-    //LeoPolyPlugin::Instance().SculptApp_Frame();  // maybe?
+    LeoPolyPlugin::Instance().SculptApp_Frame();
+    updateGeometryFromLeoPlugin();
 }
 
 EntityItemID RenderableLeoPolyEntityItem::getCurrentlyEditingEntityID() {
@@ -158,8 +156,9 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     Q_ASSERT(args->_batch);
 
     // if we don't have a _modelResource yet, then we can't render...
-    if (!_modelResource) {
+    if (!_modelResource || (getLeoPolyNeedReload() && getEntityItemID() != getCurrentlyEditingEntityID())) {
         initializeModelResource();
+        _needReload = false;
         return;
     }
 
@@ -197,6 +196,7 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
     auto entityScale = getDimensions();
     auto meshBoundsScale = meshBounds.getScale();
+
     auto fitInBounds = entityScale / meshBoundsScale;
     transform.setScale(fitInBounds);
 
@@ -224,6 +224,8 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     batch._glUniform3f(voxelVolumeSizeLocation, 16.0, 16.0, 16.0);
 
     batch.drawIndexed(gpu::TRIANGLES, (gpu::uint32)mesh->getNumIndices(), 0);
+    if (_needReload)
+    _needReload = false;
 }
 
 bool RenderableLeoPolyEntityItem::addToScene(EntityItemPointer self,
@@ -299,8 +301,7 @@ void RenderableLeoPolyEntityItem::getMesh() {
     // but calling updateGeometryFromLeoPlugin()...
     if (getEntityItemID() == entityUnderSculptID) 
     {
-        LeoPolyPlugin::Instance().SculptApp_Frame();
-        updateGeometryFromLeoPlugin();
+        update(0);
         bool success;
         Transform transform = getTransformToCenter(success);
         if (!success) {
@@ -346,7 +347,56 @@ void RenderableLeoPolyEntityItem::getMesh() {
         model::MeshPointer emptyMesh(new model::Mesh()); // an empty mesh....
     } else {
         // FIXME- this is a bit of a hack to work around const-ness
-        model::MeshPointer copyOfMesh(new model::Mesh(*meshes[0]));
+        model::MeshPointer copyOfMesh(new model::Mesh());
+        std::vector<VertexNormalMaterial> verticesNormalsMaterials;
+        
+        for (unsigned int i = 0; i < meshes[0]->getNumVertices(); i++) {
+            glm::vec3 actVert = glm::vec3(_modelResource->getFBXGeometry().meshes[0].vertices[i]);
+            glm::vec3 actNorm = glm::vec3(_modelResource->getFBXGeometry().meshes[0].normals[i]);
+            verticesNormalsMaterials.push_back(VertexNormalMaterial{ actVert, actNorm, 0 });
+        }
+
+        auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(VertexNormalMaterial),
+            (gpu::Byte*)verticesNormalsMaterials.data());
+        auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
+        gpu::Resource::Size vertexBufferSize = 0;
+
+        // FIXME - Huh??? - seems to be setting the size for the vertext buffer, but this math is weird
+        if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
+            vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
+        }
+
+        gpu::BufferView vertexBufferView(vertexBufferPtr, 0, vertexBufferSize,
+            sizeof(VertexNormalMaterial),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
+        copyOfMesh->setVertexBuffer(vertexBufferView);
+        copyOfMesh->addAttribute(gpu::Stream::NORMAL,
+            gpu::BufferView(vertexBufferPtr,
+            sizeof(glm::vec3),
+            vertexBufferPtr->getSize() - sizeof(glm::vec3), // FIXME - huh?
+            sizeof(VertexNormalMaterial),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+
+        verticesNormalsMaterials.clear();
+
+
+        std::vector<uint32_t> vecIndices;
+        for (unsigned int part = 0; part < _modelResource->getFBXGeometry().meshes[0].parts.size(); part++)
+        for (unsigned int i = 0; i < meshes[0]->getNumIndices(); i++) {
+            vecIndices.push_back(_modelResource->getFBXGeometry().meshes[0].parts[part].triangleIndices[i]);
+        }
+
+
+        auto indexBuffer = std::make_shared<gpu::Buffer>(vecIndices.size() * sizeof(uint32_t), (gpu::Byte*)vecIndices.data());
+        auto indexBufferPtr = gpu::BufferPointer(indexBuffer);
+
+        gpu::BufferView indexBufferView(indexBufferPtr, gpu::Element(gpu::SCALAR, gpu::UINT32, gpu::RAW));
+        copyOfMesh->setIndexBuffer(indexBufferView);
+
+        vecIndices.clear();
+
+
+
         setMesh(copyOfMesh);
     }
 }
@@ -609,6 +659,16 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
 
     vecIndices.clear();
 
+    // get the bounds of the mesh, so we can scale it into the bounds of the entity
+    //int numMeshParts = (int)_mesh->getNumParts();
+    withWriteLock([&] {
+        if (_mesh)
+        {
+            auto meshBounds = _mesh->evalMeshBound();
+            auto meshBoundsnew = mesh->evalMeshBound();
+            setDimensions(getDimensions()*(meshBoundsnew.getScale() / meshBounds.getScale()));
+        }
+    });
     setMesh(mesh);
 
     delete[] vertices;
@@ -757,6 +817,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     auto entityScale = getDimensions();
     auto meshBoundsScale = meshBounds.getScale();
     auto fitInBounds = entityScale / meshBoundsScale;
+    setScale(fitInBounds);
     transform.setScale(fitInBounds);
 
     // make sure the registration point on the model aligns with the registration point in the entity. 
@@ -764,7 +825,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     auto lowestBounds = meshBounds.getMinimum();
     glm::vec3 adjustLowestBounds = ((registrationPoint * meshBoundsScale) + lowestBounds) * -1.0f;
     transform.postTranslate(adjustLowestBounds);
-    setTransform(transform);
+
     LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(),
         texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))), materialsToSend, matIndexesPerTriangles.toStdVector());
     delete[] verticesFlattened;

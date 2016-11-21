@@ -1468,8 +1468,8 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 {                 
                     newEntity->setRegistrationPoint(entity->getRegistrationPoint());
                    static_cast<LeoPolyEntityItem*>(newEntity.get())->sendToLeoEngine(_entityTree->getModelForEntityItem(entity));
-                    newEntity->setTransform(entity->getTransform());
-                    newEntity->setScale(entity->getScale());
+                   // newEntity->setTransform(entity->getTransform());
+                   // newEntity->setScale(entity->getScale());
                     queueEntityMessage(PacketType::EntityEdit, leoId, newEntity->getProperties());
                 }
                 // auto newEntity=_entityTree->addEntity(leoId, props);

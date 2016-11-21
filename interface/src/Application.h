@@ -456,6 +456,8 @@ private:
     void maybeToggleMenuVisible(QMouseEvent* event) const;
     void toggleMenuUnderReticle() const;
 
+    void perFrameUpdateLeoEngine()const;
+
     MainWindow* _window;
     QElapsedTimer& _sessionRunTimer;
 

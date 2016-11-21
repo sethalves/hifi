@@ -1735,6 +1735,11 @@ void Application::initializeGL() {
     // update before the first render
     update(0);
 
+    LeoPolyPlugin::Instance().SculptApp_init();
+    while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
+    {
+        LeoPolyPlugin::Instance().SculptApp_Frame();
+    }
 }
 
 FrameTimingsScriptingInterface _frameTimingsScriptingInterface;
@@ -2131,30 +2136,23 @@ void Application::paintGL() {
         Stats::getInstance()->setRenderDetails(renderArgs._details);
     }
 
+    perFrameUpdateLeoEngine();
+
     uint64_t lastPaintDuration = usecTimestampNow() - lastPaintBegin;
     _frameTimingsScriptingInterface.addValue(lastPaintDuration);
+}
 
-    /*Will be removed from here ¡ */
-    static bool inited = false;
-    if (!inited)
-    {
-        LeoPolyPlugin::Instance().SculptApp_init();
-        while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
-        {
-            LeoPolyPlugin::Instance().SculptApp_Frame();
-        }
-        inited = true;
-    }
-
+void Application::perFrameUpdateLeoEngine()const
+{
 
     if (LeoPolyPlugin::Instance().CurrentlyUnderEdit.data1 != 0)
     {
         auto myAvatar = getMyAvatar();
-        
+
         double buttons[] = { _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RT_CLICK), 0, 0, 0 };
         auto rightHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
         auto leftHandPose = myAvatar->getRightHandControllerPoseInWorldFrame();
-        
+
 
         double dArray[16] = { 0.0 };
         glm::mat4 rightHandMat = glm::transpose(Transform(rightHandPose.getRotation(), Transform::Vec3(1, 1, 1), rightHandPose.getTranslation()).getMatrix());
@@ -2162,7 +2160,7 @@ void Application::paintGL() {
         const float *pSource = const_cast<float*>(glm::value_ptr(rightHandMat));
         for (int i = 0; i < 16; ++i)
             dArray[i] = pSource[i];
-        
+
         LeoPolyPlugin::Instance().setControllerStatesInput(0, 0, buttons,
             _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RS_X),
             _controllerScriptingInterface->getButtonValue(controller::StandardButtonChannel::RS_Y), dArray);
@@ -2185,22 +2183,24 @@ void Application::paintGL() {
         for (int i = 0; i < 8; i++)
             entityUnderSculptID.data4[i] = LeoPolyPlugin::Instance().CurrentlyUnderEdit.data4[i];
 
-            auto tree = getEntities()->getTree();
+        auto tree = getEntities()->getTree();
 
-            tree->withWriteLock([&]
+        tree->withWriteLock([&]
+        {
+            RenderableLeoPolyEntityItem* edited = (RenderableLeoPolyEntityItem*)tree->findByID(entityUnderSculptID).get();
+            if (edited && edited->getLastBroadcast() + 2000000<usecTimestampNow())
             {
-                RenderableLeoPolyEntityItem* edited = (RenderableLeoPolyEntityItem*)tree->findByID(entityUnderSculptID).get();
-                if (edited && edited->getLastBroadcast()+2000000<usecTimestampNow())
-                {
 
-                        edited->doExportCurrentState();
-                        auto sender = qApp->getEntityEditPacketSender();
-                        sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
-                        edited->setLastBroadcast(usecTimestampNow());
-                }
-            });
+                edited->doExportCurrentState();
+                edited->setLeoPolyNeedReload(true);
+                auto sender = qApp->getEntityEditPacketSender();
+                sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
+                edited->setLastBroadcast(usecTimestampNow());
+                edited->setLeoPolyNeedReload(false);
+            }
+        });
 
-        
+
 
 
 

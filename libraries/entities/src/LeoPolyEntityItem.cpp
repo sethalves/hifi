@@ -24,6 +24,7 @@
 
 
 const QString LeoPolyEntityItem::DEFAULT_LEOPOLY_URL = "";
+const bool LeoPolyEntityItem::DEFAULT_LEOPOLY_NEED_RELOAD = false;
 
 
 EntityItemPointer LeoPolyEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
@@ -44,6 +45,7 @@ EntityItemProperties LeoPolyEntityItem::getProperties(EntityPropertyFlags desire
     EntityItemProperties properties = EntityItem::getProperties(desiredProperties); // get the properties from our base class
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(leoPolyURL, getLeoPolyURL);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(leoPolyNeedReload, getLeoPolyNeedReload);
 
     return properties;
 }
@@ -52,6 +54,7 @@ bool LeoPolyEntityItem::setProperties(const EntityItemProperties& properties) {
     bool somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(leoPolyURL, setLeoPolyURL);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(leoPolyNeedReload, setLeoPolyNeedReload);
 
     if (somethingChanged) {
         bool wantDebug = false;
@@ -75,6 +78,7 @@ int LeoPolyEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* dat
     const unsigned char* dataAt = data;
 
     READ_ENTITY_PROPERTY(PROP_LEOPOLY_URL, QString, setLeoPolyURL);
+    READ_ENTITY_PROPERTY(PROP_LEOPOLY_NEED_RELOAD, bool, setLeoPolyNeedReload);
 
     return bytesRead;
 }
@@ -84,6 +88,7 @@ int LeoPolyEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* dat
 EntityPropertyFlags LeoPolyEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_LEOPOLY_URL;
+    requestedProperties += PROP_LEOPOLY_NEED_RELOAD;
     return requestedProperties;
 }
 
@@ -96,6 +101,7 @@ void LeoPolyEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeB
                                            OctreeElement::AppendState& appendState) const {
     bool successPropertyFits = true;
     APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_URL, getLeoPolyURL());
+    APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_NEED_RELOAD, getLeoPolyNeedReload());
 
 }
 
@@ -106,4 +112,5 @@ void LeoPolyEntityItem::debugDump() const {
     qCDebug(entities) << "          dimensions:" << debugTreeVector(getDimensions());
     qCDebug(entities) << "       getLastEdited:" << debugTime(getLastEdited(), now);
     qCDebug(entities) << "    leoPoly URL:" << getLeoPolyURL();
+    qCDebug(entities) << "    leoPoly needs reload:" << getLeoPolyNeedReload();
 }

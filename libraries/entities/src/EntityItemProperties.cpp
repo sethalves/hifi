@@ -81,6 +81,7 @@ void EntityItemProperties::debugDump() const {
     getKeyLight().debugDump();
 
     qCDebug(entities) << "   _leoPolyURL=" << _leoPolyURL;
+    qCDebug(entities) << "   _leoPolyNeedReload=" << _leoPolyNeedReload;
 
     qCDebug(entities) << "   changed properties...";
     EntityPropertyFlags props = getChangedProperties();
@@ -341,6 +342,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_SHAPE, shape);
     CHECK_PROPERTY_CHANGE(PROP_DPI, dpi);
     CHECK_PROPERTY_CHANGE(PROP_LEOPOLY_URL, leoPolyURL);
+    CHECK_PROPERTY_CHANGE(PROP_LEOPOLY_NEED_RELOAD, leoPolyNeedReload);
 
     changedProperties += _animation.getChangedProperties();
     changedProperties += _keyLight.getChangedProperties();
@@ -543,6 +545,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
     if (_type == EntityTypes::LeoPoly) {
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LEOPOLY_URL, leoPolyURL);
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LEOPOLY_NEED_RELOAD, leoPolyNeedReload);
     }
 
     // Sitting properties support
@@ -757,6 +760,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(dpi, uint16_t, setDPI);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(leoPolyURL, QString, setLeoPolyURL);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(leoPolyNeedReload, bool, setLeoPolyNeedReload);
 
     _lastEdited = usecTimestampNow();
 }
@@ -1353,6 +1357,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
             if (properties.getType() == EntityTypes::LeoPoly) {
                 APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_URL, properties.getLeoPolyURL());
+                APPEND_ENTITY_PROPERTY(PROP_LEOPOLY_NEED_RELOAD, properties.getLeoPolyNeedReload());
             }
         }
 
@@ -1653,6 +1658,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
 
     if (properties.getType() == EntityTypes::LeoPoly) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LEOPOLY_URL, QString, setLeoPolyURL);
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LEOPOLY_NEED_RELOAD, bool, setLeoPolyNeedReload);
     }
 
     return valid;
