@@ -381,7 +381,7 @@ void RenderableLeoPolyEntityItem::getMesh() {
 
 
         std::vector<uint32_t> vecIndices;
-        for (unsigned int part = 0; part < _modelResource->getFBXGeometry().meshes[0].parts.size(); part++)
+        for (int part = 0; part < _modelResource->getFBXGeometry().meshes[0].parts.size(); part++)
         for (unsigned int i = 0; i < meshes[0]->getNumIndices(); i++) {
             vecIndices.push_back(_modelResource->getFBXGeometry().meshes[0].parts[part].triangleIndices[i]);
         }
