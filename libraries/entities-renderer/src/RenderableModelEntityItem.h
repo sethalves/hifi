@@ -103,9 +103,6 @@ public:
     // Transparency is handled in ModelMeshPartPayload
     bool isTransparent() override { return false; }
 
-    //Sends the actual geometry data to the LeoPolyEngine
-    virtual void sendToLeoEngine();
-
 private:
     QVariantMap parseTexturesToMap(QString textures);
     void remapTextures();

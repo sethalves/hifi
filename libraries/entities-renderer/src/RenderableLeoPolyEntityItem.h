@@ -86,7 +86,11 @@ public:
 
     void setUnderSculpting(bool value); // makes the current entity become the actively sculpted entity
 
+    //Exports current model to an external storage via LeoEngine
     void doExportCurrentState()override;
+
+    //Sends the actual geometry data to the LeoPolyEngine
+    void sendToLeoEngine(ModelPointer model) override;
 
 private:
     class VertexNormalMaterial {

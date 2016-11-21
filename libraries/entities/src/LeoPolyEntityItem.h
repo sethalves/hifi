@@ -14,6 +14,9 @@
 
 #include "EntityItem.h"
 
+class Model;
+using ModelPointer = std::shared_ptr<Model>;
+
 class LeoPolyEntityItem : public EntityItem {
  public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
@@ -57,6 +60,9 @@ class LeoPolyEntityItem : public EntityItem {
     static const QString DEFAULT_LEOPOLY_URL;
 
     virtual void doExportCurrentState(){};
+
+    //Sends the actual geometry data to the LeoPolyEngine
+    virtual void sendToLeoEngine(ModelPointer model){};
 
  protected:
 

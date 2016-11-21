@@ -451,8 +451,6 @@ public:
 
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
-    //Sends the actual geometry data to the LeoEngine
-    virtual void sendToLeoEngine(){}
     
 protected:
 
