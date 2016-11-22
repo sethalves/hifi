@@ -114,6 +114,7 @@ private:
     GeometryResource::Pointer _modelResource;
 
     ShapeInfo _shapeInfo;
+    static model::Box evalMeshBound(const model::MeshPointer mesh);
 };
 
 #endif // hifi_RenderableLeoPolyEntityItem_h

@@ -112,9 +112,6 @@ public:
     // the returned box is the bounding box of ALL the evaluated parts bound.
     Box evalPartsBound(int partStart, int partEnd) const;
 
-    // evaluate the bounding box of the mesh
-    Box evalMeshBound()const;
-
     static gpu::Primitive topologyToPrimitive(Topology topo) { return static_cast<gpu::Primitive>(topo); }
 
 protected:

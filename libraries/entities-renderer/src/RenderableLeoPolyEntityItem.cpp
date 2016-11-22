@@ -191,10 +191,11 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
 
     // get the bounds of the mesh, so we can scale it into the bounds of the entity
     //int numMeshParts = (int)mesh->getNumParts();
-    auto meshBounds = mesh->evalMeshBound();
+    //auto meshBounds = mesh->evalMeshBound();
+    model::Box meshBounds = evalMeshBound(mesh);
 
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
-    auto entityScale = getDimensions();
+    auto entityScale = getScale();
     auto meshBoundsScale = meshBounds.getScale();
 
     auto fitInBounds = entityScale / meshBoundsScale;
@@ -288,6 +289,10 @@ void RenderableLeoPolyEntityItem::initializeModelResource() {
     //  _modelResource->getURL() ... this might be useful
     // 
     if (!_leoPolyURL.isEmpty()) {
+        if (_needReload)
+        {
+            DependencyManager::get<ModelCache>()->refresh(_leoPolyURL);
+        }
         _modelResource = DependencyManager::get<ModelCache>()->getGeometryResource(_leoPolyURL);
     }
 }
@@ -310,7 +315,8 @@ void RenderableLeoPolyEntityItem::getMesh() {
         withWriteLock([&] {
             // get the bounds of the mesh, so we can scale it into the bounds of the entity
             //int numMeshParts = (int)_mesh->getNumParts();
-            auto meshBounds = _mesh->evalMeshBound();
+            //auto meshBounds = mesh->evalMeshBound();
+            model::Box meshBounds = evalMeshBound(_mesh);
 
             // determine the correct scale to fit mesh into entity bounds, set transform accordingly
             auto entityScale = getScale();
@@ -664,9 +670,9 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
     withWriteLock([&] {
         if (_mesh)
         {
-            auto meshBounds = _mesh->evalMeshBound();
-            auto meshBoundsnew = mesh->evalMeshBound();
-            setDimensions(getDimensions()*(meshBoundsnew.getScale() / meshBounds.getScale()));
+            model::Box meshBounds = evalMeshBound(_mesh);
+            model::Box meshBoundsnew = evalMeshBound(mesh);
+            updateDimensions(getDimensions()*(meshBoundsnew.getScale() / meshBounds.getScale()));
         }
     });
     setMesh(mesh);
@@ -811,10 +817,10 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     model::Box meshBounds;
     for (int i = 0; i < geometry.meshes.size(); i++)
     {
-        meshBounds += geometry.meshes[i]._mesh->evalMeshBound();
+        meshBounds +=evalMeshBound(geometry.meshes[i]._mesh);
     }
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
-    auto entityScale = getDimensions();
+    auto entityScale = getScale();
     auto meshBoundsScale = meshBounds.getScale();
     auto fitInBounds = entityScale / meshBoundsScale;
     setScale(fitInBounds);
@@ -832,4 +838,17 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     delete[] indicesFlattened;
     delete[] normalsFlattened;
     delete[] texCoordsFlattened;
+}
+
+model::Box RenderableLeoPolyEntityItem::evalMeshBound(const model::MeshPointer mesh)
+{
+    //auto meshBounds = mesh->evalMeshBound();
+    model::Box meshBounds;
+    auto vertices = mesh->getVertexBuffer();
+    gpu::BufferView::Iterator<const VertexNormalMaterial> vertexItr = vertices.cbegin<const VertexNormalMaterial>();
+    while (vertexItr != vertices.cend<const VertexNormalMaterial>()) {
+        meshBounds += (*vertexItr).vertex;
+        ++vertexItr;
+    }
+    return meshBounds;
 }
