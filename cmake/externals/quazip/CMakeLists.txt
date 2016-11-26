@@ -14,7 +14,6 @@ elseif ($ENV{QT_CMAKE_PREFIX_PATH})
     set(QT_CMAKE_PREFIX_PATH $ENV{QT_CMAKE_PREFIX_PATH})
 endif ()
 
-
 ExternalProject_Add(
   ${EXTERNAL_NAME}
   URL https://s3-us-west-1.amazonaws.com/hifi-production/dependencies/quazip-0.7.2.zip
