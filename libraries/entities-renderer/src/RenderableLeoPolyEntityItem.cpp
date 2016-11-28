@@ -197,7 +197,6 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
     auto entityScale = getScale();
     auto meshBoundsScale = meshBounds.getScale();
-
     auto fitInBounds = entityScale / meshBoundsScale;
     transform.setScale(fitInBounds);
 
@@ -206,7 +205,7 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     auto lowestBounds = meshBounds.getMinimum();
     glm::vec3 adjustLowestBounds = ((registrationPoint * meshBoundsScale) + lowestBounds) * -1.0f;
     transform.postTranslate(adjustLowestBounds);
-    
+
     batch.setModelTransform(transform);
     batch.setInputFormat(mesh->getVertexFormat());
     batch.setInputBuffer(gpu::Stream::POSITION, mesh->getVertexBuffer());
