@@ -33,6 +33,8 @@
 
 #include "model/Geometry.h"
 #include "EntityTreeRenderer.h"
+#include "leoPoly_vert.h"
+#include "leoPoly_frag.h"
 #include "polyvox_vert.h"
 #include "polyvox_frag.h"
 #include "RenderableLeoPolyEntityItem.h"
@@ -55,13 +57,13 @@ gpu::PipelinePointer RenderableLeoPolyEntityItem::_pipeline = nullptr;
 
 
 EntityItemPointer RenderableLeoPolyEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
-    EntityItemPointer entity { new RenderableLeoPolyEntityItem(entityID) };
+    EntityItemPointer entity{ new RenderableLeoPolyEntityItem(entityID) };
     entity->setProperties(properties);
     return entity;
 }
 
 RenderableLeoPolyEntityItem::RenderableLeoPolyEntityItem(const EntityItemID& entityItemID) :
-    LeoPolyEntityItem(entityItemID)
+LeoPolyEntityItem(entityItemID)
 {
 }
 
@@ -69,9 +71,9 @@ RenderableLeoPolyEntityItem::~RenderableLeoPolyEntityItem() {
 }
 
 bool RenderableLeoPolyEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                                                              bool& keepSearching, OctreeElementPointer& element,
-                                                              float& distance, BoxFace& face, glm::vec3& surfaceNormal,
-                                                              void** intersectedObject, bool precisionPicking) const
+    bool& keepSearching, OctreeElementPointer& element,
+    float& distance, BoxFace& face, glm::vec3& surfaceNormal,
+    void** intersectedObject, bool precisionPicking) const
 {
     if (!precisionPicking) {
         // just intersect with bounding box
@@ -110,7 +112,15 @@ void RenderableLeoPolyEntityItem::computeShapeInfo(ShapeInfo& info) {
 
 void RenderableLeoPolyEntityItem::update(const quint64& now) {
     LeoPolyEntityItem::update(now);
-
+    if (_needReload)
+    {
+        if (getEntityItemID() != getCurrentlyEditingEntityID())
+        {
+            initializeModelResource();
+        }
+        _needReload = false;
+        return;
+    }
     LeoPolyPlugin::Instance().SculptApp_Frame();
     updateGeometryFromLeoPlugin();
 }
@@ -131,14 +141,12 @@ EntityItemID RenderableLeoPolyEntityItem::getCurrentlyEditingEntityID() {
 
 void RenderableLeoPolyEntityItem::createShaderPipeline() {
     // FIXME - we should use a different shader
-    gpu::ShaderPointer vertexShader = gpu::Shader::createVertex(std::string(polyvox_vert));
-    gpu::ShaderPointer pixelShader = gpu::Shader::createPixel(std::string(polyvox_frag));
+    gpu::ShaderPointer vertexShader = gpu::Shader::createVertex(std::string(leoPoly_vert));
+    gpu::ShaderPointer pixelShader = gpu::Shader::createPixel(std::string(leoPoly_frag));
 
     gpu::Shader::BindingSet slotBindings;
     slotBindings.insert(gpu::Shader::Binding(std::string("materialBuffer"), MATERIAL_GPU_SLOT));
     slotBindings.insert(gpu::Shader::Binding(std::string("xMap"), 0));
-    slotBindings.insert(gpu::Shader::Binding(std::string("yMap"), 1));
-    slotBindings.insert(gpu::Shader::Binding(std::string("zMap"), 2));
 
     gpu::ShaderPointer program = gpu::Shader::createProgram(vertexShader, pixelShader);
     gpu::Shader::makeProgram(*program, slotBindings);
@@ -156,9 +164,9 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     Q_ASSERT(args->_batch);
 
     // if we don't have a _modelResource yet, then we can't render...
-    if (!_modelResource || (getLeoPolyNeedReload() && getEntityItemID() != getCurrentlyEditingEntityID())) {
+    if (!_modelResource) 
+    {
         initializeModelResource();
-        _needReload = false;
         return;
     }
 
@@ -206,27 +214,21 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     auto lowestBounds = meshBounds.getMinimum();
     glm::vec3 adjustLowestBounds = ((registrationPoint * meshBoundsScale) + lowestBounds) * -1.0f;
     transform.postTranslate(adjustLowestBounds);
-    
     batch.setModelTransform(transform);
-    batch.setInputFormat(mesh->getVertexFormat());
     batch.setInputBuffer(gpu::Stream::POSITION, mesh->getVertexBuffer());
-    batch.setInputBuffer(gpu::Stream::NORMAL,
+    /*batch.setInputBuffer(gpu::Stream::NORMAL,
                          mesh->getVertexBuffer()._buffer,
-                         sizeof(float) * 3,
-                         mesh->getVertexBuffer()._stride);
+                         offsetof(VertexNormalTexCoord, normal),
+                         sizeof(VertexNormalTexCoord));
+    batch.setInputBuffer(gpu::Stream::TEXCOORD0,
+        mesh->getVertexBuffer()._buffer,
+        offsetof(VertexNormalTexCoord, texCoord),
+        sizeof(VertexNormalTexCoord));*/
     batch.setIndexBuffer(gpu::UINT32, mesh->getIndexBuffer()._buffer, 0);
-
+    batch.setInputFormat(VertexNormalTexCoord::getVertexFormat());
     batch.setResourceTexture(0, DependencyManager::get<TextureCache>()->getWhiteTexture());
-    batch.setResourceTexture(1, DependencyManager::get<TextureCache>()->getWhiteTexture());
-    batch.setResourceTexture(2, DependencyManager::get<TextureCache>()->getWhiteTexture());
-
-    // FIXME - this voxelVolumeSizeLocation is cruft.
-    int voxelVolumeSizeLocation = _pipeline->getProgram()->getUniforms().findLocation("voxelVolumeSize");
-    batch._glUniform3f(voxelVolumeSizeLocation, 16.0, 16.0, 16.0);
 
     batch.drawIndexed(gpu::TRIANGLES, (gpu::uint32)mesh->getNumIndices(), 0);
-    if (_needReload)
-    _needReload = false;
 }
 
 bool RenderableLeoPolyEntityItem::addToScene(EntityItemPointer self,
@@ -289,10 +291,11 @@ void RenderableLeoPolyEntityItem::initializeModelResource() {
     //  _modelResource->getURL() ... this might be useful
     // 
     if (!_leoPolyURL.isEmpty()) {
-        if (_needReload)
+      /*  if (_needReload) TEMPORARY DISABLED DUE TO BAD CACHE BEHAVIOUR
         {
             DependencyManager::get<ModelCache>()->refresh(_leoPolyURL);
-        }
+            _mesh.reset();
+        }*/
         _modelResource = DependencyManager::get<ModelCache>()->getGeometryResource(_leoPolyURL);
     }
 }
@@ -354,34 +357,37 @@ void RenderableLeoPolyEntityItem::getMesh() {
     } else {
         // FIXME- this is a bit of a hack to work around const-ness
         model::MeshPointer copyOfMesh(new model::Mesh());
-        std::vector<VertexNormalMaterial> verticesNormalsMaterials;
+        std::vector<VertexNormalTexCoord> verticesNormalsMaterials;
         
         for (unsigned int i = 0; i < meshes[0]->getNumVertices(); i++) {
             glm::vec3 actVert = glm::vec3(_modelResource->getFBXGeometry().meshes[0].vertices[i]);
             glm::vec3 actNorm = glm::vec3(_modelResource->getFBXGeometry().meshes[0].normals[i]);
-            verticesNormalsMaterials.push_back(VertexNormalMaterial{ actVert, actNorm, 0 });
+            glm::vec2 actTexCoord = glm::vec2(_modelResource->getFBXGeometry().meshes[0].texCoords[i]);
+            verticesNormalsMaterials.push_back(VertexNormalTexCoord{ actVert, actNorm, actTexCoord });
         }
 
-        auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(VertexNormalMaterial),
+        auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(VertexNormalTexCoord),
             (gpu::Byte*)verticesNormalsMaterials.data());
         auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
-        gpu::Resource::Size vertexBufferSize = 0;
+        
 
-        // FIXME - Huh??? - seems to be setting the size for the vertext buffer, but this math is weird
-        if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
-            vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
-        }
-
-        gpu::BufferView vertexBufferView(vertexBufferPtr, 0, vertexBufferSize,
-            sizeof(VertexNormalMaterial),
-            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
+        gpu::BufferView vertexBufferView(vertexBufferPtr, 0, vertexBuffer->getSize(),
+            sizeof(VertexNormalTexCoord),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ));
         copyOfMesh->setVertexBuffer(vertexBufferView);
         copyOfMesh->addAttribute(gpu::Stream::NORMAL,
             gpu::BufferView(vertexBufferPtr,
-            sizeof(glm::vec3),
-            vertexBufferPtr->getSize() - sizeof(glm::vec3), // FIXME - huh?
-            sizeof(VertexNormalMaterial),
-            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
+            offsetof(VertexNormalTexCoord, normal),
+            vertexBufferPtr->getSize(),
+            sizeof(VertexNormalTexCoord),
+            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ)));
+        copyOfMesh->addAttribute(gpu::Stream::TEXCOORD0,
+            gpu::BufferView(vertexBufferPtr,
+            offsetof(VertexNormalTexCoord, texCoord),
+            vertexBufferPtr->getSize(),
+            sizeof(VertexNormalTexCoord),
+            gpu::Element(gpu::VEC2, gpu::FLOAT, gpu::UV)));
+
 
         verticesNormalsMaterials.clear();
 
@@ -455,13 +461,12 @@ void RenderableLeoPolyEntityItem::importToLeoPoly() {
             LeoPlugin::IncomingMaterial actMat;
 
             // FIXME - texture support?
-            /*
-            if (!mat.albedoTexture.filename.isEmpty() && mat.albedoTexture.content.isEmpty() &&
-                !_textures.contains(mat.albedoTexture.filename))
+            
+            if (!mat.albedoTexture.filename.isEmpty() && mat.albedoTexture.content.isEmpty())
             {
                 actMat.diffuseTextureUrl = baseUrl + "//" + mat.albedoTexture.filename.toStdString();
             }
-            */
+            
             /*if (!mat.normalTexture.filename.isEmpty() && mat.normalTexture.content.isEmpty() &&
             !_textures.contains(mat.normalTexture.filename))
             {
@@ -603,7 +608,7 @@ void RenderableLeoPolyEntityItem::importToLeoPoly() {
 void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
 
     // get the vertices, normals, and indices from LeoPoly
-    float* vertices, *normals;
+    float* vertices, *normals,*texCoords;
     int *indices;
     unsigned int numVertices = 0;
     unsigned int numNormals = 0;
@@ -611,43 +616,47 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
     LeoPolyPlugin::Instance().getSculptMeshNUmberDatas(numVertices, numIndices, numNormals);
     vertices = new float[numVertices * 3];
     normals = new float[numNormals * 3];
+    texCoords = new float[numVertices * 2];
     indices = new int[numIndices];
-    LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals);
+    LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals, texCoords);
 
     // Create a model::Mesh from the flattened mesh from LeoPoly
     model::MeshPointer mesh(new model::Mesh());
     // bool needsMaterialLibrary = false;
 
-    std::vector<VertexNormalMaterial> verticesNormalsMaterials;
+    std::vector<VertexNormalTexCoord> verticesNormalsMaterials;
 
     for (unsigned int i = 0; i < numVertices; i++) {
         glm::vec3 actVert = glm::vec3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
         glm::vec3 actNorm = glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
-        verticesNormalsMaterials.push_back(VertexNormalMaterial{actVert, actNorm, 0});
+        glm::vec2 actTexCoord = glm::vec2(texCoords[i * 2], texCoords[i * 2 + 1]);
+        verticesNormalsMaterials.push_back(VertexNormalTexCoord{ actVert, actNorm, actTexCoord });
     }
 
-    auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(VertexNormalMaterial),
+    auto vertexBuffer = std::make_shared<gpu::Buffer>(verticesNormalsMaterials.size() * sizeof(VertexNormalTexCoord),
                                                         (gpu::Byte*)verticesNormalsMaterials.data());
     auto vertexBufferPtr = gpu::BufferPointer(vertexBuffer);
-    gpu::Resource::Size vertexBufferSize = 0;
 
-    // FIXME - Huh??? - seems to be setting the size for the vertext buffer, but this math is weird
-    if (vertexBufferPtr->getSize() > sizeof(float) * 3) {
-        vertexBufferSize = vertexBufferPtr->getSize() - sizeof(float) * 3;
-    }
+    gpu::BufferView vertexBufferView(vertexBufferPtr, 0, 
+        vertexBufferPtr->getSize(),
+        sizeof(VertexNormalTexCoord),
+        gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ));
 
-    gpu::BufferView vertexBufferView(vertexBufferPtr, 0, vertexBufferSize,
-                                                sizeof(VertexNormalMaterial),
-                                                gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW));
     mesh->setVertexBuffer(vertexBufferView);
-    mesh->addAttribute(gpu::Stream::NORMAL,
-                            gpu::BufferView(vertexBufferPtr,
-                                            sizeof(glm::vec3),
-                                            vertexBufferPtr->getSize() - sizeof(glm::vec3), // FIXME - huh?
-                                            sizeof(VertexNormalMaterial),
-                                            gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::RAW)));
 
-    verticesNormalsMaterials.clear();
+    mesh->addAttribute(gpu::Stream::NORMAL,
+        gpu::BufferView(vertexBufferPtr,
+        offsetof(VertexNormalTexCoord, normal),
+        vertexBufferPtr->getSize(),
+        sizeof(VertexNormalTexCoord),
+        gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ)));
+    mesh->addAttribute(gpu::Stream::TEXCOORD0,
+        gpu::BufferView(vertexBufferPtr,
+        offsetof(VertexNormalTexCoord, texCoord),
+        vertexBufferPtr->getSize(),
+        sizeof(VertexNormalTexCoord),
+        gpu::Element(gpu::VEC2, gpu::FLOAT, gpu::UV)));
+
 
 
     std::vector<uint32_t> vecIndices;
@@ -666,17 +675,29 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
     vecIndices.clear();
 
     // get the bounds of the mesh, so we can scale it into the bounds of the entity
-    //int numMeshParts = (int)_mesh->getNumParts();
+    auto properties = getProperties();
     withWriteLock([&] {
         if (_mesh)
         {
             model::Box meshBounds = evalMeshBound(_mesh);
             model::Box meshBoundsnew = evalMeshBound(mesh);
-            updateDimensions(getDimensions()*(meshBoundsnew.getScale() / meshBounds.getScale()));
+            
+            if (meshBoundsnew.getScale() != meshBounds.getScale())
+            {
+                qDebug() << "Modified dimensions: X:" << meshBoundsnew.getScale().x << " Y:" << meshBoundsnew.getScale().y << "  Z:" << meshBoundsnew.getScale().z;
+                properties.setLastEdited(usecTimestampNow()); // we must set the edit time since we're editing it
+                properties.setDimensions(properties.getDimensions()*(meshBoundsnew.getScale() / meshBounds.getScale()));
+                QMetaObject::invokeMethod(DependencyManager::get<EntityScriptingInterface>().data(), "editEntity",
+                    Qt::QueuedConnection,
+                    Q_ARG(QUuid, getEntityItemID()),
+                    Q_ARG(EntityItemProperties, properties));
+            }
         }
     });
+    
     setMesh(mesh);
 
+    delete[] texCoords;
     delete[] vertices;
     delete[] normals;
     delete[] indices;
@@ -702,13 +723,15 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     //ModelPointer act = getModel(_myRenderer);
     auto geometry = model->getFBXGeometry();
     std::string baseUrl = model->getURL().toString().toStdString().substr(0, model->getURL().toString().toStdString().find_last_of("\\/"));
-
-    std::vector<LeoPlugin::IncomingMaterial> materialsToSend;
+    if (baseUrl.find("file:") != std::string::npos || baseUrl.find("http:") != std::string::npos)
+    {
+        baseUrl = std::string(baseUrl.begin() + 8, baseUrl.end());
+    }
+    QVector<LeoPlugin::IncomingMaterial> materialsToSend;
     foreach(const FBXMaterial mat, geometry.materials)
     {
         LeoPlugin::IncomingMaterial actMat;
-        if (!mat.albedoTexture.filename.isEmpty() && mat.albedoTexture.content.isEmpty() &&
-            !model->getTextures().contains(mat.albedoTexture.filename))
+        if (!mat.albedoTexture.filename.isEmpty())
         {
             actMat.diffuseTextureUrl = baseUrl + "//" + mat.albedoTexture.filename.toStdString();
         }
@@ -728,12 +751,10 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
         {
         _texturesURLs.push_back(baseUrl + "\\" + mat.emissiveTexture.filename.toStdString());
         }*/
-        for (int i = 0; i < 3; i++)
-        {
-            actMat.diffuseColor[i] = mat.diffuseColor[i];
-            actMat.emissiveColor[i] = mat.emissiveColor[i];
-            actMat.specularColor[i] = mat.specularColor[i];
-        }
+        memcpy(actMat.diffuseColor,glm::value_ptr( mat.diffuseColor), 3 * sizeof (float));
+        memcpy(actMat.emissiveColor, glm::value_ptr(mat.emissiveColor), 3 * sizeof(float));
+        memcpy(actMat.specularColor, glm::value_ptr(mat.specularColor), 3 * sizeof(float));
+       
         actMat.diffuseColor[3] = 1;
         actMat.emissiveColor[3] = 0;
         actMat.specularColor[3] = 0;
@@ -833,7 +854,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     transform.postTranslate(adjustLowestBounds);
 
     LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(),
-        texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))), materialsToSend, matIndexesPerTriangles.toStdVector());
+        texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))), materialsToSend.toStdVector(), matIndexesPerTriangles.toStdVector());
     delete[] verticesFlattened;
     delete[] indicesFlattened;
     delete[] normalsFlattened;
@@ -842,13 +863,15 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
 
 model::Box RenderableLeoPolyEntityItem::evalMeshBound(const model::MeshPointer mesh)
 {
-    //auto meshBounds = mesh->evalMeshBound();
     model::Box meshBounds;
-    auto vertices = mesh->getVertexBuffer();
-    gpu::BufferView::Iterator<const VertexNormalMaterial> vertexItr = vertices.cbegin<const VertexNormalMaterial>();
-    while (vertexItr != vertices.cend<const VertexNormalMaterial>()) {
-        meshBounds += (*vertexItr).vertex;
-        ++vertexItr;
+    if (mesh)
+    {
+        auto vertices = mesh->getVertexBuffer();
+        gpu::BufferView::Iterator<const VertexNormalTexCoord> vertexItr = vertices.cbegin<const VertexNormalTexCoord>();
+        while (vertexItr != vertices.cend<const VertexNormalTexCoord>()) {
+            meshBounds += (*vertexItr).vertex;
+            ++vertexItr;
+        }
     }
     return meshBounds;
 }

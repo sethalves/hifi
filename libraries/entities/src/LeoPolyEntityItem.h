@@ -28,7 +28,7 @@ class LeoPolyEntityItem : public EntityItem {
     void setLeoPolyURL(QString leoPolyURL) { _leoPolyURL = leoPolyURL; }
     QString getLeoPolyURL() const { return _leoPolyURL; }
 
-    void setLeoPolyNeedReload(bool value) { _needReload = value; }
+    void setLeoPolyNeedReload(bool value) { _needReload = value; /*if (_needReload)update(usecTimestampNow());TEMPORARY DISABLED*/ }
     bool getLeoPolyNeedReload() const { return _needReload; }
 
     // methods for getting/setting all properties of an entity

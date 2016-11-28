@@ -93,11 +93,22 @@ public:
     void sendToLeoEngine(ModelPointer model) override;
 
 private:
-    class VertexNormalMaterial {
-    public:
+    struct VertexNormalTexCoord {
         glm::vec3 vertex;
         glm::vec3 normal;
-        float material;
+        glm::vec2 texCoord;
+        static gpu::Stream::FormatPointer getVertexFormat() {
+            static const gpu::Element POSITION_ELEMENT{ gpu::VEC3, gpu::FLOAT, gpu::XYZ };
+            static const gpu::Element NORMAL_ELEMENT{ gpu::VEC3, gpu::FLOAT, gpu::XYZ };
+            static const gpu::Element TEXTURE_ELEMENT{ gpu::VEC2, gpu::FLOAT, gpu::UV };
+            
+            gpu::Stream::FormatPointer vertexFormat{ std::make_shared<gpu::Stream::Format>() };
+            vertexFormat->setAttribute(gpu::Stream::POSITION, 0, POSITION_ELEMENT, offsetof(VertexNormalTexCoord, vertex));
+            vertexFormat->setAttribute(gpu::Stream::NORMAL, 0, NORMAL_ELEMENT, offsetof(VertexNormalTexCoord, normal));
+            vertexFormat->setAttribute(gpu::Stream::TEXCOORD, 0, TEXTURE_ELEMENT, offsetof(VertexNormalTexCoord, texCoord));
+            
+            return vertexFormat;
+        }
     };
 
     void updateGeometryFromLeoPlugin();
@@ -110,7 +121,8 @@ private:
     static gpu::PipelinePointer _pipeline;
 
     model::MeshPointer _mesh;
-
+    std::vector<model::Mesh::Part> _meshParts;
+    std::vector<LeoPlugin::IncomingMaterial> _materials;
     GeometryResource::Pointer _modelResource;
 
     ShapeInfo _shapeInfo;

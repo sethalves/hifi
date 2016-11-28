@@ -1439,6 +1439,7 @@ void EntityScriptingInterface::setCostMultiplier(float value) {
 void EntityScriptingInterface::issueSculptDLLCommand(QString command, QString value)
 {
     LeoPolyPlugin::Instance().SculptApp_issueAppCmd(command.toStdString().c_str(), value.toStdString().c_str());
+    qDebug() << "Issue LeoSculptCommand: " << command << " with value:" << value;
 }
 
 void EntityScriptingInterface::sculptEntity(QUuid id)
@@ -1461,6 +1462,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setCreated(secTimestampNow()); 
                 props.setLeoPolyURL(QString("http://leopoly.develop/hifi/SculptObjects/" + entity->getID().toString() + ".obj"));
                 props.setRegistrationPoint(entity->getRegistrationPoint());
+                props.setCollisionless(true);
                 EntityItemID leoId = EntityItemID(addEntity(props));
 
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);

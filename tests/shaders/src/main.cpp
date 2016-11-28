@@ -91,6 +91,9 @@
 #include <entities-renderer/polyvox_vert.h>
 #include <entities-renderer/polyvox_frag.h>
 
+#include <entities-renderer/leoPoly_vert.h>
+#include <entities-renderer/leoPoly_frag.h>
+
 // Create a simple OpenGL window that renders text in various ways
 class QTestWindow : public QWindow {
     Q_OBJECT
@@ -196,6 +199,7 @@ void QTestWindow::draw() {
 
         testShaderBuild(paintStroke_vert,paintStroke_frag);
         testShaderBuild(polyvox_vert, polyvox_frag);
+        testShaderBuild(leoPoly_vert, leoPoly_frag);
 
     });
     _context.swapBuffers(this);
