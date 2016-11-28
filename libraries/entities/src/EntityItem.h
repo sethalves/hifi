@@ -462,7 +462,7 @@ public:
 
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
-    
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

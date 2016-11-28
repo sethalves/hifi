@@ -15,7 +15,6 @@ link_hifi_libraries(
 )
 
 if (WIN32)
-  add_dependency_external_projects(OpenVR)
   package_libraries_for_deployment()
 endif()
 

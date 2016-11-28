@@ -205,7 +205,6 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     // determine the correct scale to fit mesh into entity bounds, set transform accordingly
     auto entityScale = getScale();
     auto meshBoundsScale = meshBounds.getScale();
-
     auto fitInBounds = entityScale / meshBoundsScale;
     transform.setScale(fitInBounds);
 
@@ -727,7 +726,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     {
         baseUrl = std::string(baseUrl.begin() + 8, baseUrl.end());
     }
-    QVector<LeoPlugin::IncomingMaterial> materialsToSend;
+    std::vector<LeoPlugin::IncomingMaterial> materialsToSend;
     foreach(const FBXMaterial mat, geometry.materials)
     {
         LeoPlugin::IncomingMaterial actMat;
@@ -854,7 +853,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     transform.postTranslate(adjustLowestBounds);
 
     LeoPolyPlugin::Instance().importFromRawData(verticesFlattened, vertices.size(), indicesFlattened, indices.size(), normalsFlattened, normals.size(),
-        texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))), materialsToSend.toStdVector(), matIndexesPerTriangles.toStdVector());
+        texCoordsFlattened, texCoords.size(), const_cast<float*>(glm::value_ptr(glm::transpose(transform.getMatrix()))), materialsToSend, matIndexesPerTriangles.toStdVector());
     delete[] verticesFlattened;
     delete[] indicesFlattened;
     delete[] normalsFlattened;
