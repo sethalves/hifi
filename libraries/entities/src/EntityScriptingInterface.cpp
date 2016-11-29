@@ -1463,6 +1463,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setLeoPolyURL(QString("http://leopoly.develop/hifi/SculptObjects/" + entity->getID().toString() + ".obj"));
                 props.setRegistrationPoint(entity->getRegistrationPoint());
                 props.setCollisionless(true);
+                props.setLeoPolyModelVersion(QUuid::createUuid());
                 EntityItemID leoId = EntityItemID(addEntity(props));
 
                 auto newEntity = _entityTree->findEntityByEntityItemID(leoId);

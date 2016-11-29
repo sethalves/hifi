@@ -112,15 +112,6 @@ void RenderableLeoPolyEntityItem::computeShapeInfo(ShapeInfo& info) {
 
 void RenderableLeoPolyEntityItem::update(const quint64& now) {
     LeoPolyEntityItem::update(now);
-    if (_needReload)
-    {
-        if (getEntityItemID() != getCurrentlyEditingEntityID())
-        {
-            initializeModelResource();
-        }
-        _needReload = false;
-        return;
-    }
     LeoPolyPlugin::Instance().SculptApp_Frame();
     updateGeometryFromLeoPlugin();
 }
@@ -289,12 +280,8 @@ void RenderableLeoPolyEntityItem::initializeModelResource() {
     //
     //  _modelResource->getURL() ... this might be useful
     // 
-    if (!_leoPolyURL.isEmpty()) {
-      /*  if (_needReload) TEMPORARY DISABLED DUE TO BAD CACHE BEHAVIOUR
-        {
-            DependencyManager::get<ModelCache>()->refresh(_leoPolyURL);
-            _mesh.reset();
-        }*/
+    if (!_leoPolyURL.isEmpty())
+    {
         _modelResource = DependencyManager::get<ModelCache>()->getGeometryResource(_leoPolyURL);
     }
 }

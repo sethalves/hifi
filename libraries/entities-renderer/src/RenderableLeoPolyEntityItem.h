@@ -52,10 +52,18 @@ public:
         // need to redo the voxel data.
         // _needsModelReload = true;
     }
-
+    void setLeoPolyModelVersion(QUuid value)override
+    {
+        if (_modelVersion != value && getEntityItemID() != getCurrentlyEditingEntityID())
+        {
+            DependencyManager::get<ModelCache>()->refresh(_leoPolyURL);
+            _mesh.reset();
+        }
+        _modelVersion = value;
+    }
     virtual void render(RenderArgs* args) override;
     virtual void update(const quint64& now) override;
-
+    
     virtual bool supportsDetailedRayIntersection() const override { return true; }
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
                         bool& keepSearching, OctreeElementPointer& element, float& distance,

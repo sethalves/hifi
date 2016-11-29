@@ -223,7 +223,7 @@ public:
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
     DEFINE_PROPERTY_REF(PROP_LEOPOLY_URL, LeoPolyURL, leoPolyURL, QString, LeoPolyEntityItem::DEFAULT_LEOPOLY_URL);
-    DEFINE_PROPERTY_REF(PROP_LEOPOLY_NEED_RELOAD, LeoPolyNeedReload, leoPolyNeedReload, bool, LeoPolyEntityItem::DEFAULT_LEOPOLY_NEED_RELOAD);
+    DEFINE_PROPERTY_REF(PROP_LEOPOLY_MODEL_VERSION, LeoPolyModelVersion, leoPolyModelVersion, QUuid, LeoPolyEntityItem::DEFAULT_LEOPOLY_MODEL_VERSION);
 
     static QString getBackgroundModeString(BackgroundMode mode);
 
@@ -364,7 +364,7 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     }
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, LeoPolyURL, leoPolyURL, "");
-    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LeoPolyNeedReload, leoPolyNeedReload, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LeoPolyModelVersion, leoPolyModelVersion, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Dimensions, dimensions, "in meters");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Velocity, velocity, "in meters");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Name, name, "");

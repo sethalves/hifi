@@ -25,11 +25,16 @@ class LeoPolyEntityItem : public EntityItem {
 
     ALLOW_INSTANTIATION // This class can be instantiated
 
-    void setLeoPolyURL(QString leoPolyURL) { _leoPolyURL = leoPolyURL; }
+    virtual void setLeoPolyURL(QString leoPolyURL) { _leoPolyURL = leoPolyURL; }
     QString getLeoPolyURL() const { return _leoPolyURL; }
 
-    void setLeoPolyNeedReload(bool value) { _needReload = value; /*if (_needReload)update(usecTimestampNow());TEMPORARY DISABLED*/ }
-    bool getLeoPolyNeedReload() const { return _needReload; }
+    virtual void setLeoPolyModelVersion(QUuid value) { _modelVersion = value; /*if (_needReload)update(usecTimestampNow());TEMPORARY DISABLED*/ }
+    QUuid getLeoPolyModelVersion() const 
+    {
+        if (!_modelVersion.isNull())
+        return _modelVersion; 
+        return QUuid();
+    }
 
     // methods for getting/setting all properties of an entity
     virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const override;
@@ -61,7 +66,7 @@ class LeoPolyEntityItem : public EntityItem {
     virtual void debugDump() const override;
 
     static const QString DEFAULT_LEOPOLY_URL;
-    static const bool DEFAULT_LEOPOLY_NEED_RELOAD;
+    static const QUuid DEFAULT_LEOPOLY_MODEL_VERSION;
 
     virtual void doExportCurrentState(){};
 
@@ -71,7 +76,7 @@ class LeoPolyEntityItem : public EntityItem {
  protected:
 
     QString _leoPolyURL;
-    bool _needReload;
+    QUuid _modelVersion;
 };
 
 #endif // hifi_LeoPolyEntityItem_h

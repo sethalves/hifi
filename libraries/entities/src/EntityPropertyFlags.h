@@ -183,7 +183,7 @@ enum EntityPropertyList {
 
     PROP_LAST_EDITED_BY,
     PROP_LEOPOLY_URL,
-    PROP_LEOPOLY_NEED_RELOAD,
+    PROP_LEOPOLY_MODEL_VERSION,
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line

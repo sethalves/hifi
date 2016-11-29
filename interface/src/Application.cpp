@@ -2192,11 +2192,10 @@ void Application::perFrameUpdateLeoEngine()const
             {
 
                 edited->doExportCurrentState();
-                edited->setLeoPolyNeedReload(true);
+                edited->setLeoPolyModelVersion(QUuid::createUuid());
                 auto sender = qApp->getEntityEditPacketSender();
                 sender->queueEditEntityMessage(PacketType::EntityEdit, tree, edited->getID(), edited->getProperties());
                 edited->setLastBroadcast(usecTimestampNow());
-                edited->setLeoPolyNeedReload(false);
             }
         });
 
