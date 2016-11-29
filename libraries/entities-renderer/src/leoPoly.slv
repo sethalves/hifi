@@ -28,5 +28,5 @@ void main(void) {
     <$transformModelToEyeAndClipPos(cam, obj, inPosition, _position, gl_Position)$>
     <$transformModelToEyeDir(cam, obj, inNormal.xyz, _normal)$>
     _worldPosition = inPosition;
-	_texCoord0 = inTexCoord0;
+	_texCoord0 = inTexCoord0.xy;
 }

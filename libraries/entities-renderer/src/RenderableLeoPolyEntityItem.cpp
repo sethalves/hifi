@@ -588,12 +588,12 @@ void RenderableLeoPolyEntityItem::importToLeoPoly() {
 
 
         LeoPolyPlugin::Instance().importFromRawData(
-                                        verticesFlattened, vertices.size(), 
-                                        indicesFlattened, indices.size(), 
-                                        normalsFlattened, normals.size(), 
-                                        texCoordsFlattened, texCoords.size(), 
-                                        const_cast<float*>(glm::value_ptr(glm::transpose(getTransform().getMatrix()))), 
-                                        materialsToSend, matIndexesPerTriangles.toStdVector());
+            verticesFlattened, vertices.size(),
+            indicesFlattened, indices.size(),
+            normalsFlattened, normals.size(),
+            texCoordsFlattened, texCoords.size(),
+            const_cast<float*>(glm::value_ptr(glm::transpose(getTransform().getMatrix()))),
+            materialsToSend, matIndexesPerTriangles.toStdVector());
         delete[] verticesFlattened;
         delete[] indicesFlattened;
         delete[] normalsFlattened;
@@ -607,7 +607,7 @@ void RenderableLeoPolyEntityItem::importToLeoPoly() {
 void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
 
     // get the vertices, normals, and indices from LeoPoly
-    float* vertices, *normals,*texCoords;
+    float* vertices, *normals, *texCoords;
     int *indices;
     unsigned int numVertices = 0;
     unsigned int numNormals = 0;
@@ -625,7 +625,8 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
 
     std::vector<VertexNormalTexCoord> verticesNormalsMaterials;
 
-    for (unsigned int i = 0; i < numVertices; i++) {
+    for (unsigned int i = 0; i < numVertices; i++)
+    {
         glm::vec3 actVert = glm::vec3(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
         glm::vec3 actNorm = glm::vec3(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
         glm::vec2 actTexCoord = glm::vec2(texCoords[i * 2], texCoords[i * 2 + 1]);
