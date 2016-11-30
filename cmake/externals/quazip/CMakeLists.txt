@@ -7,10 +7,13 @@ include(ExternalProject)
 if (WIN32)
     # windows shell does not like backslashes expanded on the command line,
     # so convert all backslashes in the QT path to forward slashes
-    string(REPLACE \\ / QT_CMAKE_PREFIX_PATH $ENV{QT_CMAKE_PREFIX_PATH})
+    IF($ENV{QT_CMAKE_PREFIX_PATH})
+  string(REPLACE \\ / QT_CMAKE_PREFIX_PATH $ENV{QT_CMAKE_PREFIX_PATH})
+ENDIF($ENV{QT_CMAKE_PREFIX_PATH})
 elseif ($ENV{QT_CMAKE_PREFIX_PATH})
     set(QT_CMAKE_PREFIX_PATH $ENV{QT_CMAKE_PREFIX_PATH})
 endif ()
+
 
 ExternalProject_Add(
   ${EXTERNAL_NAME}
