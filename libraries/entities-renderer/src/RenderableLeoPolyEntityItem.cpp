@@ -623,7 +623,7 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
 
     LeoPlugin::IncomingMaterial* materials= new LeoPlugin::IncomingMaterial[numMaterials];
     LeoPolyPlugin::Instance().getCurrentUsedMaterials(materials);
-    for (int i = 0; i < numMaterials; i++)
+    for (unsigned int i = 0; i < numMaterials; i++)
     {
         LeoPlugin::IncomingMaterial actMat = LeoPlugin::IncomingMaterial(materials[i]);
         _materials.push_back(actMat);
