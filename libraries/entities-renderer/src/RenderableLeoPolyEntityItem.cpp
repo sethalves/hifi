@@ -206,19 +206,27 @@ void RenderableLeoPolyEntityItem::render(RenderArgs* args) {
     transform.postTranslate(adjustLowestBounds);
     batch.setModelTransform(transform);
     batch.setInputBuffer(gpu::Stream::POSITION, mesh->getVertexBuffer());
-    /*batch.setInputBuffer(gpu::Stream::NORMAL,
-                         mesh->getVertexBuffer()._buffer,
-                         offsetof(VertexNormalTexCoord, normal),
-                         sizeof(VertexNormalTexCoord));
-    batch.setInputBuffer(gpu::Stream::TEXCOORD0,
-        mesh->getVertexBuffer()._buffer,
-        offsetof(VertexNormalTexCoord, texCoord),
-        sizeof(VertexNormalTexCoord));*/
     batch.setIndexBuffer(gpu::UINT32, mesh->getIndexBuffer()._buffer, 0);
     batch.setInputFormat(VertexNormalTexCoord::getVertexFormat());
-    batch.setResourceTexture(0, DependencyManager::get<TextureCache>()->getWhiteTexture());
 
-    batch.drawIndexed(gpu::TRIANGLES, (gpu::uint32)mesh->getNumIndices(), 0);
+    for (unsigned int i = 0; i < _materials.size(); i++)
+    {
+        gpu::TexturePointer actText;
+        if (_materials[i].diffuseTextureUrl != "")
+        {
+            actText = DependencyManager::get<TextureCache>()->getImageTexture(_materials[i].diffuseTextureUrl.c_str());
+        }
+        if (actText)
+        {
+            batch.setResourceTexture(0, actText);
+        }
+        else
+        {
+            batch.setResourceTexture(0, DependencyManager::get<TextureCache>()->getBlueTexture());
+        }
+
+        batch.drawIndexed(gpu::TRIANGLES, (gpu::uint32)_materials[i].numIndices, _materials[i].indexOffset);
+    }
 }
 
 bool RenderableLeoPolyEntityItem::addToScene(EntityItemPointer self,
@@ -288,7 +296,7 @@ void RenderableLeoPolyEntityItem::initializeModelResource() {
 
 void RenderableLeoPolyEntityItem::getMesh() {
     EntityItemID entityUnderSculptID = getCurrentlyEditingEntityID();
-
+    _materials.clear();
     // FIXME -- this seems wrong, but It think I'm begining to understand it.
     // getMesh() will only produce a mesh of the current entity is not currently under edit.
     // if the current entity is under edit, then it's assumed that the _mesh will be updated
@@ -345,7 +353,8 @@ void RenderableLeoPolyEntityItem::getMesh() {
         model::MeshPointer copyOfMesh(new model::Mesh());
         std::vector<VertexNormalTexCoord> verticesNormalsMaterials;
         
-        for (unsigned int i = 0; i < meshes[0]->getNumVertices(); i++) {
+        for (unsigned int i = 0; i < meshes[0]->getNumVertices(); i++)
+        {
             glm::vec3 actVert = glm::vec3(_modelResource->getFBXGeometry().meshes[0].vertices[i]);
             glm::vec3 actNorm = glm::vec3(_modelResource->getFBXGeometry().meshes[0].normals[i]);
             glm::vec2 actTexCoord = glm::vec2(_modelResource->getFBXGeometry().meshes[0].texCoords[i]);
@@ -380,7 +389,8 @@ void RenderableLeoPolyEntityItem::getMesh() {
 
         std::vector<uint32_t> vecIndices;
         for (int part = 0; part < _modelResource->getFBXGeometry().meshes[0].parts.size(); part++)
-        for (unsigned int i = 0; i < meshes[0]->getNumIndices(); i++) {
+        for (unsigned int i = 0; i < meshes[0]->getNumIndices(); i++) 
+        {
             vecIndices.push_back(_modelResource->getFBXGeometry().meshes[0].parts[part].triangleIndices[i]);
         }
 
@@ -393,8 +403,12 @@ void RenderableLeoPolyEntityItem::getMesh() {
 
         vecIndices.clear();
 
-
-
+        LeoPlugin::IncomingMaterial defaultMat;
+        defaultMat.materialID = "default";
+        defaultMat.name = "Default";
+        defaultMat.indexOffset = 0;
+        defaultMat.numIndices = copyOfMesh->getNumIndices();
+        _materials.push_back(defaultMat);
         setMesh(copyOfMesh);
     }
 }
@@ -599,12 +613,22 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
     unsigned int numVertices = 0;
     unsigned int numNormals = 0;
     unsigned int numIndices = 0;
-    LeoPolyPlugin::Instance().getSculptMeshNUmberDatas(numVertices, numIndices, numNormals);
+    unsigned int numMaterials = 0;
+    LeoPolyPlugin::Instance().getSculptMeshNumberDatas(numVertices, numIndices, numNormals, numMaterials);
     vertices = new float[numVertices * 3];
     normals = new float[numNormals * 3];
     texCoords = new float[numVertices * 2];
     indices = new int[numIndices];
     LeoPolyPlugin::Instance().getRawSculptMeshData(vertices, indices, normals, texCoords);
+
+    LeoPlugin::IncomingMaterial* materials= new LeoPlugin::IncomingMaterial[numMaterials];
+    LeoPolyPlugin::Instance().getCurrentUsedMaterials(materials);
+    for (int i = 0; i < numMaterials; i++)
+    {
+        LeoPlugin::IncomingMaterial actMat = LeoPlugin::IncomingMaterial(materials[i]);
+        _materials.push_back(actMat);
+    }
+    delete[] materials;
 
     // Create a model::Mesh from the flattened mesh from LeoPoly
     model::MeshPointer mesh(new model::Mesh());
@@ -682,6 +706,15 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
         }
     });
     
+    if (_materials.size() == 0)
+    {
+        LeoPlugin::IncomingMaterial defaultMat;
+        defaultMat.materialID = "default";
+        defaultMat.name = "Default";
+        defaultMat.indexOffset = 0;
+        defaultMat.numIndices = mesh->getNumIndices();
+        _materials.push_back(defaultMat);
+    }
     setMesh(mesh);
 
     delete[] texCoords;
@@ -722,22 +755,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
         {
             actMat.diffuseTextureUrl = baseUrl + "//" + mat.albedoTexture.filename.toStdString();
         }
-        /*if (!mat.normalTexture.filename.isEmpty() && mat.normalTexture.content.isEmpty() &&
-        !_textures.contains(mat.normalTexture.filename))
-        {
 
-        _texturesURLs.push_back(baseUrl + "\\" + mat.normalTexture.filename.toStdString());
-        }
-        if (!mat.specularTexture.filename.isEmpty() && mat.specularTexture.content.isEmpty() &&
-        !_textures.contains(mat.specularTexture.filename))
-        {
-        _texturesURLs.push_back(baseUrl + "\\" + mat.specularTexture.filename.toStdString());
-        }
-        if (!mat.emissiveTexture.filename.isEmpty() && mat.emissiveTexture.content.isEmpty() &&
-        !_textures.contains(mat.emissiveTexture.filename))
-        {
-        _texturesURLs.push_back(baseUrl + "\\" + mat.emissiveTexture.filename.toStdString());
-        }*/
         memcpy(actMat.diffuseColor,glm::value_ptr( mat.diffuseColor), 3 * sizeof (float));
         memcpy(actMat.emissiveColor, glm::value_ptr(mat.emissiveColor), 3 * sizeof(float));
         memcpy(actMat.specularColor, glm::value_ptr(mat.specularColor), 3 * sizeof(float));
