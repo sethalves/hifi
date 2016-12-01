@@ -12,6 +12,7 @@
 
 #include "EntityItemID.h"
 #include <VariantMapToScriptValue.h>
+#include <SharedUtil.h>
 #include <SpatialParentFinder.h>
 
 #include "EntitiesLogging.h"
@@ -180,6 +181,11 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
         const QUuid myNodeID = nodeList->getSessionUUID();
         propertiesWithSimID.setClientOnly(clientOnly);
         propertiesWithSimID.setOwningAvatarID(myNodeID);
+    }
+
+    if (propertiesWithSimID.getParentID() == AVATAR_SELF_ID) {
+        qDebug() << "ERROR: Cannot set entity parent ID to the local-only MyAvatar ID";
+        propertiesWithSimID.setParentID(QUuid());
     }
 
     auto dimensions = propertiesWithSimID.getDimensions();
@@ -358,6 +364,9 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
             if (!scriptSideProperties.parentIDChanged()) {
                 properties.setParentID(entity->getParentID());
+            } else if (scriptSideProperties.getParentID() == AVATAR_SELF_ID) {
+                qDebug() << "ERROR: Cannot set entity parent ID to the local-only MyAvatar ID";
+                properties.setParentID(QUuid());
             }
             if (!scriptSideProperties.parentJointIndexChanged()) {
                 properties.setParentJointIndex(entity->getParentJointIndex());
@@ -387,9 +396,14 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
         }
     });
 
-    if (!updatedEntity) {
-        return QUuid();
-    }
+    // FIXME: We need to figure out a better way to handle this. Allowing these edits to go through potentially
+    // breaks avatar energy and entities that are parented.
+    //
+    // To handle cases where a script needs to edit an entity with a _known_ entity id but doesn't exist
+    // in the local entity tree, we need to allow those edits to go through to the server.
+    // if (!updatedEntity) {
+    //     return QUuid();
+    // }
 
     _entityTree->withReadLock([&] {
         EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
@@ -611,11 +625,11 @@ QVector<QUuid> EntityScriptingInterface::findEntitiesInFrustum(QVariantMap frust
 }
 
 RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersection(const PickRay& ray, bool precisionPicking, 
-                const QScriptValue& entityIdsToInclude, const QScriptValue& entityIdsToDiscard) {
+                const QScriptValue& entityIdsToInclude, const QScriptValue& entityIdsToDiscard, bool visibleOnly, bool collidableOnly) {
 
     QVector<EntityItemID> entitiesToInclude = qVectorEntityItemIDFromScriptValue(entityIdsToInclude);
     QVector<EntityItemID> entitiesToDiscard = qVectorEntityItemIDFromScriptValue(entityIdsToDiscard);
-    return findRayIntersectionWorker(ray, Octree::Lock, precisionPicking, entitiesToInclude, entitiesToDiscard);
+    return findRayIntersectionWorker(ray, Octree::Lock, precisionPicking, entitiesToInclude, entitiesToDiscard, visibleOnly, collidableOnly);
 }
 
 // FIXME - we should remove this API and encourage all users to use findRayIntersection() instead. We've changed
@@ -630,17 +644,18 @@ RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersectionBlock
 }
 
 RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersectionWorker(const PickRay& ray,
-                                                                                    Octree::lockType lockType,
-                                                                                    bool precisionPicking, const QVector<EntityItemID>& entityIdsToInclude, const QVector<EntityItemID>& entityIdsToDiscard) {
+        Octree::lockType lockType, bool precisionPicking, const QVector<EntityItemID>& entityIdsToInclude,
+        const QVector<EntityItemID>& entityIdsToDiscard, bool visibleOnly, bool collidableOnly) {
 
 
     RayToEntityIntersectionResult result;
     if (_entityTree) {
         OctreeElementPointer element;
         EntityItemPointer intersectedEntity = NULL;
-        result.intersects = _entityTree->findRayIntersection(ray.origin, ray.direction, element, result.distance, result.face,
-            result.surfaceNormal, entityIdsToInclude, entityIdsToDiscard, (void**)&intersectedEntity, lockType, &result.accurate,
-                                                                precisionPicking);
+        result.intersects = _entityTree->findRayIntersection(ray.origin, ray.direction,
+            entityIdsToInclude, entityIdsToDiscard, visibleOnly, collidableOnly, precisionPicking,
+            element, result.distance, result.face, result.surfaceNormal,
+            (void**)&intersectedEntity, lockType, &result.accurate);
         if (result.intersects && intersectedEntity) {
             result.entityID = intersectedEntity->getEntityItemID();
             result.properties = intersectedEntity->getProperties();
@@ -1140,17 +1155,76 @@ bool EntityScriptingInterface::setAbsoluteJointRotationInObjectFrame(const QUuid
     return false;
 }
 
+glm::vec3 EntityScriptingInterface::getLocalJointTranslation(const QUuid& entityID, int jointIndex) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
+        auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
+        return modelEntity->getLocalJointTranslation(jointIndex);
+    } else {
+        return glm::vec3(0.0f);
+    }
+}
+
+glm::quat EntityScriptingInterface::getLocalJointRotation(const QUuid& entityID, int jointIndex) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
+        auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
+        return modelEntity->getLocalJointRotation(jointIndex);
+    } else {
+        return glm::quat();
+    }
+}
+
+bool EntityScriptingInterface::setLocalJointTranslation(const QUuid& entityID, int jointIndex, glm::vec3 translation) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
+        auto now = usecTimestampNow();
+        auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
+        bool result = modelEntity->setLocalJointTranslation(jointIndex, translation);
+        if (result) {
+            EntityItemProperties properties;
+            _entityTree->withWriteLock([&] {
+                properties = entity->getProperties();
+                entity->setLastBroadcast(now);
+            });
+
+            properties.setJointTranslationsDirty();
+            properties.setLastEdited(now);
+            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool EntityScriptingInterface::setLocalJointRotation(const QUuid& entityID, int jointIndex, glm::quat rotation) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
+        auto now = usecTimestampNow();
+        auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
+        bool result = modelEntity->setLocalJointRotation(jointIndex, rotation);
+        if (result) {
+            EntityItemProperties properties;
+            _entityTree->withWriteLock([&] {
+                properties = entity->getProperties();
+                entity->setLastBroadcast(now);
+            });
+
+            properties.setJointRotationsDirty();
+            properties.setLastEdited(now);
+            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            return true;
+        }
+    }
+    return false;
+}
 
 
-bool EntityScriptingInterface::setAbsoluteJointRotationsInObjectFrame(const QUuid& entityID,
-                                                                      const QVector<glm::quat>& rotations) {
+
+bool EntityScriptingInterface::setLocalJointRotations(const QUuid& entityID, const QVector<glm::quat>& rotations) {
     if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
         auto now = usecTimestampNow();
         auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
 
         bool result = false;
         for (int index = 0; index < rotations.size(); index++) {
-            result |= modelEntity->setAbsoluteJointRotationInObjectFrame(index, rotations[index]);
+            result |= modelEntity->setLocalJointRotation(index, rotations[index]);
         }
         if (result) {
             EntityItemProperties properties;
@@ -1170,15 +1244,14 @@ bool EntityScriptingInterface::setAbsoluteJointRotationsInObjectFrame(const QUui
 }
 
 
-bool EntityScriptingInterface::setAbsoluteJointTranslationsInObjectFrame(const QUuid& entityID,
-                                                                         const QVector<glm::vec3>& translations) {
+bool EntityScriptingInterface::setLocalJointTranslations(const QUuid& entityID, const QVector<glm::vec3>& translations) {
     if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Model)) {
         auto now = usecTimestampNow();
         auto modelEntity = std::dynamic_pointer_cast<ModelEntityItem>(entity);
 
         bool result = false;
         for (int index = 0; index < translations.size(); index++) {
-            result |= modelEntity->setAbsoluteJointTranslationInObjectFrame(index, translations[index]);
+            result |= modelEntity->setLocalJointTranslation(index, translations[index]);
         }
         if (result) {
             EntityItemProperties properties;
@@ -1197,12 +1270,12 @@ bool EntityScriptingInterface::setAbsoluteJointTranslationsInObjectFrame(const Q
     return false;
 }
 
-bool EntityScriptingInterface::setAbsoluteJointsDataInObjectFrame(const QUuid& entityID,
-                                                                  const QVector<glm::quat>& rotations,
-                                                                  const QVector<glm::vec3>& translations) {
+bool EntityScriptingInterface::setLocalJointsData(const QUuid& entityID,
+                                                  const QVector<glm::quat>& rotations,
+                                                  const QVector<glm::vec3>& translations) {
     // for a model with 80 joints, sending both these in one edit packet causes the packet to be too large.
-    return setAbsoluteJointRotationsInObjectFrame(entityID, rotations) ||
-        setAbsoluteJointTranslationsInObjectFrame(entityID, translations);
+    return setLocalJointRotations(entityID, rotations) ||
+        setLocalJointTranslations(entityID, translations);
 }
 
 int EntityScriptingInterface::getJointIndex(const QUuid& entityID, const QString& name) {

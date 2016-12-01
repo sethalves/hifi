@@ -319,7 +319,7 @@ void diffuseProfileGPU(gpu::TexturePointer& profileMap, RenderArgs* args) {
         makePipeline = gpu::Pipeline::create(program, state);
     }
 
-    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create());
+    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create("diffuseProfile"));
     makeFramebuffer->setRenderBuffer(0, profileMap);
 
     gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
@@ -356,7 +356,7 @@ void diffuseScatterGPU(const gpu::TexturePointer& profileMap, gpu::TexturePointe
         makePipeline = gpu::Pipeline::create(program, state);
     }
 
-    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create());
+    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create("diffuseScatter"));
     makeFramebuffer->setRenderBuffer(0, lut);
 
     gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
@@ -393,7 +393,7 @@ void computeSpecularBeckmannGPU(gpu::TexturePointer& beckmannMap, RenderArgs* ar
         makePipeline = gpu::Pipeline::create(program, state);
     }
 
-    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create());
+    auto makeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create("computeSpecularBeckmann"));
     makeFramebuffer->setRenderBuffer(0, beckmannMap);
 
     gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
@@ -533,7 +533,7 @@ void DebugSubsurfaceScattering::run(const render::SceneContextPointer& sceneCont
 
 
 
-    const auto theLight = DependencyManager::get<DeferredLightingEffect>()->getLightStage().lights[0];
+    const auto light = DependencyManager::get<DeferredLightingEffect>()->getLightStage()->getLight(0);
 
     gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
         batch.enableStereo(false);
@@ -567,8 +567,8 @@ void DebugSubsurfaceScattering::run(const render::SceneContextPointer& sceneCont
 
                 batch.setUniformBuffer(ScatteringTask_FrameTransformSlot, frameTransform->getFrameTransformBuffer());
                 batch.setUniformBuffer(ScatteringTask_ParamSlot, scatteringResource->getParametersBuffer());
-                if (theLight->light) {
-                    batch.setUniformBuffer(ScatteringTask_LightSlot, theLight->light->getSchemaBuffer());
+                if (light) {
+                    batch.setUniformBuffer(ScatteringTask_LightSlot, light->getLightSchemaBuffer());
                 }
                 batch.setResourceTexture(ScatteringTask_ScatteringTableSlot, scatteringTable);
                 batch.setResourceTexture(ScatteringTask_CurvatureMapSlot, curvatureFramebuffer->getRenderBuffer(0));

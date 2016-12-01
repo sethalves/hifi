@@ -31,6 +31,7 @@ using ModelWeakPointer = std::weak_ptr<Model>;
 
 class EntitySimulation;
 
+
 class NewlyCreatedEntityHook {
 public:
     virtual void entityCreated(const EntityItem& newEntity, const SharedNodePointer& senderNode) = 0;
@@ -63,6 +64,7 @@ public:
 
 
     void setEntityMaxTmpLifetime(float maxTmpEntityLifetime) { _maxTmpEntityLifetime = maxTmpEntityLifetime; }
+    void setEntityScriptSourceWhitelist(const QString& entityScriptSourceWhitelist);
 
     /// Implements our type specific root element factory
     virtual OctreeElementPointer createNewElement(unsigned char* octalCode = NULL) override;
@@ -89,13 +91,11 @@ public:
                                       const SharedNodePointer& senderNode) override;
 
     virtual bool findRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-        OctreeElementPointer& node, float& distance, BoxFace& face, glm::vec3& surfaceNormal,
-        const QVector<EntityItemID>& entityIdsToInclude = QVector<EntityItemID>(),
-        const QVector<EntityItemID>& entityIdsToDiscard = QVector<EntityItemID>(),
-        void** intersectedObject = NULL,
-        Octree::lockType lockType = Octree::TryLock,
-        bool* accurateResult = NULL,
-        bool precisionPicking = false);
+        QVector<EntityItemID> entityIdsToInclude, QVector<EntityItemID> entityIdsToDiscard,
+        bool visibleOnly, bool collidableOnly, bool precisionPicking, 
+        OctreeElementPointer& node, float& distance,
+        BoxFace& face, glm::vec3& surfaceNormal, void** intersectedObject = NULL,
+        Octree::lockType lockType = Octree::TryLock, bool* accurateResult = NULL);
 
     virtual bool rootElementHasData() const override { return true; }
 
@@ -121,6 +121,8 @@ public:
     // use this method if you have a pointer to the entity (avoid an extra entity lookup)
     bool updateEntity(EntityItemPointer entity, const EntityItemProperties& properties, const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
 
+    // check if the avatar is a child of this entity, If so set the avatar parentID to null
+    void unhookChildAvatar(const EntityItemID entityID);
     void deleteEntity(const EntityItemID& entityID, bool force = false, bool ignoreWarnings = true);
     void deleteEntities(QSet<EntityItemID> entityIDs, bool force = false, bool ignoreWarnings = true);
 
@@ -343,6 +345,8 @@ protected:
     QHash<QUuid, QSet<EntityItemID>> _childrenOfAvatars;  // which entities are children of which avatars
 
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
+
+    QStringList _entityScriptSourceWhitelist;
 };
 
 #endif // hifi_EntityTree_h

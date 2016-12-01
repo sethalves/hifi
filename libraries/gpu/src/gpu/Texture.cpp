@@ -9,9 +9,14 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+
 #include "Texture.h"
 
 #include <glm/gtc/constants.hpp>
+#include <glm/gtx/component_wise.hpp>
+
+#include <QtCore/QDebug>
+#include <QtCore/QThread>
 
 #include <NumericalConstants.h>
 
@@ -28,6 +33,29 @@ std::atomic<uint32_t> Texture::_textureCPUCount{ 0 };
 std::atomic<Texture::Size> Texture::_textureCPUMemoryUsage{ 0 };
 std::atomic<Texture::Size> Texture::_allowedCPUMemoryUsage { 0 };
 
+
+#define MIN_CORES_FOR_INCREMENTAL_TEXTURES 5
+bool recommendedSparseTextures = (QThread::idealThreadCount() >= MIN_CORES_FOR_INCREMENTAL_TEXTURES);
+
+std::atomic<bool> Texture::_enableSparseTextures { recommendedSparseTextures };
+
+struct ReportTextureState {
+    ReportTextureState() {
+        qDebug() << "[TEXTURE TRANSFER SUPPORT]"
+            << "\n\tidealThreadCount:" << QThread::idealThreadCount()
+            << "\n\tRECOMMENDED enableSparseTextures:" << recommendedSparseTextures;
+    }
+} report;
+
+void Texture::setEnableSparseTextures(bool enabled) {
+#ifdef Q_OS_WIN
+    qDebug() << "[TEXTURE TRANSFER SUPPORT] SETTING - Enable Sparse Textures and Dynamic Texture Management:" << enabled;
+    _enableSparseTextures = enabled;
+#else
+    qDebug() << "[TEXTURE TRANSFER SUPPORT] Sparse Textures and Dynamic Texture Management not supported on this platform.";
+#endif
+}
+
 void Texture::updateTextureCPUMemoryUsage(Size prevObjectSize, Size newObjectSize) {
     if (prevObjectSize == newObjectSize) {
         return;
@@ -37,6 +65,10 @@ void Texture::updateTextureCPUMemoryUsage(Size prevObjectSize, Size newObjectSiz
     } else {
         _textureCPUMemoryUsage.fetch_add(newObjectSize - prevObjectSize);
     }
+}
+
+bool Texture::getEnableSparseTextures() { 
+    return _enableSparseTextures.load(); 
 }
 
 uint32_t Texture::getTextureCPUCount() {
@@ -51,12 +83,25 @@ uint32_t Texture::getTextureGPUCount() {
     return Context::getTextureGPUCount();
 }
 
+uint32_t Texture::getTextureGPUSparseCount() {
+    return Context::getTextureGPUSparseCount();
+}
+
 Texture::Size Texture::getTextureGPUMemoryUsage() {
     return Context::getTextureGPUMemoryUsage();
 }
 
 Texture::Size Texture::getTextureGPUVirtualMemoryUsage() {
     return Context::getTextureGPUVirtualMemoryUsage();
+}
+
+
+Texture::Size Texture::getTextureGPUFramebufferMemoryUsage() {
+    return Context::getTextureGPUFramebufferMemoryUsage();
+}
+
+Texture::Size Texture::getTextureGPUSparseMemoryUsage() {
+    return Context::getTextureGPUSparseMemoryUsage();
 }
 
 uint32_t Texture::getTextureGPUTransferCount() {
@@ -207,6 +252,16 @@ bool Texture::Storage::assignMipFaceData(uint16 level, const Element& format, Si
     return allocated == size;
 }
 
+Texture* Texture::createExternal2D(const ExternalRecycler& recycler, const Sampler& sampler) {
+    Texture* tex = new Texture();
+    tex->_type = TEX_2D;
+    tex->_maxMip = 0;
+    tex->_sampler = sampler;
+    tex->setUsage(Usage::Builder().withExternal().withColor());
+    tex->setExternalRecycler(recycler);
+    return tex;
+}
+
 Texture* Texture::create1D(const Element& texelFormat, uint16 width, const Sampler& sampler) { 
     return create(TEX_1D, texelFormat, width, 1, 1, 1, 1, sampler);
 }
@@ -246,6 +301,22 @@ Texture::Texture():
 Texture::~Texture()
 {
     _textureCPUCount--;
+    if (getUsage().isExternal()) {
+        Texture::ExternalUpdates externalUpdates;
+        {
+            Lock lock(_externalMutex);
+            _externalUpdates.swap(externalUpdates);
+        }
+        for (const auto& update : externalUpdates) {
+            assert(_externalRecycler);
+            _externalRecycler(update.first, update.second);
+        }
+        // Force the GL object to be destroyed here
+        // If we let the normal destructor do it, then it will be 
+        // cleared after the _externalRecycler has been destroyed, 
+        // resulting in leaked texture memory
+        gpuObject.setGPUObject(nullptr);
+    }
 }
 
 Texture::Size Texture::resize(Type type, const Element& texelFormat, uint16 width, uint16 height, uint16 depth, uint16 numSamples, uint16 numSlices) {
@@ -340,12 +411,18 @@ uint16 Texture::evalDimNumMips(uint16 size) {
     return 1 + (uint16) val;
 }
 
+static const double LOG_2 = log(2.0);
+
+uint16 Texture::evalNumMips(const Vec3u& dimensions) {
+    double largerDim = glm::compMax(dimensions);
+    double val = log(largerDim) / LOG_2;
+    return 1 + (uint16)val;
+}
+
 // The number mips that the texture could have if all existed
 // = log2(max(width, height, depth))
 uint16 Texture::evalNumMips() const {
-    double largerDim = std::max(std::max(_width, _height), _depth);
-    double val = log(largerDim)/log(2.0);
-    return 1 + (uint16) val;
+    return evalNumMips({ _width, _height, _depth });
 }
 
 bool Texture::assignStoredMip(uint16 level, const Element& format, Size size, const Byte* bytes) {
@@ -894,3 +971,28 @@ Vec3u Texture::evalMipDimensions(uint16 level) const {
     return glm::max(dimensions, Vec3u(1));
 }
 
+void Texture::setExternalRecycler(const ExternalRecycler& recycler) { 
+    Lock lock(_externalMutex);
+    _externalRecycler = recycler;
+}
+
+Texture::ExternalRecycler Texture::getExternalRecycler() const {
+    Lock lock(_externalMutex);
+    Texture::ExternalRecycler result = _externalRecycler;
+    return result;
+}
+
+void Texture::setExternalTexture(uint32 externalId, void* externalFence) {
+    Lock lock(_externalMutex);
+    assert(_externalRecycler);
+    _externalUpdates.push_back({ externalId, externalFence });
+}
+
+Texture::ExternalUpdates Texture::getUpdates() const {
+    Texture::ExternalUpdates result;
+    {
+        Lock lock(_externalMutex);
+        _externalUpdates.swap(result);
+    }
+    return result;
+}

@@ -23,16 +23,14 @@
 
 #include <gl/QOpenGLContextWrapper.h>
 #include <PerfStat.h>
-#include <gl/OglplusHelpers.h>
 #include <ViewFrustum.h>
 #include <gpu/gl/GLbackend.h>
 
 #include <ui-plugins/PluginContainer.h>
+
 #include "OculusHelpers.h"
 
-using namespace oglplus;
-
-const QString OculusLegacyDisplayPlugin::NAME("Oculus Rift");
+const char* OculusLegacyDisplayPlugin::NAME { "Oculus Rift" };
 
 OculusLegacyDisplayPlugin::OculusLegacyDisplayPlugin() {
 }

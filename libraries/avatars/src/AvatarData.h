@@ -55,6 +55,7 @@ typedef unsigned long long quint64;
 #include <NumericalConstants.h>
 #include <Packed.h>
 #include <ThreadSafeValueCache.h>
+#include <SharedUtil.h>
 
 #include "AABox.h"
 #include "HeadData.h"
@@ -137,10 +138,6 @@ class QDataStream;
 class AttachmentData;
 class Transform;
 using TransformPointer = std::shared_ptr<Transform>;
-
-// When writing out avatarEntities to a QByteArray, if the parentID is the ID of MyAvatar, use this ID instead.  This allows
-// the value to be reset when the sessionID changes.
-const QUuid AVATAR_SELF_ID = QUuid("{00000000-0000-0000-0000-000000000001}");
 
 class AvatarData : public QObject, public SpatiallyNestable {
     Q_OBJECT
@@ -245,6 +242,12 @@ public:
     float getTargetScale() const;
     void setTargetScale(float targetScale);
     void setTargetScaleVerbose(float targetScale);
+
+    float getDomainLimitedScale() const { return glm::clamp(_targetScale, _domainMinimumScale, _domainMaximumScale); }
+    void setDomainMinimumScale(float domainMinimumScale)
+        { _domainMinimumScale = glm::clamp(domainMinimumScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE); }
+    void setDomainMaximumScale(float domainMaximumScale)
+        { _domainMaximumScale = glm::clamp(domainMaximumScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE); }
 
     //  Hand State
     Q_INVOKABLE void setHandState(char s) { _handState = s; }
@@ -380,6 +383,8 @@ protected:
 
     // Body scale
     float _targetScale;
+    float _domainMinimumScale { MIN_AVATAR_SCALE };
+    float _domainMaximumScale { MAX_AVATAR_SCALE };
 
     //  Hand state (are we grabbing something or not)
     char _handState;
@@ -402,6 +407,7 @@ protected:
     QUrl _skeletonFBXURL;
     QVector<AttachmentData> _attachmentData;
     QString _displayName;
+    const QUrl& cannonicalSkeletonModelURL(const QUrl& empty);
 
     float _displayNameTargetAlpha;
     float _displayNameAlpha;

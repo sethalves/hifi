@@ -128,11 +128,15 @@ void EntityTreeRenderer::clear() {
 
     // remove all entities from the scene
     auto scene = _viewState->getMain3DScene();
-    render::PendingChanges pendingChanges;
-    foreach(auto entity, _entitiesInScene) {
-        entity->removeFromScene(entity, scene, pendingChanges);
+    if (scene) {
+        render::PendingChanges pendingChanges;
+        foreach(auto entity, _entitiesInScene) {
+            entity->removeFromScene(entity, scene, pendingChanges);
+        }
+        scene->enqueuePendingChanges(pendingChanges);
+    } else {
+        qCWarning(entitiesrenderer) << "EntitityTreeRenderer::clear(), Unexpected null scene, possibly during application shutdown";
     }
-    scene->enqueuePendingChanges(pendingChanges);
     _entitiesInScene.clear();
 
     // reset the zone to the default (while we load the next scene)
@@ -478,7 +482,8 @@ bool EntityTreeRenderer::applySkyboxAndHasAmbient() {
         }
     }
 
-    if (_pendingSkyboxTexture && !_skyboxTexture) {
+    if (_pendingSkyboxTexture && 
+        (!_skyboxTexture || (_skyboxTexture->getURL() != _skyboxTextureURL))) {
         _skyboxTexture = textureCache->getTexture(_skyboxTextureURL, NetworkTexture::CUBE_TEXTURE);
     }
     if (_skyboxTexture && _skyboxTexture->isLoaded()) {
@@ -515,7 +520,7 @@ const FBXGeometry* EntityTreeRenderer::getGeometryForEntity(EntityItemPointer en
         std::shared_ptr<RenderableModelEntityItem> modelEntityItem =
                                                         std::dynamic_pointer_cast<RenderableModelEntityItem>(entityItem);
         assert(modelEntityItem); // we need this!!!
-        ModelPointer model = modelEntityItem->getModel(this);
+        ModelPointer model = modelEntityItem->getModel(getSharedFromThis());
         if (model && model->isLoaded()) {
             result = &model->getFBXGeometry();
         }
@@ -528,7 +533,7 @@ ModelPointer EntityTreeRenderer::getModelForEntityItem(EntityItemPointer entityI
     if (entityItem->getType() == EntityTypes::Model) {
         std::shared_ptr<RenderableModelEntityItem> modelEntityItem =
                                                         std::dynamic_pointer_cast<RenderableModelEntityItem>(entityItem);
-        result = modelEntityItem->getModel(this);
+        result = modelEntityItem->getModel(getSharedFromThis());
     }
     return result;
 }
@@ -591,17 +596,17 @@ void EntityTreeRenderer::deleteReleasedModels() {
 
 RayToEntityIntersectionResult EntityTreeRenderer::findRayIntersectionWorker(const PickRay& ray, Octree::lockType lockType,
                                                                                     bool precisionPicking, const QVector<EntityItemID>& entityIdsToInclude,
-                                                                                    const QVector<EntityItemID>& entityIdsToDiscard) {
+                                                                                    const QVector<EntityItemID>& entityIdsToDiscard, bool visibleOnly, bool collidableOnly) {
     RayToEntityIntersectionResult result;
     if (_tree) {
         EntityTreePointer entityTree = std::static_pointer_cast<EntityTree>(_tree);
 
         OctreeElementPointer element;
         EntityItemPointer intersectedEntity = NULL;
-        result.intersects = entityTree->findRayIntersection(ray.origin, ray.direction, element, result.distance, 
-                                                            result.face, result.surfaceNormal, entityIdsToInclude, entityIdsToDiscard,
-                                                            (void**)&intersectedEntity, lockType, &result.accurate,
-                                                            precisionPicking);
+        result.intersects = entityTree->findRayIntersection(ray.origin, ray.direction,
+            entityIdsToInclude, entityIdsToDiscard, visibleOnly, collidableOnly, precisionPicking,
+            element, result.distance, result.face, result.surfaceNormal,
+            (void**)&intersectedEntity, lockType, &result.accurate);
         if (result.intersects && intersectedEntity) {
             result.entityID = intersectedEntity->getEntityItemID();
             result.properties = intersectedEntity->getProperties();
@@ -900,8 +905,12 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
         auto entity = _entitiesInScene.take(entityID);
         render::PendingChanges pendingChanges;
         auto scene = _viewState->getMain3DScene();
-        entity->removeFromScene(entity, scene, pendingChanges);
-        scene->enqueuePendingChanges(pendingChanges);
+        if (scene) {
+            entity->removeFromScene(entity, scene, pendingChanges);
+            scene->enqueuePendingChanges(pendingChanges);
+        } else {
+            qCWarning(entitiesrenderer) << "EntityTreeRenderer::deletingEntity(), Unexpected null scene, possibly during application shutdown";
+        }
     }
 }
 
@@ -918,10 +927,14 @@ void EntityTreeRenderer::addEntityToScene(EntityItemPointer entity) {
     // here's where we add the entity payload to the scene
     render::PendingChanges pendingChanges;
     auto scene = _viewState->getMain3DScene();
-    if (entity->addToScene(entity, scene, pendingChanges)) {
-        _entitiesInScene.insert(entity->getEntityItemID(), entity);
+    if (scene) {
+        if (entity->addToScene(entity, scene, pendingChanges)) {
+            _entitiesInScene.insert(entity->getEntityItemID(), entity);
+        }
+        scene->enqueuePendingChanges(pendingChanges);
+    } else {
+        qCWarning(entitiesrenderer) << "EntityTreeRenderer::addEntityToScene(), Unexpected null scene, possibly during application shutdown";
     }
-    scene->enqueuePendingChanges(pendingChanges);
 }
 
 

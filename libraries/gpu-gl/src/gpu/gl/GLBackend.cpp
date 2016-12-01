@@ -23,6 +23,7 @@
 #include "nvToolsExt.h"
 #endif
 
+#include <shared/GlobalAppProperties.h>
 #include <GPUIdent.h>
 #include <gl/QOpenGLContextWrapper.h>
 #include <QtCore/QProcessEnvironment>
@@ -36,7 +37,6 @@ static const QString DEBUG_FLAG("HIFI_DISABLE_OPENGL_45");
 static bool disableOpenGL45 = QProcessEnvironment::systemEnvironment().contains(DEBUG_FLAG);
 
 static GLBackend* INSTANCE{ nullptr };
-static const char* GL_BACKEND_PROPERTY_NAME = "com.highfidelity.gl.backend";
 
 BackendPointer GLBackend::createBackend() {
     // The ATI memory info extension only exposes 'free memory' so we want to force it to 
@@ -56,10 +56,11 @@ BackendPointer GLBackend::createBackend() {
     }
     result->initInput();
     result->initTransform();
+    result->initTextureManagementStage();
 
     INSTANCE = result.get();
     void* voidInstance = &(*result);
-    qApp->setProperty(GL_BACKEND_PROPERTY_NAME, QVariant::fromValue(voidInstance));
+    qApp->setProperty(hifi::properties::gl::BACKEND, QVariant::fromValue(voidInstance));
 
     gl::GLTexture::initTextureTransferHelper();
     return result;
@@ -67,7 +68,7 @@ BackendPointer GLBackend::createBackend() {
 
 GLBackend& getBackend() {
     if (!INSTANCE) {
-        INSTANCE = static_cast<GLBackend*>(qApp->property(GL_BACKEND_PROPERTY_NAME).value<void*>());
+        INSTANCE = static_cast<GLBackend*>(qApp->property(hifi::properties::gl::BACKEND).value<void*>());
     }
     return *INSTANCE;
 }
@@ -118,8 +119,6 @@ GLBackend::CommandCall GLBackend::_commandCalls[Batch::NUM_COMMANDS] =
 
     (&::gpu::gl::GLBackend::do_startNamedCall),
     (&::gpu::gl::GLBackend::do_stopNamedCall),
-
-    (&::gpu::gl::GLBackend::do_glActiveBindTexture),
 
     (&::gpu::gl::GLBackend::do_glUniform1i),
     (&::gpu::gl::GLBackend::do_glUniform1f),
@@ -308,11 +307,20 @@ void GLBackend::render(const Batch& batch) {
         renderPassTransfer(batch);
     }
 
+#ifdef GPU_STEREO_DRAWCALL_INSTANCED
+    if (_stereo._enable) {
+        glEnable(GL_CLIP_DISTANCE0);
+    }
+#endif
     {
         PROFILE_RANGE(_stereo._enable ? "Render Stereo" : "Render");
         renderPassDraw(batch);
     }
-
+#ifdef GPU_STEREO_DRAWCALL_INSTANCED
+    if (_stereo._enable) {
+        glDisable(GL_CLIP_DISTANCE0);
+    }
+#endif
     // Restore the saved stereo state for the next batch
     _stereo._enable = savedStereo;
 }
@@ -327,13 +335,24 @@ void GLBackend::syncCache() {
     glEnable(GL_LINE_SMOOTH);
 }
 
+#ifdef GPU_STEREO_DRAWCALL_DOUBLED
 void GLBackend::setupStereoSide(int side) {
     ivec4 vp = _transform._viewport;
     vp.z /= 2;
     glViewport(vp.x + side * vp.z, vp.y, vp.z, vp.w);
 
+
+#ifdef GPU_STEREO_CAMERA_BUFFER
+#ifdef GPU_STEREO_DRAWCALL_DOUBLED
+    glVertexAttribI1i(14, side);
+#endif
+#else
     _transform.bindCurrentCamera(side);
+#endif
+
 }
+#else
+#endif
 
 void GLBackend::do_resetStages(const Batch& batch, size_t paramOffset) {
     resetStages();
@@ -386,16 +405,11 @@ void GLBackend::do_popProfileRange(const Batch& batch, size_t paramOffset) {
 // term strategy is to get rid of any GL calls in favor of the HIFI GPU API
 
 // As long as we don;t use several versions of shaders we can avoid this more complex code path
-// #define GET_UNIFORM_LOCATION(shaderUniformLoc) _pipeline._programShader->getUniformLocation(shaderUniformLoc, isStereo());
+#ifdef GPU_STEREO_CAMERA_BUFFER
+#define GET_UNIFORM_LOCATION(shaderUniformLoc) _pipeline._programShader->getUniformLocation(shaderUniformLoc, (GLShader::Version) isStereo())
+#else
 #define GET_UNIFORM_LOCATION(shaderUniformLoc) shaderUniformLoc
-void GLBackend::do_glActiveBindTexture(const Batch& batch, size_t paramOffset) {
-    glActiveTexture(batch._params[paramOffset + 2]._uint);
-    glBindTexture(
-        GET_UNIFORM_LOCATION(batch._params[paramOffset + 1]._uint),
-        batch._params[paramOffset + 0]._uint);
-
-    (void)CHECK_GL_ERROR();
-}
+#endif
 
 void GLBackend::do_glUniform1i(const Batch& batch, size_t paramOffset) {
     if (_pipeline._program == 0) {
@@ -568,6 +582,11 @@ void GLBackend::releaseBuffer(GLuint id, Size size) const {
     _buffersTrash.push_back({ id, size });
 }
 
+void GLBackend::releaseExternalTexture(GLuint id, const Texture::ExternalRecycler& recycler) const {
+    Lock lock(_trashMutex);
+    _externalTexturesTrash.push_back({ id, recycler });
+}
+
 void GLBackend::releaseTexture(GLuint id, Size size) const {
     Lock lock(_trashMutex);
     _texturesTrash.push_back({ id, size });
@@ -659,6 +678,28 @@ void GLBackend::recycle() const {
         }
         if (!ids.empty()) {
             glDeleteTextures((GLsizei)ids.size(), ids.data());
+        }
+    }
+
+    {
+        std::list<std::pair<GLuint, Texture::ExternalRecycler>> externalTexturesTrash;
+        {
+            Lock lock(_trashMutex);
+            std::swap(_externalTexturesTrash, externalTexturesTrash);
+        }
+        if (!externalTexturesTrash.empty()) {
+            std::vector<GLsync> fences;  
+            fences.resize(externalTexturesTrash.size());
+            for (size_t i = 0; i < externalTexturesTrash.size(); ++i) {
+                fences[i] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+            }
+            // External texture fences will be read in another thread/context, so we need a flush
+            glFlush();
+            size_t index = 0;
+            for (auto pair : externalTexturesTrash) {
+                auto fence = fences[index++];
+                pair.second(pair.first, fence);
+            }
         }
     }
 

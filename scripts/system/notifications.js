@@ -17,11 +17,9 @@
 //  keystroke:
 //
 //  CTRL/s for snapshot.
-//  CTRL/m for mic mute and unmute.
 
 //  System generated notifications:
-//  If Screen is resized.
-//  If mic is muted for any reason.
+//  Connection refused.
 //
 //  To add a new System notification type:
 //
@@ -92,16 +90,12 @@ var lodTextID = false;
 
 var NotificationType = {
     UNKNOWN: 0,
-    MUTE_TOGGLE: 1,
-    SNAPSHOT: 2,
-    WINDOW_RESIZE: 3,
-    LOD_WARNING: 4,
-    CONNECTION_REFUSED: 5,
-    EDIT_ERROR: 6,
+    SNAPSHOT: 1,
+    LOD_WARNING: 2,
+    CONNECTION_REFUSED: 3,
+    EDIT_ERROR: 4,
     properties: [
-        { text: "Mute Toggle" },
         { text: "Snapshot" },
-        { text: "Window Resize" },
         { text: "Level of Detail" },
         { text: "Connection Refused" },
         { text: "Edit error" }
@@ -446,19 +440,6 @@ function wordWrap(str) {
     return stringDivider(str, 43.0, "\n");
 }
 
-//  This fires a notification on window resize
-function checkSize() {
-    if ((Window.innerWidth !== ourWidth) || (Window.innerHeight !== ourHeight)) {
-        var windowResize = "Window has been resized";
-        ourWidth = Window.innerWidth;
-        ourHeight = Window.innerHeight;
-        windowDimensions = Controller.getViewportDimensions();
-        overlayLocationX = (windowDimensions.x - (width + 60.0));
-        buttonLocationX = overlayLocationX + (width - 35.0);
-        createNotification(windowResize, NotificationType.WINDOW_RESIZE);
-    }
-}
-
 function update() {
     var nextOverlay,
         noticeOut,
@@ -480,7 +461,6 @@ function update() {
 
     frame += 1;
     if ((frame % 60.0) === 0) { // only update once a second
-        checkSize(); // checks for size change to trigger windowResize notification
         locationY = 20.0;
         for (i = 0; i < arrays.length; i += 1) { //repositions overlays as others fade
             nextOverlay = Overlays.getOverlayAtPoint({ x: overlayLocationX, y: locationY });
@@ -533,16 +513,6 @@ function isStartingUp() {
     return startingUp;
 }
 
-//  Triggers mic mute notification
-function onMuteStateChanged() {
-    var muteState,
-        muteString;
-
-    muteState = AudioDevice.getMuted() ? "muted" : "unmuted";
-    muteString = "Microphone is now " + muteState;
-    createNotification(muteString, NotificationType.MUTE_TOGGLE);
-}
-
 function onDomainConnectionRefused(reason) {
     createNotification("Connection refused: " + reason, NotificationType.CONNECTION_REFUSED);
 }
@@ -552,13 +522,13 @@ function onEditError(msg) {
 }
 
 
-function onSnapshotTaken(path, notify) {
+function onSnapshotTaken(pathStillSnapshot, pathAnimatedSnapshot, notify) {
     if (notify) {
         var imageProperties = {
-            path: "file:///" + path,
+            path: "file:///" + pathStillSnapshot,
             aspectRatio: Window.innerWidth / Window.innerHeight
         };
-        createNotification(wordWrap("Snapshot saved to " + path), NotificationType.SNAPSHOT, imageProperties);
+        createNotification(wordWrap("Snapshot saved to " + pathStillSnapshot), NotificationType.SNAPSHOT, imageProperties);
     }
 }
 
@@ -653,7 +623,6 @@ LODManager.LODDecreased.connect(function() {
     }
 });
 
-AudioDevice.muteToggled.connect(onMuteStateChanged);
 Controller.keyPressEvent.connect(keyPressEvent);
 Controller.mousePressEvent.connect(mousePressEvent);
 Controller.keyReleaseEvent.connect(keyReleaseEvent);

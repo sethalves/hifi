@@ -29,11 +29,18 @@
 #include "InterfaceLogging.h"
 #include "UserActivityLogger.h"
 #include "MainWindow.h"
+#include <QtCore/QProcess>
 
 #ifdef HAS_BUGSPLAT
 #include <BuildInfo.h>
 #include <BugSplat.h>
 #include <CrashReporter.h>
+#endif
+
+#ifdef Q_OS_WIN
+extern "C" {
+    typedef int(__stdcall * CHECKMINSPECPROC) ();
+}
 #endif
 
 int main(int argc, const char* argv[]) {
@@ -121,6 +128,16 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    QCommandLineParser parser;
+    QCommandLineOption runServerOption("runServer", "Whether to run the server");
+    QCommandLineOption serverContentPathOption("serverContentPath", "Where to find server content", "serverContentPath");
+    parser.addOption(runServerOption);
+    parser.addOption(serverContentPathOption);
+    parser.parse(arguments);
+    bool runServer = parser.isSet(runServerOption);
+    bool serverContentPathOptionIsSet = parser.isSet(serverContentPathOption);
+    QString serverContentPathOptionValue = serverContentPathOptionIsSet ? parser.value(serverContentPathOption) : QString();
+
     QElapsedTimer startupTime;
     startupTime.start();
 
@@ -142,10 +159,32 @@ int main(int argc, const char* argv[]) {
 
     SteamClient::init();
 
+#ifdef Q_OS_WIN
+    // If we're running in steam mode, we need to do an explicit check to ensure we're up to the required min spec
+    if (SteamClient::isRunning()) {
+        QString appPath;
+        {
+            char filename[MAX_PATH];
+            GetModuleFileName(NULL, filename, MAX_PATH);
+            QFileInfo appInfo(filename);
+            appPath = appInfo.absolutePath();
+        }
+        QString openvrDllPath = appPath + "/plugins/openvr.dll";
+        HMODULE openvrDll;
+        CHECKMINSPECPROC checkMinSpecPtr;
+        if ((openvrDll = LoadLibrary(openvrDllPath.toLocal8Bit().data())) && 
+            (checkMinSpecPtr = (CHECKMINSPECPROC)GetProcAddress(openvrDll, "CheckMinSpec"))) {
+            if (!checkMinSpecPtr()) {
+                return -1;
+            }
+        }
+    }
+#endif
+
     int exitCode;
     {
         QSettings::setDefaultFormat(QSettings::IniFormat);
-        Application app(argc, const_cast<char**>(argv), startupTime);
+        Application app(argc, const_cast<char**>(argv), startupTime, runServer, serverContentPathOptionValue);
 
         // If we failed the OpenGLVersion check, log it.
         if (override) {
@@ -199,7 +238,6 @@ int main(int argc, const char* argv[]) {
         QTranslator translator;
         translator.load("i18n/interface_en");
         app.installTranslator(&translator);
-
         qCDebug(interfaceapp, "Created QT Application.");
         exitCode = app.exec();
         server.close();

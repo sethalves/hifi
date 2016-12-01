@@ -30,6 +30,10 @@ var TOOLBAR_MARGIN_Y = 0;
 var marketplaceVisible = false;
 var marketplaceWebTablet;
 
+// We persist clientOnly data in the .ini file, and reconsistitute it on restart.
+// To keep things consistent, we pickle the tablet data in Settings, and kill any existing such on restart and domain change.
+var persistenceKey = "io.highfidelity.lastDomainTablet";
+
 function shouldShowWebTablet() {
     var rightPose = Controller.getPoseValue(Controller.Standard.RightHand);
     var leftPose = Controller.getPoseValue(Controller.Standard.LeftHand);
@@ -39,6 +43,8 @@ function shouldShowWebTablet() {
 
 function showMarketplace(marketplaceID) {
     if (shouldShowWebTablet()) {
+        updateButtonState(true);
+
         print("HERE shouldShowWebTablet");
         if (HMD.tabletID) {
             print("HERE shouldShowWebTablet tabletID is ", HMD.tabletID);
@@ -46,8 +52,13 @@ function showMarketplace(marketplaceID) {
             HMD.tabletID = UIWebTablet.webEntityID;
         } else {
             print("HERE shouldShowWebTablet making new tablet");
-            marketplaceWebTablet = new WebTablet("https://metaverse.highfidelity.com/marketplace");
+            marketplaceWebTablet = new WebTablet("https://metaverse.highfidelity.com/marketplace",
+                                                 null, // width
+                                                 null, // dpi
+                                                 null, // location
+                                                 true); // client-only
         }
+        Settings.setValue(persistenceKey, marketplaceWebTablet.pickle());
     } else {
         var url = MARKETPLACE_URL;
         if (marketplaceID) {
@@ -61,13 +72,25 @@ function showMarketplace(marketplaceID) {
     UserActivityLogger.openedMarketplace();
 }
 
+function hideTablet(tablet) {
+    if (!tablet) {
+        return;
+    }
+    updateButtonState(false);
+    tablet.destroy();
+    marketplaceWebTablet = null;
+    Settings.setValue(persistenceKey, "");
+}
+function clearOldTablet() { // If there was a tablet from previous domain or session, kill it and let it be recreated
+    var tablet = WebTablet.unpickle(Settings.getValue(persistenceKey, ""));
+    hideTablet(tablet);
+}
 function hideMarketplace() {
     if (marketplaceWindow.visible) {
         marketplaceWindow.setVisible(false);
         marketplaceWindow.setURL("about:blank");
     } else if (marketplaceWebTablet) {
-        marketplaceWebTablet.destroy();
-        marketplaceWebTablet = null;
+        hideTablet(marketplaceWebTablet);
     }
     marketplaceVisible = false;
 }
@@ -91,10 +114,13 @@ var browseExamplesButton = toolBar.addButton({
     alpha: 0.9
 });
 
+function updateButtonState(visible) {
+    browseExamplesButton.writeProperty('buttonState', visible ? 0 : 1);
+    browseExamplesButton.writeProperty('defaultState', visible ? 0 : 1);
+    browseExamplesButton.writeProperty('hoverState', visible ? 2 : 3);
+}
 function onMarketplaceWindowVisibilityChanged() {
-    browseExamplesButton.writeProperty('buttonState', marketplaceWindow.visible ? 0 : 1);
-    browseExamplesButton.writeProperty('defaultState', marketplaceWindow.visible ? 0 : 1);
-    browseExamplesButton.writeProperty('hoverState', marketplaceWindow.visible ? 2 : 3);
+    updateButtonState(marketplaceWindow.visible);
     marketplaceVisible = marketplaceWindow.visible;
 }
 
@@ -104,6 +130,10 @@ function onClick() {
 
 browseExamplesButton.clicked.connect(onClick);
 marketplaceWindow.visibleChanged.connect(onMarketplaceWindowVisibilityChanged);
+
+clearOldTablet(); // Run once at startup, in case there's anything laying around from a crash.
+// We could also optionally do something like Window.domainChanged.connect(function () {Script.setTimeout(clearOldTablet, 2000)}),
+// but the HUD version stays around, so lets do the same.
 
 Script.scriptEnding.connect(function () {
     toolBar.removeButton("marketplace");

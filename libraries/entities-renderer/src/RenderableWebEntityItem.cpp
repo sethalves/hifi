@@ -30,41 +30,12 @@
 const float METERS_TO_INCHES = 39.3701f;
 static uint32_t _currentWebCount { 0 };
 // Don't allow more than 100 concurrent web views
-static const uint32_t MAX_CONCURRENT_WEB_VIEWS = 100;
+static const uint32_t MAX_CONCURRENT_WEB_VIEWS = 20;
 // If a web-view hasn't been rendered for 30 seconds, de-allocate the framebuffer
 static uint64_t MAX_NO_RENDER_INTERVAL = 30 * USECS_PER_SECOND;
 
 static int MAX_WINDOW_SIZE = 4096;
 static float OPAQUE_ALPHA_THRESHOLD = 0.99f;
-
-void WebEntityAPIHelper::synthesizeKeyPress(QString key) {
-    if (_renderableWebEntityItem) {
-        _renderableWebEntityItem->synthesizeKeyPress(key);
-    }
-}
-
-void WebEntityAPIHelper::emitScriptEvent(const QVariant& message) {
-    if (QThread::currentThread() != thread()) {
-        QMetaObject::invokeMethod(this, "emitScriptEvent", Qt::QueuedConnection, Q_ARG(QVariant, message));
-    } else {
-        emit scriptEventReceived(message);
-    }
-}
-
-void WebEntityAPIHelper::emitWebEvent(const QVariant& message) {
-    if (QThread::currentThread() != thread()) {
-        QMetaObject::invokeMethod(this, "emitWebEvent", Qt::QueuedConnection, Q_ARG(QVariant, message));
-    } else {
-        // special case to handle raising and lowering the virtual keyboard
-        if (message.type() == QVariant::String && message.toString() == "_RAISE_KEYBOARD" && _renderableWebEntityItem) {
-            _renderableWebEntityItem->setKeyboardRaised(true);
-        } else if (message.type() == QVariant::String && message.toString() == "_LOWER_KEYBOARD" && _renderableWebEntityItem) {
-            _renderableWebEntityItem->setKeyboardRaised(false);
-        } else {
-            emit webEventReceived(message);
-        }
-    }
-}
 
 EntityItemPointer RenderableWebEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
     EntityItemPointer entity{ new RenderableWebEntityItem(entityID) };
@@ -80,32 +51,26 @@ RenderableWebEntityItem::RenderableWebEntityItem(const EntityItemID& entityItemI
     _touchDevice.setType(QTouchDevice::TouchScreen);
     _touchDevice.setName("RenderableWebEntityItemTouchDevice");
     _touchDevice.setMaximumTouchPoints(4);
-
-    _webEntityAPIHelper = new WebEntityAPIHelper;
-    _webEntityAPIHelper->setRenderableWebEntityItem(this);
-    _webEntityAPIHelper->moveToThread(qApp->thread());
-
-    // forward web events to EntityScriptingInterface
-    auto entities = DependencyManager::get<EntityScriptingInterface>();
-    QObject::connect(_webEntityAPIHelper, &WebEntityAPIHelper::webEventReceived, [=](const QVariant& message) {
-        emit entities->webEventReceived(entityItemID, message);
-    });
+    _geometryId = DependencyManager::get<GeometryCache>()->allocateID();
 }
 
 RenderableWebEntityItem::~RenderableWebEntityItem() {
-    _webEntityAPIHelper->setRenderableWebEntityItem(nullptr);
-    _webEntityAPIHelper->deleteLater();
     destroyWebSurface();
     qDebug() << "Destroyed web entity " << getID();
+    auto geometryCache = DependencyManager::get<GeometryCache>();
+    if (geometryCache) {
+        geometryCache->releaseID(_geometryId);
+    }
 }
 
-bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
+bool RenderableWebEntityItem::buildWebSurface(QSharedPointer<EntityTreeRenderer> renderer) {
     if (_currentWebCount >= MAX_CONCURRENT_WEB_VIEWS) {
         qWarning() << "Too many concurrent web views to create new view";
         return false;
     }
     qDebug() << "Building web surface";
 
+    QString javaScriptToInject;
     QFile webChannelFile(":qtwebchannel/qwebchannel.js");
     QFile createGlobalEventBridgeFile(PathUtils::resourcesPath() + "/html/createGlobalEventBridge.js");
     if (webChannelFile.open(QFile::ReadOnly | QFile::Text) &&
@@ -119,19 +84,56 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
         qCWarning(entitiesrenderer) << "unable to find qwebchannel.js or createGlobalEventBridge.js";
     }
 
-    ++_currentWebCount;
     // Save the original GL context, because creating a QML surface will create a new context
     QOpenGLContext* currentContext = QOpenGLContext::currentContext();
-    QSurface* currentSurface = currentContext->surface();
-    _webSurface = new OffscreenQmlSurface();
+    if (!currentContext) {
+        return false;
+    }
+
+    ++_currentWebCount;
+    qDebug() << "Building web surface: " << getID() << ", #" << _currentWebCount << ", url = " << _sourceUrl;
+
+    QSurface * currentSurface = currentContext->surface();
+
+    auto deleter = [](OffscreenQmlSurface* webSurface) {
+        AbstractViewStateInterface::instance()->postLambdaEvent([webSurface] {
+            if (AbstractViewStateInterface::instance()->isAboutToQuit()) {
+                // WebEngineView may run other threads (wasapi), so they must be deleted for a clean shutdown
+                // if the application has already stopped its event loop, delete must be explicit
+                delete webSurface;
+            } else {
+                webSurface->deleteLater();
+            }
+        });
+    };
+    _webSurface = QSharedPointer<OffscreenQmlSurface>(new OffscreenQmlSurface(), deleter);
+
+    // FIXME, the max FPS could be better managed by being dynamic (based on the number of current surfaces
+    // and the current rendering load)
+    _webSurface->setMaxFps(10);
+
+    // The lifetime of the QML surface MUST be managed by the main thread
+    // Additionally, we MUST use local variables copied by value, rather than
+    // member variables, since they would implicitly refer to a this that 
+    // is no longer valid
     _webSurface->create(currentContext);
 
     loadSourceURL();
 
     _webSurface->resume();
-    _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
-        _texture = textureId;
+    // _connection = QObject::connect(_webSurface, &OffscreenQmlSurface::textureUpdated, [&](GLuint textureId) {
+    //     _texture = textureId;
+    _webSurface->getRootItem()->setProperty("url", _sourceUrl);
+    _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
+    // FIXME - Keyboard HMD only: Possibly add "HMDinfo" object to context for WebView.qml.
+
+    // forward web events to EntityScriptingInterface
+    auto entities = DependencyManager::get<EntityScriptingInterface>();
+    const EntityItemID entityItemID = getID();
+    QObject::connect(_webSurface.data(), &OffscreenQmlSurface::webEventReceived, [=](const QVariant& message) {
+        emit entities->webEventReceived(entityItemID, message);
     });
+
     // Restore the original GL context
     currentContext->makeCurrent(currentSurface);
 
@@ -140,10 +142,11 @@ bool RenderableWebEntityItem::buildWebSurface(EntityTreeRenderer* renderer) {
             handlePointerEvent(event);
         }
     };
-    _mousePressConnection = QObject::connect(renderer, &EntityTreeRenderer::mousePressOnEntity, forwardPointerEvent);
-    _mouseReleaseConnection = QObject::connect(renderer, &EntityTreeRenderer::mouseReleaseOnEntity, forwardPointerEvent);
-    _mouseMoveConnection = QObject::connect(renderer, &EntityTreeRenderer::mouseMoveOnEntity, forwardPointerEvent);
-    _hoverLeaveConnection = QObject::connect(renderer, &EntityTreeRenderer::hoverLeaveEntity, [=](const EntityItemID& entityItemID, const PointerEvent& event) {
+    _mousePressConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::mousePressOnEntity, forwardPointerEvent);
+    _mouseReleaseConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::mouseReleaseOnEntity, forwardPointerEvent);
+    _mouseMoveConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::mouseMoveOnEntity, forwardPointerEvent);
+    _hoverLeaveConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::hoverLeaveEntity,
+                                             [=](const EntityItemID& entityItemID, const PointerEvent& event) {
         if (this->_pressed && this->getID() == entityItemID) {
             // If the user mouses off the entity while the button is down, simulate a touch end.
             QTouchEvent::TouchPoint point;
@@ -193,7 +196,8 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
     #endif
 
     if (!_webSurface) {
-        if (!buildWebSurface(static_cast<EntityTreeRenderer*>(args->_renderer))) {
+        auto renderer = qSharedPointerCast<EntityTreeRenderer>(args->_renderer);
+        if (!buildWebSurface(renderer)) {
             return;
         }
         _fadeStartTime = usecTimestampNow();
@@ -208,20 +212,30 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
     // without worrying about excessive overhead.
     _webSurface->resize(QSize(windowSize.x, windowSize.y));
 
+    if (!_texture) {
+        auto webSurface = _webSurface;
+        _texture = gpu::TexturePointer(gpu::Texture::createExternal2D(OffscreenQmlSurface::getDiscardLambda()));
+        _texture->setSource(__FUNCTION__);
+    }
+    OffscreenQmlSurface::TextureAndFence newTextureAndFence;
+    bool newTextureAvailable = _webSurface->fetchTexture(newTextureAndFence);
+    if (newTextureAvailable) {
+        _texture->setExternalTexture(newTextureAndFence.first, newTextureAndFence.second);
+    }
+
     PerformanceTimer perfTimer("RenderableWebEntityItem::render");
     Q_ASSERT(getType() == EntityTypes::Web);
     static const glm::vec2 texMin(0.0f), texMax(1.0f), topLeft(-0.5f), bottomRight(0.5f);
 
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
+
     bool success;
     batch.setModelTransform(getTransformToCenter(success));
     if (!success) {
         return;
     }
-    if (_texture) {
-        batch._glActiveBindTexture(GL_TEXTURE0, GL_TEXTURE_2D, _texture);
-    }
+    batch.setResourceTexture(0, _texture);
 
     float fadeRatio = _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) : 1.0f;
 
@@ -232,7 +246,7 @@ void RenderableWebEntityItem::render(RenderArgs* args) {
     } else {
         DependencyManager::get<GeometryCache>()->bindOpaqueWebBrowserProgram(batch);
     }
-    DependencyManager::get<GeometryCache>()->renderQuad(batch, topLeft, bottomRight, texMin, texMax, glm::vec4(1.0f, 1.0f, 1.0f, fadeRatio));
+    DependencyManager::get<GeometryCache>()->renderQuad(batch, topLeft, bottomRight, texMin, texMax, glm::vec4(1.0f, 1.0f, 1.0f, fadeRatio), _geometryId);
 }
 
 void RenderableWebEntityItem::loadSourceURL() {
@@ -251,10 +265,10 @@ void RenderableWebEntityItem::loadSourceURL() {
         _webSurface->load("WebView.qml", [&](QQmlContext* context, QObject* obj) {
             context->setContextProperty("eventBridgeJavaScriptToInject", QVariant(_javaScriptToInject));
         });
-        _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
+        // _webSurface->getRootItem()->setProperty("eventBridge", QVariant::fromValue(_webEntityAPIHelper));
         _webSurface->getRootItem()->setProperty("url", _sourceUrl);
         _webSurface->getRootContext()->setContextProperty("desktop", QVariant());
-        _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
+        // _webSurface->getRootContext()->setContextProperty("webEntity", _webEntityAPIHelper);
 
     } else {
         qDebug() << "HERE RenderableWebEntityItem::loadSourceURL qml -- " << _sourceUrl;
@@ -363,7 +377,18 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
 void RenderableWebEntityItem::destroyWebSurface() {
     if (_webSurface) {
         --_currentWebCount;
+
+        QQuickItem* rootItem = _webSurface->getRootItem();
+        if (rootItem) {
+            QObject* obj = rootItem->findChild<QObject*>("webEngineView");
+            if (obj) {
+                // stop loading
+                QMetaObject::invokeMethod(obj, "stop");
+            }
+        }
+
         _webSurface->pause();
+
         _webSurface->disconnect(_connection);
         QObject::disconnect(_mousePressConnection);
         _mousePressConnection = QMetaObject::Connection();
@@ -373,19 +398,11 @@ void RenderableWebEntityItem::destroyWebSurface() {
         _mouseMoveConnection = QMetaObject::Connection();
         QObject::disconnect(_hoverLeaveConnection);
         _hoverLeaveConnection = QMetaObject::Connection();
+        _webSurface.reset();
 
-        // The lifetime of the QML surface MUST be managed by the main thread
-        // Additionally, we MUST use local variables copied by value, rather than
-        // member variables, since they would implicitly refer to a this that 
-        // is no longer valid
-        auto webSurface = _webSurface;
-        AbstractViewStateInterface::instance()->postLambdaEvent([webSurface] {
-            webSurface->deleteLater();
-        });
-        _webSurface = nullptr;
+        qDebug() << "Delete web surface: " << getID() << ", #" << _currentWebCount << ", url = " << _sourceUrl;
     }
 }
-
 
 void RenderableWebEntityItem::update(const quint64& now) {
     auto interval = now - _lastRenderTime;
@@ -393,7 +410,6 @@ void RenderableWebEntityItem::update(const quint64& now) {
         destroyWebSurface();
     }
 }
-
 
 bool RenderableWebEntityItem::isTransparent() {
     float fadeRatio = _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) : 1.0f;
@@ -458,16 +474,18 @@ void RenderableWebEntityItem::synthesizeKeyPress(QString key) {
     QCoreApplication::postEvent(getEventHandler(), releaseEvent);
 }
 
+// void RenderableWebEntityItem::setKeyboardRaised(bool raised) {
+//
+//     // raise the keyboard only while in HMD mode and it's being requested.
+//     bool value = AbstractViewStateInterface::instance()->isHMDMode() && raised;
+//
+//     if (_contentType == htmlContent) {
+//         _webSurface->getRootItem()->setProperty("keyboardRaised", QVariant(value));
+//     }
+// }
+
 void RenderableWebEntityItem::emitScriptEvent(const QVariant& message) {
-    _webEntityAPIHelper->emitScriptEvent(message);
-}
-
-void RenderableWebEntityItem::setKeyboardRaised(bool raised) {
-
-    // raise the keyboard only while in HMD mode and it's being requested.
-    bool value = AbstractViewStateInterface::instance()->isHMDMode() && raised;
-
-    if (_contentType == htmlContent) {
-        _webSurface->getRootItem()->setProperty("keyboardRaised", QVariant(value));
+    if (_webSurface) {
+        _webSurface->emitScriptEvent(message);
     }
 }

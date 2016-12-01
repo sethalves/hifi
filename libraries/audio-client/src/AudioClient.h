@@ -87,7 +87,7 @@ public:
         AudioOutputIODevice(MixedProcessedAudioStream& receivedAudioStream, AudioClient* audio) :
             _receivedAudioStream(receivedAudioStream), _audio(audio), _unfulfilledReads(0) {};
 
-        void start() { open(QIODevice::ReadOnly); }
+        void start() { open(QIODevice::ReadOnly | QIODevice::Unbuffered); }
         void stop() { close(); }
         qint64 readData(char * data, qint64 maxSize) override;
         qint64 writeData(const char * data, qint64 maxSize) override { return 0; }
@@ -148,12 +148,14 @@ public slots:
     void handleSelectedAudioFormat(QSharedPointer<ReceivedMessage> message);
     void handleMismatchAudioFormat(SharedNodePointer node, const QString& currentCodec, const QString& recievedCodec);
 
-    void sendDownstreamAudioStatsPacket() { _stats.sendDownstreamAudioStatsPacket(); }
+    void sendDownstreamAudioStatsPacket() { _stats.publish(); }
     void handleAudioInput();
     void handleRecordedAudioInput(const QByteArray& audio);
     void reset();
     void audioMixerKilled();
     void toggleMute();
+
+    void beforeAboutToQuit();
 
     virtual void setIsStereoInput(bool stereo) override;
 
@@ -167,7 +169,8 @@ public slots:
 
     int setOutputBufferSize(int numFrames, bool persist = true);
 
-    virtual bool outputLocalInjector(bool isStereo, AudioInjector* injector) override;
+    bool outputLocalInjector(bool isStereo, AudioInjector* injector) override;
+    bool shouldLoopbackInjectors() override { return _shouldEchoToServer; }
 
     bool switchInputToAudioDevice(const QString& inputDeviceName);
     bool switchOutputToAudioDevice(const QString& outputDeviceName);
@@ -331,6 +334,8 @@ private:
     CodecPluginPointer _codec;
     QString _selectedCodecName;
     Encoder* _encoder { nullptr }; // for outbound mic stream
+
+    QThread* _checkDevicesThread { nullptr };
 };
 
 

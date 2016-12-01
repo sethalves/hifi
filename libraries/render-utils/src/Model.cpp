@@ -168,10 +168,9 @@ void Model::calculateTextureInfo() {
         bool allTexturesLoaded = true;
         foreach(auto renderItem, _modelMeshRenderItemsSet) {
             auto meshPart = renderItem.get();
-            bool allTexturesForThisMesh = meshPart->calculateMaterialSize();
-            allTexturesLoaded = allTexturesLoaded & allTexturesForThisMesh;
             textureSize += meshPart->getMaterialTextureSize();
             textureCount += meshPart->getMaterialTextureCount();
+            allTexturesLoaded = allTexturesLoaded & meshPart->hasTextureInfo();
         }
         _renderInfoTextureSize = textureSize;
         _renderInfoTextureCount = textureCount;
@@ -863,8 +862,12 @@ void Model::setURL(const QUrl& url) {
     {
         render::PendingChanges pendingChanges;
         render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
-        removeFromScene(scene, pendingChanges);
-        scene->enqueuePendingChanges(pendingChanges);
+        if (scene) {
+            removeFromScene(scene, pendingChanges);
+            scene->enqueuePendingChanges(pendingChanges);
+        } else {
+            qCWarning(renderutils) << "Model::setURL(), Unexpected null scene, possibly during application shutdown";
+        }
     }
 
     _needsReload = true;

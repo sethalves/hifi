@@ -39,7 +39,7 @@ function calcSpawnInfo() {
 }
 
 // ctor
-WebTablet = function (url, width, dpi, location) {
+WebTablet = function (url, width, dpi, location, clientOnly) {
 
     var ASPECT = 4.0 / 3.0;
     var WIDTH = width || DEFAULT_WIDTH;
@@ -69,7 +69,7 @@ WebTablet = function (url, width, dpi, location) {
         tabletProperties.rotation = spawnInfo.rotation;
     }
 
-    this.tabletEntityID = Entities.addEntity(tabletProperties);
+    this.tabletEntityID = Entities.addEntity(tabletProperties, clientOnly);
 
     var WEB_ENTITY_REDUCTION_FACTOR = {x: 0.78, y: 0.85};
     var WEB_ENTITY_Z_OFFSET = -0.01;
@@ -91,7 +91,7 @@ WebTablet = function (url, width, dpi, location) {
             dpi: DPI,
             parentID: _this.tabletEntityID,
             parentJointIndex: -1
-        });
+        }, clientOnly);
     }
 
     this.createWebEntity(url);
@@ -111,4 +111,14 @@ WebTablet.prototype.destroy = function () {
     Entities.deleteEntity(this.webEntityID);
     Entities.deleteEntity(this.tabletEntityID);
 };
-
+WebTablet.prototype.pickle = function () {
+    return JSON.stringify({webEntityID: this.webEntityID, tabletEntityID: this.tabletEntityID});
+};
+WebTablet.unpickle = function (string) {
+    if (!string) {
+        return;
+    }
+    var tablet = JSON.parse(string);
+    tablet.__proto__ = WebTablet.prototype;
+    return tablet;
+};

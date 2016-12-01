@@ -45,6 +45,10 @@ public:
                                 AbstractScriptingServicesInterface* scriptingServices);
     virtual ~EntityTreeRenderer();
 
+    QSharedPointer<EntityTreeRenderer> getSharedFromThis() {
+        return qSharedPointerCast<EntityTreeRenderer>(sharedFromThis());
+    }
+
     virtual char getMyNodeType() const override { return NodeType::EntityServer; }
     virtual PacketType getMyQueryMessageType() const override { return PacketType::EntityQuery; }
     virtual PacketType getExpectedPacketType() const override { return PacketType::EntityData; }
@@ -149,7 +153,8 @@ private:
     QList<ModelPointer> _releasedModels;
     RayToEntityIntersectionResult findRayIntersectionWorker(const PickRay& ray, Octree::lockType lockType,
                                                                 bool precisionPicking, const QVector<EntityItemID>& entityIdsToInclude = QVector<EntityItemID>(),
-                                                                const QVector<EntityItemID>& entityIdsToDiscard = QVector<EntityItemID>());
+                                                                const QVector<EntityItemID>& entityIdsToDiscard = QVector<EntityItemID>(), bool visibleOnly=false,
+                                                                bool collidableOnly = false);
 
     EntityItemID _currentHoverOverEntityID;
     EntityItemID _currentClickingOnEntityID;

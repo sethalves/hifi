@@ -62,7 +62,6 @@ public:
     MenuWrapper* getMenu(const QString& menuName);
     MenuWrapper* getSubMenuFromName(const QString& menuName, MenuWrapper* menu);
 
-    void triggerOption(const QString& menuOption);
     QAction* getActionForOption(const QString& menuOption);
 
     QAction* addActionToQMenuAndActionHash(MenuWrapper* destinationMenu,
@@ -107,11 +106,16 @@ public slots:
     bool isOptionChecked(const QString& menuOption) const;
     void setIsOptionChecked(const QString& menuOption, bool isChecked);
 
+    bool isMenuEnabled(const QString& menuName);
+    void setMenuEnabled(const QString& menuName, bool isEnabled);
+
     bool getGroupingIsVisible(const QString& grouping);
     void setGroupingIsVisible(const QString& grouping, bool isVisible); /// NOTE: the "" grouping is always visible
 
     void toggleDeveloperMenus();
     void toggleAdvancedMenus();
+    
+    void triggerOption(const QString& menuOption);
 
     static bool isSomeSubmenuShown() { return _isSomeSubmenuShown; }
 

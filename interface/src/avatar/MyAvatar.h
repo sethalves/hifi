@@ -26,6 +26,7 @@
 #include "MyCharacterController.h"
 #include <ThreadSafeValueCache.h>
 
+class AvatarActionHold;
 class ModelItemID;
 
 enum DriveKeys {
@@ -277,6 +278,10 @@ public:
     virtual glm::quat getAbsoluteJointRotationInObjectFrame(int index) const override;
     virtual glm::vec3 getAbsoluteJointTranslationInObjectFrame(int index) const override;
 
+    void addHoldAction(AvatarActionHold* holdAction);  // thread-safe
+    void removeHoldAction(AvatarActionHold* holdAction);  // thread-safe
+    void updateHoldActions(const AnimPose& prePhysicsPose, const AnimPose& postUpdatePose);
+
 public slots:
     void increaseSize();
     void decreaseSize();
@@ -286,6 +291,9 @@ public slots:
                       bool hasOrientation = false, const glm::quat& newOrientation = glm::quat(),
                       bool shouldFaceLocation = false);
     void goToLocation(const QVariant& properties);
+
+    void restrictScaleFromDomainSettings(const QJsonObject& domainSettingsObject);
+    void clearScaleRestriction();
 
     //  Set/Get update the thrust that will move the avatar around
     void addThrust(glm::vec3 newThrust) { _thrust += newThrust; };
@@ -364,6 +372,8 @@ private:
     virtual void updatePalms() override {}
     void lateUpdatePalms();
 
+    void clampTargetScaleToDomainLimits();
+    void clampScaleChangeToDomainLimits(float desiredScale);
 
     float _driveKeys[MAX_DRIVE_KEYS];
     bool _wasPushing;
@@ -487,6 +497,10 @@ private:
     ThreadSafeValueCache<controller::Pose> _rightHandControllerPoseInSensorFrameCache { controller::Pose() };
 
     bool _hmdLeanRecenterEnabled = true;
+
+    AnimPose _prePhysicsRoomPose;
+    std::mutex _holdActionsMutex;
+    std::vector<AvatarActionHold*> _holdActions;
 
     float AVATAR_MOVEMENT_ENERGY_CONSTANT { 0.001f };
     float AUDIO_ENERGY_CONSTANT { 0.000001f };

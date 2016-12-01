@@ -23,9 +23,10 @@
 #include "AccountManager.h"
 
 const QString HIFI_URL_SCHEME = "hifi";
-const QString DEFAULT_HIFI_ADDRESS = "hifi://entry";
+
+extern const QString DEFAULT_HIFI_ADDRESS;
+
 const QString SANDBOX_HIFI_ADDRESS = "hifi://localhost";
-const QString SANDBOX_STATUS_URL = "http://localhost:60332/status";
 const QString INDEX_PATH = "/";
 
 const QString GET_PLACE = "/api/v1/places/%1";
@@ -34,11 +35,13 @@ class AddressManager : public QObject, public Dependency {
     Q_OBJECT
     SINGLETON_DEPENDENCY
     Q_PROPERTY(bool isConnected READ isConnected)
-    Q_PROPERTY(QUrl href READ currentAddress)
+    Q_PROPERTY(QUrl href READ currentShareableAddress)
     Q_PROPERTY(QString protocol READ getProtocol)
     Q_PROPERTY(QString hostname READ getHost)
     Q_PROPERTY(QString pathname READ currentPath)
     Q_PROPERTY(QString placename READ getPlaceName)
+    Q_PROPERTY(QString domainId READ getDomainId)
+    Q_PROPERTY(QUrl metaverseServerUrl READ getMetaverseServerUrl)
 public:
     Q_INVOKABLE QString protocolVersion();
     using PositionGetter = std::function<glm::vec3()>;
@@ -58,15 +61,17 @@ public:
     bool isConnected();
     const QString& getProtocol() { return HIFI_URL_SCHEME; };
 
-    QUrl currentAddress() const;
+    QUrl currentAddress(bool domainOnly = false) const;
     QUrl currentFacingAddress() const;
-    QUrl currentShareableAddress() const;
+    QUrl currentShareableAddress(bool domainOnly = false) const;
     QUrl currentFacingShareableAddress() const;
     QString currentPath(bool withOrientation = true) const;
     QString currentFacingPath() const;
 
     const QUuid& getRootPlaceID() const { return _rootPlaceID; }
-    const QString& getPlaceName() const { return _placeName; }
+    const QString& getPlaceName() const { return _shareablePlaceName.isEmpty() ? _placeName : _shareablePlaceName; }
+    QString getDomainId() const;
+    const QUrl getMetaverseServerUrl() const;
 
     const QString& getHost() const { return _host; }
 
@@ -78,11 +83,6 @@ public:
     const QStack<QUrl>& getBackStack() const { return _backStack; }
     const QStack<QUrl>& getForwardStack() const { return _forwardStack; }
 
-    /// determines if the local sandbox is likely running. It does not account for custom setups, and is only 
-    /// intended to detect the standard local sandbox install.
-    void ifLocalSandboxRunningElse(std::function<void()> localSandboxRunningDoThis,
-                                   std::function<void()> localSandboxNotRunningDoThat);
-
 public slots:
     void handleLookupString(const QString& lookupString, bool fromSuggestions = false);
 
@@ -92,7 +92,7 @@ public slots:
 
     void goBack();
     void goForward();
-    void goToLocalSandbox(LookupTrigger trigger = LookupTrigger::StartupFromSettings) { handleUrl(SANDBOX_HIFI_ADDRESS, trigger); }
+    void goToLocalSandbox(QString path = "", LookupTrigger trigger = LookupTrigger::StartupFromSettings) { handleUrl(SANDBOX_HIFI_ADDRESS + path, trigger); }
     void goToEntry(LookupTrigger trigger = LookupTrigger::StartupFromSettings) { handleUrl(DEFAULT_HIFI_ADDRESS, trigger); }
 
     void goToUser(const QString& username);

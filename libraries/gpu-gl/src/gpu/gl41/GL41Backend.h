@@ -42,6 +42,7 @@ public:
         using Parent = GLTexture;
         GLuint allocate();
     public:
+        GL41Texture(const std::weak_ptr<GLBackend>& backend, const Texture& buffer, GLuint externalId);
         GL41Texture(const std::weak_ptr<GLBackend>& backend, const Texture& buffer, bool transferrable);
 
     protected:
@@ -76,13 +77,13 @@ protected:
     void do_multiDrawIndexedIndirect(const Batch& batch, size_t paramOffset) override;
 
     // Input Stage
+    void resetInputStage() override;
     void updateInput() override;
 
     // Synchronize the state cache of this Backend with the actual real state of the GL Context
     void transferTransformState(const Batch& batch) const override;
     void initTransform() override;
-    void updateTransform(const Batch& batch);
-    void resetTransformStage();
+    void updateTransform(const Batch& batch) override;
 
     // Output stage
     void do_blit(const Batch& batch, size_t paramOffset) override;

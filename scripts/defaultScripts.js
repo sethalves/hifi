@@ -23,6 +23,7 @@ var DEFAULT_SCRIPTS = [
     "system/mod.js",
     "system/selectAudioDevice.js",
     "system/notifications.js",
+    "system/controllers/controllerDisplayManager.js",
     "system/controllers/handControllerGrab.js",
     "system/controllers/handControllerPointer.js",
     "system/controllers/squeezeHands.js",
@@ -32,6 +33,8 @@ var DEFAULT_SCRIPTS = [
     "system/dialTone.js",
     "system/firstPersonHMD.js",
     "system/snapshot.js",
+    "system/help.js",
+    "system/bubble.js",
     "system/tablet-ui/tablet-ui.js"
 ];
 

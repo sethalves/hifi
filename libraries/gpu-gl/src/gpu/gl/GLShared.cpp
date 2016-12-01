@@ -26,25 +26,25 @@ bool checkGLError(const char* name) {
     } else {
         switch (error) {
         case GL_INVALID_ENUM:
-            qCDebug(gpugllogging) << "GLBackend::" << name << ": An unacceptable value is specified for an enumerated argument.The offending command is ignored and has no other side effect than to set the error flag.";
+            qCWarning(gpugllogging) << "GLBackend::" << name << ": An unacceptable value is specified for an enumerated argument.The offending command is ignored and has no other side effect than to set the error flag.";
             break;
         case GL_INVALID_VALUE:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": A numeric argument is out of range.The offending command is ignored and has no other side effect than to set the error flag";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": A numeric argument is out of range.The offending command is ignored and has no other side effect than to set the error flag";
             break;
         case GL_INVALID_OPERATION:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": The specified operation is not allowed in the current state.The offending command is ignored and has no other side effect than to set the error flag..";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": The specified operation is not allowed in the current state.The offending command is ignored and has no other side effect than to set the error flag..";
             break;
         case GL_INVALID_FRAMEBUFFER_OPERATION:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": The framebuffer object is not complete.The offending command is ignored and has no other side effect than to set the error flag.";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": The framebuffer object is not complete.The offending command is ignored and has no other side effect than to set the error flag.";
             break;
         case GL_OUT_OF_MEMORY:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": There is not enough memory left to execute the command.The state of the GL is undefined, except for the state of the error flags, after this error is recorded.";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": There is not enough memory left to execute the command.The state of the GL is undefined, except for the state of the error flags, after this error is recorded.";
             break;
         case GL_STACK_UNDERFLOW:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": An attempt has been made to perform an operation that would cause an internal stack to underflow.";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": An attempt has been made to perform an operation that would cause an internal stack to underflow.";
             break;
         case GL_STACK_OVERFLOW:
-            qCDebug(gpugllogging) << "GLBackend" << name << ": An attempt has been made to perform an operation that would cause an internal stack to overflow.";
+            qCWarning(gpugllogging) << "GLBackend" << name << ": An attempt has been made to perform an operation that would cause an internal stack to overflow.";
             break;
         }
         return true;
@@ -692,187 +692,6 @@ int makeOutputSlots(GLuint glprogram, const Shader::BindingSet& slotBindings, Sh
     return 0; //inputsCount;
 }
 
-
-bool compileShader(GLenum shaderDomain, const std::string& shaderSource, const std::string& defines, GLuint &shaderObject, GLuint &programObject) {
-    if (shaderSource.empty()) {
-        qCDebug(gpugllogging) << "GLShader::compileShader - no GLSL shader source code ? so failed to create";
-        return false;
-    }
-
-    // Create the shader object
-    GLuint glshader = glCreateShader(shaderDomain);
-    if (!glshader) {
-        qCDebug(gpugllogging) << "GLShader::compileShader - failed to create the gl shader object";
-        return false;
-    }
-
-    // Assign the source
-    const int NUM_SOURCE_STRINGS = 2;
-    const GLchar* srcstr[] = { defines.c_str(), shaderSource.c_str() };
-    glShaderSource(glshader, NUM_SOURCE_STRINGS, srcstr, NULL);
-
-    // Compile !
-    glCompileShader(glshader);
-
-    // check if shader compiled
-    GLint compiled = 0;
-    glGetShaderiv(glshader, GL_COMPILE_STATUS, &compiled);
-
-    // if compilation fails
-    if (!compiled) {
-
-        // save the source code to a temp file so we can debug easily
-        /*
-        std::ofstream filestream;
-        filestream.open("debugshader.glsl");
-        if (filestream.is_open()) {
-        filestream << srcstr[0];
-        filestream << srcstr[1];
-        filestream.close();
-        }
-        */
-
-        GLint infoLength = 0;
-        glGetShaderiv(glshader, GL_INFO_LOG_LENGTH, &infoLength);
-
-        char* temp = new char[infoLength];
-        glGetShaderInfoLog(glshader, infoLength, NULL, temp);
-
-
-        /*
-        filestream.open("debugshader.glsl.info.txt");
-        if (filestream.is_open()) {
-        filestream << std::string(temp);
-        filestream.close();
-        }
-        */
-
-        qCWarning(gpugllogging) << "GLShader::compileShader - failed to compile the gl shader object:";
-        for (auto s : srcstr) {
-            qCWarning(gpugllogging) << s;
-        }
-        qCWarning(gpugllogging) << "GLShader::compileShader - errors:";
-        qCWarning(gpugllogging) << temp;
-        delete[] temp;
-
-        glDeleteShader(glshader);
-        return false;
-    }
-
-    GLuint glprogram = 0;
-#ifdef SEPARATE_PROGRAM
-    // so far so good, program is almost done, need to link:
-    GLuint glprogram = glCreateProgram();
-    if (!glprogram) {
-        qCDebug(gpugllogging) << "GLShader::compileShader - failed to create the gl shader & gl program object";
-        return false;
-    }
-
-    glProgramParameteri(glprogram, GL_PROGRAM_SEPARABLE, GL_TRUE);
-    glAttachShader(glprogram, glshader);
-    glLinkProgram(glprogram);
-
-    GLint linked = 0;
-    glGetProgramiv(glprogram, GL_LINK_STATUS, &linked);
-
-    if (!linked) {
-        /*
-        // save the source code to a temp file so we can debug easily
-        std::ofstream filestream;
-        filestream.open("debugshader.glsl");
-        if (filestream.is_open()) {
-        filestream << shaderSource->source;
-        filestream.close();
-        }
-        */
-
-        GLint infoLength = 0;
-        glGetProgramiv(glprogram, GL_INFO_LOG_LENGTH, &infoLength);
-
-        char* temp = new char[infoLength];
-        glGetProgramInfoLog(glprogram, infoLength, NULL, temp);
-
-        qCDebug(gpugllogging) << "GLShader::compileShader -  failed to LINK the gl program object :";
-        qCDebug(gpugllogging) << temp;
-
-        /*
-        filestream.open("debugshader.glsl.info.txt");
-        if (filestream.is_open()) {
-        filestream << String(temp);
-        filestream.close();
-        }
-        */
-        delete[] temp;
-
-        glDeleteShader(glshader);
-        glDeleteProgram(glprogram);
-        return false;
-    }
-#endif
-
-    shaderObject = glshader;
-    programObject = glprogram;
-
-    return true;
-}
-
-GLuint compileProgram(const std::vector<GLuint>& glshaders) {
-    // A brand new program:
-    GLuint glprogram = glCreateProgram();
-    if (!glprogram) {
-        qCDebug(gpugllogging) << "GLShader::compileProgram - failed to create the gl program object";
-        return 0;
-    }
-
-    // glProgramParameteri(glprogram, GL_PROGRAM_, GL_TRUE);
-    // Create the program from the sub shaders
-    for (auto so : glshaders) {
-        glAttachShader(glprogram, so);
-    }
-
-    // Link!
-    glLinkProgram(glprogram);
-
-    GLint linked = 0;
-    glGetProgramiv(glprogram, GL_LINK_STATUS, &linked);
-
-    if (!linked) {
-        /*
-        // save the source code to a temp file so we can debug easily
-        std::ofstream filestream;
-        filestream.open("debugshader.glsl");
-        if (filestream.is_open()) {
-        filestream << shaderSource->source;
-        filestream.close();
-        }
-        */
-
-        GLint infoLength = 0;
-        glGetProgramiv(glprogram, GL_INFO_LOG_LENGTH, &infoLength);
-
-        char* temp = new char[infoLength];
-        glGetProgramInfoLog(glprogram, infoLength, NULL, temp);
-
-        qCDebug(gpugllogging) << "GLShader::compileProgram -  failed to LINK the gl program object :";
-        qCDebug(gpugllogging) << temp;
-
-        /*
-        filestream.open("debugshader.glsl.info.txt");
-        if (filestream.is_open()) {
-        filestream << std::string(temp);
-        filestream.close();
-        }
-        */
-        delete[] temp;
-
-        glDeleteProgram(glprogram);
-        return 0;
-    }
-
-    return glprogram;
-}
-
-
 void makeProgramBindings(ShaderObject& shaderObject) {
     if (!shaderObject.glprogram) {
         return;
@@ -932,7 +751,7 @@ void makeProgramBindings(ShaderObject& shaderObject) {
     GLint linked = 0;
     glGetProgramiv(glprogram, GL_LINK_STATUS, &linked);
     if (!linked) {
-        qCDebug(gpugllogging) << "GLShader::makeBindings - failed to link after assigning slotBindings?";
+        qCWarning(gpugllogging) << "GLShader::makeBindings - failed to link after assigning slotBindings?";
     }
 
     // now assign the ubo binding, then DON't relink!

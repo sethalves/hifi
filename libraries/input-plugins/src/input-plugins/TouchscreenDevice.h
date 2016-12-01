@@ -22,7 +22,7 @@ class QGestureEvent;
 class TouchscreenDevice : public InputPlugin {
     Q_OBJECT
 public:
-        
+
     enum TouchAxisChannel {
         TOUCH_AXIS_X_POS = 0,
         TOUCH_AXIS_X_NEG,
@@ -37,7 +37,9 @@ public:
 
     // Plugin functions
     virtual bool isSupported() const override;
-    virtual const QString& getName() const override { return NAME; }
+    virtual const QString getName() const override { return NAME; }
+
+    bool isHandController() const override { return false; }
 
     virtual void pluginFocusOutEvent() override { _inputDevice->focusOutEvent(); }
     virtual void pluginUpdate(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) override;
@@ -46,8 +48,8 @@ public:
     void touchEndEvent(const QTouchEvent* event);
     void touchUpdateEvent(const QTouchEvent* event);
     void touchGestureEvent(const QGestureEvent* event);
-    
-    static const QString NAME;
+
+    static const char* NAME;
 
 protected:
 
