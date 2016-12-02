@@ -55,14 +55,35 @@
             bytesRead += bytes;                                                    \
         }
 
-#define GET_IN_PATCH_STACK(N,n)                         \
+#define GET_IN_PATCH_STACK(N)                           \
         ([&](){                                         \
             for (auto &patch : _propertiesPatchStack) { \
-                if (patch._##n##Changed) {              \
+                if (patch.get##N##Changed()) {          \
                     return patch.get##N();              \
                 }                                       \
             }                                           \
             return get##N();                            \
+        }())
+
+#define GET_IN_ENTITY_PATCH_STACK(e,N)                          \
+        ([&](){                                                 \
+            for (auto &patch : e->getPropertiesPatchStack()) {  \
+                if (patch.get##N##Changed()) {                  \
+                    return patch.get##N();                      \
+                }                                               \
+            }                                                   \
+            return e->get##N();                                 \
+        }())
+
+#define GET_IN_ENTITY_PATCH_STACK_SUCCESS(e,N)                  \
+        ([&](){                                                 \
+            for (auto &patch : e->getPropertiesPatchStack()) {  \
+                if (patch.get##N##Changed()) {                  \
+                    success = true;                             \
+                    return patch.get##N();                      \
+                }                                               \
+            }                                                   \
+            return e->get##N(success);                          \
         }())
 
 
@@ -393,7 +414,7 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
         T& get##N() { return _##n; }             \
     private:                                     \
         T _##n;                                  \
-        static T _static##N; 
+        static T _static##N;
 
 #define ADD_PROPERTY_TO_MAP(P, N, n, T) \
         _propertyStringsToEnums[#n] = P;
@@ -405,6 +426,7 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
     public: \
         bool n##Changed() const { return _##n##Changed; } \
         void set##N##Changed(bool value) { _##n##Changed = value; } \
+        bool get##N##Changed() const { return _##n##Changed; } \
     private: \
         T _##n = V; \
         bool _##n##Changed { false };

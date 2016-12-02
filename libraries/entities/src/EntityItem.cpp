@@ -249,7 +249,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         //      PROP_PAGED_PROPERTY,
         //      PROP_CUSTOM_PROPERTIES_INCLUDED,
 
-        APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, GET_IN_PATCH_STACK(SimulationOwner, simulationOwner).toByteArray());
+        APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, GET_IN_PATCH_STACK(SimulationOwner).toByteArray());
         APPEND_ENTITY_PROPERTY(PROP_POSITION, getLocalPosition());
         APPEND_ENTITY_PROPERTY(PROP_ROTATION, getLocalOrientation());
         APPEND_ENTITY_PROPERTY(PROP_VELOCITY, getLocalVelocity());

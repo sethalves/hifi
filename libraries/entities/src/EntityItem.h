@@ -463,6 +463,8 @@ public:
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
 
+    std::list<EntityItemProperties>& getPropertiesPatchStack() { return _propertiesPatchStack; }
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

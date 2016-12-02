@@ -16,6 +16,7 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "VariantMapToScriptValue.h"
+#include "EntityItemPropertiesMacros.h"
 
 #include "AddEntityOperator.h"
 #include "MovingEntitiesOperator.h"
@@ -167,14 +168,15 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
         senderID = senderNode->getUUID();
     }
 
-    if (!allowLockChange && (entity->getLocked() != properties.getLocked())) {
+    bool entityLocked = GET_IN_ENTITY_PATCH_STACK(entity, Locked);
+    if (!allowLockChange && (entityLocked != properties.getLocked())) {
         qCDebug(entities) << "Refusing disallowed lock adjustment.";
         return false;
     }
 
     // enforce support for locked entities. If an entity is currently locked, then the only
     // property we allow you to change is the locked property.
-    if (entity->getLocked()) {
+    if (entityLocked) {
         if (properties.lockedChanged()) {
             bool wantsLocked = properties.getLocked();
             if (!wantsLocked) {
@@ -182,7 +184,8 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
                 tempProperties.setLocked(wantsLocked);
 
                 bool success;
-                AACube queryCube = entity->getQueryAACube(success);
+                // AACube queryCube = entity->getQueryAACube(success);
+                AACube queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
                 if (!success) {
                     qCDebug(entities) << "Warning -- failed to get query-cube for" << entity->getID();
                 }
@@ -259,7 +262,8 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
         if (properties.queryAACubeChanged()) {
             newQueryAACube = properties.getQueryAACube();
         } else {
-            newQueryAACube = entity->getQueryAACube();
+            // newQueryAACube = entity->getQueryAACube();
+            newQueryAACube = GET_IN_ENTITY_PATCH_STACK(entity, QueryAACube);
         }
         UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newQueryAACube);
         recurseTreeWithOperator(&theOperator);
@@ -284,7 +288,8 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
             }
 
             bool success;
-            AACube queryCube = childEntity->getQueryAACube(success);
+            // AACube queryCube = childEntity->getQueryAACube(success);
+            AACube queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(childEntity, QueryAACube);
             if (!success) {
                 QWriteLocker locker(&_missingParentLock);
                 _missingParent.append(childEntity);
