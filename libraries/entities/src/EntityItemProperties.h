@@ -237,8 +237,8 @@ public:
     float getLocalRenderAlpha() const { return _localRenderAlpha; }
     void setLocalRenderAlpha(float value) { _localRenderAlpha = value; _localRenderAlphaChanged = true; }
 
-    static bool encodeEntityEditPacket(PacketType command, EntityItemID id, const EntityItemProperties& properties,
-                                       QByteArray& buffer);
+    static bool encodeEntityEditPacket(PacketType command, EntityItemID id, QUuid patchID,
+                                       const EntityItemProperties& properties, QByteArray& buffer);
 
     static bool encodeEraseEntityMessage(const EntityItemID& entityItemID, QByteArray& buffer);
 

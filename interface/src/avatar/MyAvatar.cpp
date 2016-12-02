@@ -509,7 +509,8 @@ void MyAvatar::simulate(float deltaTime) {
                         properties.setQueryAACubeDirty();
                         properties.setLastEdited(now);
 
-                        packetSender->queueEditEntityMessage(PacketType::EntityEdit, entityTree, entity->getID(), properties);
+                        packetSender->queueEditEntityMessage(PacketType::EntityEdit, entityTree,
+                                                             entity->getID(), QUuid(), properties);
                         entity->setLastBroadcast(usecTimestampNow());
                     }
                 }

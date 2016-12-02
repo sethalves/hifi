@@ -1093,8 +1093,8 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
 //
 // TODO: Implement support for script and visible properties.
 //
-bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItemID id, const EntityItemProperties& properties,
-                                                  QByteArray& buffer) {
+bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItemID id, QUuid patchID,
+                                                  const EntityItemProperties& properties, QByteArray& buffer) {
     OctreePacketData ourDataPacket(false, buffer.size()); // create a packetData object to add out packet details too.
     OctreePacketData* packetData = &ourDataPacket; // we want a pointer to this so we can use our APPEND_ENTITY_PROPERTY macro
 
@@ -1122,6 +1122,9 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         // id
         // encode our ID as a byte count coded byte stream
         QByteArray encodedID = id.toRfc4122(); // NUM_BYTES_RFC4122_UUID
+
+        // patchID
+        QByteArray encodedPatchID = patchID.toRfc4122(); // NUM_BYTES_RFC4122_UUID
 
         // encode our ID as a byte count coded byte stream
         ByteCountCoded<quint32> tokenCoder;
@@ -1160,6 +1163,8 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         }
         bool successTypeFits = packetData->appendRawData(encodedType);
 
+        bool successPatchIDFits = packetData->appendRawData(encodedPatchID);
+
         // NOTE: We intentionally do not send "created" times in edit messages. This is because:
         //   1) if the edit is to an existing entity, the created time can not be changed
         //   2) if the edit is to a new entity, the created time is the last edited time
@@ -1173,7 +1178,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
         bool successPropertyFlagsFits = packetData->appendRawData(encodedPropertyFlags);
         int propertyCount = 0;
 
-        bool headerFits = successIDFits && successTypeFits && successLastEditedFits
+        bool headerFits = successIDFits && successTypeFits && successPatchIDFits && successLastEditedFits
         && successLastUpdatedFits && successPropertyFlagsFits;
 
         int startOfEntityItemData = packetData->getUncompressedByteOffset();
@@ -1464,6 +1469,11 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     encodedType = typeCoder; // determine true bytesToRead
     dataAt += encodedType.size();
     processedBytes += encodedType.size();
+
+    // patch id
+    QUuid patchID = QUuid::fromRfc4122(QByteArray::fromRawData(reinterpret_cast<const char*>(dataAt), NUM_BYTES_RFC4122_UUID));
+    dataAt += NUM_BYTES_RFC4122_UUID;
+    processedBytes += NUM_BYTES_RFC4122_UUID;
 
     // Update Delta - when was this item updated relative to last edit... this really should be 0
     // TODO: Should we get rid of this in this in edit packets, since this has to always be 0?

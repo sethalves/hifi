@@ -608,7 +608,7 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
     properties.setClientOnly(_entity->getClientOnly());
     properties.setOwningAvatarID(_entity->getOwningAvatarID());
 
-    entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, tree, id, properties);
+    entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, tree, id, QUuid(), properties);
     _entity->setLastBroadcast(now);
 
     // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
@@ -625,7 +625,7 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
                 newQueryCubeProperties.setOwningAvatarID(entityDescendant->getOwningAvatarID());
 
                 entityPacketSender->queueEditEntityMessage(PacketType::EntityEdit, tree,
-                                                           descendant->getID(), newQueryCubeProperties);
+                                                           descendant->getID(), QUuid(), newQueryCubeProperties);
                 entityDescendant->setLastBroadcast(now);
             }
         }

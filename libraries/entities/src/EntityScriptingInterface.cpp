@@ -37,9 +37,9 @@ EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership
     connect(nodeList.data(), &NodeList::canRezTmpChanged, this, &EntityScriptingInterface::canRezTmpChanged);
 }
 
-void EntityScriptingInterface::queueEntityMessage(PacketType packetType,
-                                                  EntityItemID entityID, const EntityItemProperties& properties) {
-    getEntityPacketSender()->queueEditEntityMessage(packetType, _entityTree, entityID, properties);
+void EntityScriptingInterface::queueEntityMessage(PacketType packetType, EntityItemID entityID, QUuid patchID,
+                                                  const EntityItemProperties& properties) {
+    getEntityPacketSender()->queueEditEntityMessage(packetType, _entityTree, entityID, patchID, properties);
 }
 
 void EntityScriptingInterface::resetActivityTracking() {
@@ -237,7 +237,7 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
     // queue the packet
     if (success) {
         emit debitEnergySource(cost);
-        queueEntityMessage(PacketType::EntityAdd, id, propertiesWithSimID);
+        queueEntityMessage(PacketType::EntityAdd, id, QUuid(), propertiesWithSimID);
 
         return id;
     } else {
@@ -311,7 +311,7 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
     return convertLocationToScriptSemantics(results);
 }
 
-QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties) {
+QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties, QUuid patchID) {
     _activityTracking.editedEntityCount++;
 
     EntityItemProperties properties = scriptSideProperties;
@@ -324,7 +324,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
     EntityItemID entityID(id);
     if (!_entityTree) {
-        queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+        queueEntityMessage(PacketType::EntityEdit, entityID, patchID, properties);
 
         //if there is no local entity entity tree, no existing velocity, use 0.
         float cost = calculateCost(density * volume, oldVelocity, newVelocity);
@@ -453,15 +453,32 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                         EntityItemProperties newQueryCubeProperties;
                         newQueryCubeProperties.setQueryAACube(descendant->getQueryAACube());
                         newQueryCubeProperties.setLastEdited(properties.getLastEdited());
-                        queueEntityMessage(PacketType::EntityEdit, descendant->getID(), newQueryCubeProperties);
+                        queueEntityMessage(PacketType::EntityEdit, descendant->getID(), patchID, newQueryCubeProperties);
                         entityDescendant->setLastBroadcast(usecTimestampNow());
                     }
                 }
             });
         }
     });
-    queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+    queueEntityMessage(PacketType::EntityEdit, entityID, patchID, properties);
     return id;
+}
+
+QUuid EntityScriptingInterface::addEntityPatch(QUuid entityID, const EntityItemProperties& scriptSideProperties) {
+    QUuid patchID = QUuid::createUuid();
+    editEntity(entityID, scriptSideProperties, patchID);
+    return patchID;
+}
+
+void EntityScriptingInterface::editEntityPatch(QUuid entityID, QUuid patchID,
+                                               const EntityItemProperties& scriptSideProperties) {
+    editEntity(entityID, scriptSideProperties, patchID);
+}
+
+void EntityScriptingInterface::mergeEntityPatch(QUuid entityID, QUuid patchID) {
+}
+
+void EntityScriptingInterface::deleteEntityPatch(QUuid entityID, QUuid patchID) {
 }
 
 void EntityScriptingInterface::deleteEntity(QUuid id) {
@@ -841,7 +858,7 @@ bool EntityScriptingInterface::setPoints(QUuid entityID, std::function<bool(Line
     properties.setLinePointsDirty();
     properties.setLastEdited(now);
 
-    queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+    queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
     return success;
 }
 
@@ -955,7 +972,7 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
         properties.setActionDataDirty();
         auto now = usecTimestampNow();
         properties.setLastEdited(now);
-        queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+        queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
     }
 
     return doTransmit;
@@ -1125,7 +1142,7 @@ bool EntityScriptingInterface::setAbsoluteJointTranslationInObjectFrame(const QU
 
             properties.setJointTranslationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }
@@ -1147,7 +1164,7 @@ bool EntityScriptingInterface::setAbsoluteJointRotationInObjectFrame(const QUuid
 
             properties.setJointRotationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }
@@ -1186,7 +1203,7 @@ bool EntityScriptingInterface::setLocalJointTranslation(const QUuid& entityID, i
 
             properties.setJointTranslationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }
@@ -1207,7 +1224,7 @@ bool EntityScriptingInterface::setLocalJointRotation(const QUuid& entityID, int 
 
             properties.setJointRotationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }
@@ -1235,7 +1252,7 @@ bool EntityScriptingInterface::setLocalJointRotations(const QUuid& entityID, con
 
             properties.setJointRotationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }
@@ -1262,7 +1279,7 @@ bool EntityScriptingInterface::setLocalJointTranslations(const QUuid& entityID, 
 
             properties.setJointTranslationsDirty();
             properties.setLastEdited(now);
-            queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+            queueEntityMessage(PacketType::EntityEdit, entityID, QUuid(), properties);
             return true;
         }
     }

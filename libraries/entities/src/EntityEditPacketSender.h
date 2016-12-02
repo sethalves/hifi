@@ -36,7 +36,7 @@ public:
     /// which case up to MaxPendingMessages will be buffered and processed when voxel servers are known.
     /// NOTE: EntityItemProperties assumes that all distances are in meter units
     void queueEditEntityMessage(PacketType type, EntityTreePointer entityTree,
-                                EntityItemID entityItemID, const EntityItemProperties& properties);
+                                EntityItemID entityItemID, QUuid patchID, const EntityItemProperties& properties);
 
 
     void queueEraseEntityMessage(const EntityItemID& entityItemID);

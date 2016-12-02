@@ -596,6 +596,8 @@ protected:
     quint64 _fadeStartTime { usecTimestampNow() };
     static std::function<bool()> _entitiesShouldFadeFunction;
     bool _isFading { _entitiesShouldFadeFunction() };
+
+    std::list<EntityItemProperties> _propertiesPatchStack;
 };
 
 #endif // hifi_EntityItem_h

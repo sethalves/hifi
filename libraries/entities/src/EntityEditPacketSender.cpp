@@ -88,6 +88,7 @@ void EntityEditPacketSender::queueEditAvatarEntityMessage(PacketType type,
 void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
                                                     EntityTreePointer entityTree,
                                                     EntityItemID entityItemID,
+                                                    QUuid patchID,
                                                     const EntityItemProperties& properties) {
     if (!_shouldSend) {
         return; // bail early
@@ -100,7 +101,7 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
 
     QByteArray bufferOut(NLPacket::maxPayloadSize(type), 0);
 
-    if (EntityItemProperties::encodeEntityEditPacket(type, entityItemID, properties, bufferOut)) {
+    if (EntityItemProperties::encodeEntityEditPacket(type, entityItemID, patchID, properties, bufferOut)) {
         #ifdef WANT_DEBUG
             qCDebug(entities) << "calling queueOctreeEditMessage()...";
             qCDebug(entities) << "    id:" << entityItemID;

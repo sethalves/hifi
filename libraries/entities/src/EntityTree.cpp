@@ -1508,7 +1508,7 @@ bool EntityTree::sendEntitiesOperation(OctreeElementPointer element, void* extra
         EntityTreePointer tree = entityTreeElement->getTree();
 
         // queue the packet to send to the server
-        args->packetSender->queueEditEntityMessage(PacketType::EntityAdd, tree, newID, properties);
+        args->packetSender->queueEditEntityMessage(PacketType::EntityAdd, tree, newID, QUuid(), properties);
 
         // also update the local tree instantly (note: this is not our tree, but an alternate tree)
         if (args->otherTree) {

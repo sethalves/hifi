@@ -55,6 +55,17 @@
             bytesRead += bytes;                                                    \
         }
 
+#define GET_IN_PATCH_STACK(N,n)                         \
+        ([&](){                                         \
+            for (auto &patch : _propertiesPatchStack) { \
+                if (patch._##n##Changed) {              \
+                    return patch.get##N();              \
+                }                                       \
+            }                                           \
+            return get##N();                            \
+        }())
+
+
 #define DECODE_GROUP_PROPERTY_HAS_CHANGED(P,N) \
         if (propertyFlags.getHasProperty(P)) {  \
             set##N##Changed(true); \

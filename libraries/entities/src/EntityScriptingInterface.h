@@ -144,7 +144,12 @@ public slots:
      * @function Entities.editEntity
      * @return {EntityID} The EntityID of the entity if the edit was successful, otherwise the null {EntityID}.
      */
-    Q_INVOKABLE QUuid editEntity(QUuid entityID, const EntityItemProperties& properties);
+    Q_INVOKABLE QUuid editEntity(QUuid entityID, const EntityItemProperties& properties, QUuid patchID = QUuid());
+
+    Q_INVOKABLE QUuid addEntityPatch(QUuid entityID, const EntityItemProperties& properties);
+    Q_INVOKABLE void editEntityPatch(QUuid entityID, QUuid patchID, const EntityItemProperties& properties);
+    Q_INVOKABLE void mergeEntityPatch(QUuid entityID, QUuid patchID);
+    Q_INVOKABLE void deleteEntityPatch(QUuid entityID, QUuid patchID);
 
     /**jsdoc
      * Deletes an entity.
@@ -308,7 +313,8 @@ private:
     bool actionWorker(const QUuid& entityID, std::function<bool(EntitySimulationPointer, EntityItemPointer)> actor);
     bool setVoxels(QUuid entityID, std::function<bool(PolyVoxEntityItem&)> actor);
     bool setPoints(QUuid entityID, std::function<bool(LineEntityItem&)> actor);
-    void queueEntityMessage(PacketType packetType, EntityItemID entityID, const EntityItemProperties& properties);
+    void queueEntityMessage(PacketType packetType,
+                            EntityItemID entityID, QUuid patchID, const EntityItemProperties& properties);
 
     EntityItemPointer checkForTreeEntityAndTypeMatch(const QUuid& entityID,
                                                      EntityTypes::EntityType entityType = EntityTypes::Unknown);
