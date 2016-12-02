@@ -116,10 +116,12 @@ public:
     EntityItemPointer addEntity(const EntityItemID& entityID, const EntityItemProperties& properties);
 
     // use this method if you only know the entityID
-    bool updateEntity(const EntityItemID& entityID, const EntityItemProperties& properties, const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
+    bool updateEntity(const EntityItemID& entityID, const QUuid& patchID, const EntityItemProperties& properties,
+                      const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
 
     // use this method if you have a pointer to the entity (avoid an extra entity lookup)
-    bool updateEntity(EntityItemPointer entity, const EntityItemProperties& properties, const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
+    bool updateEntity(EntityItemPointer entity, const QUuid& patchID, const EntityItemProperties& properties,
+                      const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
 
     // check if the avatar is a child of this entity, If so set the avatar parentID to null
     void unhookChildAvatar(const EntityItemID entityID);
@@ -276,7 +278,7 @@ signals:
 protected:
 
     void processRemovedEntities(const DeleteEntityOperator& theOperator);
-    bool updateEntityWithElement(EntityItemPointer entity, const EntityItemProperties& properties,
+    bool updateEntityWithElement(EntityItemPointer entity, QUuid patchID, const EntityItemProperties& properties,
                                  EntityTreeElementPointer containingElement,
                                  const SharedNodePointer& senderNode = SharedNodePointer(nullptr));
     static bool findNearPointOperation(OctreeElementPointer element, void* extraData);

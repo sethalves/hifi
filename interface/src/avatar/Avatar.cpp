@@ -247,7 +247,7 @@ void Avatar::updateAvatarEntities() {
             EntityItemPointer entity = entityTree->findEntityByEntityItemID(EntityItemID(entityID));
 
             if (entity) {
-                if (entityTree->updateEntity(entityID, properties)) {
+                if (entityTree->updateEntity(entityID, QUuid(), properties)) {
                     entity->updateLastEditedFromRemote();
                 } else {
                     success = false;

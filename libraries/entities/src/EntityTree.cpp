@@ -130,7 +130,7 @@ void EntityTree::postAddEntity(EntityItemPointer entity) {
     fixupMissingParents();
 }
 
-bool EntityTree::updateEntity(const EntityItemID& entityID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
+bool EntityTree::updateEntity(const EntityItemID& entityID, const QUuid& patchID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         return false;
@@ -141,18 +141,18 @@ bool EntityTree::updateEntity(const EntityItemID& entityID, const EntityItemProp
         return false;
     }
 
-    return updateEntityWithElement(existingEntity, properties, containingElement, senderNode);
+    return updateEntityWithElement(existingEntity, patchID, properties, containingElement, senderNode);
 }
 
-bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
+bool EntityTree::updateEntity(EntityItemPointer entity, const QUuid& patchID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
     EntityTreeElementPointer containingElement = getContainingElement(entity->getEntityItemID());
     if (!containingElement) {
         return false;
     }
-    return updateEntityWithElement(entity, properties, containingElement, senderNode);
+    return updateEntityWithElement(entity, patchID, properties, containingElement, senderNode);
 }
 
-bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityItemProperties& origProperties,
+bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID, const EntityItemProperties& origProperties,
                                          EntityTreeElementPointer containingElement, const SharedNodePointer& senderNode) {
     EntityItemProperties properties = origProperties;
 
@@ -949,11 +949,12 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             _totalEditMessages++;
 
             EntityItemID entityItemID;
+            QUuid patchID;
             EntityItemProperties properties;
             startDecode = usecTimestampNow();
 
             bool validEditPacket = EntityItemProperties::decodeEntityEditPacket(editData, maxLength, processedBytes,
-                                                                                entityItemID, properties);
+                                                                                entityItemID, patchID, properties);
             endDecode = usecTimestampNow();
 
             if (validEditPacket && !_entityScriptSourceWhitelist.isEmpty() && !properties.getScript().isEmpty()) {
@@ -1027,7 +1028,7 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
 
                     startUpdate = usecTimestampNow();
                     properties.setLastEditedBy(senderNode->getUUID());
-                    updateEntity(entityItemID, properties, senderNode);
+                    updateEntity(entityItemID, patchID, properties, senderNode);
                     existingEntity->markAsChangedOnServer();
                     endUpdate = usecTimestampNow();
                     _totalUpdates++;

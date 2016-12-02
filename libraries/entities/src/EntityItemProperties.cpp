@@ -1425,7 +1425,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 // TODO: Implement support for script and visible properties.
 //
 bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int bytesToRead, int& processedBytes,
-                                                  EntityItemID& entityID, EntityItemProperties& properties) {
+                                                  EntityItemID& entityID, QUuid& patchID, EntityItemProperties& properties) {
     bool valid = false;
 
     const unsigned char* dataAt = data;
@@ -1471,7 +1471,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     processedBytes += encodedType.size();
 
     // patch id
-    QUuid patchID = QUuid::fromRfc4122(QByteArray::fromRawData(reinterpret_cast<const char*>(dataAt), NUM_BYTES_RFC4122_UUID));
+    patchID = QUuid::fromRfc4122(QByteArray::fromRawData(reinterpret_cast<const char*>(dataAt), NUM_BYTES_RFC4122_UUID));
     dataAt += NUM_BYTES_RFC4122_UUID;
     processedBytes += NUM_BYTES_RFC4122_UUID;
 

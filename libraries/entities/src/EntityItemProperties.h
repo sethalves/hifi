@@ -243,7 +243,7 @@ public:
     static bool encodeEraseEntityMessage(const EntityItemID& entityItemID, QByteArray& buffer);
 
     static bool decodeEntityEditPacket(const unsigned char* data, int bytesToRead, int& processedBytes,
-                                       EntityItemID& entityID, EntityItemProperties& properties);
+                                       EntityItemID& entityID, QUuid& patchID, EntityItemProperties& properties);
 
     bool localRenderAlphaChanged() const { return _localRenderAlphaChanged; }
 
