@@ -122,6 +122,7 @@ public:
 
     virtual glm::quat getLocalOrientation() const;
     virtual void setLocalOrientation(const glm::quat& orientation);
+    glm::quat getLocalRotation() const { return getLocalOrientation(); }
 
     virtual glm::vec3 getLocalVelocity() const;
     virtual void setLocalVelocity(const glm::vec3& velocity);
