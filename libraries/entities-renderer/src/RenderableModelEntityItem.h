@@ -96,7 +96,7 @@ public:
     // These operate on a copy of the animationProperties, so they can be accessed
     // without having the entityTree lock.
     bool hasRenderAnimation() const { return !_renderAnimationProperties.getURL().isEmpty(); }
-    const QString& getRenderAnimationURL() const { return _renderAnimationProperties.getURL(); }
+    QString getRenderAnimationURL() const { return _renderAnimationProperties.getURL(); }
 
     render::ItemID getMetaRenderItem() { return _myMetaItem; }
 

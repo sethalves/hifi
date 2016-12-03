@@ -84,7 +84,7 @@ public:
     const AnimationPropertyGroup& getAnimationProperties() const { return _animationProperties; }
 
     bool hasAnimation() const { return !_animationProperties.getURL().isEmpty(); }
-    const QString& getAnimationURL() const { return _animationProperties.getURL(); }
+    QString getAnimationURL() const { return _animationProperties.getURL(); }
     void setAnimationURL(const QString& url);
 
     void setAnimationCurrentFrame(float value) { _animationLoop.setCurrentFrame(value); }
