@@ -1356,6 +1356,29 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     return somethingChanged;
 }
 
+void EntityItem::addPropertyPatch(const QUuid& patchID, const EntityItemProperties& properties) {
+    std::list<EntityItemPropertiesPatch>::iterator i = _propertiesPatchStack.begin();
+    while (i != _propertiesPatchStack.end()) {
+        if ((*i).patchID == patchID) {
+            (*i).properties.merge(properties);
+            return;
+        }
+        i++;
+    }
+    _propertiesPatchStack.push_front(EntityItemPropertiesPatch(patchID, properties));
+}
+
+void EntityItem::removePropertyPatch(const QUuid& patchID) {
+    std::list<EntityItemPropertiesPatch>::iterator i = _propertiesPatchStack.begin();
+    while (i != _propertiesPatchStack.end()) {
+        if ((*i).patchID == patchID) {
+            _propertiesPatchStack.erase(i++);
+        } else {
+            i++;
+        }
+    }
+}
+
 void EntityItem::recordCreationTime() {
     if (_created == UNKNOWN_CREATED_TIME) {
         _created = usecTimestampNow();

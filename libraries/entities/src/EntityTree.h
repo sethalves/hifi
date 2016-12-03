@@ -260,6 +260,7 @@ public:
     void knowAvatarID(QUuid avatarID) { _avatarIDs += avatarID; }
     void forgetAvatarID(QUuid avatarID) { _avatarIDs -= avatarID; }
     void deleteDescendantsOfAvatar(QUuid avatarID);
+    void removePatchesOwnedBy(QUuid avatarID);
 
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
 
@@ -349,6 +350,9 @@ protected:
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
 
     QStringList _entityScriptSourceWhitelist;
+
+    std::map<QUuid, std::set<EntityItemID>> _activePropertiesPatches; // maps from patchIDs to entityIDs
+    std::map<QUuid, std::set<QUuid>> _propertyPatchOwnerships; // maps from agent-sessionID to patchIDs
 };
 
 #endif // hifi_EntityTree_h

@@ -55,21 +55,21 @@
             bytesRead += bytes;                                                    \
         }
 
-#define GET_IN_PATCH_STACK(N)                           \
-        ([&](){                                         \
-            for (auto &patch : _propertiesPatchStack) { \
-                if (patch.get##N##Changed()) {          \
-                    return patch.get##N();              \
-                }                                       \
-            }                                           \
-            return get##N();                            \
+#define GET_IN_PATCH_STACK(N)                                   \
+        ([&](){                                                 \
+            for (auto &patch : _propertiesPatchStack) {         \
+                if (patch.properties.get##N##Changed()) {       \
+                    return patch.properties.get##N();           \
+                }                                               \
+            }                                                   \
+            return get##N();                                    \
         }())
 
 #define GET_IN_ENTITY_PATCH_STACK(e,N)                          \
         ([&](){                                                 \
             for (auto &patch : e->getPropertiesPatchStack()) {  \
-                if (patch.get##N##Changed()) {                  \
-                    return patch.get##N();                      \
+                if (patch.properties.get##N##Changed()) {       \
+                    return patch.properties.get##N();           \
                 }                                               \
             }                                                   \
             return e->get##N();                                 \
@@ -78,9 +78,9 @@
 #define GET_IN_ENTITY_PATCH_STACK_SUCCESS(e,N)                  \
         ([&](){                                                 \
             for (auto &patch : e->getPropertiesPatchStack()) {  \
-                if (patch.get##N##Changed()) {                  \
+                if (patch.properties.get##N##Changed()) {       \
                     success = true;                             \
-                    return patch.get##N();                      \
+                    return patch.properties.get##N();           \
                 }                                               \
             }                                                   \
             return e->get##N(success);                          \

@@ -267,7 +267,13 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
         }
         UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newQueryAACube);
         recurseTreeWithOperator(&theOperator);
-        entity->setProperties(properties);
+        if (patchID.isNull()) {
+            entity->setProperties(properties);
+        } else {
+            entity->addPropertyPatch(patchID, properties);
+            _activePropertiesPatches[patchID].insert(entity->getID());
+            _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
+        }
 
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
         QQueue<SpatiallyNestablePointer> toProcess;
@@ -1202,6 +1208,25 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
     if (_childrenOfAvatars.contains(avatarID)) {
         deleteEntities(_childrenOfAvatars[avatarID]);
         _childrenOfAvatars.remove(avatarID);
+    }
+}
+
+void EntityTree::removePatchesOwnedBy(QUuid avatarID) {
+    if (_propertyPatchOwnerships.count(avatarID) == 0) {
+        return;
+    }
+    std::set<QUuid>& patchIDs = _propertyPatchOwnerships[avatarID];
+
+    for (auto patchID : patchIDs) {
+        if (_activePropertiesPatches.count(patchID) > 0) {
+            std::set<EntityItemID>& entityIDs = _activePropertiesPatches[patchID];
+            for (auto entityID : entityIDs) {
+                EntityItemPointer entity = findEntityByEntityItemID(entityID);
+                if (entity) {
+                    entity->removePropertyPatch(patchID);
+                }
+            }
+        }
     }
 }
 

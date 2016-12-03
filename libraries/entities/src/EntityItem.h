@@ -43,6 +43,7 @@ class EntityTreeElement;
 class EntityTreeElementExtraEncodeData;
 class EntityActionInterface;
 class EntityItemProperties;
+class EntityItemPropertiesPatch;
 class EntityTree;
 class btCollisionShape;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
@@ -93,6 +94,8 @@ public:
     // This function calls setSubClass properties and detects if any property changes value.
     // If something changed then the "somethingChangedNotification" calls happens
     virtual bool setProperties(const EntityItemProperties& properties);
+    void addPropertyPatch(const QUuid& patchID, const EntityItemProperties& properties);
+    void removePropertyPatch(const QUuid& patchID);
 
     // Set properties for sub class so they can add their own properties
     // it does nothing in the root class
@@ -463,7 +466,7 @@ public:
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
 
-    std::list<EntityItemProperties>& getPropertiesPatchStack() { return _propertiesPatchStack; }
+    std::list<EntityItemPropertiesPatch>& getPropertiesPatchStack() { return _propertiesPatchStack; }
 
 protected:
 
@@ -584,7 +587,7 @@ protected:
     // physics related changes from the network to suppress any duplicates and make
     // sure redundant applications are idempotent
     glm::vec3 _lastUpdatedPositionValue;
-    glm::quat  _lastUpdatedRotationValue;
+    glm::quat _lastUpdatedRotationValue;
     glm::vec3 _lastUpdatedVelocityValue;
     glm::vec3 _lastUpdatedAngularVelocityValue;
     glm::vec3 _lastUpdatedAccelerationValue;
@@ -599,7 +602,7 @@ protected:
     static std::function<bool()> _entitiesShouldFadeFunction;
     bool _isFading { _entitiesShouldFadeFunction() };
 
-    std::list<EntityItemProperties> _propertiesPatchStack;
+    std::list<EntityItemPropertiesPatch> _propertiesPatchStack;
 };
 
 #endif // hifi_EntityItem_h

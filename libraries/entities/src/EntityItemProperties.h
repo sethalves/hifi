@@ -334,6 +334,14 @@ private:
     EntityPropertyFlags _desiredProperties; // if set will narrow scopes of copy/to/from to just these properties
 };
 
+
+class EntityItemPropertiesPatch {
+public:
+    EntityItemPropertiesPatch(QUuid patchID, EntityItemProperties properties) : patchID(patchID), properties(properties) {}
+    QUuid patchID;
+    EntityItemProperties properties;
+};
+
 Q_DECLARE_METATYPE(EntityItemProperties);
 QScriptValue EntityItemPropertiesToScriptValue(QScriptEngine* engine, const EntityItemProperties& properties);
 QScriptValue EntityItemNonDefaultPropertiesToScriptValue(QScriptEngine* engine, const EntityItemProperties& properties);
