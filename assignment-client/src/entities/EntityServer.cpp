@@ -297,7 +297,7 @@ void EntityServer::nodeKilled(SharedNodePointer node) {
     EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
     tree->deleteDescendantsOfAvatar(node->getUUID());
     tree->forgetAvatarID(node->getUUID());
-    tree->removePatchesOwnedBy(node->getUUID());
+    tree->removePatchesOwnedBy(node->getUUID(), node);
     OctreeServer::nodeKilled(node);
 }
 

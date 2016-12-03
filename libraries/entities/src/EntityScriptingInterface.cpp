@@ -475,10 +475,16 @@ void EntityScriptingInterface::editEntityPatch(QUuid entityID, QUuid patchID,
     editEntity(entityID, scriptSideProperties, patchID);
 }
 
-void EntityScriptingInterface::mergeEntityPatch(QUuid entityID, QUuid patchID) {
+void EntityScriptingInterface::mergeEntityPatch(QUuid patchID) {
 }
 
-void EntityScriptingInterface::deleteEntityPatch(QUuid entityID, QUuid patchID) {
+void EntityScriptingInterface::deleteEntityPatch(QUuid patchID) {
+}
+
+void EntityScriptingInterface::enableEntityPatch(QUuid patchID) {
+}
+
+void EntityScriptingInterface::disableEntityPatch(QUuid patchID) {
 }
 
 void EntityScriptingInterface::deleteEntity(QUuid id) {

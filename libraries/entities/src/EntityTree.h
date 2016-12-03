@@ -260,7 +260,7 @@ public:
     void knowAvatarID(QUuid avatarID) { _avatarIDs += avatarID; }
     void forgetAvatarID(QUuid avatarID) { _avatarIDs -= avatarID; }
     void deleteDescendantsOfAvatar(QUuid avatarID);
-    void removePatchesOwnedBy(QUuid avatarID);
+    void removePatchesOwnedBy(QUuid avatarID, SharedNodePointer senderNode);
 
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
 

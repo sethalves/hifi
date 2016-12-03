@@ -148,8 +148,10 @@ public slots:
 
     Q_INVOKABLE QUuid addEntityPatch(QUuid entityID, const EntityItemProperties& properties);
     Q_INVOKABLE void editEntityPatch(QUuid entityID, QUuid patchID, const EntityItemProperties& properties);
-    Q_INVOKABLE void mergeEntityPatch(QUuid entityID, QUuid patchID);
-    Q_INVOKABLE void deleteEntityPatch(QUuid entityID, QUuid patchID);
+    Q_INVOKABLE void mergeEntityPatch(QUuid patchID);
+    Q_INVOKABLE void deleteEntityPatch(QUuid patchID);
+    Q_INVOKABLE void enableEntityPatch(QUuid patchID);
+    Q_INVOKABLE void disableEntityPatch(QUuid patchID);
 
     /**jsdoc
      * Deletes an entity.

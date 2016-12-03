@@ -1211,7 +1211,7 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
     }
 }
 
-void EntityTree::removePatchesOwnedBy(QUuid avatarID) {
+void EntityTree::removePatchesOwnedBy(QUuid avatarID, SharedNodePointer senderNode) {
     if (_propertyPatchOwnerships.count(avatarID) == 0) {
         return;
     }
@@ -1224,6 +1224,8 @@ void EntityTree::removePatchesOwnedBy(QUuid avatarID) {
                 EntityItemPointer entity = findEntityByEntityItemID(entityID);
                 if (entity) {
                     entity->removePropertyPatch(patchID);
+                    EntityItemProperties properties; // empty
+                    updateEntity(EntityItemID(entityID), QUuid(), properties, senderNode);
                 }
             }
         }

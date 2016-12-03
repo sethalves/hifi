@@ -337,9 +337,12 @@ private:
 
 class EntityItemPropertiesPatch {
 public:
-    EntityItemPropertiesPatch(QUuid patchID, EntityItemProperties properties) : patchID(patchID), properties(properties) {}
+    EntityItemPropertiesPatch(QUuid patchID,
+                              EntityItemProperties properties,
+                              bool enabled = true) : patchID(patchID), properties(properties) {}
     QUuid patchID;
     EntityItemProperties properties;
+    bool enabled;
 };
 
 Q_DECLARE_METATYPE(EntityItemProperties);
