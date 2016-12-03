@@ -40,7 +40,7 @@ public:
     virtual const QUuid getID() const;
     virtual void setID(const QUuid& id);
 
-    virtual const QUuid getParentID() const;
+    virtual QUuid getParentID() const;
     virtual void setParentID(const QUuid& parentID);
 
     virtual quint16 getParentJointIndex() const { return _parentJointIndex; }

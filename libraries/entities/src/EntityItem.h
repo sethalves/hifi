@@ -198,7 +198,7 @@ public:
     void setDescription(QString value) { _description = value; }
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3 getDimensions() const { return getScale(); }
+    glm::vec3 getDimensions() const { return getScale(); }
     virtual void setDimensions(const glm::vec3& value);
 
     float getLocalRenderAlpha() const { return _localRenderAlpha; }
@@ -213,11 +213,11 @@ public:
     bool hasVelocity() const { return getVelocity() != ENTITY_ITEM_ZERO_VEC3; }
     bool hasLocalVelocity() const { return getLocalVelocity() != ENTITY_ITEM_ZERO_VEC3; }
 
-    const glm::vec3& getGravity() const { return _gravity; } /// get gravity in meters
+    glm::vec3 getGravity() const { return _gravity; } /// get gravity in meters
     void setGravity(const glm::vec3& value) { _gravity = value; } /// gravity in meters
     bool hasGravity() const { return _gravity != ENTITY_ITEM_ZERO_VEC3; }
 
-    const glm::vec3& getAcceleration() const { return _acceleration; } /// get acceleration in meters/second/second
+    glm::vec3 getAcceleration() const { return _acceleration; } /// get acceleration in meters/second/second
     void setAcceleration(const glm::vec3& value) { _acceleration = value; } /// acceleration in meters/second/second
     bool hasAcceleration() const { return _acceleration != ENTITY_ITEM_ZERO_VEC3; }
 
@@ -256,19 +256,19 @@ public:
     using SpatiallyNestable::getQueryAACube;
     virtual AACube getQueryAACube(bool& success) const override;
 
-    const QString& getScript() const { return _script; }
+    QString getScript() const { return _script; }
     void setScript(const QString& value) { _script = value; }
 
     quint64 getScriptTimestamp() const { return _scriptTimestamp; }
     void setScriptTimestamp(const quint64 value) { _scriptTimestamp = value; }
 
-    const QString& getCollisionSoundURL() const { return _collisionSoundURL; }
+    QString getCollisionSoundURL() const { return _collisionSoundURL; }
     void setCollisionSoundURL(const QString& value);
 
     SharedSoundPointer getCollisionSound();
     void setCollisionSound(SharedSoundPointer sound) { _collisionSound = sound; }
 
-    const glm::vec3& getRegistrationPoint() const { return _registrationPoint; } /// registration point as ratio of entity
+    glm::vec3 getRegistrationPoint() const { return _registrationPoint; } /// registration point as ratio of entity
 
     /// registration point as ratio of entity
     void setRegistrationPoint(const glm::vec3& value) {
@@ -306,10 +306,10 @@ public:
     bool getLocked() const { return _locked; }
     void setLocked(bool value) { _locked = value; }
 
-    const QString& getUserData() const { return _userData; }
+    QString getUserData() const { return _userData; }
     virtual void setUserData(const QString& value) { _userData = value; }
 
-    const SimulationOwner& getSimulationOwner() const { return _simulationOwner; }
+    SimulationOwner getSimulationOwner() const { return _simulationOwner; }
     void setSimulationOwner(const QUuid& id, quint8 priority);
     void setSimulationOwner(const SimulationOwner& owner);
     void promoteSimulationPriority(quint8 priority);
@@ -320,7 +320,7 @@ public:
     void clearSimulationOwnership();
     void setPendingOwnershipPriority(quint8 priority, const quint64& timestamp);
 
-    const QString& getMarketplaceID() const { return _marketplaceID; }
+    QString getMarketplaceID() const { return _marketplaceID; }
     void setMarketplaceID(const QString& value) { _marketplaceID = value; }
 
     // TODO: get rid of users of getRadius()...
@@ -399,7 +399,7 @@ public:
     bool removeAction(EntitySimulationPointer simulation, const QUuid& actionID);
     bool clearActions(EntitySimulationPointer simulation);
     void setActionData(QByteArray actionData);
-    const QByteArray getActionData() const;
+    QByteArray getActionData() const;
     bool hasActions() const { return !_objectActions.empty(); }
     QList<QUuid> getActionIDs() const { return _objectActions.keys(); }
     QVariantMap getActionArguments(const QUuid& actionID) const;

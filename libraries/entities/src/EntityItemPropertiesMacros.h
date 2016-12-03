@@ -439,7 +439,7 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
 
 #define DEFINE_PROPERTY_REF(P, N, n, T, V)        \
     public: \
-        const T& get##N() const { return _##n; } \
+        T get##N() const { return _##n; } \
         void set##N(const T& value) { _##n = value; _##n##Changed = true; } \
     DEFINE_CORE(N, n, T, V)
 

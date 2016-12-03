@@ -2155,7 +2155,7 @@ const QByteArray EntityItem::getActionDataInternal() const {
     return _allActionsDataCache;
 }
 
-const QByteArray EntityItem::getActionData() const {
+QByteArray EntityItem::getActionData() const {
     QByteArray result;
 
     if (_actionDataDirty) {

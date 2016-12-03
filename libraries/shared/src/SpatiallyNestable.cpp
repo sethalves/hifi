@@ -51,7 +51,7 @@ void SpatiallyNestable::setID(const QUuid& id) {
     });
 }
 
-const QUuid SpatiallyNestable::getParentID() const {
+QUuid SpatiallyNestable::getParentID() const {
     QUuid result;
     _idLock.withReadLock([&] {
         result = _parentID;
