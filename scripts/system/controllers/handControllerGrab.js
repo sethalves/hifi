@@ -13,14 +13,14 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 
 /* global setEntityCustomData, getEntityCustomData, flatten, Xform, Script, Quat, Vec3, MyAvatar, Entities, Overlays, Settings,
-   Reticle, Controller, Camera, Messages, Mat4, getControllerWorldLocation, getGrabPointSphereOffset, setGrabCommunications */
+   Reticle, Controller, Camera, Messages, Mat4, getControllerWorldLocation, getGrabPointSphereOffset, setGrabCommunications, Menu */
 /* eslint indent: ["error", 4, { "outerIIFEBody": 0 }] */
 
 (function() { // BEGIN LOCAL_SCOPE
 
-Script.include("../libraries/utils.js");
-Script.include("../libraries/Xform.js");
-Script.include("../libraries/controllers.js");
+Script.include("/~/system/libraries/utils.js");
+Script.include("/~/system/libraries/Xform.js");
+Script.include("/~/system/libraries/controllers.js");
 
 //
 // add lines where the hand ray picking is happening
@@ -432,16 +432,16 @@ function storeAttachPointForHotspotInSettings(hotspot, hand, offsetPosition, off
     setAttachPointSettings(attachPointSettings);
 }
 
-function removeMyAvatarFromCollidesWith(origCollidesWith) {
-    var collidesWithSplit = origCollidesWith.split(",");
-    // remove myAvatar from the array
-    for (var i = collidesWithSplit.length - 1; i >= 0; i--) {
-        if (collidesWithSplit[i] === "myAvatar") {
-            collidesWithSplit.splice(i, 1);
-        }
-    }
-    return collidesWithSplit.join();
-}
+// function removeMyAvatarFromCollidesWith(origCollidesWith) {
+//     var collidesWithSplit = origCollidesWith.split(",");
+//     // remove myAvatar from the array
+//     for (var i = collidesWithSplit.length - 1; i >= 0; i--) {
+//         if (collidesWithSplit[i] === "myAvatar") {
+//             collidesWithSplit.splice(i, 1);
+//         }
+//     }
+//     return collidesWithSplit.join();
+// }
 
 // If another script is managing the reticle (as is done by HandControllerPointer), we should not be setting it here,
 // and we should not be showing lasers when someone else is using the Reticle to indicate a 2D minor mode.
@@ -1944,7 +1944,7 @@ function MyController(hand) {
         }
 
         var isPhysical = propsArePhysical(grabbedProperties) || entityHasActions(this.grabbedEntity);
-        if (isPhysical && this.state == STATE_NEAR_GRABBING) {
+        if (false && isPhysical && this.state == STATE_NEAR_GRABBING) {
             // grab entity via action
             if (!this.setupHoldAction()) {
                 return;
@@ -1976,7 +1976,7 @@ function MyController(hand) {
                 reparentProps.localPosition = this.offsetPosition;
                 reparentProps.localRotation = this.offsetRotation;
             }
-            Entities.editEntity(this.grabbedEntity, reparentProps);
+            Entities.editEntityPatch(this.grabbedEntity, this.patchID, reparentProps);
 
             Messages.sendMessage('Hifi-Object-Manipulation', JSON.stringify({
                 action: 'equip',
@@ -1985,7 +1985,7 @@ function MyController(hand) {
             }));
         }
 
-        Entities.editEntity(this.grabbedEntity, {
+        Entities.editEntityPatch(this.grabbedEntity, this.patchID, {
             velocity: {
                 x: 0,
                 y: 0,
@@ -2454,7 +2454,7 @@ function MyController(hand) {
                         COLLIDES_WITH_WHILE_GRABBED + ",static" :
                         COLLIDES_WITH_WHILE_GRABBED
                 };
-                Entities.editEntity(entityID, whileHeldProperties);
+                this.patchID = Entities.addEntityPatch(entityID, whileHeldProperties);
             } else if (data.refCount > 1) {
                 if (this.heartBeatIsStale(data)) {
                     // this entity has userData suggesting it is grabbed, but nobody is updating the hearbeat.
@@ -2470,7 +2470,7 @@ function MyController(hand) {
                 // people are holding something and one of them will be able (if the other releases at the right time) to
                 // bootstrap themselves with the held object.  This happens because the meaning of "otherAvatar" in
                 // the collision mask hinges on who the physics simulation owner is.
-                Entities.editEntity(entityID, {
+                this.patchID = Entities.addEntityPatch(entityID, {
                     // "collidesWith": removeAvatarsFromCollidesWith(grabbedProperties.collidesWith)
                     collisionless: true
                 });
@@ -2520,7 +2520,7 @@ function MyController(hand) {
     };
 
     this.deactivateEntity = function(entityID, noVelocity, delayed) {
-        var deactiveProps;
+        // var deactiveProps;
 
         if (!this.entityActivated) {
             return;
@@ -2532,16 +2532,16 @@ function MyController(hand) {
         if (data && data.refCount) {
             data.refCount = data.refCount - 1;
             if (data.refCount < 1) {
-                deactiveProps = {
-                    gravity: data.gravity,
-                    // don't set collidesWith myAvatar back right away, because thrown things tend to bounce off the
-                    // avatar's capsule.
-                    collidesWith: removeMyAvatarFromCollidesWith(data.collidesWith),
-                    collisionless: data.collisionless,
-                    dynamic: data.dynamic,
-                    parentID: data.parentID,
-                    parentJointIndex: data.parentJointIndex
-                };
+                // deactiveProps = {
+                //     gravity: data.gravity,
+                //     // don't set collidesWith myAvatar back right away, because thrown things tend to bounce off the
+                //     // avatar's capsule.
+                //     collidesWith: removeMyAvatarFromCollidesWith(data.collidesWith),
+                //     collisionless: data.collisionless,
+                //     dynamic: data.dynamic,
+                //     parentID: data.parentID,
+                //     parentJointIndex: data.parentJointIndex
+                // };
 
                 doDelayedDeactivate = (data.collidesWith.indexOf("myAvatar") >= 0);
 
@@ -2570,40 +2570,40 @@ function MyController(hand) {
                     data.dynamic &&
                     data.parentID == NULL_UUID &&
                     !data.collisionless) {
-                    deactiveProps.velocity = this.currentVelocity;
+                    // deactiveProps.velocity = this.currentVelocity;
                 }
-                if (noVelocity) {
-                    deactiveProps.velocity = {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    };
-                    deactiveProps.angularVelocity = {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    };
-                }
+                // if (noVelocity) {
+                //     deactiveProps.velocity = {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     };
+                //     deactiveProps.angularVelocity = {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     };
+                // }
 
-                Entities.editEntity(entityID, deactiveProps);
+                // Entities.editEntity(entityID, deactiveProps);
                 data = null;
             } else if (this.shouldResetParentOnRelease) {
                 // we parent-grabbed this from another parent grab.  try to put it back where we found it.
-                deactiveProps = {
-                    parentID: this.previousParentID,
-                    parentJointIndex: this.previousParentJointIndex,
-                    velocity: {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    },
-                    angularVelocity: {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    }
-                };
-                Entities.editEntity(entityID, deactiveProps);
+                // deactiveProps = {
+                //     parentID: this.previousParentID,
+                //     parentJointIndex: this.previousParentJointIndex,
+                //     velocity: {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     },
+                //     angularVelocity: {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     }
+                // };
+                // Entities.editEntity(entityID, deactiveProps);
 
                 if (this.printNewOffsets) {
                     var grabbedProperties = Entities.getEntityProperties(this.grabbedEntity, ["localPosition", "localRotation"]);
@@ -2630,6 +2630,9 @@ function MyController(hand) {
                     dynamic: data.dynamic
                 });
             }
+
+            Entities.deleteEntityPatch(this.patchID);
+
         } else {
             data = null;
         }
