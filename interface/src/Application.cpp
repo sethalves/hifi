@@ -45,6 +45,7 @@
 
 #include <gl/QOpenGLContextWrapper.h>
 
+#include <shared/GlobalAppProperties.h>
 #include <ResourceScriptingInterface.h>
 #include <AccountManager.h>
 #include <AddressManager.h>
@@ -538,7 +539,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _maxOctreePPS(maxOctreePacketsPerSecond.get()),
     _lastFaceTrackerUpdate(0)
 {
-    setProperty("com.highfidelity.launchedFromSteam", SteamClient::isRunning());
+    setProperty(hifi::properties::STEAM, SteamClient::isRunning());
+    setProperty(hifi::properties::CRASHED, _previousSessionCrashed);
 
     _runningMarker.startRunningMarker();
 
@@ -1688,6 +1690,8 @@ void Application::initializeGL() {
 
     _glWidget->makeCurrent();
     gpu::Context::init<gpu::gl::GLBackend>();
+    qApp->setProperty(hifi::properties::gl::MAKE_PROGRAM_CALLBACK, 
+        QVariant::fromValue((void*)(&gpu::gl::GLBackend::makeProgram)));
     _gpuContext = std::make_shared<gpu::Context>();
     // The gpu context can make child contexts for transfers, so 
     // we need to restore primary rendering context
@@ -3954,13 +3958,6 @@ void Application::update(float deltaTime) {
             if (nearbyEntitiesAreReadyForPhysics()) {
                 _physicsEnabled = true;
                 getMyAvatar()->updateMotionBehaviorFromMenu();
-            } else {
-                auto characterController = getMyAvatar()->getCharacterController();
-                if (characterController) {
-                    // if we have a character controller, disable it here so the avatar doesn't get stuck due to
-                    // a non-loading collision hull.
-                    characterController->setEnabled(false);
-                }
             }
         }
     }
@@ -4089,7 +4086,7 @@ void Application::update(float deltaTime) {
             avatarManager->getObjectsToChange(motionStates);
             _physicsEngine->changeObjects(motionStates);
 
-            myAvatar->prepareForPhysicsSimulation();
+            myAvatar->prepareForPhysicsSimulation(deltaTime);
             _physicsEngine->forEachAction([&](EntityActionPointer action) {
                 action->prepareForPhysicsSimulation();
             });
@@ -4812,13 +4809,13 @@ void Application::renderRearViewMirror(RenderArgs* renderArgs, const QRect& regi
     renderArgs->_viewport =  originalViewport;
 }
 
-void Application::resetSensors(bool andReload) {
+void Application::resetSensors(bool andRecenter) {
     DependencyManager::get<Faceshift>()->reset();
     DependencyManager::get<DdeFaceTracker>()->reset();
     DependencyManager::get<EyeTracker>()->reset();
     getActiveDisplayPlugin()->resetSensors();
     _overlayConductor.centerUI();
-    getMyAvatar()->reset(andReload);
+    getMyAvatar()->reset(andRecenter);
     QMetaObject::invokeMethod(DependencyManager::get<AudioClient>().data(), "reset", Qt::QueuedConnection);
 }
 
