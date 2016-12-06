@@ -479,6 +479,7 @@ void EntityScriptingInterface::mergeEntityPatch(QUuid patchID) {
 }
 
 void EntityScriptingInterface::deleteEntityPatch(QUuid patchID) {
+    getEntityPacketSender()->queueDeleteEntityPatchMessage(patchID);
 }
 
 void EntityScriptingInterface::enableEntityPatch(QUuid patchID) {

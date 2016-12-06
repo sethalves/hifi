@@ -105,6 +105,7 @@ bool EntityTree::handlesEditPacketType(PacketType packetType) const {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityErase:
+        case PacketType::EntityDeletePatch:
             return true;
         default:
             return false;
@@ -930,7 +931,7 @@ void EntityTree::fixupTerseEditLogging(EntityItemProperties& properties, QList<Q
 }
 
 int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned char* editData, int maxLength,
-                                     const SharedNodePointer& senderNode) {
+                                      const SharedNodePointer& senderNode) {
 
     if (!getIsServer()) {
         qCDebug(entities) << "UNEXPECTED!!! processEditPacketData() should only be called on a server tree.";
@@ -943,6 +944,11 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
         case PacketType::EntityErase: {
             QByteArray dataByteArray = QByteArray::fromRawData(reinterpret_cast<const char*>(editData), maxLength);
             processedBytes = processEraseMessageDetails(dataByteArray, senderNode);
+            break;
+        }
+        case PacketType::EntityDeletePatch: {
+            QByteArray dataByteArray = QByteArray::fromRawData(reinterpret_cast<const char*>(editData), maxLength);
+            processedBytes = processDeletePatchMessageDetails(dataByteArray, senderNode);
             break;
         }
 
@@ -1211,6 +1217,22 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
     }
 }
 
+
+void EntityTree::removePatch(QUuid patchID, const SharedNodePointer& senderNode) {
+    if (_activePropertiesPatches.count(patchID) > 0) {
+        std::set<EntityItemID>& entityIDs = _activePropertiesPatches[patchID];
+        for (auto entityID : entityIDs) {
+            EntityItemPointer entity = findEntityByEntityItemID(entityID);
+            if (entity) {
+                entity->removePropertyPatch(patchID);
+                EntityItemProperties properties; // empty
+                updateEntity(EntityItemID(entityID), QUuid(), properties, senderNode);
+            }
+        }
+    }
+}
+
+
 void EntityTree::removePatchesOwnedBy(QUuid avatarID, SharedNodePointer senderNode) {
     if (_propertyPatchOwnerships.count(avatarID) == 0) {
         return;
@@ -1218,17 +1240,7 @@ void EntityTree::removePatchesOwnedBy(QUuid avatarID, SharedNodePointer senderNo
     std::set<QUuid>& patchIDs = _propertyPatchOwnerships[avatarID];
 
     for (auto patchID : patchIDs) {
-        if (_activePropertiesPatches.count(patchID) > 0) {
-            std::set<EntityItemID>& entityIDs = _activePropertiesPatches[patchID];
-            for (auto entityID : entityIDs) {
-                EntityItemPointer entity = findEntityByEntityItemID(entityID);
-                if (entity) {
-                    entity->removePropertyPatch(patchID);
-                    EntityItemProperties properties; // empty
-                    updateEntity(EntityItemID(entityID), QUuid(), properties, senderNode);
-                }
-            }
-        }
+        removePatch(patchID, senderNode);
     }
 }
 
@@ -1399,6 +1411,54 @@ int EntityTree::processEraseMessageDetails(const QByteArray& dataByteArray, cons
     }
     return (int)processedBytes;
 }
+
+int EntityTree::processDeletePatchMessageDetails(const QByteArray& dataByteArray, const SharedNodePointer& sourceNode) {
+    #ifdef EXTRA_ERASE_DEBUGGING
+         qDebug() << "EntityTree::processDeletePatchMessageDetails()";
+    #endif
+    const unsigned char* packetData = (const unsigned char*)dataByteArray.constData();
+    const unsigned char* dataAt = packetData;
+    size_t packetLength = dataByteArray.size();
+    size_t processedBytes = 0;
+
+    uint16_t numberOfIds = 0; // placeholder for now
+    memcpy(&numberOfIds, dataAt, sizeof(numberOfIds));
+    dataAt += sizeof(numberOfIds);
+    processedBytes += sizeof(numberOfIds);
+
+    if (numberOfIds > 0) {
+        QSet<EntityItemID> patchIDsToDelete;
+
+        for (size_t i = 0; i < numberOfIds; i++) {
+
+            if (processedBytes + NUM_BYTES_RFC4122_UUID > packetLength) {
+                qCDebug(entities) << "EntityTree::processEraseMessageDetails().... bailing because not enough bytes in buffer";
+                break; // bail to prevent buffer overflow
+            }
+
+            QByteArray encodedID = dataByteArray.mid((int)processedBytes, NUM_BYTES_RFC4122_UUID);
+            QUuid patchID = QUuid::fromRfc4122(encodedID);
+            dataAt += encodedID.size();
+            processedBytes += encodedID.size();
+
+            #ifdef EXTRA_ERASE_DEBUGGING
+            qDebug() << "    ---- EntityTree::processDeletePatchMessageDetails() contains id:" << patchID;
+            #endif
+
+            patchIDsToDelete << patchID;
+
+            if (wantEditLogging() || wantTerseEditLogging()) {
+                qCDebug(entities) << "User [" << sourceNode->getUUID() << "] deleting patch. ID:" << patchID;
+            }
+
+        }
+        for (auto patchID : patchIDsToDelete) {
+            removePatch(patchID, sourceNode);
+        }
+    }
+    return (int)processedBytes;
+}
+
 
 EntityTreeElementPointer EntityTree::getContainingElement(const EntityItemID& entityItemID)  /*const*/ {
     QReadLocker locker(&_entityToElementLock);

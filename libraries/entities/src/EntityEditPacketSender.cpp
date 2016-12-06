@@ -127,3 +127,33 @@ void EntityEditPacketSender::queueEraseEntityMessage(const EntityItemID& entityI
         queueOctreeEditMessage(PacketType::EntityErase, bufferOut);
     }
 }
+
+void EntityEditPacketSender::queueDeleteEntityPatchMessage(const QUuid& patchID) {
+    if (!_shouldSend) {
+        return; // bail early
+    }
+
+    QByteArray buffer(NLPacket::maxPayloadSize(PacketType::EntityDeletePatch), 0);
+
+    char* copyAt = buffer.data();
+    uint16_t numberOfIds = 1; // only one entity ID in this message
+
+    int outputLength = 0;
+
+    if (buffer.size() < (int) (sizeof(numberOfIds) + NUM_BYTES_RFC4122_UUID)) {
+        qCDebug(entities) << "ERROR - queueDeleteEntityPatchMessage() -- buffer is too small!";
+        return;
+    }
+
+    memcpy(copyAt, &numberOfIds, sizeof(numberOfIds));
+    copyAt += sizeof(numberOfIds);
+    outputLength = sizeof(numberOfIds);
+
+    memcpy(copyAt, patchID.toRfc4122().constData(), NUM_BYTES_RFC4122_UUID);
+    copyAt += NUM_BYTES_RFC4122_UUID;
+    outputLength += NUM_BYTES_RFC4122_UUID;
+
+    buffer.resize(outputLength);
+
+    queueOctreeEditMessage(PacketType::EntityErase, buffer);
+}

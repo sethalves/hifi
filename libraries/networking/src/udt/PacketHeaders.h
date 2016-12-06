@@ -101,7 +101,8 @@ public:
         NodeKickRequest,
         NodeMuteRequest,
         RadiusIgnoreRequest,
-        LAST_PACKET_TYPE = RadiusIgnoreRequest
+        EntityDeletePatch,
+        LAST_PACKET_TYPE = EntityDeletePatch
     };
 };
 

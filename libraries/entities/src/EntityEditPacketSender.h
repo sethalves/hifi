@@ -40,6 +40,7 @@ public:
 
 
     void queueEraseEntityMessage(const EntityItemID& entityItemID);
+    void queueDeleteEntityPatchMessage(const QUuid& patchID);
 
     // My server type is the model server
     virtual char getMyNodeType() const override { return NodeType::EntityServer; }

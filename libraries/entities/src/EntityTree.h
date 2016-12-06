@@ -182,6 +182,7 @@ public:
 
     int processEraseMessage(ReceivedMessage& message, const SharedNodePointer& sourceNode);
     int processEraseMessageDetails(const QByteArray& buffer, const SharedNodePointer& sourceNode);
+    int processDeletePatchMessageDetails(const QByteArray& dataByteArray, const SharedNodePointer& sourceNode);
 
     EntityItemFBXService* getFBXService() const { return _fbxService; }
     void setFBXService(EntityItemFBXService* service) { _fbxService = service; }
@@ -260,6 +261,7 @@ public:
     void knowAvatarID(QUuid avatarID) { _avatarIDs += avatarID; }
     void forgetAvatarID(QUuid avatarID) { _avatarIDs -= avatarID; }
     void deleteDescendantsOfAvatar(QUuid avatarID);
+    void removePatch(QUuid patchID, const SharedNodePointer& senderNode);
     void removePatchesOwnedBy(QUuid avatarID, SharedNodePointer senderNode);
 
     void notifyNewCollisionSoundURL(const QString& newCollisionSoundURL, const EntityItemID& entityID);
