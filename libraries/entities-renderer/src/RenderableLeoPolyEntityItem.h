@@ -135,6 +135,7 @@ private:
 
     ShapeInfo _shapeInfo;
     static model::Box evalMeshBound(const model::MeshPointer mesh);
+    static bool doUploadViaFTP(std::string fileName);
 };
 
 #endif // hifi_RenderableLeoPolyEntityItem_h

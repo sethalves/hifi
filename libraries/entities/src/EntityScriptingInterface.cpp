@@ -1450,9 +1450,8 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
     if (_entityTree) {
         _entityTree->withWriteLock([&] {
             EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
-            if (entity) {
-
-                
+            if (entity && entity->getType()==EntityTypes::Model) 
+            {
                 auto props = EntityItemProperties(entity->getProperties());
                 props.setDescription(QString(entity->getName() + " under sculpting"));
                 props.setPosition(entity->getPosition());
@@ -1460,7 +1459,21 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 props.setRotation(entity->getRotation());
                 props.setType(EntityTypes::LeoPoly);
                 props.setCreated(secTimestampNow()); 
-                props.setLeoPolyURL(QString("http://leopoly.develop/hifi/SculptObjects/" + entity->getID().toString() + ".obj"));
+                std::string fileName = entity->getID().toString().toStdString();
+                char chars[] = "{}-";
+
+                for (unsigned int i = 0; i < strlen(chars); ++i)
+                {
+                    // you need include <algorithm> to use general algorithms like std::remove()
+                    fileName.erase(std::remove(fileName.begin(), fileName.end(), chars[i]), fileName.end());
+                }
+                fileName = std::string(fileName.begin() + 1, fileName.end() - 1);
+                
+#ifdef LeoFTP_Inside
+                props.setLeoPolyURL(QString("ftp://Anonymus@192.168.8.8:21/" + QString(fileName.c_str()) + ".obj"));
+#else
+                props.setLeoPolyURL(QString("ftp://Anonymus@86.101.231.173:2121/" + QString(fileName.c_str()) + ".obj"));
+#endif
                 props.setRegistrationPoint(entity->getRegistrationPoint());
                 props.setCollisionless(true);
                 props.setLeoPolyModelVersion(QUuid::createUuid());
@@ -1470,7 +1483,7 @@ void EntityScriptingInterface::sculptEntity(QUuid id)
                 if (newEntity)
                 {                 
                     newEntity->setRegistrationPoint(entity->getRegistrationPoint());
-                   static_cast<LeoPolyEntityItem*>(newEntity.get())->sendToLeoEngine(_entityTree->getModelForEntityItem(entity));
+                    static_cast<LeoPolyEntityItem*>(newEntity.get())->sendToLeoEngine(_entityTree->getModelForEntityItem(entity));
                    // newEntity->setTransform(entity->getTransform());
                    // newEntity->setScale(entity->getScale());
                     queueEntityMessage(PacketType::EntityEdit, leoId, newEntity->getProperties());

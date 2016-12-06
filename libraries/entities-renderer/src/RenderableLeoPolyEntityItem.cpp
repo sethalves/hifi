@@ -40,6 +40,16 @@
 #include "RenderableLeoPolyEntityItem.h"
 #include "EntityEditPacketSender.h"
 #include "PhysicalEntitySimulation.h"
+#include <curl/curl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#ifdef WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 // Plugin.h(85) : warning C4091 : '__declspec(dllimport)' : ignored on left of 'LeoPlugin' when no variable is declared
 #ifdef Q_OS_WIN
@@ -55,6 +65,22 @@
 
 gpu::PipelinePointer RenderableLeoPolyEntityItem::_pipeline = nullptr;
 
+/* NOTE: if you want this example to work on Windows with libcurl as a
+DLL, you MUST also provide a read callback with CURLOPT_READFUNCTION.
+Failing to do so will give you a crash since a DLL may not use the
+variable's memory when passed in to it from an app like this. */
+static size_t read_callback(void *ptr, size_t size, size_t nmemb, void *stream)
+{
+    curl_off_t nread;
+
+    size_t retcode = fread(ptr, size, nmemb, (FILE*)stream);
+
+    nread = (curl_off_t)retcode;
+
+    fprintf(stderr, "*** We read %" CURL_FORMAT_CURL_OFF_T
+        " bytes from file\n", nread);
+    return retcode;
+}
 
 EntityItemPointer RenderableLeoPolyEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
     EntityItemPointer entity{ new RenderableLeoPolyEntityItem(entityID) };
@@ -407,7 +433,7 @@ void RenderableLeoPolyEntityItem::getMesh() {
         defaultMat.materialID = "default";
         defaultMat.name = "Default";
         defaultMat.indexOffset = 0;
-        defaultMat.numIndices = copyOfMesh->getNumIndices();
+        defaultMat.numIndices = static_cast<unsigned int>(copyOfMesh->getNumIndices());
         _materials.push_back(defaultMat);
         setMesh(copyOfMesh);
     }
@@ -421,7 +447,7 @@ void RenderableLeoPolyEntityItem::setUnderSculpting(bool value) {
 
 void RenderableLeoPolyEntityItem::doExportCurrentState()
 {
-    std::string uploadPath = "\\\\hifi.leopoly.develop\\gaborszabo\\hifi\\SculptObjects\\";//TODO: Will be replaced
+    std::string uploadPath = "Temp\\";//TODO: Will be replaced
     std::string urlPath = getLeoPolyURL().toStdString();
     const size_t last_slash_idx = urlPath.find_last_of("\\/");
     if (std::string::npos != last_slash_idx)
@@ -429,10 +455,12 @@ void RenderableLeoPolyEntityItem::doExportCurrentState()
         urlPath.erase(0, last_slash_idx + 1);
     }
     LeoPolyPlugin::Instance().SculptApp_exportFile((uploadPath + urlPath).c_str());
+
     while (LeoPolyPlugin::Instance().getAppState() == LeoPlugin::SculptApp_AppState::APPSTATE_WAIT)
     {
         LeoPolyPlugin::Instance().SculptApp_Frame();
     }
+    doUploadViaFTP(urlPath);
 }
 
 // This will take the _modelResource and convert it into a "flattened form" that can be used by the LeoPoly DLL
@@ -712,7 +740,7 @@ void RenderableLeoPolyEntityItem::updateGeometryFromLeoPlugin() {
         defaultMat.materialID = "default";
         defaultMat.name = "Default";
         defaultMat.indexOffset = 0;
-        defaultMat.numIndices = mesh->getNumIndices();
+        defaultMat.numIndices = static_cast<unsigned int>(mesh->getNumIndices());
         _materials.push_back(defaultMat);
     }
     setMesh(mesh);
@@ -742,6 +770,7 @@ void RenderableLeoPolyEntityItem::sendToLeoEngine(ModelPointer model)
     QVector<unsigned short> matIndexesPerTriangles;
     //ModelPointer act = getModel(_myRenderer);
     auto geometry = model->getFBXGeometry();
+    
     std::string baseUrl = model->getURL().toString().toStdString().substr(0, model->getURL().toString().toStdString().find_last_of("\\/"));
     if (baseUrl.find("file:") != std::string::npos || baseUrl.find("http:") != std::string::npos)
     {
@@ -879,4 +908,77 @@ model::Box RenderableLeoPolyEntityItem::evalMeshBound(const model::MeshPointer m
         }
     }
     return meshBounds;
+}
+
+bool RenderableLeoPolyEntityItem::doUploadViaFTP(std::string fileName)
+{
+    CURL *curl;
+    CURLcode res;
+    FILE *hd_src;
+    struct stat file_info;
+    
+
+#ifdef LeoFTP_Inside
+    // convert URL and username and password to connect to remote server
+    std::string urlPath = "ftp://Anonymus@192.168.8.8/" + fileName; //"ftp://86.101.231.173//" + fileName;
+#else
+    std::string urlPath = "ftp://Anonymus@86.101.231.173/" + fileName; //"ftp://86.101.231.173//" + fileName;
+#endif
+    fileName = "Temp\\" + fileName;
+    // stat the local file
+    if (stat(fileName.c_str(), &file_info)){
+        qDebug() << "couldn't open file\n";
+        return false;
+    }
+
+    char *url = new char[urlPath.size() + 1];
+    std::copy(urlPath.begin(), urlPath.end(), url);
+    url[urlPath.size()] = '\0';
+
+    std::string userAndPassString = "Anonymus";
+    char* usernameAndPassword = new char[userAndPassString.size() + 1];
+    std::copy(userAndPassString.begin(), userAndPassString.end(), usernameAndPassword);
+    usernameAndPassword[userAndPassString.size()] = '\0';
+
+    // get the file to open
+    hd_src = fopen(fileName.c_str(), "rb");
+
+    curl_global_init(CURL_GLOBAL_ALL);
+    curl = curl_easy_init();
+    if (curl){
+
+        /* specify target */
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+#ifdef LeoFTP_Inside
+        curl_easy_setopt(curl, CURLOPT_PORT, 21);
+#else
+        curl_easy_setopt(curl, CURLOPT_PORT, 2121);
+#endif
+        //curl_easy_setopt(curl, CURLOPT_USERPWD, usernameAndPassword);
+        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        /* we want to use our own read function */
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+
+        /* enable uploading */
+        curl_easy_setopt(curl, CURLOPT_UPLOAD, 2L);
+
+        /* now specify which file to upload */
+        curl_easy_setopt(curl, CURLOPT_READDATA, hd_src);
+
+        /* Now run off and do what you've been told! */
+        res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK){
+            qDebug()<<"Upload file failed!Error code:"<<std::to_string(res).c_str();
+            delete url;
+            delete usernameAndPassword;
+            return false;
+        }
+        curl_easy_cleanup(curl);
+    }
+    fclose(hd_src);
+
+    delete url;
+    delete usernameAndPassword;
+    return true;
 }
