@@ -155,5 +155,5 @@ void EntityEditPacketSender::queueDeleteEntityPatchMessage(const QUuid& patchID)
 
     buffer.resize(outputLength);
 
-    queueOctreeEditMessage(PacketType::EntityErase, buffer);
+    queueOctreeEditMessage(PacketType::EntityDeletePatch, buffer);
 }
