@@ -1011,7 +1011,7 @@ function MyController(hand) {
         _this.rawSecondaryValue = value;
 
         // The value to check if we will allow the release function to be called
-        var allowReleaseValue = 0.1;
+        // var allowReleaseValue = 0.1;
         if (value > 0 && _this.state == STATE_HOLD) {
             _this.release();
         }
@@ -1419,8 +1419,6 @@ function MyController(hand) {
         this.grabbedEntity = null;
         this.isInitialGrab = false;
         this.shouldResetParentOnRelease = false;
-
-        this.checkForStrayChildren();
 
         if (this.triggerSmoothedReleased()) {
             this.setState(STATE_OFF, "trigger released");
@@ -2427,7 +2425,7 @@ function MyController(hand) {
             // get re-instated after all the grabs have been released) be correct.
             Script.clearTimeout(delayedDeactivateTimeout);
             delayedDeactivateTimeout = null;
-            grabbedProperties.collidesWith = delayedDeactivateFunc();
+            delayedDeactivateFunc();
         }
 
         var data = getEntityCustomData(GRAB_USER_DATA_KEY, entityID, {});
@@ -2483,32 +2481,13 @@ function MyController(hand) {
         return data;
     };
 
-    this.checkForStrayChildren = function() {
-        // sometimes things can get parented to a hand and this script is unaware.  Search for such entities and
-        // unhook them.
-        var handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
-        var children = Entities.getChildrenIDsOfJoint(MyAvatar.sessionUUID, handJointIndex);
-        var controllerJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ?
-                                                          "_CONTROLLER_RIGHTHAND" :
-                                                          "_CONTROLLER_LEFTHAND");
-        children.concat(Entities.getChildrenIDsOfJoint(MyAvatar.sessionUUID, controllerJointIndex));
-        children.forEach(function(childID) {
-            print("disconnecting stray child of hand: (" + _this.hand + ") " + childID);
-            Entities.editEntity(childID, {
-                parentID: NULL_UUID
-            });
-        });
-    };
-
-    this.delayedDeactivateEntity = function(entityID, collidesWith) {
+    this.delayedDeactivateEntity = function(entityID, delayedDeactivatePatchID) {
         // If, before the grab started, the held entity collided with myAvatar, we do the deactivation in
         // two parts.  Most of it is done in deactivateEntity(), but the final collidesWith and refcount
         // are delayed a bit.  This keeps thrown things from colliding with the avatar's capsule so often.
         // The refcount is handled in this delayed fashion so things don't get confused if someone else
         // grabs the entity before the timeout fires.
-        Entities.editEntity(entityID, {
-            collidesWith: collidesWith
-        });
+        Entities.deleteEntityPatch(delayedDeactivatePatchID);
         var data = getEntityCustomData(GRAB_USER_DATA_KEY, entityID, {});
         if (data && data.refCount) {
             data.refCount = data.refCount - 1;
@@ -2549,13 +2528,15 @@ function MyController(hand) {
                 doDelayedDeactivate = (data.collidesWith.indexOf("myAvatar") >= 0);
 
                 if (doDelayedDeactivate) {
-                    var delayedCollidesWith = data.collidesWith;
+                    var delayedDeactivatePatchID = Entities.addEntityPatch(entityID, {
+                        collidesWith: COLLIDES_WITH_WHILE_GRABBED
+                    });
+
                     var delayedEntityID = entityID;
                     delayedDeactivateFunc = function() {
                         // set collidesWith back to original value a bit later than the rest
                         delayedDeactivateTimeout = null;
-                        _this.delayedDeactivateEntity(delayedEntityID, delayedCollidesWith);
-                        return delayedCollidesWith;
+                        _this.delayedDeactivateEntity(delayedEntityID, delayedDeactivatePatchID);
                     };
                     delayedDeactivateTimeout =
                         Script.setTimeout(delayedDeactivateFunc, COLLIDE_WITH_AV_AFTER_RELEASE_DELAY * MSECS_PER_SEC);
@@ -2619,19 +2600,19 @@ function MyController(hand) {
                     }
                 }
             } else if (noVelocity) {
-                Entities.editEntity(entityID, {
-                    velocity: {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    },
-                    angularVelocity: {
-                        x: 0.0,
-                        y: 0.0,
-                        z: 0.0
-                    },
-                    dynamic: data.dynamic
-                });
+                // Entities.editEntity(entityID, {
+                //     velocity: {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     },
+                //     angularVelocity: {
+                //         x: 0.0,
+                //         y: 0.0,
+                //         z: 0.0
+                //     },
+                //     dynamic: data.dynamic
+                // });
             }
 
             Entities.deleteEntityPatch(this.patchID);

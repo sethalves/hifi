@@ -386,7 +386,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
         if (cost > _currentAvatarEnergy) {
             updatedEntity = false;
-        } else {
+        } else if (patchID.isNull()){
             //debit the avatar energy and continue
             updatedEntity = _entityTree->updateEntity(entityID, QUuid(), properties);
             if (updatedEntity) {
@@ -441,8 +441,13 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             if (properties.parentRelatedPropertyChanged() && entity->computePuffedQueryAACube()) {
                 properties.setQueryAACube(entity->getQueryAACube());
             }
-            entity->setLastBroadcast(usecTimestampNow());
-            properties.setLastEdited(entity->getLastEdited());
+
+            if (patchID.isNull()) {
+                entity->setLastBroadcast(usecTimestampNow());
+                properties.setLastEdited(entity->getLastEdited());
+            } else {
+                properties.setLastEdited(usecTimestampNow());
+            }
 
             // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
             // if they've changed.
