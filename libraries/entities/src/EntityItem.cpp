@@ -2272,7 +2272,7 @@ quint16 EntityItem::getParentJointIndex() const {
 
 glm::vec3 EntityItem::getPosition(bool& success) const {
     for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getLocalPositionChanged()) {
+        if (patch.properties.getPositionChanged()) {
             glm::vec3 localPosition = patch.properties.getPosition();
             bool success;
             glm::vec3 position = localToWorld(localPosition, getParentID(), getParentJointIndex(), success);
@@ -2286,18 +2286,33 @@ glm::vec3 EntityItem::getPosition(bool& success) const {
 
 glm::vec3 EntityItem::getLocalPosition() const {
     for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getLocalPositionChanged()) {
-            return patch.properties.getLocalPosition();
+        if (patch.properties.getPositionChanged()) {
+            return patch.properties.getPosition();
         }
     }
     return SpatiallyNestable::getLocalPosition();
 }
 
 glm::quat EntityItem::getOrientation(bool& success) const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getRotationChanged()) {
+            glm::quat localRotation = patch.properties.getRotation();
+            bool success;
+            glm::quat rotation = localToWorld(localRotation, getParentID(), getParentJointIndex(), success);
+            if (success) {
+                return rotation;
+            }
+        }
+    }
     return SpatiallyNestable::getOrientation(success);
 }
 
 glm::quat EntityItem::getLocalOrientation() const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getRotationChanged()) {
+            return patch.properties.getRotation();
+        }
+    }
     return SpatiallyNestable::getLocalOrientation();
 }
 
