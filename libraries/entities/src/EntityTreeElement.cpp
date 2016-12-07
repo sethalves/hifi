@@ -289,11 +289,17 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
 
                 if (!params.forceSendScene && entity->getLastChangedOnServer() < params.lastViewFrustumSent) {
                     includeThisEntity = false;
+                    if (entity->getName() == "XXX") {
+                        // qDebug() << "--------------- A -----------------";
+                    }
                 }
 
                 if (hadElementExtraData) {
                     includeThisEntity = includeThisEntity &&
                         entityTreeElementExtraEncodeData->entities.contains(entity->getEntityItemID());
+                    if (!includeThisEntity && entity->getName() == "XXX") {
+                        qDebug() << "--------------- B -----------------";
+                    }
                 }
 
                 if (includeThisEntity || params.recurseEverything) {
@@ -303,9 +309,12 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                     // the entity may not be in view and then in view a frame later, let the client side handle it's view
                     // frustum culling on rendering.
                     bool success;
-                    AACube entityCube = entity->getQueryAACube(success);
+                    AACube entityCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
                     if (!success || !params.viewFrustum.cubeIntersectsKeyhole(entityCube)) {
                         includeThisEntity = false; // out of view, don't include it
+                        if (entity->getName() == "XXX") {
+                            qDebug() << "--------------- C -----------------";
+                        }
                     } else {
                         // Check the size of the entity, it's possible that a "too small to see" entity is included in a
                         // larger octree cell because of its position (for example if it crosses the boundary of a cell it
@@ -327,6 +336,10 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                                                                       params.boundaryLevelAdjust);
                         if (renderAccuracy <= 0.0f) {
                             includeThisEntity = false; // too small, don't include it
+                            if (entity->getName() == "XXX") {
+                                qDebug() << "--------------- D -----------------" << entityBounds << success;
+                            }
+
 
                             #ifdef WANT_LOD_DEBUGGING
                             qDebug() << "skipping entity - TOO SMALL - \n"
@@ -352,6 +365,9 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                     // if the extra data included this entity, and we've decided to not include the entity, then
                     // we can treat it as if it was completed.
                     entityTreeElementExtraEncodeData->entities.remove(entity->getEntityItemID());
+                    if (entity->getName() == "XXX") {
+                        // qDebug() << "--------------- E -----------------";
+                    }
                 }
             }
         }
@@ -461,7 +477,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
 
 bool EntityTreeElement::containsEntityBounds(EntityItemPointer entity) const {
     bool success;
-    auto queryCube = entity->getQueryAACube(success);
+    auto queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
     if (!success) {
         return false;
     }
@@ -470,7 +486,7 @@ bool EntityTreeElement::containsEntityBounds(EntityItemPointer entity) const {
 
 bool EntityTreeElement::bestFitEntityBounds(EntityItemPointer entity) const {
     bool success;
-    auto queryCube = entity->getQueryAACube(success);
+    auto queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
     if (!success) {
         qDebug() << "EntityTreeElement::bestFitEntityBounds couldn't get queryCube for" << entity->getName() << entity->getID();
         return false;

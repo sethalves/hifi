@@ -29,6 +29,7 @@
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 const float EntityTree::DEFAULT_MAX_TMP_ENTITY_LIFETIME = 60 * 60; // 1 hour
 
+const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
 
 // combines the ray cast arguments into a single object
 class RayArgs {
@@ -132,7 +133,8 @@ void EntityTree::postAddEntity(EntityItemPointer entity) {
     fixupMissingParents();
 }
 
-bool EntityTree::updateEntity(const EntityItemID& entityID, const QUuid& patchID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
+bool EntityTree::updateEntity(const EntityItemID& entityID, const QUuid& patchID,
+                              const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
     EntityTreeElementPointer containingElement = getContainingElement(entityID);
     if (!containingElement) {
         return false;
@@ -146,7 +148,8 @@ bool EntityTree::updateEntity(const EntityItemID& entityID, const QUuid& patchID
     return updateEntityWithElement(existingEntity, patchID, properties, containingElement, senderNode);
 }
 
-bool EntityTree::updateEntity(EntityItemPointer entity, const QUuid& patchID, const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
+bool EntityTree::updateEntity(EntityItemPointer entity, const QUuid& patchID,
+                              const EntityItemProperties& properties, const SharedNodePointer& senderNode) {
     EntityTreeElementPointer containingElement = getContainingElement(entity->getEntityItemID());
     if (!containingElement) {
         return false;
@@ -274,6 +277,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
             entity->addPropertyPatch(patchID, properties);
             _activePropertiesPatches[patchID].insert(entity->getID());
             _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
+            debugDumpPatches();
         }
 
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
@@ -960,7 +964,6 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             quint64 startCreate = 0, endCreate = 0;
             quint64 startLogging = 0, endLogging = 0;
 
-            const quint64 LAST_EDITED_SERVERSIDE_BUMP = 1; // usec
             bool suppressDisallowedScript = false;
 
             _totalEditMessages++;
@@ -1219,17 +1222,32 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
 
 
 void EntityTree::removePatch(QUuid patchID, const SharedNodePointer& senderNode) {
+    qDebug() << "-------- REMOVING PATCH " << patchID << " --------";
+    debugDumpPatches();
     if (_activePropertiesPatches.count(patchID) > 0) {
         std::set<EntityItemID>& entityIDs = _activePropertiesPatches[patchID];
         for (auto entityID : entityIDs) {
             EntityItemPointer entity = findEntityByEntityItemID(entityID);
             if (entity) {
+                quint64 startUpdate = 0, endUpdate = 0;
+                qDebug() << "-------- really REMOVING PATCH " << patchID << " --------";
                 entity->removePropertyPatch(patchID);
-                EntityItemProperties properties; // empty
+                startUpdate = usecTimestampNow();
+                EntityItemProperties properties;
+                properties.setLastEditedBy(senderNode->getUUID());
+                // properties.setLastEdited(usecTimestampNow());
                 updateEntity(EntityItemID(entityID), QUuid(), properties, senderNode);
+                entity->markAsChangedOnServer();
+                // entity->setLastEdited(usecTimestampNow());
+                _activePropertiesPatches.erase(patchID);
+                _propertyPatchOwnerships[senderNode->getUUID()].erase(patchID);
+                endUpdate = usecTimestampNow();
+                _totalUpdates++;
+                _totalUpdateTime += endUpdate - startUpdate;
             }
         }
     }
+    debugDumpPatches();
 }
 
 
@@ -1717,4 +1735,33 @@ QStringList EntityTree::getJointNames(const QUuid& entityID) const {
         return QStringList();
     }
     return entity->getJointNames();
+}
+
+
+void EntityTree::debugDumpPatches() {
+    qDebug() << "--------- debugPatches ----------";
+
+    std::set<EntityItemID> entitiesIDsWithPatches;
+    for (std::map<QUuid, std::set<EntityItemID>>::iterator iter = _activePropertiesPatches.begin();
+         iter != _activePropertiesPatches.end();
+         ++iter) {
+        // entitiesIDsWithPatches.merge(iter->second);
+        for (auto entityID : iter->second) {
+            entitiesIDsWithPatches.insert(entityID);
+        }
+    }
+
+    for (auto entityID : entitiesIDsWithPatches) {
+        EntityItemPointer entity = findEntityByEntityItemID(entityID);
+        if (!entity) {
+            continue;
+        }
+        qDebug() << "|  --- " << entity->getName() << entity->getID() << entity->getParentID()
+                 << GET_IN_ENTITY_PATCH_STACK(entity, ParentID);
+        for (auto &patch : entity->getPropertiesPatchStack()) {
+            qDebug() << "|      " << patch.patchID
+                     << patch.properties.getParentIDChanged()
+                     << patch.properties.getParentID();
+        }
+    }
 }

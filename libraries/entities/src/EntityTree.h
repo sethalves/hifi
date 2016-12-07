@@ -268,6 +268,8 @@ public:
 
     static const float DEFAULT_MAX_TMP_ENTITY_LIFETIME;
 
+    void debugDumpPatches();
+
 public slots:
     void callLoader(EntityItemID entityID);
 

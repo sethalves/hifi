@@ -1357,14 +1357,14 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
 }
 
 void EntityItem::addPropertyPatch(const QUuid& patchID, const EntityItemProperties& properties) {
-    std::list<EntityItemPropertiesPatch>::iterator i = _propertiesPatchStack.begin();
-    while (i != _propertiesPatchStack.end()) {
-        if ((*i).patchID == patchID) {
-            (*i).properties.merge(properties);
+    for (auto& patch : _propertiesPatchStack) {
+        if (patch.patchID == patchID) {
+            qDebug() << "-------- MERGING PATCH " << patchID << " --------";
+            patch.properties.merge(properties);
             return;
         }
-        i++;
     }
+    qDebug() << "-------- ADDING PATCH " << patchID << " --------";
     _propertiesPatchStack.push_front(EntityItemPropertiesPatch(patchID, properties));
 }
 
@@ -1372,6 +1372,7 @@ void EntityItem::removePropertyPatch(const QUuid& patchID) {
     std::list<EntityItemPropertiesPatch>::iterator i = _propertiesPatchStack.begin();
     while (i != _propertiesPatchStack.end()) {
         if ((*i).patchID == patchID) {
+            qDebug() << "-------- entity really REMOVING PATCH " << patchID << " --------";
             _propertiesPatchStack.erase(i++);
         } else {
             i++;
@@ -1410,7 +1411,7 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 AACube EntityItem::getMaximumAACube(bool& success) const {
     if (_recalcMaxAACube) {
         // * we know that the position is the center of rotation
-        glm::vec3 centerOfRotation = getPosition(success); // also where _registration point is
+        glm::vec3 centerOfRotation = GET_IN_PATCH_STACK_SUCCESS(Position); // also where _registration point is
         if (success) {
             _recalcMaxAACube = false;
             // * we know that the registration point is the center of rotation
@@ -1443,7 +1444,7 @@ AACube EntityItem::getMaximumAACube(bool& success) const {
 AACube EntityItem::getMinimumAACube(bool& success) const {
     if (_recalcMinAACube) {
         // position represents the position of the registration point.
-        glm::vec3 position = getPosition(success);
+        glm::vec3 position = GET_IN_PATCH_STACK_SUCCESS(Position); // also where _registration point is
         if (success) {
             _recalcMinAACube = false;
             glm::vec3 dimensions = getDimensions();
@@ -1473,7 +1474,7 @@ AACube EntityItem::getMinimumAACube(bool& success) const {
 AABox EntityItem::getAABox(bool& success) const {
     if (_recalcAABox) {
         // position represents the position of the registration point.
-        glm::vec3 position = getPosition(success);
+        glm::vec3 position = GET_IN_PATCH_STACK_SUCCESS(Position);
         if (success) {
             _recalcAABox = false;
             glm::vec3 dimensions = getDimensions();
