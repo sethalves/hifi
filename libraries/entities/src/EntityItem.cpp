@@ -2310,7 +2310,7 @@ glm::vec3 EntityItem::getLocalVelocity() const {
 }
 
 glm::vec3 EntityItem::getAngularVelocity(bool& success) const {
-    return SpatiallyNestable::getAngularVelocity();
+    return SpatiallyNestable::getAngularVelocity(success);
 }
 
 glm::vec3 EntityItem::getLocalAngularVelocity() const {
