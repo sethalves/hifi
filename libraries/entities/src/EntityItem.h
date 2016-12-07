@@ -468,6 +468,21 @@ public:
 
     std::list<EntityItemPropertiesPatch>& getPropertiesPatchStack() { return _propertiesPatchStack; }
 
+    QUuid getParentID() const override;
+    quint16 getParentJointIndex() const override;
+    using SpatiallyNestable::getPosition;
+    virtual glm::vec3 getPosition(bool& success) const override;
+    virtual glm::vec3 getLocalPosition() const override;
+    using SpatiallyNestable::getOrientation;
+    virtual glm::quat getOrientation(bool& success) const override;
+    virtual glm::quat getLocalOrientation() const override;
+    using SpatiallyNestable::getVelocity;
+    virtual glm::vec3 getVelocity(bool& success) const override;
+    virtual glm::vec3 getLocalVelocity() const override;
+    using SpatiallyNestable::getAngularVelocity;
+    virtual glm::vec3 getAngularVelocity(bool& success) const override;
+    virtual glm::vec3 getLocalAngularVelocity() const override;
+
 protected:
 
     void setSimulated(bool simulated) { _simulated = simulated; }

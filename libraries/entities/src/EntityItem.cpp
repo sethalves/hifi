@@ -249,40 +249,40 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         //      PROP_PAGED_PROPERTY,
         //      PROP_CUSTOM_PROPERTIES_INCLUDED,
 
-        APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, GET_IN_PATCH_STACK(SimulationOwner).toByteArray());
-        APPEND_ENTITY_PROPERTY(PROP_POSITION, GET_IN_PATCH_STACK(LocalPosition));
-        APPEND_ENTITY_PROPERTY(PROP_ROTATION, GET_IN_PATCH_STACK(LocalRotation));
-        APPEND_ENTITY_PROPERTY(PROP_VELOCITY, GET_IN_PATCH_STACK(LocalVelocity));
-        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, GET_IN_PATCH_STACK(LocalAngularVelocity));
-        APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, GET_IN_PATCH_STACK(Acceleration));
+        APPEND_ENTITY_PROPERTY(PROP_SIMULATION_OWNER, getSimulationOwner().toByteArray());
+        APPEND_ENTITY_PROPERTY(PROP_POSITION, getLocalPosition());
+        APPEND_ENTITY_PROPERTY(PROP_ROTATION, getLocalRotation());
+        APPEND_ENTITY_PROPERTY(PROP_VELOCITY, getLocalVelocity());
+        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getLocalAngularVelocity());
+        APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, getAcceleration());
 
-        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, GET_IN_PATCH_STACK(Dimensions)); // NOTE: PROP_RADIUS obsolete
-        APPEND_ENTITY_PROPERTY(PROP_DENSITY, GET_IN_PATCH_STACK(Density));
-        APPEND_ENTITY_PROPERTY(PROP_GRAVITY, GET_IN_PATCH_STACK(Gravity));
-        APPEND_ENTITY_PROPERTY(PROP_DAMPING, GET_IN_PATCH_STACK(Damping));
-        APPEND_ENTITY_PROPERTY(PROP_RESTITUTION, GET_IN_PATCH_STACK(Restitution));
-        APPEND_ENTITY_PROPERTY(PROP_FRICTION, GET_IN_PATCH_STACK(Friction));
-        APPEND_ENTITY_PROPERTY(PROP_LIFETIME, GET_IN_PATCH_STACK(Lifetime));
-        APPEND_ENTITY_PROPERTY(PROP_SCRIPT, GET_IN_PATCH_STACK(Script));
-        APPEND_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, GET_IN_PATCH_STACK(ScriptTimestamp));
-        APPEND_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, GET_IN_PATCH_STACK(RegistrationPoint));
-        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_DAMPING, GET_IN_PATCH_STACK(AngularDamping));
-        APPEND_ENTITY_PROPERTY(PROP_VISIBLE, GET_IN_PATCH_STACK(Visible));
-        APPEND_ENTITY_PROPERTY(PROP_COLLISIONLESS, GET_IN_PATCH_STACK(Collisionless));
-        APPEND_ENTITY_PROPERTY(PROP_COLLISION_MASK, GET_IN_PATCH_STACK(CollisionMask));
-        APPEND_ENTITY_PROPERTY(PROP_DYNAMIC, GET_IN_PATCH_STACK(Dynamic));
-        APPEND_ENTITY_PROPERTY(PROP_LOCKED, GET_IN_PATCH_STACK(Locked));
-        APPEND_ENTITY_PROPERTY(PROP_USER_DATA, GET_IN_PATCH_STACK(UserData));
-        APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, GET_IN_PATCH_STACK(MarketplaceID));
-        APPEND_ENTITY_PROPERTY(PROP_NAME, GET_IN_PATCH_STACK(Name));
-        APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, GET_IN_PATCH_STACK(CollisionSoundURL));
-        APPEND_ENTITY_PROPERTY(PROP_HREF, GET_IN_PATCH_STACK(Href));
-        APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, GET_IN_PATCH_STACK(Description));
-        APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, GET_IN_PATCH_STACK(ActionData));
-        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, GET_IN_PATCH_STACK(ParentID));
-        APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, GET_IN_PATCH_STACK(ParentJointIndex));
-        APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, GET_IN_PATCH_STACK(QueryAACube));
-        APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, GET_IN_PATCH_STACK(LastEditedBy));
+        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getDimensions()); // NOTE: PROP_RADIUS obsolete
+        APPEND_ENTITY_PROPERTY(PROP_DENSITY, getDensity());
+        APPEND_ENTITY_PROPERTY(PROP_GRAVITY, getGravity());
+        APPEND_ENTITY_PROPERTY(PROP_DAMPING, getDamping());
+        APPEND_ENTITY_PROPERTY(PROP_RESTITUTION, getRestitution());
+        APPEND_ENTITY_PROPERTY(PROP_FRICTION, getFriction());
+        APPEND_ENTITY_PROPERTY(PROP_LIFETIME, getLifetime());
+        APPEND_ENTITY_PROPERTY(PROP_SCRIPT, getScript());
+        APPEND_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, getScriptTimestamp());
+        APPEND_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, getRegistrationPoint());
+        APPEND_ENTITY_PROPERTY(PROP_ANGULAR_DAMPING, getAngularDamping());
+        APPEND_ENTITY_PROPERTY(PROP_VISIBLE, getVisible());
+        APPEND_ENTITY_PROPERTY(PROP_COLLISIONLESS, getCollisionless());
+        APPEND_ENTITY_PROPERTY(PROP_COLLISION_MASK, getCollisionMask());
+        APPEND_ENTITY_PROPERTY(PROP_DYNAMIC, getDynamic());
+        APPEND_ENTITY_PROPERTY(PROP_LOCKED, getLocked());
+        APPEND_ENTITY_PROPERTY(PROP_USER_DATA, getUserData());
+        APPEND_ENTITY_PROPERTY(PROP_MARKETPLACE_ID, getMarketplaceID());
+        APPEND_ENTITY_PROPERTY(PROP_NAME, getName());
+        APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, getCollisionSoundURL());
+        APPEND_ENTITY_PROPERTY(PROP_HREF, getHref());
+        APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, getDescription());
+        APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, getActionData());
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, getParentID());
+        APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, getParentJointIndex());
+        APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, getQueryAACube());
+        APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, getLastEditedBy());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -1411,7 +1411,7 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 AACube EntityItem::getMaximumAACube(bool& success) const {
     if (_recalcMaxAACube) {
         // * we know that the position is the center of rotation
-        glm::vec3 centerOfRotation = GET_IN_PATCH_STACK_SUCCESS(Position); // also where _registration point is
+        glm::vec3 centerOfRotation = getPosition(); // also where _registration point is
         if (success) {
             _recalcMaxAACube = false;
             // * we know that the registration point is the center of rotation
@@ -1444,7 +1444,7 @@ AACube EntityItem::getMaximumAACube(bool& success) const {
 AACube EntityItem::getMinimumAACube(bool& success) const {
     if (_recalcMinAACube) {
         // position represents the position of the registration point.
-        glm::vec3 position = GET_IN_PATCH_STACK_SUCCESS(Position); // also where _registration point is
+        glm::vec3 position = getPosition(); // also where _registration point is
         if (success) {
             _recalcMinAACube = false;
             glm::vec3 dimensions = getDimensions();
@@ -1474,7 +1474,7 @@ AACube EntityItem::getMinimumAACube(bool& success) const {
 AABox EntityItem::getAABox(bool& success) const {
     if (_recalcAABox) {
         // position represents the position of the registration point.
-        glm::vec3 position = GET_IN_PATCH_STACK_SUCCESS(Position);
+        glm::vec3 position = getPosition();
         if (success) {
             _recalcAABox = false;
             glm::vec3 dimensions = getDimensions();
@@ -2250,4 +2250,69 @@ void EntityItem::globalizeProperties(EntityItemProperties& properties, const QSt
     }
     QUuid empty;
     properties.setParentID(empty);
+}
+
+QUuid EntityItem::getParentID() const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getParentIDChanged()) {
+            return patch.properties.getParentID();
+        }
+    }
+    return SpatiallyNestable::getParentID();
+}
+
+quint16 EntityItem::getParentJointIndex() const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getParentJointIndexChanged()) {
+            return patch.properties.getParentJointIndex();
+        }
+    }
+    return SpatiallyNestable::getParentJointIndex();
+}
+
+glm::vec3 EntityItem::getPosition(bool& success) const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getLocalPositionChanged()) {
+            glm::vec3 localPosition = patch.properties.getPosition();
+            bool success;
+            glm::vec3 position = localToWorld(localPosition, getParentID(), getParentJointIndex(), success);
+            if (success) {
+                return position;
+            }
+        }
+    }
+    return SpatiallyNestable::getPosition(success);
+}
+
+glm::vec3 EntityItem::getLocalPosition() const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getLocalPositionChanged()) {
+            return patch.properties.getLocalPosition();
+        }
+    }
+    return SpatiallyNestable::getLocalPosition();
+}
+
+glm::quat EntityItem::getOrientation(bool& success) const {
+    return SpatiallyNestable::getOrientation(success);
+}
+
+glm::quat EntityItem::getLocalOrientation() const {
+    return SpatiallyNestable::getLocalOrientation();
+}
+
+glm::vec3 EntityItem::getVelocity(bool& success) const {
+    return SpatiallyNestable::getVelocity(success);
+}
+
+glm::vec3 EntityItem::getLocalVelocity() const {
+    return SpatiallyNestable::getLocalVelocity();
+}
+
+glm::vec3 EntityItem::getAngularVelocity(bool& success) const {
+    return SpatiallyNestable::getAngularVelocity();
+}
+
+glm::vec3 EntityItem::getLocalAngularVelocity() const {
+    return SpatiallyNestable::getLocalAngularVelocity();
 }

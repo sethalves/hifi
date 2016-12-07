@@ -309,7 +309,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
                     // the entity may not be in view and then in view a frame later, let the client side handle it's view
                     // frustum culling on rendering.
                     bool success;
-                    AACube entityCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
+                    AACube entityCube = entity->getQueryAACube(success);
                     if (!success || !params.viewFrustum.cubeIntersectsKeyhole(entityCube)) {
                         includeThisEntity = false; // out of view, don't include it
                         if (entity->getName() == "XXX") {
@@ -477,7 +477,7 @@ OctreeElement::AppendState EntityTreeElement::appendElementData(OctreePacketData
 
 bool EntityTreeElement::containsEntityBounds(EntityItemPointer entity) const {
     bool success;
-    auto queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
+    auto queryCube = entity->getQueryAACube(success);
     if (!success) {
         return false;
     }
@@ -486,7 +486,7 @@ bool EntityTreeElement::containsEntityBounds(EntityItemPointer entity) const {
 
 bool EntityTreeElement::bestFitEntityBounds(EntityItemPointer entity) const {
     bool success;
-    auto queryCube = GET_IN_ENTITY_PATCH_STACK_SUCCESS(entity, QueryAACube);
+    auto queryCube = entity->getQueryAACube(success);
     if (!success) {
         qDebug() << "EntityTreeElement::bestFitEntityBounds couldn't get queryCube for" << entity->getName() << entity->getID();
         return false;
