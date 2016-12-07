@@ -1411,7 +1411,7 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 AACube EntityItem::getMaximumAACube(bool& success) const {
     if (_recalcMaxAACube) {
         // * we know that the position is the center of rotation
-        glm::vec3 centerOfRotation = getPosition(); // also where _registration point is
+        glm::vec3 centerOfRotation = getPosition(success); // also where _registration point is
         if (success) {
             _recalcMaxAACube = false;
             // * we know that the registration point is the center of rotation
@@ -1444,7 +1444,7 @@ AACube EntityItem::getMaximumAACube(bool& success) const {
 AACube EntityItem::getMinimumAACube(bool& success) const {
     if (_recalcMinAACube) {
         // position represents the position of the registration point.
-        glm::vec3 position = getPosition(); // also where _registration point is
+        glm::vec3 position = getPosition(success); // also where _registration point is
         if (success) {
             _recalcMinAACube = false;
             glm::vec3 dimensions = getDimensions();
@@ -1474,7 +1474,7 @@ AACube EntityItem::getMinimumAACube(bool& success) const {
 AABox EntityItem::getAABox(bool& success) const {
     if (_recalcAABox) {
         // position represents the position of the registration point.
-        glm::vec3 position = getPosition();
+        glm::vec3 position = getPosition(success);
         if (success) {
             _recalcAABox = false;
             glm::vec3 dimensions = getDimensions();

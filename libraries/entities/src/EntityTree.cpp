@@ -272,6 +272,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
             entity->setProperties(properties);
         } else {
             entity->addPropertyPatch(patchID, properties);
+            entity->setLastEdited(usecTimestampNow());
             _activePropertiesPatches[patchID].insert(entity->getID());
             _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
             debugDumpPatches();
@@ -1233,10 +1234,10 @@ void EntityTree::removePatch(QUuid patchID, const SharedNodePointer& senderNode)
                 properties.setLastEditedBy(senderNode->getUUID());
                 // properties.setLastEdited(usecTimestampNow());
                 updateEntity(EntityItemID(entityID), QUuid(), properties, senderNode);
-                entity->markAsChangedOnServer();
-                // entity->setLastEdited(usecTimestampNow());
+                // entity->markAsChangedOnServer();
                 _activePropertiesPatches.erase(patchID);
                 _propertyPatchOwnerships[senderNode->getUUID()].erase(patchID);
+                entity->setLastEdited(usecTimestampNow());
                 endUpdate = usecTimestampNow();
                 _totalUpdates++;
                 _totalUpdateTime += endUpdate - startUpdate;
