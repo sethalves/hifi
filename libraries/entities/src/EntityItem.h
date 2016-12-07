@@ -43,9 +43,9 @@ class EntityTreeElement;
 class EntityTreeElementExtraEncodeData;
 class EntityActionInterface;
 class EntityItemProperties;
-class EntityItemPropertiesPatch;
 class EntityTree;
 class btCollisionShape;
+class EntityItemPropertiesPatch;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
 typedef std::shared_ptr<EntityActionInterface> EntityActionPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
@@ -198,7 +198,7 @@ public:
     void setDescription(QString value) { _description = value; }
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    glm::vec3 getDimensions() const { return getScale(); }
+    glm::vec3 getDimensions() const;
     virtual void setDimensions(const glm::vec3& value);
 
     float getLocalRenderAlpha() const { return _localRenderAlpha; }
@@ -208,18 +208,18 @@ public:
     float computeMass() const;
     void setMass(float mass);
 
-    float getDensity() const { return _density; }
+    float getDensity() const;
 
     bool hasVelocity() const { return getVelocity() != ENTITY_ITEM_ZERO_VEC3; }
     bool hasLocalVelocity() const { return getLocalVelocity() != ENTITY_ITEM_ZERO_VEC3; }
 
-    glm::vec3 getGravity() const { return _gravity; } /// get gravity in meters
+    glm::vec3 getGravity() const; /// get gravity in meters
     void setGravity(const glm::vec3& value) { _gravity = value; } /// gravity in meters
-    bool hasGravity() const { return _gravity != ENTITY_ITEM_ZERO_VEC3; }
+    bool hasGravity() const { return getGravity() != ENTITY_ITEM_ZERO_VEC3; }
 
-    glm::vec3 getAcceleration() const { return _acceleration; } /// get acceleration in meters/second/second
+    glm::vec3 getAcceleration() const; /// get acceleration in meters/second/second
     void setAcceleration(const glm::vec3& value) { _acceleration = value; } /// acceleration in meters/second/second
-    bool hasAcceleration() const { return _acceleration != ENTITY_ITEM_ZERO_VEC3; }
+    bool hasAcceleration() const { return getAcceleration() != ENTITY_ITEM_ZERO_VEC3; }
 
     float getDamping() const { return _damping; }
     void setDamping(float value) { _damping = value; }
@@ -285,7 +285,7 @@ public:
     void setName(const QString& value) { _name = value; }
     QString getDebugName() { return _name != "" ? _name : getID().toString(); }
 
-    bool getVisible() const { return _visible; }
+    bool getVisible() const;
     void setVisible(bool value) { _visible = value; }
     bool isVisible() const { return _visible; }
     bool isInvisible() const { return !_visible; }

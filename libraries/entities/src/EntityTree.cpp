@@ -271,11 +271,18 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
         if (patchID.isNull()) {
             entity->setProperties(properties);
         } else {
+            // some properties can't be patched.  pull these out...
+            EntityItemProperties unPatchableProperties;
+            if (properties.simulationOwnerChanged()) {
+                unPatchableProperties.setSimulationOwner(properties.getSimulationOwner());
+                properties.setSimulationOwnerChanged(false);
+            }
+
+
             entity->addPropertyPatch(patchID, properties);
             entity->setLastEdited(usecTimestampNow());
             _activePropertiesPatches[patchID].insert(entity->getID());
             _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
-            debugDumpPatches();
         }
 
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
@@ -1038,8 +1045,11 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                     if (wantTerseEditLogging()) {
                         QList<QString> changedProperties = properties.listChangedProperties();
                         fixupTerseEditLogging(properties, changedProperties);
-                        qCDebug(entities) << senderNode->getUUID() << "edit" <<
-                            existingEntity->getDebugName() << changedProperties;
+                        qCDebug(entities) << senderNode->getUUID() << "edit"
+                                          << existingEntity->getDebugName()
+                                          << (patchID.isNull() ? "" : "patchID: ")
+                                          << (patchID.isNull() ? "" : patchID)
+                                          << changedProperties;
                     }
                     endLogging = usecTimestampNow();
 
@@ -1219,15 +1229,12 @@ void EntityTree::deleteDescendantsOfAvatar(QUuid avatarID) {
 
 
 void EntityTree::removePatch(QUuid patchID, const SharedNodePointer& senderNode) {
-    qDebug() << "-------- REMOVING PATCH " << patchID << " --------";
-    debugDumpPatches();
     if (_activePropertiesPatches.count(patchID) > 0) {
         std::set<EntityItemID>& entityIDs = _activePropertiesPatches[patchID];
         for (auto entityID : entityIDs) {
             EntityItemPointer entity = findEntityByEntityItemID(entityID);
             if (entity) {
                 quint64 startUpdate = 0, endUpdate = 0;
-                qDebug() << "-------- really REMOVING PATCH " << patchID << " --------";
                 entity->removePropertyPatch(patchID);
                 startUpdate = usecTimestampNow();
                 EntityItemProperties properties;
@@ -1244,7 +1251,6 @@ void EntityTree::removePatch(QUuid patchID, const SharedNodePointer& senderNode)
             }
         }
     }
-    debugDumpPatches();
 }
 
 

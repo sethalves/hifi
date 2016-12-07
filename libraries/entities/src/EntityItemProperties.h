@@ -98,6 +98,7 @@ public:
     // type getFoo() const;
     // void setFoo(type);
     // bool fooChanged() const;
+    // void setFooChanged();
     // type _foo { value };
     // bool _fooChanged { false };
 

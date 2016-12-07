@@ -1359,12 +1359,10 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
 void EntityItem::addPropertyPatch(const QUuid& patchID, const EntityItemProperties& properties) {
     for (auto& patch : _propertiesPatchStack) {
         if (patch.patchID == patchID) {
-            qDebug() << "-------- MERGING PATCH " << patchID << " --------";
             patch.properties.merge(properties);
             return;
         }
     }
-    qDebug() << "-------- ADDING PATCH " << patchID << " --------";
     _propertiesPatchStack.push_front(EntityItemPropertiesPatch(patchID, properties));
 }
 
@@ -1372,7 +1370,6 @@ void EntityItem::removePropertyPatch(const QUuid& patchID) {
     std::list<EntityItemPropertiesPatch>::iterator i = _propertiesPatchStack.begin();
     while (i != _propertiesPatchStack.end()) {
         if ((*i).patchID == patchID) {
-            qDebug() << "-------- entity really REMOVING PATCH " << patchID << " --------";
             _propertiesPatchStack.erase(i++);
         } else {
             i++;
@@ -1398,12 +1395,38 @@ const Transform EntityItem::getTransformToCenter(bool& success) const {
     return result;
 }
 
+bool EntityItem::getVisible() const {
+    GET_PROPERTY_IN_PATCH_STACK(Visible);
+    return _visible;
+}
+
+glm::vec3 EntityItem::getDimensions() const {
+    GET_PROPERTY_IN_PATCH_STACK(Dimensions);
+    return getScale();
+}
+
 void EntityItem::setDimensions(const glm::vec3& value) {
     if (value.x <= 0.0f || value.y <= 0.0f || value.z <= 0.0f) {
         return;
     }
     setScale(value);
 }
+
+float EntityItem::getDensity() const {
+    GET_PROPERTY_IN_PATCH_STACK(Density);
+    return _density;
+}
+
+glm::vec3 EntityItem::getGravity() const {
+    GET_PROPERTY_IN_PATCH_STACK(Gravity);
+    return _gravity;
+}
+
+glm::vec3 EntityItem::getAcceleration() const {
+    GET_PROPERTY_IN_PATCH_STACK(Acceleration);
+    return _acceleration;
+}
+
 
 /// The maximum bounding cube for the entity, independent of it's rotation.
 /// This accounts for the registration point (upon which rotation occurs around).
@@ -1495,6 +1518,7 @@ AABox EntityItem::getAABox(bool& success) const {
 }
 
 AACube EntityItem::getQueryAACube(bool& success) const {
+    GET_PROPERTY_IN_PATCH_STACK(QueryAACube);
     AACube result = SpatiallyNestable::getQueryAACube(success);
     if (success) {
         return result;
@@ -2253,20 +2277,12 @@ void EntityItem::globalizeProperties(EntityItemProperties& properties, const QSt
 }
 
 QUuid EntityItem::getParentID() const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getParentIDChanged()) {
-            return patch.properties.getParentID();
-        }
-    }
+    GET_PROPERTY_IN_PATCH_STACK(ParentID);
     return SpatiallyNestable::getParentID();
 }
 
 quint16 EntityItem::getParentJointIndex() const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getParentJointIndexChanged()) {
-            return patch.properties.getParentJointIndex();
-        }
-    }
+    GET_PROPERTY_IN_PATCH_STACK(ParentJointIndex);
     return SpatiallyNestable::getParentJointIndex();
 }
 
@@ -2285,11 +2301,7 @@ glm::vec3 EntityItem::getPosition(bool& success) const {
 }
 
 glm::vec3 EntityItem::getLocalPosition() const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getPositionChanged()) {
-            return patch.properties.getPosition();
-        }
-    }
+    GET_PROPERTY_IN_PATCH_STACK(Position);
     return SpatiallyNestable::getLocalPosition();
 }
 
@@ -2308,26 +2320,45 @@ glm::quat EntityItem::getOrientation(bool& success) const {
 }
 
 glm::quat EntityItem::getLocalOrientation() const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getRotationChanged()) {
-            return patch.properties.getRotation();
-        }
-    }
+    GET_PROPERTY_IN_PATCH_STACK(Rotation);
     return SpatiallyNestable::getLocalOrientation();
 }
 
 glm::vec3 EntityItem::getVelocity(bool& success) const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getVelocityChanged()) {
+            glm::vec3 localVelocity = patch.properties.getVelocity();
+            bool success;
+            glm::vec3 velocity = localToWorldVelocity(localVelocity, getParentID(), getParentJointIndex(), success);
+            if (success) {
+                return velocity;
+            }
+        }
+    }
     return SpatiallyNestable::getVelocity(success);
 }
 
 glm::vec3 EntityItem::getLocalVelocity() const {
+    GET_PROPERTY_IN_PATCH_STACK(Velocity);
     return SpatiallyNestable::getLocalVelocity();
 }
 
 glm::vec3 EntityItem::getAngularVelocity(bool& success) const {
+    for (auto &patch : _propertiesPatchStack) {
+        if (patch.properties.getAngularVelocityChanged()) {
+            glm::vec3 localAngularVelocity = patch.properties.getAngularVelocity();
+            bool success;
+            glm::vec3 angularVelocity =
+                localToWorldAngularVelocity(localAngularVelocity, getParentID(), getParentJointIndex(), success);
+            if (success) {
+                return angularVelocity;
+            }
+        }
+    }
     return SpatiallyNestable::getAngularVelocity(success);
 }
 
 glm::vec3 EntityItem::getLocalAngularVelocity() const {
+    GET_PROPERTY_IN_PATCH_STACK(AngularVelocity);
     return SpatiallyNestable::getLocalAngularVelocity();
 }

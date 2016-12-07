@@ -440,4 +440,12 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
         D << "  " << #n << ":" << P.get##N() << x << "\n";      \
     }
 
+#define GET_PROPERTY_IN_PATCH_STACK(N)                  \
+    for (auto &patch : _propertiesPatchStack) {         \
+        if (patch.properties.get##N##Changed()) {       \
+            return patch.properties.get##N();           \
+        }                                               \
+    }                                                   \
+
+
 #endif // hifi_EntityItemPropertiesMacros_h
