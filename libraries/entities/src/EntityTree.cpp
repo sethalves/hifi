@@ -1780,5 +1780,6 @@ EntityItemProperties extractUnpatchableProperties(EntityItemProperties& properti
     UNPATCHABLE_PROPERTY(Velocity);
     UNPATCHABLE_PROPERTY(AngularVelocity);
     UNPATCHABLE_PROPERTY(Acceleration);
+    UNPATCHABLE_PROPERTY(QueryAACube);
     return unPatchableProperties;
 }
