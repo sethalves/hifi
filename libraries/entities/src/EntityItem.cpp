@@ -2170,7 +2170,6 @@ void EntityItem::serializeActions(bool& success, QByteArray& result) const {
 }
 
 const QByteArray EntityItem::getActionDataInternal() const {
-    GET_PROPERTY_IN_PATCH_STACK(ActionData);
     if (_actionDataDirty) {
         bool success;
         serializeActions(success, _allActionsDataCache);

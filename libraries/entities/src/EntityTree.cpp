@@ -52,7 +52,6 @@ public:
     bool found;
 };
 
-
 EntityTree::EntityTree(bool shouldReaverage) :
     Octree(shouldReaverage),
     _fbxService(NULL),
@@ -277,12 +276,17 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
                 unPatchableProperties.setSimulationOwner(properties.getSimulationOwner());
                 properties.setSimulationOwnerChanged(false);
             }
-
+            if (properties.actionDataChanged()) {
+                unPatchableProperties.setActionData(properties.getActionData());
+                properties.setActionDataChanged(false);
+            }
 
             entity->addPropertyPatch(patchID, properties);
             entity->setLastEdited(usecTimestampNow());
             _activePropertiesPatches[patchID].insert(entity->getID());
             _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
+
+            entity->setProperties(unPatchableProperties);
         }
 
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
