@@ -1423,7 +1423,7 @@ glm::vec3 EntityItem::getGravity() const {
 }
 
 glm::vec3 EntityItem::getAcceleration() const {
-    GET_PROPERTY_IN_PATCH_STACK(Acceleration);
+    // GET_PROPERTY_IN_PATCH_STACK(Acceleration);
     return _acceleration;
 }
 
@@ -2287,78 +2287,78 @@ quint16 EntityItem::getParentJointIndex() const {
 }
 
 glm::vec3 EntityItem::getPosition(bool& success) const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getPositionChanged()) {
-            glm::vec3 localPosition = patch.properties.getPosition();
-            bool success;
-            glm::vec3 position = localToWorld(localPosition, getParentID(), getParentJointIndex(), success);
-            if (success) {
-                return position;
-            }
-        }
-    }
+    // for (auto &patch : _propertiesPatchStack) {
+    //     if (patch.properties.getPositionChanged()) {
+    //         glm::vec3 localPosition = patch.properties.getPosition();
+    //         bool success;
+    //         glm::vec3 position = localToWorld(localPosition, getParentID(), getParentJointIndex(), success);
+    //         if (success) {
+    //             return position;
+    //         }
+    //     }
+    // }
     return SpatiallyNestable::getPosition(success);
 }
 
 glm::vec3 EntityItem::getLocalPosition() const {
-    GET_PROPERTY_IN_PATCH_STACK(Position);
+    // GET_PROPERTY_IN_PATCH_STACK(Position);
     return SpatiallyNestable::getLocalPosition();
 }
 
 glm::quat EntityItem::getOrientation(bool& success) const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getRotationChanged()) {
-            glm::quat localRotation = patch.properties.getRotation();
-            bool success;
-            glm::quat rotation = localToWorld(localRotation, getParentID(), getParentJointIndex(), success);
-            if (success) {
-                return rotation;
-            }
-        }
-    }
+    // for (auto &patch : _propertiesPatchStack) {
+    //     if (patch.properties.getRotationChanged()) {
+    //         glm::quat localRotation = patch.properties.getRotation();
+    //         bool success;
+    //         glm::quat rotation = localToWorld(localRotation, getParentID(), getParentJointIndex(), success);
+    //         if (success) {
+    //             return rotation;
+    //         }
+    //     }
+    // }
     return SpatiallyNestable::getOrientation(success);
 }
 
 glm::quat EntityItem::getLocalOrientation() const {
-    GET_PROPERTY_IN_PATCH_STACK(Rotation);
+    // GET_PROPERTY_IN_PATCH_STACK(Rotation);
     return SpatiallyNestable::getLocalOrientation();
 }
 
 glm::vec3 EntityItem::getVelocity(bool& success) const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getVelocityChanged()) {
-            glm::vec3 localVelocity = patch.properties.getVelocity();
-            bool success;
-            glm::vec3 velocity = localToWorldVelocity(localVelocity, getParentID(), getParentJointIndex(), success);
-            if (success) {
-                return velocity;
-            }
-        }
-    }
+    // for (auto &patch : _propertiesPatchStack) {
+    //     if (patch.properties.getVelocityChanged()) {
+    //         glm::vec3 localVelocity = patch.properties.getVelocity();
+    //         bool success;
+    //         glm::vec3 velocity = localToWorldVelocity(localVelocity, getParentID(), getParentJointIndex(), success);
+    //         if (success) {
+    //             return velocity;
+    //         }
+    //     }
+    // }
     return SpatiallyNestable::getVelocity(success);
 }
 
 glm::vec3 EntityItem::getLocalVelocity() const {
-    GET_PROPERTY_IN_PATCH_STACK(Velocity);
+    // GET_PROPERTY_IN_PATCH_STACK(Velocity);
     return SpatiallyNestable::getLocalVelocity();
 }
 
 glm::vec3 EntityItem::getAngularVelocity(bool& success) const {
-    for (auto &patch : _propertiesPatchStack) {
-        if (patch.properties.getAngularVelocityChanged()) {
-            glm::vec3 localAngularVelocity = patch.properties.getAngularVelocity();
-            bool success;
-            glm::vec3 angularVelocity =
-                localToWorldAngularVelocity(localAngularVelocity, getParentID(), getParentJointIndex(), success);
-            if (success) {
-                return angularVelocity;
-            }
-        }
-    }
+    // for (auto &patch : _propertiesPatchStack) {
+    //     if (patch.properties.getAngularVelocityChanged()) {
+    //         glm::vec3 localAngularVelocity = patch.properties.getAngularVelocity();
+    //         bool success;
+    //         glm::vec3 angularVelocity =
+    //             localToWorldAngularVelocity(localAngularVelocity, getParentID(), getParentJointIndex(), success);
+    //         if (success) {
+    //             return angularVelocity;
+    //         }
+    //     }
+    // }
     return SpatiallyNestable::getAngularVelocity(success);
 }
 
 glm::vec3 EntityItem::getLocalAngularVelocity() const {
-    GET_PROPERTY_IN_PATCH_STACK(AngularVelocity);
+    // GET_PROPERTY_IN_PATCH_STACK(AngularVelocity);
     return SpatiallyNestable::getLocalAngularVelocity();
 }
