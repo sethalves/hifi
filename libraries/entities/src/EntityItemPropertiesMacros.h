@@ -445,7 +445,7 @@ inline xColor xColor_convertFromScriptValue(const QScriptValue& v, bool& isValid
         if (patch.properties.get##N##Changed()) {       \
             return patch.properties.get##N();           \
         }                                               \
-    }                                                   \
+    }
 
 
 #endif // hifi_EntityItemPropertiesMacros_h

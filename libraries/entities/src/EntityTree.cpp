@@ -271,8 +271,8 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
             entity->setProperties(properties);
         } else {
             // some properties can't be patched.  pull these out...
-            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties);
-            unPatchableProperties.setSimulationOwnerChanged(false); // XXX WHY?
+            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties, true);
+            // unPatchableProperties.setSimulationOwnerChanged(false); // XXX WHY?
             entity->setProperties(unPatchableProperties);
 
             entity->addPropertyPatch(patchID, properties);
@@ -1763,17 +1763,22 @@ void EntityTree::debugDumpPatches() {
     }
 }
 
-EntityItemProperties extractUnpatchableProperties(EntityItemProperties& properties) {
+#define UNPATCHABLE_PROPERTY(N)                               \
+    if (properties.get##N##Changed()) {                       \
+        unPatchableProperties.set##N(properties.get##N());  \
+        if (removeFromOriginal) {                             \
+            properties.set##N##Changed(false);                \
+        }                                                     \
+    }
+
+EntityItemProperties extractUnpatchableProperties(EntityItemProperties& properties, bool removeFromOriginal) {
     EntityItemProperties unPatchableProperties;
-
-    if (properties.simulationOwnerChanged()) {
-        unPatchableProperties.setSimulationOwner(properties.getSimulationOwner());
-        properties.setSimulationOwnerChanged(false);
-    }
-    if (properties.actionDataChanged()) {
-        unPatchableProperties.setActionData(properties.getActionData());
-        properties.setActionDataChanged(false);
-    }
-
+    UNPATCHABLE_PROPERTY(SimulationOwner);
+    UNPATCHABLE_PROPERTY(ActionData);
+    UNPATCHABLE_PROPERTY(Position);
+    UNPATCHABLE_PROPERTY(Rotation);
+    UNPATCHABLE_PROPERTY(Velocity);
+    UNPATCHABLE_PROPERTY(AngularVelocity);
+    UNPATCHABLE_PROPERTY(Acceleration);
     return unPatchableProperties;
 }

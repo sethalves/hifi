@@ -393,8 +393,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                 emit debitEnergySource(cost);
             }
         } else {
-            // some properties can't be patched.  pull these out...
-            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties);
+            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties, false);
             updatedEntity = _entityTree->updateEntity(entityID, QUuid(), unPatchableProperties);
             if (updatedEntity) {
                 emit debitEnergySource(cost);
