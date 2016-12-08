@@ -272,6 +272,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
         } else {
             // some properties can't be patched.  pull these out...
             EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties);
+            unPatchableProperties.setSimulationOwnerChanged(false); // XXX WHY?
             entity->setProperties(unPatchableProperties);
 
             entity->addPropertyPatch(patchID, properties);
