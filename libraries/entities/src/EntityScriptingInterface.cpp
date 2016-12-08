@@ -386,9 +386,16 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
         if (cost > _currentAvatarEnergy) {
             updatedEntity = false;
-        } else if (patchID.isNull()){
+        } else if (patchID.isNull()) {
             //debit the avatar energy and continue
             updatedEntity = _entityTree->updateEntity(entityID, QUuid(), properties);
+            if (updatedEntity) {
+                emit debitEnergySource(cost);
+            }
+        } else {
+            // some properties can't be patched.  pull these out...
+            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties);
+            updatedEntity = _entityTree->updateEntity(entityID, QUuid(), unPatchableProperties);
             if (updatedEntity) {
                 emit debitEnergySource(cost);
             }

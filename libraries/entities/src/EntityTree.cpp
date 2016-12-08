@@ -271,22 +271,13 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, QUuid patchID
             entity->setProperties(properties);
         } else {
             // some properties can't be patched.  pull these out...
-            EntityItemProperties unPatchableProperties;
-            if (properties.simulationOwnerChanged()) {
-                unPatchableProperties.setSimulationOwner(properties.getSimulationOwner());
-                properties.setSimulationOwnerChanged(false);
-            }
-            if (properties.actionDataChanged()) {
-                unPatchableProperties.setActionData(properties.getActionData());
-                properties.setActionDataChanged(false);
-            }
+            EntityItemProperties unPatchableProperties = extractUnpatchableProperties(properties);
+            entity->setProperties(unPatchableProperties);
 
             entity->addPropertyPatch(patchID, properties);
             entity->setLastEdited(usecTimestampNow());
             _activePropertiesPatches[patchID].insert(entity->getID());
             _propertyPatchOwnerships[senderNode->getUUID()].insert(patchID);
-
-            entity->setProperties(unPatchableProperties);
         }
 
         // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
@@ -1484,7 +1475,6 @@ int EntityTree::processDeletePatchMessageDetails(const QByteArray& dataByteArray
     return (int)processedBytes;
 }
 
-
 EntityTreeElementPointer EntityTree::getContainingElement(const EntityItemID& entityItemID)  /*const*/ {
     QReadLocker locker(&_entityToElementLock);
     EntityTreeElementPointer element = _entityToElementMap.value(entityItemID);
@@ -1770,4 +1760,19 @@ void EntityTree::debugDumpPatches() {
                      << patch.properties.getParentID();
         }
     }
+}
+
+EntityItemProperties extractUnpatchableProperties(EntityItemProperties& properties) {
+    EntityItemProperties unPatchableProperties;
+
+    if (properties.simulationOwnerChanged()) {
+        unPatchableProperties.setSimulationOwner(properties.getSimulationOwner());
+        properties.setSimulationOwnerChanged(false);
+    }
+    if (properties.actionDataChanged()) {
+        unPatchableProperties.setActionData(properties.getActionData());
+        properties.setActionDataChanged(false);
+    }
+
+    return unPatchableProperties;
 }

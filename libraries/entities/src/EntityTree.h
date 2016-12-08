@@ -359,4 +359,6 @@ protected:
     std::map<QUuid, std::set<QUuid>> _propertyPatchOwnerships; // maps from agent-sessionID to patchIDs
 };
 
+EntityItemProperties extractUnpatchableProperties(EntityItemProperties& properties);
+
 #endif // hifi_EntityTree_h
