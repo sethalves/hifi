@@ -1467,7 +1467,6 @@ int EntityTree::processDeletePatchMessageDetails(const QByteArray& dataByteArray
             if (wantEditLogging() || wantTerseEditLogging()) {
                 qCDebug(entities) << "User [" << sourceNode->getUUID() << "] deleting patch. ID:" << patchID;
             }
-
         }
         for (auto patchID : patchIDsToDelete) {
             removePatch(patchID, sourceNode);

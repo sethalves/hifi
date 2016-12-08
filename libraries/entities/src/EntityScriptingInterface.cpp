@@ -448,12 +448,12 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                 properties.setQueryAACube(entity->getQueryAACube());
             }
 
-            if (patchID.isNull()) {
+//            if (patchID.isNull()) {
                 entity->setLastBroadcast(usecTimestampNow());
                 properties.setLastEdited(entity->getLastEdited());
-            } else {
-                properties.setLastEdited(usecTimestampNow());
-            }
+//            } else {
+//                properties.setLastEdited(usecTimestampNow());
+//            }
 
             // if we've moved an entity with children, check/update the queryAACube of all descendents and tell the server
             // if they've changed.
