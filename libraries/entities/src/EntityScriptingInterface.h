@@ -276,8 +276,6 @@ public slots:
 
     Q_INVOKABLE void emitScriptEvent(const EntityItemID& entityID, const QVariant& message);
 
-    Q_INVOKABLE QObject* getWebViewRoot(const QUuid& entityID);
-
 signals:
     void collisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);
 

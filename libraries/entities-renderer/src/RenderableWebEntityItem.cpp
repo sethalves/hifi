@@ -153,9 +153,7 @@ bool RenderableWebEntityItem::buildWebSurface(QSharedPointer<EntityTreeRenderer>
             QTouchEvent* touchEvent = new QTouchEvent(QEvent::TouchEnd, nullptr, Qt::NoModifier, Qt::TouchPointReleased, touchPoints);
             touchEvent->setWindow(_webSurface->getWindow());
             touchEvent->setDevice(&_touchDevice);
-            if (_contentType == htmlContent) {
-                touchEvent->setTarget(_webSurface->getRootItem());
-            }
+            touchEvent->setTarget(_webSurface->getRootItem());
             QCoreApplication::postEvent(_webSurface->getWindow(), touchEvent);
         }
     });
@@ -267,9 +265,6 @@ void RenderableWebEntityItem::setSourceUrl(const QString& value) {
         if (_webSurface) {
             AbstractViewStateInterface::instance()->postLambdaEvent([this] {
                 loadSourceURL();
-                if (_contentType == htmlContent) {
-                    _webSurface->getRootItem()->setProperty("url", _sourceUrl);
-                }
             });
         }
     }
@@ -340,13 +335,9 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
         QTouchEvent* touchEvent = new QTouchEvent(type);
         touchEvent->setWindow(_webSurface->getWindow());
         touchEvent->setDevice(&_touchDevice);
-        if (_contentType == htmlContent) {
-            touchEvent->setTarget(_webSurface->getRootItem());
-        }
+        touchEvent->setTarget(_webSurface->getRootItem());
         touchEvent->setTouchPoints(touchPoints);
         touchEvent->setTouchPointStates(touchPointState);
-
-        _lastTouchEvent = *touchEvent;
 
         QCoreApplication::postEvent(_webSurface->getWindow(), touchEvent);
     }
@@ -390,13 +381,6 @@ void RenderableWebEntityItem::update(const quint64& now) {
 bool RenderableWebEntityItem::isTransparent() {
     float fadeRatio = _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) : 1.0f;
     return fadeRatio < OPAQUE_ALPHA_THRESHOLD;
-}
-
-QObject* RenderableWebEntityItem::getRootItem() {
-    if (_webSurface) {
-        return dynamic_cast<QObject*>(_webSurface->getRootItem());
-    }
-    return nullptr;
 }
 
 void RenderableWebEntityItem::emitScriptEvent(const QVariant& message) {
