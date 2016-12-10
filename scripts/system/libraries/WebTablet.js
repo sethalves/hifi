@@ -8,6 +8,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+/* global Quat, MyAvatar, WebTablet, HMD, Vec3, Entities, Overlays */
+
 var RAD_TO_DEG = 180 / Math.PI;
 var X_AXIS = {x: 1, y: 0, z: 0};
 var Y_AXIS = {x: 0, y: 1, z: 0};
@@ -59,7 +61,7 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
         dimensions: {x: WIDTH, y: HEIGHT, z: DEPTH},
         parentID: MyAvatar.sessionUUID,
         parentJointIndex: -2
-    }
+    };
 
     if (location) {
         tabletProperties.localPosition = location.localPosition;
@@ -95,7 +97,7 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
     this.getRoot = function() {
         // return Entities.getWebViewRoot(_this.webEntityID);
         return Overlays.getWebViewRoot(_this.webEntityID);
-    }
+    };
 
     this.getLocation = function() {
         return Entities.getEntityProperties(_this.tabletEntityID, ["localPosition", "localRotation"]);
