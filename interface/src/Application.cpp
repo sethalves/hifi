@@ -5676,12 +5676,14 @@ void Application::addAssetToWorldAddEntity(QString mapping) {
     properties.setModelURL("atp:" + mapping);
     properties.setShapeType(SHAPE_TYPE_SIMPLE_COMPOUND);
     properties.setCollisionless(true);  // Temporarily set so that doesn't collide with avatar.
+    properties.setVisible(false);  // Temporarily set so that don't see at large unresized dimensions.
     properties.setDynamic(false);
     properties.setPosition(getMyAvatar()->getPosition() + getMyAvatar()->getOrientation() * glm::vec3(0.0f, 0.0f, -2.0f));
     properties.setGravity(glm::vec3(0.0f, 0.0f, 0.0f));
     auto entityID = DependencyManager::get<EntityScriptingInterface>()->addEntity(properties);
+
     // Note: Model dimensions are not available here; model is scaled per FBX mesh in RenderableModelEntityItem::update() later
-    // on. But FBX dimensions may be in cm or mm, so we monitor for the dimension change and rescale again if warranted.
+    // on. But FBX dimensions may be in cm, so we monitor for the dimension change and rescale again if warranted.
     
     if (entityID == QUuid()) {
         QString errorInfo = "Could not add asset " + mapping + " to world.";
@@ -5724,7 +5726,9 @@ void Application::addAssetToWorldCheckModelSize() {
                 dimensions *= 0.01f;
                 EntityItemProperties properties;
                 properties.setDimensions(dimensions);
-                properties.setCollisionless(false);  // Reset to default.
+                properties.setVisible(true);
+                properties.setCollisionless(false);
+                properties.setLastEdited(usecTimestampNow());
                 entityScriptingInterface->editEntity(entityID, properties);
                 qInfo() << "Asset auto-resized";
             }
@@ -5740,7 +5744,9 @@ void Application::addAssetToWorldCheckModelSize() {
                 // Have done enough checks; model was either the default size or something's gone wrong.
 
                 EntityItemProperties properties;
-                properties.setCollisionless(false);  // Reset to default.
+                properties.setVisible(true);
+                properties.setCollisionless(false);
+                properties.setLastEdited(usecTimestampNow());
                 entityScriptingInterface->editEntity(entityID, properties);
 
                 item = _addAssetToWorldResizeList.erase(item);  // Finished with this entity.
