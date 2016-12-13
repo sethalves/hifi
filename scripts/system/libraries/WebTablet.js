@@ -50,6 +50,7 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
     var DEPTH = 0.025;
     var DPI = dpi || DEFAULT_DPI;
     var _this = this;
+    var SENSOR_TO_ROOM_MATRIX = -2;
 
     var tabletProperties = {
         name: "WebTablet Tablet",
@@ -60,7 +61,7 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
         }),
         dimensions: {x: WIDTH, y: HEIGHT, z: DEPTH},
         parentID: MyAvatar.sessionUUID,
-        parentJointIndex: -2
+        parentJointIndex: SENSOR_TO_ROOM_MATRIX
     };
 
     if (location) {

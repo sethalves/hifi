@@ -134,6 +134,7 @@
 #include "LODManager.h"
 #include "ModelPackager.h"
 #include "networking/HFWebEngineProfile.h"
+#include "scripting/TestScriptingInterface.h"
 #include "scripting/AccountScriptingInterface.h"
 #include "scripting/AssetMappingsScriptingInterface.h"
 #include "scripting/AudioDeviceScriptingInterface.h"
@@ -172,6 +173,8 @@
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
 #if defined(Q_OS_WIN)
+#include <VersionHelpers.h>
+
 extern "C" {
  _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
@@ -422,6 +425,16 @@ bool setupEssentials(int& argc, char** argv) {
 
     Setting::preInit();
 
+#if defined(Q_OS_WIN)
+    // Select appropriate audio DLL
+    QString audioDLLPath = QCoreApplication::applicationDirPath();
+    if (IsWindows8OrGreater()) {
+        audioDLLPath += "/audioWin8";
+    } else {
+        audioDLLPath += "/audioWin7";
+    }
+    QCoreApplication::addLibraryPath(audioDLLPath);
+#endif
 
     static const auto SUPPRESS_SETTINGS_RESET = "--suppress-settings-reset";
     bool suppressPrompt = cmdOptionExists(argc, const_cast<const char**>(argv), SUPPRESS_SETTINGS_RESET);
@@ -544,6 +557,20 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
 {
     setProperty(hifi::properties::STEAM, SteamClient::isRunning());
     setProperty(hifi::properties::CRASHED, _previousSessionCrashed);
+
+    {
+        const QString TEST_SCRIPT = "--testScript";
+        const QStringList args = arguments();
+        for (int i = 0; i < args.size() - 1; ++i) {
+            if (args.at(i) == TEST_SCRIPT) {
+                QString testScriptPath = args.at(i + 1);
+                if (QFileInfo(testScriptPath).exists()) {
+                    setProperty(hifi::properties::TEST, QUrl::fromLocalFile(testScriptPath));
+                }
+            }
+        }
+    }
+
 
     _runningMarker.startRunningMarker();
 
@@ -1353,95 +1380,101 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         return entityServerNode && !isPhysicsEnabled();
     });
 
+    QVariant testProperty = property(hifi::properties::TEST);
+    qDebug() << testProperty;
+    if (testProperty.isValid()) {
+        auto scriptEngines = DependencyManager::get<ScriptEngines>();
+        const auto testScript = property(hifi::properties::TEST).toUrl();
+        scriptEngines->loadScript(testScript, false);
+    } else {
+        // Get sandbox content set version, if available
+        auto acDirPath = PathUtils::getRootDataDirectory() + BuildInfo::MODIFIED_ORGANIZATION + "/assignment-client/";
+        auto contentVersionPath = acDirPath + "content-version.txt";
+        qCDebug(interfaceapp) << "Checking " << contentVersionPath << " for content version";
+        auto contentVersion = 0;
+        QFile contentVersionFile(contentVersionPath);
+        if (contentVersionFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QString line = contentVersionFile.readAll();
+            // toInt() returns 0 if the conversion fails, so we don't need to specifically check for failure
+            contentVersion = line.toInt();
+        }
+        qCDebug(interfaceapp) << "Server content version: " << contentVersion;
 
+        bool hasTutorialContent = contentVersion >= 1;
 
-    // Get sandbox content set version, if available
-    auto acDirPath = PathUtils::getRootDataDirectory() + BuildInfo::MODIFIED_ORGANIZATION + "/assignment-client/";
-    auto contentVersionPath = acDirPath + "content-version.txt";
-    qCDebug(interfaceapp) << "Checking " << contentVersionPath << " for content version";
-    auto contentVersion = 0;
-    QFile contentVersionFile(contentVersionPath);
-    if (contentVersionFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QString line = contentVersionFile.readAll();
-        // toInt() returns 0 if the conversion fails, so we don't need to specifically check for failure
-        contentVersion = line.toInt();
-    }
-    qCDebug(interfaceapp) << "Server content version: " << contentVersion;
+        Setting::Handle<bool> firstRun { Settings::firstRun, true };
+        bool hasHMDAndHandControllers = PluginUtils::isHMDAvailable("OpenVR (Vive)") && PluginUtils::isHandControllerAvailable();
+        Setting::Handle<bool> tutorialComplete { "tutorialComplete", false };
 
-    bool hasTutorialContent = contentVersion >= 1;
+        bool shouldGoToTutorial = hasHMDAndHandControllers && hasTutorialContent && !tutorialComplete.get();
 
-    Setting::Handle<bool> firstRun { Settings::firstRun, true };
-    bool hasHMDAndHandControllers = PluginUtils::isHMDAvailable("OpenVR (Vive)") && PluginUtils::isHandControllerAvailable();
-    Setting::Handle<bool> tutorialComplete { "tutorialComplete", false };
+        qCDebug(interfaceapp) << "Has HMD + Hand Controllers: " << hasHMDAndHandControllers << ", current plugin: " << _displayPlugin->getName();
+        qCDebug(interfaceapp) << "Has tutorial content: " << hasTutorialContent;
+        qCDebug(interfaceapp) << "Tutorial complete: " << tutorialComplete.get();
+        qCDebug(interfaceapp) << "Should go to tutorial: " << shouldGoToTutorial;
 
-    bool shouldGoToTutorial = hasHMDAndHandControllers && hasTutorialContent && !tutorialComplete.get();
+        // when --url in command line, teleport to location
+        const QString HIFI_URL_COMMAND_LINE_KEY = "--url";
+        int urlIndex = arguments().indexOf(HIFI_URL_COMMAND_LINE_KEY);
+        QString addressLookupString;
+        if (urlIndex != -1) {
+            addressLookupString = arguments().value(urlIndex + 1);
+        }
 
-    qCDebug(interfaceapp) << "Has HMD + Hand Controllers: " << hasHMDAndHandControllers << ", current plugin: " << _displayPlugin->getName();
-    qCDebug(interfaceapp) << "Has tutorial content: " << hasTutorialContent;
-    qCDebug(interfaceapp) << "Tutorial complete: " << tutorialComplete.get();
-    qCDebug(interfaceapp) << "Should go to tutorial: " << shouldGoToTutorial;
+        const QString TUTORIAL_PATH = "/tutorial_begin";
 
-    // when --url in command line, teleport to location
-    const QString HIFI_URL_COMMAND_LINE_KEY = "--url";
-    int urlIndex = arguments().indexOf(HIFI_URL_COMMAND_LINE_KEY);
-    QString addressLookupString;
-    if (urlIndex != -1) {
-        addressLookupString = arguments().value(urlIndex + 1);
-    }
-
-    const QString TUTORIAL_PATH = "/tutorial_begin";
-
-    if (shouldGoToTutorial) {
-        if(sandboxIsRunning) {
-            qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
-            DependencyManager::get<AddressManager>()->goToLocalSandbox(TUTORIAL_PATH);
+        if (shouldGoToTutorial) {
+            if (sandboxIsRunning) {
+                qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
+                DependencyManager::get<AddressManager>()->goToLocalSandbox(TUTORIAL_PATH);
+            } else {
+                qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
+                if (firstRun.get()) {
+                    showHelp();
+                }
+                if (addressLookupString.isEmpty()) {
+                    DependencyManager::get<AddressManager>()->goToEntry();
+                } else {
+                    DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
+                }
+            }
         } else {
-            qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
-            if (firstRun.get()) {
+
+            bool isFirstRun = firstRun.get();
+
+            if (isFirstRun) {
                 showHelp();
             }
-            if (addressLookupString.isEmpty()) {
-                DependencyManager::get<AddressManager>()->goToEntry();
-            } else {
-                DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
-            }
-        }
-    } else {
 
-        bool isFirstRun = firstRun.get();
-
-        if (isFirstRun) {
-            showHelp();
-        }
-
-        // If this is a first run we short-circuit the address passed in
-        if (isFirstRun) {
-            if (hasHMDAndHandControllers) {
-                if(sandboxIsRunning) {
-                    qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
-                    DependencyManager::get<AddressManager>()->goToLocalSandbox();
+            // If this is a first run we short-circuit the address passed in
+            if (isFirstRun) {
+                if (hasHMDAndHandControllers) {
+                    if (sandboxIsRunning) {
+                        qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
+                        DependencyManager::get<AddressManager>()->goToLocalSandbox();
+                    } else {
+                        qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
+                        DependencyManager::get<AddressManager>()->goToEntry();
+                    }
                 } else {
-                    qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
                     DependencyManager::get<AddressManager>()->goToEntry();
                 }
             } else {
-                DependencyManager::get<AddressManager>()->goToEntry();
+                qCDebug(interfaceapp) << "Not first run... going to" << qPrintable(addressLookupString.isEmpty() ? QString("previous location") : addressLookupString);
+                DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
             }
-        } else {
-            qCDebug(interfaceapp) << "Not first run... going to" << qPrintable(addressLookupString.isEmpty() ? QString("previous location") : addressLookupString);
-            DependencyManager::get<AddressManager>()->loadSettings(addressLookupString);
         }
-    }
 
-    _connectionMonitor.init();
+        _connectionMonitor.init();
 
     // Monitor model assets (e.g., from Clara.io) added to the world that may need resizing.
     static const int ADD_ASSET_TO_WORLD_TIMER_INTERVAL_MS = 1000;
     _addAssetToWorldTimer.setInterval(ADD_ASSET_TO_WORLD_TIMER_INTERVAL_MS);
     connect(&_addAssetToWorldTimer, &QTimer::timeout, this, &Application::addAssetToWorldCheckModelSize);
 
-    // After all of the constructor is completed, then set firstRun to false.
-    firstRun.set(false);
+        // After all of the constructor is completed, then set firstRun to false.
+        firstRun.set(false);
+    }
 }
 
 void Application::domainConnectionRefused(const QString& reasonMessage, int reasonCodeInt, const QString& extraInfo) {
@@ -2346,48 +2379,47 @@ bool Application::event(QEvent* event) {
     {
         if (!_keyboardFocusedEntity.get().isInvalidID()) {
             switch (event->type()) {
-            case QEvent::KeyPress:
-            case QEvent::KeyRelease: {
-                auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
-                auto entity = getEntities()->getTree()->findEntityByID(_keyboardFocusedEntity.get());
-                if (entity && entity->getEventHandler()) {
-                    event->setAccepted(false);
-                    QCoreApplication::sendEvent(entity->getEventHandler(), event);
-                    if (event->isAccepted()) {
-                        _lastAcceptedKeyPress = usecTimestampNow();
-                        return true;
+                case QEvent::KeyPress:
+                case QEvent::KeyRelease: {
+                    //auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
+                    auto entity = getEntities()->getTree()->findEntityByID(_keyboardFocusedEntity.get());
+                    if (entity && entity->getEventHandler()) {
+                        event->setAccepted(false);
+                        QCoreApplication::sendEvent(entity->getEventHandler(), event);
+                        if (event->isAccepted()) {
+                            _lastAcceptedKeyPress = usecTimestampNow();
+                            return true;
+                        }
                     }
+                    break;
                 }
-                break;
-            }
-
-            default:
-                break;
-            }
+                default:
+                    break;
+                }
         }
     }
 
     {
         if (_keyboardFocusedOverlay.get() != UNKNOWN_OVERLAY_ID) {
             switch (event->type()) {
-            case QEvent::KeyPress:
-            case QEvent::KeyRelease: {
-                // Only Web overlays can have focus.
-                auto overlay =
-                    std::dynamic_pointer_cast<Web3DOverlay>(getOverlays().getOverlay(_keyboardFocusedOverlay.get()));
-                if (overlay && overlay->getEventHandler()) {
-                    event->setAccepted(false);
-                    QCoreApplication::sendEvent(overlay->getEventHandler(), event);
-                    if (event->isAccepted()) {
-                        _lastAcceptedKeyPress = usecTimestampNow();
-                        return true;
+                case QEvent::KeyPress:
+                case QEvent::KeyRelease: {
+                    // Only Web overlays can have focus.
+                    auto overlay =
+                        std::dynamic_pointer_cast<Web3DOverlay>(getOverlays().getOverlay(_keyboardFocusedOverlay.get()));
+                    if (overlay && overlay->getEventHandler()) {
+                        event->setAccepted(false);
+                        QCoreApplication::sendEvent(overlay->getEventHandler(), event);
+                        if (event->isAccepted()) {
+                            _lastAcceptedKeyPress = usecTimestampNow();
+                            return true;
+                        }
                     }
+                    break;
                 }
-                break;
-            }
-            default:
-                break;
-            }
+                default:
+                    break;
+                }
         }
     }
 
@@ -2580,6 +2612,12 @@ void Application::keyPressEvent(QKeyEvent* event) {
 
             case Qt::Key_Asterisk:
                 Menu::getInstance()->triggerOption(MenuOption::DefaultSkybox);
+                break;
+
+            case Qt::Key_N:
+                if (!isOption && !isShifted && isMeta) {
+                    DependencyManager::get<NodeList>()->toggleIgnoreRadius();
+                }
                 break;
 
             case Qt::Key_S:
@@ -3888,6 +3926,8 @@ void Application::setKeyboardFocusEntity(QUuid id) {
     setKeyboardFocusEntity(entityItemID);
 }
 
+static const float FOCUS_HIGHLIGHT_EXPANSION_FACTOR = 1.05f;
+
 void Application::setKeyboardFocusEntity(EntityItemID entityItemID) {
     if (_keyboardFocusedEntity.get() != entityItemID) {
         _keyboardFocusedEntity.set(entityItemID);
@@ -3911,7 +3951,8 @@ void Application::setKeyboardFocusEntity(EntityItemID entityItemID) {
                 }
                 _lastAcceptedKeyPress = usecTimestampNow();
 
-                setKeyboardFocusHighlight(entity->getPosition(), entity->getRotation(), entity->getDimensions() * 1.05f);
+                setKeyboardFocusHighlight(entity->getPosition(), entity->getRotation(), 
+                    entity->getDimensions() * FOCUS_HIGHLIGHT_EXPANSION_FACTOR);
             }
         }
     }
@@ -3944,7 +3985,7 @@ void Application::setKeyboardFocusOverlay(unsigned int overlayID) {
             }
             _lastAcceptedKeyPress = usecTimestampNow();
 
-            auto size = overlay->getSize() * 1.05f;
+            auto size = overlay->getSize() * FOCUS_HIGHLIGHT_EXPANSION_FACTOR;
             const float OVERLAY_DEPTH = 0.0105f;
             setKeyboardFocusHighlight(overlay->getPosition(), overlay->getRotation(), glm::vec3(size.x, size.y, OVERLAY_DEPTH));
         }
@@ -5168,6 +5209,11 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     // AvatarManager has some custom types
     AvatarManager::registerMetaTypes(scriptEngine);
 
+    if (property(hifi::properties::TEST).isValid()) {
+        scriptEngine->registerGlobalObject("Test", TestScriptingInterface::getInstance());
+    }
+
+    scriptEngine->registerGlobalObject("Overlays", &_overlays);
     scriptEngine->registerGlobalObject("Rates", new RatesScriptingInterface(this));
 
     // hook our avatar and avatar hash map object into this script engine
@@ -5522,9 +5568,9 @@ void Application::addAssetToWorldFromURLRequestFinished() {
         temporaryDir.setAutoRemove(false);
         if (temporaryDir.isValid()) {
             QString temporaryDirPath = temporaryDir.path();
-            QString filename = url.section("filename=", 1, 1);
+            QString filename = url.section("filename=", 1, 1);  // Filename from trailing "?filename=" URL parameter.
             QString downloadPath = temporaryDirPath + "/" + filename;
-            qInfo() << "Download path:" << downloadPath;
+            qInfo(interfaceapp) << "Download path:" << downloadPath;
 
             QFile tempFile(downloadPath);
             if (tempFile.open(QIODevice::WriteOnly)) {
@@ -5696,12 +5742,8 @@ void Application::addAssetToWorldAddEntity(QString mapping) {
             _addAssetToWorldTimer.start();
         }
 
-        // Inform user.
-        QString successInfo = "Asset " + mapping.mid(1) + " added to world.";
-        qInfo() << "Downloading asset completed: " + successInfo;
-        _addAssetToWorldMessageBox->setProperty("text", successInfo);
-        _addAssetToWorldMessageBox->setProperty("buttons", QMessageBox::Ok);
-        _addAssetToWorldMessageBox->setProperty("defaultButton", QMessageBox::Ok);
+        // Close progress message box.
+        _addAssetToWorldMessageBox->deleteLater();
     }
 }
 
@@ -5714,24 +5756,35 @@ void Application::addAssetToWorldCheckModelSize() {
     while (item != _addAssetToWorldResizeList.end()) {
         auto entityID = item.key();
 
+        EntityPropertyFlags propertyFlags;
+        propertyFlags += PROP_NAME;
+        propertyFlags += PROP_DIMENSIONS;
         auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
-        auto properties = entityScriptingInterface->getEntityProperties(entityID, EntityPropertyFlags("dimensions"));
+        auto properties = entityScriptingInterface->getEntityProperties(entityID, propertyFlags);
+        auto name = properties.getName();
         auto dimensions = properties.getDimensions();
+
+        const QString GRABBABLE_USER_DATA = "{\"grabbableKey\":{\"grabbable\":true}}";
+
         const glm::vec3 DEFAULT_DIMENSIONS = glm::vec3(0.1f, 0.1f, 0.1f);
         if (dimensions != DEFAULT_DIMENSIONS) {
             // Entity has been auto-resized; adjust dimensions if it seems too big.
-
+            EntityItemProperties properties;
             const float RESCALE_THRESHOLD = 10.0f;  // Resize entities larger than this as the FBX is likely in cm or mm.
             if (dimensions.x > RESCALE_THRESHOLD || dimensions.y > RESCALE_THRESHOLD || dimensions.z > RESCALE_THRESHOLD) {
-                dimensions *= 0.01f;
-                EntityItemProperties properties;
-                properties.setDimensions(dimensions);
-                properties.setVisible(true);
-                properties.setCollisionless(false);
-                properties.setLastEdited(usecTimestampNow());
-                entityScriptingInterface->editEntity(entityID, properties);
-                qInfo() << "Asset auto-resized";
+                auto dimensionsResized = dimensions * 0.01f;
+                properties.setDimensions(dimensionsResized);
+                qInfo(interfaceapp) << "Asset" << name << "auto-resized from" << dimensions << " to "
+                    << dimensionsResized;
+            } else {
+                qInfo(interfaceapp) << "Asset" << name << "does not need to be auto-resized";
             }
+            properties.setVisible(true);
+            properties.setCollisionless(false);
+            properties.setDynamic(true);
+            properties.setUserData(GRABBABLE_USER_DATA);
+            properties.setLastEdited(usecTimestampNow());
+            entityScriptingInterface->editEntity(entityID, properties);
 
             item = _addAssetToWorldResizeList.erase(item);  // Finished with this entity.
 
@@ -5739,15 +5792,18 @@ void Application::addAssetToWorldCheckModelSize() {
             // Increment count of checks done.
             _addAssetToWorldResizeList[entityID]++;
 
-            const int CHECK_MODEL_SIZE_MAX_CHECKS = 10;
+            const int CHECK_MODEL_SIZE_MAX_CHECKS = 30;
             if (_addAssetToWorldResizeList[entityID] > CHECK_MODEL_SIZE_MAX_CHECKS) {
                 // Have done enough checks; model was either the default size or something's gone wrong.
 
                 EntityItemProperties properties;
                 properties.setVisible(true);
                 properties.setCollisionless(false);
+                properties.setDynamic(true);
+                properties.setUserData(GRABBABLE_USER_DATA);
                 properties.setLastEdited(usecTimestampNow());
                 entityScriptingInterface->editEntity(entityID, properties);
+                qInfo(interfaceapp) << "Asset" << name << "auto-resize timed out";
 
                 item = _addAssetToWorldResizeList.erase(item);  // Finished with this entity.
 
