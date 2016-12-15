@@ -43,6 +43,7 @@ function calcSpawnInfo() {
 // ctor
 WebTablet = function (url, width, dpi, location, clientOnly) {
 
+    var _this = this;
     var ASPECT = 4.0 / 3.0;
     var WIDTH = width || DEFAULT_WIDTH;
     var TABLET_HEIGHT_SCALE = 640 / 680;  //  Screen size of tablet entity isn't quite the desired aspect.
@@ -93,6 +94,28 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
         parentJointIndex: -1
     });
 
+    var HOME_BUTTON_Y_OFFSET = -0.32;
+    this.homeButtonEntity = Entities.addEntity({
+        name: "homeButton",
+        type: "Sphere",
+        localPosition: {x: 0, y: HOME_BUTTON_Y_OFFSET, z: 0},
+        dimensions: {x: 0.05, y: 0.05, z: 0.05},
+        parentID: this.tabletEntityID,
+        script: "https://people.ucsc.edu/~druiz4/scripts/homeButton.js"
+        }, clientOnly);
+
+    this.receive = function (channel, senderID, senderUUID, localOnly) {
+        if (_this.homeButtonEntity == senderID) {
+            if (_this.clicked) {
+              Entities.editEntity(_this.homeButtonEntity, {color: {red: 0, green: 255, blue: 255}});
+              _this.clicked = false;
+            } else {
+              Entities.editEntity(_this.homeButtonEntity, {color: {red: 255, green: 255, blue: 0}});
+              _this.clicked = true;
+            }
+        }
+    }
+
     this.state = "idle";
 
     this.getRoot = function() {
@@ -103,6 +126,7 @@ WebTablet = function (url, width, dpi, location, clientOnly) {
     this.getLocation = function() {
         return Entities.getEntityProperties(_this.tabletEntityID, ["localPosition", "localRotation"]);
     };
+    this.clicked = false;
 };
 
 WebTablet.prototype.setURL = function (url) {
@@ -120,11 +144,22 @@ WebTablet.prototype.getOverlayObject = function () {
 WebTablet.prototype.destroy = function () {
     Overlays.deleteOverlay(this.webOverlayID);
     Entities.deleteEntity(this.tabletEntityID);
+    Entities.deleteEntity(this.homeButtonEntity);
 };
 
 WebTablet.prototype.pickle = function () {
     return JSON.stringify({ webOverlayID: this.webOverlayID, tabletEntityID: this.tabletEntityID });
 };
+
+WebTablet.prototype.register = function() {
+    Messages.subscribe("home");
+    Messages.messageReceived.connect(this.receive);
+}
+
+WebTablet.prototype.unregister = function() {
+    Messages.unsubscribe("home");
+    Messages.messageReceived.disconnect(this.receive);
+}
 
 WebTablet.unpickle = function (string) {
     if (!string) {

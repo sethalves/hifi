@@ -23,6 +23,7 @@
 #include <PathUtils.h>
 #include <TextureCache.h>
 #include <gpu/Context.h>
+#include <TabletScriptingInterface.h>
 
 #include "EntityTreeRenderer.h"
 #include "EntitiesRendererLogging.h"
@@ -150,7 +151,8 @@ bool RenderableWebEntityItem::buildWebSurface(QSharedPointer<EntityTreeRenderer>
             point.setPos(windowPoint);
             QList<QTouchEvent::TouchPoint> touchPoints;
             touchPoints.push_back(point);
-            QTouchEvent* touchEvent = new QTouchEvent(QEvent::TouchEnd, nullptr, Qt::NoModifier, Qt::TouchPointReleased, touchPoints);
+            QTouchEvent* touchEvent = new QTouchEvent(QEvent::TouchEnd, nullptr,
+                                                      Qt::NoModifier, Qt::TouchPointReleased, touchPoints);
             touchEvent->setWindow(_webSurface->getWindow());
             touchEvent->setDevice(&_touchDevice);
             touchEvent->setTarget(_webSurface->getRootItem());
@@ -254,7 +256,13 @@ void RenderableWebEntityItem::loadSourceURL() {
     } else {
         _contentType = qmlContent;
         _webSurface->setBaseUrl(QUrl::fromLocalFile(PathUtils::resourcesPath()));
-        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) { });
+        _webSurface->load(_sourceUrl, [&](QQmlContext* context, QObject* obj) {});
+
+        // TABLET_UI_HACK: move this to overlays as well!
+        if (_webSurface->getRootItem() && _webSurface->getRootItem()->objectName() == "tablet") {
+            auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
+            tabletScriptingInterface->setQmlTablet("com.highfidelity.interface.tablet.system", _webSurface->getRootItem());
+        }
     }
 }
 
