@@ -316,12 +316,13 @@ public slots:
     void addAssetToWorldFromURL(QString url);
     void addAssetToWorldFromURLRequestFinished();
     void addAssetToWorld(QString filePath);
-    void addAssetToWorldWithNewMapping(QString path, QString mapping, int copy);
-    void addAssetToWorldUpload(QString path, QString mapping);
-    void addAssetToWorldSetMapping(QString mapping, QString hash);
-    void addAssetToWorldAddEntity(QString mapping);
+    void addAssetToWorldUnzipFailure(QString filePath);
+    void addAssetToWorldWithNewMapping(QString filePath, QString mapping, int copy);
+    void addAssetToWorldUpload(QString filePath, QString mapping);
+    void addAssetToWorldSetMapping(QString filePath, QString mapping, QString hash);
+    void addAssetToWorldAddEntity(QString filePath, QString mapping);
 
-    void handleUnzip(QString filePath = "", bool autoAdd = false);
+    void handleUnzip(QString sourceFile, QString destinationFile, bool autoAdd);
 
     FileScriptingInterface* getFileDownloadInterface() { return _fileDownload; }
 
@@ -416,6 +417,7 @@ private slots:
 
     void addAssetToWorldCheckModelSize();
 
+    void onAssetToWorldMessageBoxClosed();
     void addAssetToWorldInfoTimeout();
     void addAssetToWorldErrorTimeout();
 
