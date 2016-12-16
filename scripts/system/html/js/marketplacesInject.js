@@ -86,79 +86,87 @@
         // Nothing to do.
     }
 
-    function updateClaraCode(currentLocation) {
-        // Have to manually monitor location for changes because Clara Web page replaced content rather than loading new page.
+    function updateClaraCode() {
+        // Have to repeatedly update Clara page because its content can change dynamically without location.href changing.
 
-        if (location.href !== currentLocation) {
-
-            // Clara library page.
-            if (location.href.indexOf("clara.io/library") !== -1) {
-                // Make entries navigate to "Image" view instead of default "Real Time" view.
-                var elements = $("a.thumbnail");
-                for (var i = 0, length = elements.length; i < length; i++) {
-                    var value = elements[i].getAttribute("href");
-                    if (value.slice(-6) !== "/image") {
-                        elements[i].setAttribute("href", value + "/image");
-                    }
+        // Clara library page.
+        if (location.href.indexOf("clara.io/library") !== -1) {
+            // Make entries navigate to "Image" view instead of default "Real Time" view.
+            var elements = $("a.thumbnail");
+            for (var i = 0, length = elements.length; i < length; i++) {
+                var value = elements[i].getAttribute("href");
+                if (value.slice(-6) !== "/image") {
+                    elements[i].setAttribute("href", value + "/image");
                 }
             }
+        }
 
-            // Clara item page.
-            if (location.href.indexOf("clara.io/view/") !== -1) {
-                // Make site navigation links retain gameCheck etc. parameters.
-                var element = $("a[href^=\'/library\']")[0];
-                var parameters = "?gameCheck=true&public=true";
-                var href = element.getAttribute("href");
-                if (href.slice(-parameters.length) !== parameters) {
-                    element.setAttribute("href", href + parameters);
+        // Clara item page.
+        if (location.href.indexOf("clara.io/view/") !== -1) {
+            // Make site navigation links retain gameCheck etc. parameters.
+            var element = $("a[href^=\'/library\']")[0];
+            var parameters = "?gameCheck=true&public=true";
+            var href = element.getAttribute("href");
+            if (href.slice(-parameters.length) !== parameters) {
+                element.setAttribute("href", href + parameters);
+            }
+
+            // Replace download options with a single, "Download to High Fidelity" option.
+            var buttons = $("a.embed-button").parent("div");
+            if (buttons.length > 0) {
+                var downloadFBX = buttons.find("a[data-extension=\'fbx\']")[0];
+                downloadFBX.addEventListener("click", startAutoDownload);
+                var firstButton = buttons.children(":first-child")[0];
+                buttons[0].insertBefore(downloadFBX, firstButton);
+                downloadFBX.setAttribute("class", "btn btn-primary download");
+                downloadFBX.innerHTML = "<i class=\'glyphicon glyphicon-download-alt\'></i> Download to High Fidelity";
+                buttons.children(":nth-child(2), .btn-group , .embed-button").each(function () { this.remove(); });
+            }
+
+            // Move the "Download to High Fidelity" button to be more visible on tablet.
+            if ($("#hifi-download-container").length === 0 && window.innerWidth < 700) {
+                // Moving the button stops the Clara.io download from starting so instead, make a visual copy in the right place
+                // and wire its click event to click the original button.
+                var downloadContainer = $('<div id="hifi-download-container"></div>');
+                $(".top-title .col-sm-4").append(downloadContainer);
+                var downloadButton = $("a[data-extension=\'fbx\']").clone();
+                downloadButton[0].addEventListener("click", function () { downloadFBX.click(); });
+                downloadContainer.append(downloadButton);
+                downloadFBX.style.visibility = "hidden";
+            }
+
+            // Automatic download to High Fidelity.
+            var downloadTimer;
+            function startAutoDownload(event) {
+                if (!canWriteAssets) {
+                    console.log("Clara.io FBX file download cancelled because no permissions to write to Asset Server");
+                    EventBridge.emitWebEvent(WARN_USER_NO_PERMISSIONS);
+                    event.stopPropagation();
                 }
 
-                // Replace download options with a single, "Download to High Fidelity" option.
-                var buttons = $("a.embed-button").parent("div");
-                if (buttons.length > 0) {
-                    var downloadFBX = buttons.find("a[data-extension=\'fbx\']")[0];
-                    downloadFBX.addEventListener("click", startAutoDownload);
-                    var firstButton = buttons.children(":first-child")[0];
-                    buttons[0].insertBefore(downloadFBX, firstButton);
-                    downloadFBX.setAttribute("class", "btn btn-primary download");
-                    downloadFBX.innerHTML = "<i class=\'glyphicon glyphicon-download-alt\'></i> Download to High Fidelity";
-                    buttons.children(":nth-child(2), .btn-group , .embed-button").each(function () { this.remove(); });
+                window.scrollTo(0, 0);  // Scroll to top ready for history.back().
+                if (!downloadTimer) {
+                    downloadTimer = setInterval(autoDownload, 1000);
                 }
-
-                // Automatic download to High Fidelity.
-                var downloadTimer;
-                function startAutoDownload(event) {
-                    if (!canWriteAssets) {
-                        console.log("Clara.io FBX file download cancelled because no permissions to write to Asset Server");
-                        EventBridge.emitWebEvent(WARN_USER_NO_PERMISSIONS);
-                        event.stopPropagation();
-                    }
-
-                    window.scrollTo(0, 0);  // Scroll to top ready for history.back().
-                    if (!downloadTimer) {
-                        downloadTimer = setInterval(autoDownload, 1000);
-                    }
-                }
-                function autoDownload() {
-                    if ($("div.download-body").length !== 0) {
-                        var downloadButton = $("div.download-body a.download-file");
-                        if (downloadButton.length > 0) {
-                            clearInterval(downloadTimer);
-                            downloadTimer = null;
-                            var href = downloadButton[0].href;
-                            EventBridge.emitWebEvent(CLARA_IO_DOWNLOAD + " " + href);
-                            console.log("Clara.io FBX file download initiated for " + href);
-                            $("a.btn.cancel").click();
-                            history.back();  // Remove history item created by clicking "download".
-                        };
-                    } else {
+            }
+            function autoDownload() {
+                if ($("div.download-body").length !== 0) {
+                    var downloadButton = $("div.download-body a.download-file");
+                    if (downloadButton.length > 0) {
                         clearInterval(downloadTimer);
                         downloadTimer = null;
-                    }
+                        var href = downloadButton[0].href;
+                        EventBridge.emitWebEvent(CLARA_IO_DOWNLOAD + " " + href);
+                        console.log("Clara.io FBX file download initiated for " + href);
+                        $("a.btn.cancel").click();
+                        history.back();  // Remove history item created by clicking "download".
+                    };
+                } else if ($("div#view-signup_login_dialog").length === 0) {
+                    // Don't stop checking for button if user is asked to log in.
+                    clearInterval(downloadTimer);
+                    downloadTimer = null;
                 }
             }
-
-            currentLocation = location.href;
         }
     }
 
@@ -180,18 +188,23 @@
             '</style>'
         );
 
+        // Move "Download to High Fidelity" button.
+        $("head").append(
+            '<style>' +
+                '#hifi-download-container { position: absolute; top: 6px; right: 16px; }' +
+            '</style>'
+        );
+
         // Update code injected per page displayed.
-        var currentLocation = "";
-        var checkLocationInterval = undefined;
-        updateClaraCode(currentLocation);
-        checkLocationInterval = setInterval(function () {
-            updateClaraCode(currentLocation);
+        var updateClaraCodeInterval = undefined;
+        updateClaraCode();
+        updateClaraCodeInterval = setInterval(function () {
+            updateClaraCode();
         }, 1000);
 
         window.addEventListener("unload", function () {
-            clearInterval(checkLocationInterval);
-            checkLocationInterval = undefined;
-            currentLocation = "";
+            clearInterval(updateClaraCodeInterval);
+            updateClaraCodeInterval = undefined;
         });
 
         EventBridge.emitWebEvent(QUERY_CAN_WRITE_ASSETS);

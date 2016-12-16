@@ -104,7 +104,7 @@ Web3DOverlay::~Web3DOverlay() {
 }
 
 void Web3DOverlay::update(float deltatime) {
-    // FIXME: Transforms cause tablet overlay to detach from tablet entity.
+    // FIXME: applyTransformTo causes tablet overlay to detach from tablet entity.
     // Perhaps rather than deleting the following code it should be run only if isFacingAvatar() is true?
     /*
     if (usecTimestampNow() > _transformExpiry) {
@@ -186,8 +186,14 @@ void Web3DOverlay::render(RenderArgs* args) {
     vec4 color(toGlm(getColor()), getAlpha());
 
     Transform transform = getTransform();
+    
+    // FIXME: applyTransformTo causes tablet overlay to detach from tablet entity.
+    // Perhaps rather than deleting the following code it should be run only if isFacingAvatar() is true?
+    /*
     applyTransformTo(transform, true);
     setTransform(transform);
+    */
+
     if (glm::length2(getDimensions()) != 1.0f) {
         transform.postScale(vec3(getDimensions(), 1.0f));
     }
