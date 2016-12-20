@@ -24,6 +24,7 @@
         tabletShown = true;
         print("show tablet-ui");
         UIWebTablet = new WebTablet("qml/hifi/tablet/Tablet.qml", null, null, tabletLocation);
+        UIWebTablet.register();
         HMD.tabletID = UIWebTablet.webEntityID;
     }
 
@@ -36,6 +37,7 @@
             }
 
             tabletLocation = UIWebTablet.getLocation();
+            UIWebTablet.unregister();
             UIWebTablet.destroy();
             UIWebTablet = null;
             HMD.tabletID = null;
