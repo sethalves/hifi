@@ -180,6 +180,7 @@ function calculateRayUICollisionPoint(position, direction) {
     var scale = numerator / denominator;
     return Vec3.sum(position, Vec3.multiply(scale, direction));
 }
+
 var DEGREES_TO_HALF_RADIANS = Math.PI / 360;
 function overlayFromWorldPoint(point) {
     // Answer the 2d pixel-space location in the HUD that covers the given 3D point.
@@ -429,30 +430,6 @@ function isPointingAtOverlayStartedNonFullTrigger(trigger) {
 }
 clickMapping.from(rightTrigger.full).when(isPointingAtOverlayStartedNonFullTrigger(rightTrigger)).to(Controller.Actions.ReticleClick);
 clickMapping.from(leftTrigger.full).when(isPointingAtOverlayStartedNonFullTrigger(leftTrigger)).to(Controller.Actions.ReticleClick);
-// The following is essentially like Left and Right versions of
-// clickMapping.from(Controller.Standard.RightSecondaryThumb).peek().to(Controller.Actions.ContextMenu);
-// except that we first update the reticle position from the appropriate hand position, before invoking the  .
-var wantsMenu = 0;
-clickMapping.from(function () { return wantsMenu; }).to(Controller.Actions.ContextMenu);
-clickMapping.from(Controller.Standard.RightSecondaryThumb).peek().to(function (clicked) {
-    if (clicked) {
-        activeHudPoint2d(Controller.Standard.RightHand);
-    }
-    wantsMenu = clicked;
-});
-clickMapping.from(Controller.Standard.LeftSecondaryThumb).peek().to(function (clicked) {
-    if (clicked) {
-        activeHudPoint2d(Controller.Standard.LeftHand);
-    }
-    wantsMenu = clicked;
-});
-clickMapping.from(Controller.Standard.Start).peek().to(function (clicked) {
-    if (clicked) {
-        activeHudPoint2dGamePad();
-      }
-
-      wantsMenu = clicked;
-});
 clickMapping.from(Controller.Hardware.Keyboard.RightMouseClicked).peek().to(function () {
     // Allow the reticle depth to be set correctly:
     // Wait a tick for the context menu to be displayed, and then simulate a (non-hand-controller) mouse move

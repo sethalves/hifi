@@ -205,7 +205,7 @@ public:
     float getFps() const { return _frameCounter.rate(); }
     float getTargetFrameRate() const; // frames/second
 
-    float getFieldOfView() { return _fieldOfView.get(); }
+    float getFieldOfView() const { return _fieldOfView.get(); }
     void setFieldOfView(float fov);
 
     float getSettingConstrainToolbarPosition() { return _constrainToolbarPosition.get(); }
@@ -485,6 +485,12 @@ private:
 
     void maybeToggleMenuVisible(QMouseEvent* event) const;
     void toggleMenuUnderReticle() const;
+    void handleContextMenuAction(controller::Action action) const;
+
+//    glm::vec3 calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction) const;
+    glm::vec2 overlayFromWorldPoint(const glm::vec3& point) const;
+    void activeHudPoint2d(controller::Hand activeHand) const;
+    void activeHudPoint2dGamePad() const;
 
     MainWindow* _window;
     QElapsedTimer& _sessionRunTimer;

@@ -1061,8 +1061,12 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                 if (!offscreenUi->navigationFocused()) {
                     toggleMenuUnderReticle();
                 }
-            } else if (action == controller::toInt(controller::Action::CONTEXT_MENU)) {
-                toggleMenuUnderReticle();
+            }
+            else if (action == controller::toInt(controller::Action::CONTEXT_MENU) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_CENTERED) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_LEFT_LASER) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_RIGHT_LASER)) {
+                handleContextMenuAction(static_cast<controller::Action>(action));
             } else if (action == controller::toInt(controller::Action::RETICLE_X)) {
                 auto oldPos = getApplicationCompositor().getReticlePosition();
                 getApplicationCompositor().setReticlePosition({ oldPos.x + state, oldPos.y });
@@ -1578,12 +1582,132 @@ QString Application::getUserAgent() {
     return userAgent;
 }
 
+glm::vec3 getGrabPointSphereOffset(controller::Hand hand) {
+    // this offset needs to match the one in libraries/display-plugins/src/display-plugins/hmd/HmdDisplayPlugin.cpp:378
+    const glm::vec3 GRAB_POINT_SPHERE_OFFSET = {0.04f, 0.13f, 0.039f};  // x = upward, y = forward, z = lateral
+    if (hand == controller::RIGHT) {
+        return GRAB_POINT_SPHERE_OFFSET;
+    }
+    return {GRAB_POINT_SPHERE_OFFSET.x * -1, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z};
+};
+
+glm::vec2 Application::overlayFromWorldPoint(const glm::vec3& point) const {
+    const float DEGREES_TO_HALF_RADIANS = PI / 360.0f;
+    // Answer the 2d pixel-space location in the HUD that covers the given 3D point.
+    // REQUIRES: that the 3d point be on the hud surface!
+    // Note that this is based on the Camera, and doesn't know anything about any
+    // ray that may or may not have been used to compute the point. E.g., the
+    // overlay point is NOT the intersection of some non-camera ray with the HUD.
+    if (PluginContainer::getInstance().getActiveDisplayPlugin()->isHmd()) {
+        return qApp->getApplicationCompositor().overlayFromSphereSurface(point);
+    }
+    auto cameraToPoint = point - _myCamera.getPosition();
+    auto cameraX = glm::dot(cameraToPoint, _myCamera.getOrientation() * Vectors::RIGHT);
+    auto cameraY = glm::dot(cameraToPoint, _myCamera.getOrientation() * Vectors::UP);
+    auto uiSize = qApp->getUiSize();
+    float hudHeight = 2.0f * tan(getFieldOfView() * DEGREES_TO_HALF_RADIANS); // must adjust if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+    auto hudWidth = hudHeight * uiSize.x / uiSize.y;
+    float horizontalFraction = (cameraX / hudWidth + 0.5f);
+    float verticalFraction = 1.0f - (cameraY / hudHeight + 0.5f);
+    float horizontalPixels = uiSize.x * horizontalFraction;
+    float verticalPixels = uiSize.y * verticalFraction;
+    return { horizontalPixels, verticalPixels };
+}
+/*
+glm::vec3 Application::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction) const {
+    // Answer the 3D intersection of the HUD by the given ray, or falsey if no intersection.
+    if (PluginContainer::getInstance().getActiveDisplayPlugin()->isHmd()) {
+        glm::vec3 result;
+        qApp->getApplicationCompositor().calculateRayUICollisionPoint(position, direction, result);
+        return result;
+    }
+    // interect HUD plane, 1m in front of camera, using formula:
+    //   scale = hudNormal dot (hudPoint - position) / hudNormal dot direction
+    //   intersection = position + scale*direction
+    auto hudNormal = _myCamera.getOrientation() * Vectors::FRONT;
+    auto hudPoint = _myCamera.getPosition() + hudNormal; // must also scale if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+    auto denominator = glm::dot(hudNormal, direction);
+    if (denominator == 0.0f) {
+        return glm::vec3(0.0f, 0.0f, 0.0f);
+    } // parallel to plane
+    auto numerator = glm::dot(hudNormal, hudPoint - position);
+    auto scale = numerator / denominator;
+    return position + (scale * direction);
+}
+*/
+
+void Application::activeHudPoint2d(controller::Hand activeHand) const { // if controller is valid, update reticle position and answer 2d point. Otherwise falsey.
+    auto userInputMapper = DependencyManager::get<UserInputMapper>();
+    auto myAvatar = getMyAvatar();
+    auto pose = activeHand == controller::LEFT ? myAvatar->getLeftHandPose() : myAvatar->getRightHandPose();
+    int controllerJointIndex;
+    if (!pose.valid) {
+        return; // Controller is cradled.
+    }
+
+    controllerJointIndex = myAvatar->getJointIndex(activeHand == controller::RIGHT ?
+        "_CAMERA_RELATIVE_CONTROLLER_RIGHTHAND" : "_CAMERA_RELATIVE_CONTROLLER_LEFTHAND");
+    glm::quat orientation = myAvatar->getOrientation() * myAvatar->getAbsoluteJointRotationInObjectFrame(controllerJointIndex);
+    glm::vec3 position = myAvatar->getPosition() + myAvatar->getOrientation() *
+        myAvatar->getAbsoluteJointTranslationInObjectFrame(controllerJointIndex);
+
+    // add to the real position so the grab-point is out in front of the hand, a bit
+    glm::vec3 offset = getGrabPointSphereOffset(activeHand);
+    position = position + orientation * offset;
+
+    auto controllerPosition = position;
+    auto controllerDirection = orientation * Vectors::UP;
+    glm::vec3 hudPoint3d;
+    if (!qApp->getApplicationCompositor().calculateRayUICollisionPoint(controllerPosition, controllerDirection, hudPoint3d)) {
+        if (Menu::getInstance()->isOptionChecked(MenuOption::Overlays)) { // With our hud resetting strategy, hudPoint3d should be valid here
+            qCDebug(interfaceapp) << "Controller is parallel to HUD";  // so let us know that our assumptions are wrong.
+        }
+        return;
+    }
+    auto hudPoint2d = overlayFromWorldPoint(hudPoint3d);
+
+    // We don't know yet if we'll want to make the cursor or laser visble, but we need to move it to see if
+    // it's pointing at a QML tool (aka system overlay).
+    getApplicationCompositor().setReticlePosition(hudPoint2d, false);
+}
+
+void Application::activeHudPoint2dGamePad() const {
+    if (!PluginContainer::getInstance().getActiveDisplayPlugin()->isHmd()) {
+        return;
+    }
+    auto myAvatar = getMyAvatar();
+    auto headPosition = myAvatar->getHeadPosition();
+    auto headDirection = (myAvatar->getHeadOrientation() * glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)))
+        * Vectors::UP;
+
+    glm::vec3 hudPoint3d;
+    if (!qApp->getApplicationCompositor().calculateRayUICollisionPoint(headPosition, headDirection, hudPoint3d)) {
+        return;
+    }
+    auto hudPoint2d = overlayFromWorldPoint(hudPoint3d);
+
+    // We don't know yet if we'll want to make the cursor or laser visble, but we need to move it to see if
+    // it's pointing at a QML tool (aka system overlay).
+    getApplicationCompositor().setReticlePosition(hudPoint2d, false);
+}
+
+void Application::handleContextMenuAction(controller::Action action) const {
+    if (action == controller::Action::CONTEXT_MENU_CENTERED) {
+        activeHudPoint2dGamePad();
+    } else if (action == controller::Action::CONTEXT_MENU_LEFT_LASER) {
+        activeHudPoint2d(controller::LEFT);
+    } else if (action == controller::Action::CONTEXT_MENU_RIGHT_LASER) {
+        activeHudPoint2d(controller::RIGHT);
+    }
+    toggleMenuUnderReticle();
+}
+
 void Application::toggleMenuUnderReticle() const {
     // In HMD, if the menu is near the mouse but not under it, the reticle can be at a significantly
     // different depth. When you focus on the menu, the cursor can appear to your crossed eyes as both
     // on the menu and off.
     // Even in 2D, it is arguable whether the user would want the menu to be to the side.
-    const float X_LEFT_SHIFT = 50.0;
+    const float X_LEFT_SHIFT = 50.0f;
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto reticlePosition = getApplicationCompositor().getReticlePosition();
     offscreenUi->toggleMenu(QPoint(reticlePosition.x - X_LEFT_SHIFT, reticlePosition.y));

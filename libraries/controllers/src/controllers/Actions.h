@@ -49,7 +49,14 @@ enum class Action {
     ACTION1,
     ACTION2,
 
+    // The default CONTEXT_MENU action doesn't set the cursor position
     CONTEXT_MENU,
+    // Context menu will be centered at the HUD look-at-position
+    CONTEXT_MENU_CENTERED,
+    // Context menu will be positioned at the intersecting point of the hand-laser and HUD
+    CONTEXT_MENU_LEFT_LASER,
+    CONTEXT_MENU_RIGHT_LASER,
+
     TOGGLE_MUTE,
     CYCLE_CAMERA,
     TOGGLE_OVERLAY,

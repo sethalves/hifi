@@ -342,6 +342,22 @@ glm::mat4 CompositorHelper::getUiTransform() const {
 
 //Finds the collision point of a world space ray
 bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result) const {
+    // if not in HMD mode, then try to calculate the intersection plane of the 2d ui in the 3d world
+    if (!isHMD()) {
+        // interect HUD plane, 1m in front of camera, using formula:
+        //   scale = hudNormal dot (hudPoint - position) / hudNormal dot direction
+        //   intersection = position + scale*direction
+        auto hudNormal = glm::quat_cast(_currentCamera) * Vectors::FRONT;
+        auto hudPoint = vec3(_currentCamera[3]) + hudNormal; // must also scale if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+        auto denominator = glm::dot(hudNormal, direction);
+        if (denominator == 0.0f) {
+            return false;
+        } // parallel to plane
+        auto numerator = glm::dot(hudNormal, hudPoint - position);
+        auto scale = numerator / denominator;
+        result = position + (scale * direction);
+        return true;
+    }
     auto UITransform = getUiTransform();
     auto relativePosition4 = glm::inverse(UITransform) * vec4(position, 1);
     auto relativePosition = vec3(relativePosition4) / relativePosition4.w;
@@ -350,13 +366,15 @@ bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, c
     float uiRadius = _hmdUIRadius; // * myAvatar->getUniformScale(); // FIXME - how do we want to handle avatar scale
 
     float instersectionDistance;
-    if (raySphereIntersect(relativeDirection, relativePosition, uiRadius, &instersectionDistance)){
+    if (raySphereIntersect(relativeDirection, relativePosition, uiRadius, &instersectionDistance)) {
         result = position + glm::normalize(direction) * instersectionDistance;
         return true;
     }
 
     return false;
 }
+
+
 
 glm::vec2 CompositorHelper::sphericalToOverlay(const glm::vec2& sphericalPos) const {
     glm::vec2 result = sphericalPos;

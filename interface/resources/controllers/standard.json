@@ -30,7 +30,9 @@
         { "from": "Standard.RY", "to": "Actions.Up", "filters": "invert"}, 
 
         { "from": "Standard.Back", "to": "Actions.CycleCamera" },
-        { "from": "Standard.Start", "to": "Actions.ContextMenu" },
+        { "from": "Standard.Start", "to": "Actions.ContextMenuCentered" },
+        { "from": "Standard.LeftSecondaryThumb", "to": "Actions.ContextMenuLeftLaser" },
+        { "from": "Standard.RightSecondaryThumb", "to": "Actions.ContextMenuRightLaser" },
 
         { "from": "Standard.LT", "to": "Actions.LeftHandClick" }, 
         { "from": "Standard.RT", "to": "Actions.RightHandClick" },
@@ -39,5 +41,3 @@
         { "from": "Standard.RightHand", "to": "Actions.RightHand" }
     ]
 }
-
-
