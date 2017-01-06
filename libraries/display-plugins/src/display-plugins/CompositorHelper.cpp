@@ -341,7 +341,9 @@ glm::mat4 CompositorHelper::getUiTransform() const {
 }
 
 //Finds the collision point of a world space ray
-bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result) const {
+bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result)
+    const {
+
     // if not in HMD mode, then try to calculate the intersection plane of the 2d ui in the 3d world
     if (!isHMD()) {
         // interect HUD plane, 1m in front of camera, using formula:
@@ -440,12 +442,13 @@ glm::vec2 CompositorHelper::overlayFromWorldPoint(const glm::vec3& point) const 
 
 // hand 0 is left, hand 1 is right
 glm::vec3 CompositorHelper::getGrabPointSphereOffset(int hand) const {
-    // this offset needs to match the one in libraries/display-plugins/src/display-plugins/hmd/HmdDisplayPlugin.cpp:378
+    // this offset needs to match GRAB_POINT_SPHERE_OFFSET in scripts/system/libraries/controllers.js:19
+    const int RIGHT_HAND = 1;
     const glm::vec3 GRAB_POINT_SPHERE_OFFSET = { 0.04f, 0.13f, 0.039f };  // x = upward, y = forward, z = lateral
-    if (hand == 1) {
+    if (hand == RIGHT_HAND) {
         return GRAB_POINT_SPHERE_OFFSET;
     }
-    return { GRAB_POINT_SPHERE_OFFSET.x * -1, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z };
+    return { GRAB_POINT_SPHERE_OFFSET.x * -1.0f, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z };
 }
 
 void CompositorHelper::updateTooltips() {
