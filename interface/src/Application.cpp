@@ -1063,7 +1063,11 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                 if (!offscreenUi->navigationFocused()) {
                     toggleMenuUnderReticle();
                 }
-            } else if (action == controller::toInt(controller::Action::CONTEXT_MENU)) {
+            }
+            else if (action == controller::toInt(controller::Action::CONTEXT_MENU) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_CENTERED) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_LEFT_LASER) ||
+                     action == controller::toInt(controller::Action::CONTEXT_MENU_RIGHT_LASER)) {
                 toggleTabletUI();
             } else if (action == controller::toInt(controller::Action::RETICLE_X)) {
                 auto oldPos = getApplicationCompositor().getReticlePosition();
@@ -1580,12 +1584,59 @@ QString Application::getUserAgent() {
     return userAgent;
 }
 
+void Application::handleContextMenuAction(controller::Action action) const {
+    auto& compositor = getApplicationCompositor();
+    auto myAvatar = getMyAvatar();
+    if (action == controller::Action::CONTEXT_MENU_CENTERED && !isHMDMode()) {
+        auto headPosition = myAvatar->getHeadPosition();
+        auto headDirection = (myAvatar->getHeadOrientation() *
+            glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))) * Vectors::UP;
+
+        glm::vec3 hudPoint3d;
+        if (!compositor.calculateRayUICollisionPoint(headPosition, headDirection, hudPoint3d)) {
+            auto hudPoint2d = compositor.overlayFromWorldPoint(hudPoint3d);
+            // We don't know yet if we'll want to make the cursor or laser visible, but we need to move it to see if
+            // it's pointing at a QML tool (aka system overlay).
+            compositor.setReticlePosition(hudPoint2d, false);
+        }
+    } else if (action == controller::Action::CONTEXT_MENU_LEFT_LASER ||
+               action == controller::Action::CONTEXT_MENU_RIGHT_LASER) {
+        auto activeHand = action == controller::Action::CONTEXT_MENU_LEFT_LASER ? controller::LEFT : controller::RIGHT;
+        auto pose = activeHand == controller::LEFT ? myAvatar->getLeftHandPose() : myAvatar->getRightHandPose();
+        if (pose.valid) {
+            int controllerJointIndex = myAvatar->getJointIndex(activeHand == controller::RIGHT ?
+                "_CAMERA_RELATIVE_CONTROLLER_RIGHTHAND" : "_CAMERA_RELATIVE_CONTROLLER_LEFTHAND");
+            glm::quat orientation = myAvatar->getOrientation() *
+                myAvatar->getAbsoluteJointRotationInObjectFrame(controllerJointIndex);
+            glm::vec3 position = myAvatar->getPosition() + myAvatar->getOrientation() *
+                myAvatar->getAbsoluteJointTranslationInObjectFrame(controllerJointIndex);
+
+            // add to the real position so the grab-point is out in front of the hand, a bit
+            auto controllerPosition = position + orientation * compositor.getGrabPointSphereOffset(activeHand);
+            auto controllerDirection = orientation * Vectors::UP;
+            glm::vec3 hudPoint3d;
+            if (compositor.calculateRayUICollisionPoint(controllerPosition, controllerDirection, hudPoint3d)) {
+                auto hudPoint2d = compositor.overlayFromWorldPoint(hudPoint3d);
+
+                // We don't know yet if we'll want to make the cursor or laser visible, but we need to move it to see if
+                // it's pointing at a QML tool (aka system overlay).
+                compositor.setReticlePosition(hudPoint2d, false);
+                
+            } else if (Menu::getInstance()->isOptionChecked(MenuOption::Overlays)) {
+                // With our hud resetting strategy, hudPoint3d should be valid here
+                qCDebug(interfaceapp) << "Controller is parallel to HUD";  // so let us know that our assumptions are wrong.
+            }
+        }
+    }
+    toggleMenuUnderReticle();
+}
+
 void Application::toggleMenuUnderReticle() const {
     // In HMD, if the menu is near the mouse but not under it, the reticle can be at a significantly
     // different depth. When you focus on the menu, the cursor can appear to your crossed eyes as both
     // on the menu and off.
     // Even in 2D, it is arguable whether the user would want the menu to be to the side.
-    const float X_LEFT_SHIFT = 50.0;
+    const float X_LEFT_SHIFT = 50.0f;
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto reticlePosition = getApplicationCompositor().getReticlePosition();
     offscreenUi->toggleMenu(QPoint(reticlePosition.x - X_LEFT_SHIFT, reticlePosition.y));

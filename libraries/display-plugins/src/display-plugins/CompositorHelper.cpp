@@ -341,7 +341,25 @@ glm::mat4 CompositorHelper::getUiTransform() const {
 }
 
 //Finds the collision point of a world space ray
-bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result) const {
+bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction, glm::vec3& result)
+    const {
+
+    // if not in HMD mode, then try to calculate the intersection plane of the 2d ui in the 3d world
+    if (!isHMD()) {
+        // interect HUD plane, 1m in front of camera, using formula:
+        //   scale = hudNormal dot (hudPoint - position) / hudNormal dot direction
+        //   intersection = position + scale*direction
+        auto hudNormal = glm::quat_cast(_currentCamera) * Vectors::FRONT;
+        auto hudPoint = vec3(_currentCamera[3]) + hudNormal; // must also scale if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+        auto denominator = glm::dot(hudNormal, direction);
+        if (denominator == 0.0f) {
+            return false;
+        } // parallel to plane
+        auto numerator = glm::dot(hudNormal, hudPoint - position);
+        auto scale = numerator / denominator;
+        result = position + (scale * direction);
+        return true;
+    }
     auto UITransform = getUiTransform();
     auto relativePosition4 = glm::inverse(UITransform) * vec4(position, 1);
     auto relativePosition = vec3(relativePosition4) / relativePosition4.w;
@@ -350,7 +368,7 @@ bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, c
     float uiRadius = _hmdUIRadius; // * myAvatar->getUniformScale(); // FIXME - how do we want to handle avatar scale
 
     float instersectionDistance;
-    if (raySphereIntersect(relativeDirection, relativePosition, uiRadius, &instersectionDistance)){
+    if (raySphereIntersect(relativeDirection, relativePosition, uiRadius, &instersectionDistance)) {
         result = position + glm::normalize(direction) * instersectionDistance;
         return true;
     }
@@ -395,6 +413,41 @@ glm::vec3 CompositorHelper::sphereSurfaceFromOverlay(const glm::vec2& overlay) c
     auto UITransform = getUiTransform();
     auto position4 = UITransform * vec4(sphereSurfacePoint, 1);
     return vec3(position4) / position4.w;
+}
+
+glm::vec2 CompositorHelper::overlayFromWorldPoint(const glm::vec3& point) const {
+    const float DEGREES_TO_HALF_RADIANS = PI / 360.0f;
+    // Answer the 2d pixel-space location in the HUD that covers the given 3D point.
+    // REQUIRES: that the 3d point be on the hud surface!
+    // Note that this is based on the Camera, and doesn't know anything about any
+    // ray that may or may not have been used to compute the point. E.g., the
+    // overlay point is NOT the intersection of some non-camera ray with the HUD.
+    if (isHMD()) {
+        return overlayFromSphereSurface(point);
+    }
+    auto cameraToPoint = point - vec3(_currentCamera[3]);
+    auto cameraOrientation = glm::quat_cast(_currentCamera);
+    auto cameraX = glm::dot(cameraToPoint, cameraOrientation * Vectors::RIGHT);
+    auto cameraY = glm::dot(cameraToPoint, cameraOrientation * Vectors::UP);
+    auto uiSize =  _currentDisplayPlugin->getRecommendedUiSize();
+    // must adjust if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+    float hudHeight = 2.0f * glm::tan(_textureFov * DEGREES_TO_HALF_RADIANS);
+    auto hudWidth = hudHeight * uiSize.x / uiSize.y;
+    float horizontalFraction = (cameraX / hudWidth + 0.5f);
+    float verticalFraction = 1.0f - (cameraY / hudHeight + 0.5f);
+    float horizontalPixels = uiSize.x * horizontalFraction;
+    float verticalPixels = uiSize.y * verticalFraction;
+    return { horizontalPixels, verticalPixels };
+}
+
+// hand 0 is left, hand 1 is right
+glm::vec3 CompositorHelper::getGrabPointSphereOffset(controller::Hand hand) const {
+    // this offset needs to match GRAB_POINT_SPHERE_OFFSET in scripts/system/libraries/controllers.js:19
+    const glm::vec3 GRAB_POINT_SPHERE_OFFSET = { 0.04f, 0.13f, 0.039f };  // x = upward, y = forward, z = lateral
+    if (hand == controller::RIGHT) {
+        return GRAB_POINT_SPHERE_OFFSET;
+    }
+    return { GRAB_POINT_SPHERE_OFFSET.x * -1.0f, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z };
 }
 
 void CompositorHelper::updateTooltips() {

@@ -205,7 +205,7 @@ public:
     float getFps() const { return _frameCounter.rate(); }
     float getTargetFrameRate() const; // frames/second
 
-    float getFieldOfView() { return _fieldOfView.get(); }
+    float getFieldOfView() const { return _fieldOfView.get(); }
     void setFieldOfView(float fov);
 
     float getSettingConstrainToolbarPosition() { return _constrainToolbarPosition.get(); }
@@ -486,6 +486,7 @@ private:
     void maybeToggleMenuVisible(QMouseEvent* event) const;
     void toggleMenuUnderReticle() const;
     void toggleTabletUI() const;
+    void handleContextMenuAction(controller::Action action) const;
 
     MainWindow* _window;
     QElapsedTimer& _sessionRunTimer;
