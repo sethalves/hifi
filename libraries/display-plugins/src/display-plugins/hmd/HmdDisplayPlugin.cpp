@@ -412,7 +412,7 @@ void HmdDisplayPlugin::updateFrameData() {
         vec3 castStart = vec3(model[3]);
         vec3 castDirection = glm::quat_cast(model) * laserDirection;
 
-        const vec3 GRAB_POINT_SPHERE_OFFSET = compositorHelper->getGrabPointSphereOffset(i);  // x = upward, y = forward, z = lateral
+        const vec3 GRAB_POINT_SPHERE_OFFSET = compositorHelper->getGrabPointSphereOffset(static_cast<controller::Hand>(i));  // x = upward, y = forward, z = lateral
 
         // swizzle grab point so that (x = upward, y = lateral, z = forward)
         vec3 grabPointOffset = glm::vec3(GRAB_POINT_SPHERE_OFFSET.x, GRAB_POINT_SPHERE_OFFSET.z, -GRAB_POINT_SPHERE_OFFSET.y);

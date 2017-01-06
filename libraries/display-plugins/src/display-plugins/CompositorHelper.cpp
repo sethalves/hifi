@@ -431,7 +431,7 @@ glm::vec2 CompositorHelper::overlayFromWorldPoint(const glm::vec3& point) const 
     auto cameraY = glm::dot(cameraToPoint, cameraOrientation * Vectors::UP);
     auto uiSize =  _currentDisplayPlugin->getRecommendedUiSize();
     // must adjust if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
-    float hudHeight = 2.0f * tan(_textureFov * DEGREES_TO_HALF_RADIANS);
+    float hudHeight = 2.0f * glm::tan(_textureFov * DEGREES_TO_HALF_RADIANS);
     auto hudWidth = hudHeight * uiSize.x / uiSize.y;
     float horizontalFraction = (cameraX / hudWidth + 0.5f);
     float verticalFraction = 1.0f - (cameraY / hudHeight + 0.5f);
@@ -441,11 +441,10 @@ glm::vec2 CompositorHelper::overlayFromWorldPoint(const glm::vec3& point) const 
 }
 
 // hand 0 is left, hand 1 is right
-glm::vec3 CompositorHelper::getGrabPointSphereOffset(int hand) const {
+glm::vec3 CompositorHelper::getGrabPointSphereOffset(controller::Hand hand) const {
     // this offset needs to match GRAB_POINT_SPHERE_OFFSET in scripts/system/libraries/controllers.js:19
-    const int RIGHT_HAND = 1;
     const glm::vec3 GRAB_POINT_SPHERE_OFFSET = { 0.04f, 0.13f, 0.039f };  // x = upward, y = forward, z = lateral
-    if (hand == RIGHT_HAND) {
+    if (hand == controller::RIGHT) {
         return GRAB_POINT_SPHERE_OFFSET;
     }
     return { GRAB_POINT_SPHERE_OFFSET.x * -1.0f, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z };
