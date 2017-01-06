@@ -68,6 +68,7 @@ public:
 
     glm::vec2 overlayFromSphereSurface(const glm::vec3& sphereSurfacePoint) const;
     glm::vec3 sphereSurfaceFromOverlay(const glm::vec2& overlay) const;
+    glm::vec2 overlayFromWorldPoint(const glm::vec3& point) const;
 
     void setCameraBaseTransform(const Transform& transform) { _cameraBaseTransform = transform; }
     const Transform& getCameraBaseTransform() const { return _cameraBaseTransform; }
@@ -110,6 +111,8 @@ public:
 
     void setDisplayPlugin(const DisplayPluginPointer& displayPlugin) { _currentDisplayPlugin = displayPlugin; }
     void setFrameInfo(uint32_t frame, const glm::mat4& camera) { _currentCamera = camera; }
+
+    glm::vec3 getGrabPointSphereOffset(int hand) const;
 
     float getHmdUiRadius() const { return _hmdUIRadius; }
 

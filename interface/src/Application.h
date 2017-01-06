@@ -487,11 +487,6 @@ private:
     void toggleMenuUnderReticle() const;
     void handleContextMenuAction(controller::Action action) const;
 
-//    glm::vec3 calculateRayUICollisionPoint(const glm::vec3& position, const glm::vec3& direction) const;
-    glm::vec2 overlayFromWorldPoint(const glm::vec3& point) const;
-    void activeHudPoint2d(controller::Hand activeHand) const;
-    void activeHudPoint2dGamePad() const;
-
     MainWindow* _window;
     QElapsedTimer& _sessionRunTimer;
 

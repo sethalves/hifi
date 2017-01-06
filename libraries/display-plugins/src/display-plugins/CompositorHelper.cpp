@@ -374,8 +374,6 @@ bool CompositorHelper::calculateRayUICollisionPoint(const glm::vec3& position, c
     return false;
 }
 
-
-
 glm::vec2 CompositorHelper::sphericalToOverlay(const glm::vec2& sphericalPos) const {
     glm::vec2 result = sphericalPos;
     result.x *= -1.0f;
@@ -413,6 +411,41 @@ glm::vec3 CompositorHelper::sphereSurfaceFromOverlay(const glm::vec2& overlay) c
     auto UITransform = getUiTransform();
     auto position4 = UITransform * vec4(sphereSurfacePoint, 1);
     return vec3(position4) / position4.w;
+}
+
+glm::vec2 CompositorHelper::overlayFromWorldPoint(const glm::vec3& point) const {
+    const float DEGREES_TO_HALF_RADIANS = PI / 360.0f;
+    // Answer the 2d pixel-space location in the HUD that covers the given 3D point.
+    // REQUIRES: that the 3d point be on the hud surface!
+    // Note that this is based on the Camera, and doesn't know anything about any
+    // ray that may or may not have been used to compute the point. E.g., the
+    // overlay point is NOT the intersection of some non-camera ray with the HUD.
+    if (isHMD()) {
+        return overlayFromSphereSurface(point);
+    }
+    auto cameraToPoint = point - vec3(_currentCamera[3]);
+    auto cameraOrientation = glm::quat_cast(_currentCamera);
+    auto cameraX = glm::dot(cameraToPoint, cameraOrientation * Vectors::RIGHT);
+    auto cameraY = glm::dot(cameraToPoint, cameraOrientation * Vectors::UP);
+    auto uiSize =  _currentDisplayPlugin->getRecommendedUiSize();
+    // must adjust if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
+    float hudHeight = 2.0f * tan(_textureFov * DEGREES_TO_HALF_RADIANS);
+    auto hudWidth = hudHeight * uiSize.x / uiSize.y;
+    float horizontalFraction = (cameraX / hudWidth + 0.5f);
+    float verticalFraction = 1.0f - (cameraY / hudHeight + 0.5f);
+    float horizontalPixels = uiSize.x * horizontalFraction;
+    float verticalPixels = uiSize.y * verticalFraction;
+    return { horizontalPixels, verticalPixels };
+}
+
+// hand 0 is left, hand 1 is right
+glm::vec3 CompositorHelper::getGrabPointSphereOffset(int hand) const {
+    // this offset needs to match the one in libraries/display-plugins/src/display-plugins/hmd/HmdDisplayPlugin.cpp:378
+    const glm::vec3 GRAB_POINT_SPHERE_OFFSET = { 0.04f, 0.13f, 0.039f };  // x = upward, y = forward, z = lateral
+    if (hand == 1) {
+        return GRAB_POINT_SPHERE_OFFSET;
+    }
+    return { GRAB_POINT_SPHERE_OFFSET.x * -1, GRAB_POINT_SPHERE_OFFSET.y, GRAB_POINT_SPHERE_OFFSET.z };
 }
 
 void CompositorHelper::updateTooltips() {
