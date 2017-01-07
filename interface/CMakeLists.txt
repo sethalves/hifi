@@ -3,6 +3,9 @@ project(${TARGET_NAME})
 
 # set a default root dir for each of our optional externals if it was not passed
 set(OPTIONAL_EXTERNALS "LeapMotion")
+if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8) # support Win64 only
+  set(OPTIONAL_EXTERNALS "BinaryFaceHMD")
+endif()
 
 foreach(EXTERNAL ${OPTIONAL_EXTERNALS})
   string(TOUPPER ${EXTERNAL} ${EXTERNAL}_UPPERCASE)
@@ -236,6 +239,14 @@ foreach(EXTERNAL ${OPTIONAL_EXTERNALS})
       target_link_libraries(${TARGET_NAME} ${${${EXTERNAL}_UPPERCASE}_LIBRARIES})
     elseif (APPLE AND NOT INSTALLER_BUILD)
       add_definitions(-DSIXENSE_LIB_FILENAME=\"${${${EXTERNAL}_UPPERCASE}_LIBRARY_RELEASE}\")
+    endif ()
+
+    if (${${EXTERNAL}_UPPERCASE} MATCHES "BINARYFACEHMD")
+      add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${BINARYFACEHMD_INCLUDE_DIRS}/../models"
+        $<TARGET_FILE_DIR:${TARGET_NAME}>/resources/binaryfacehmd
+      )
     endif ()
   endif ()
 endforeach()
