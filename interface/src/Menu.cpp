@@ -34,6 +34,7 @@
 #include "avatar/AvatarManager.h"
 #include "devices/DdeFaceTracker.h"
 #include "devices/Faceshift.h"
+#include "devices/BinaryFaceHMDTracker.h"
 #include "MainWindow.h"
 #include "render/DrawStatus.h"
 #include "scripting/MenuScriptingInterface.h"
@@ -434,7 +435,7 @@ Menu::Menu() {
         QActionGroup* faceTrackerGroup = new QActionGroup(avatarDebugMenu);
 
         bool defaultNoFaceTracking = true;
-#ifdef HAVE_DDE
+#if defined(HAVE_DDE) || defined(HAVE_BINARYFACEHMD)
         defaultNoFaceTracking = false;
 #endif
         QAction* noFaceTracker = addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::NoFaceTracking,
@@ -442,6 +443,12 @@ Menu::Menu() {
             qApp, SLOT(setActiveFaceTracker()));
         faceTrackerGroup->addAction(noFaceTracker);
 
+#ifdef HAVE_BINARYFACEHMD
+        QAction* binaryfacehmdTracker = addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::BinaryFaceHMD,
+          0, false,
+          qApp, SLOT(setActiveFaceTracker()));
+        faceTrackerGroup->addAction(binaryfacehmdTracker);
+#endif
 #ifdef HAVE_FACESHIFT
         QAction* faceshiftFaceTracker = addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::Faceshift,
             0, false,
@@ -455,6 +462,13 @@ Menu::Menu() {
         faceTrackerGroup->addAction(ddeFaceTracker);
 #endif
     }
+#ifdef HAVE_BINARYFACEHMD
+    faceTrackingMenu->addSeparator();
+    QAction* binaryfacehmdReset = addActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::ResetBinaryFaceHMD, 0,
+      DependencyManager::get<BinaryFaceHMDTracker>().data(), SLOT(resetTracker()));
+    QAction* binaryfacehmdCalibrate = addActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::CalibrateBinaryFaceHMD, 0,
+      DependencyManager::get<BinaryFaceHMDTracker>().data(), SLOT(calibrate()));
+#endif
 #ifdef HAVE_DDE
     faceTrackingMenu->addSeparator();
     QAction* binaryEyelidControl = addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::BinaryEyelidControl, 0, true);
@@ -469,7 +483,7 @@ Menu::Menu() {
         DependencyManager::get<DdeFaceTracker>().data(), SLOT(calibrate()));
     ddeCalibrate->setVisible(true);  // DDE face tracking is on by default
 #endif
-#if defined(HAVE_FACESHIFT) || defined(HAVE_DDE)
+#if defined(HAVE_FACESHIFT) || defined(HAVE_DDE) || defined(HAVE_BINARYFACEHMD)
     faceTrackingMenu->addSeparator();
     addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::MuteFaceTracking,
         Qt::CTRL | Qt::SHIFT | Qt::Key_F, true);  // DDE face tracking is on by default
