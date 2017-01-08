@@ -3,7 +3,7 @@
 //
 //
 //  Created by Jungwoon Park on 11/11/16.
-//  Copyright 2016 High Fidelity, Inc. ???
+//  Copyright 2016 BinaryVR, Inc.
 //
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
