@@ -181,6 +181,12 @@ void TabletProxy::emitScriptEvent(QVariant msg) {
     }
 }
 
+void TabletProxy::setScriptURL(const QString& scriptURL) {
+    if (_qmlOffscreenSurface) {
+        QMetaObject::invokeMethod(_qmlOffscreenSurface, "setScriptURL", Qt::AutoConnection, Q_ARG(QString, scriptURL));
+    }
+}
+
 void TabletProxy::addButtonsToHomeScreen() {
     auto tablet = getQmlTablet();
     if (!tablet) {

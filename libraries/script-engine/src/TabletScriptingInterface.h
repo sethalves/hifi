@@ -110,6 +110,13 @@ public:
      */
     Q_INVOKABLE void emitScriptEvent(QVariant msg);
 
+    /**jsdoc
+     * Used to inject some javascript into an html page
+     * @function TabletProxy#setScriptURL
+     * @param msg {object|string}
+     */
+    Q_INVOKABLE void setScriptURL(const QString& scriptURL);
+
 signals:
     /**jsdoc
      * Signaled when this tablet receives an event from the html/js embedded in the tablet
