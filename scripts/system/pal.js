@@ -233,10 +233,6 @@ pal.fromQml.connect(function (message) { // messages are {method, params}, like 
         removeOverlays();
         populateUserList();
         break;
-    case 'updateGain':
-        data = message.params;
-        Users.setAvatarGain(data['sessionId'], data['gain']);
-        break;
     default:
         print('Unrecognized message from Pal.qml:', JSON.stringify(message));
     }
@@ -586,16 +582,14 @@ button.clicked.connect(onClicked);
 pal.visibleChanged.connect(onVisibleChanged);
 pal.closed.connect(off);
 Users.usernameFromIDReply.connect(usernameFromIDReply);
-Users.avatarDisconnected.connect(avatarDisconnected);
-
-function clearLocalQMLDataAndClosePAL() {
-    pal.sendToQml({ method: 'clearLocalQMLData' });
+function clearIgnoredInQMLAndClosePAL() {
+    pal.sendToQml({ method: 'clearIgnored' });
     if (pal.visible) {
         onClicked(); // Close the PAL
     }
 }
-Window.domainChanged.connect(clearLocalQMLDataAndClosePAL);
-Window.domainConnectionRefused.connect(clearLocalQMLDataAndClosePAL);
+Window.domainChanged.connect(clearIgnoredInQMLAndClosePAL);
+Window.domainConnectionRefused.connect(clearIgnoredInQMLAndClosePAL);
 
 //
 // Cleanup.
@@ -606,8 +600,8 @@ Script.scriptEnding.connect(function () {
     pal.visibleChanged.disconnect(onVisibleChanged);
     pal.closed.disconnect(off);
     Users.usernameFromIDReply.disconnect(usernameFromIDReply);
-    Window.domainChanged.disconnect(clearLocalQMLDataAndClosePAL);
-    Window.domainConnectionRefused.disconnect(clearLocalQMLDataAndClosePAL);
+    Window.domainChanged.disconnect(clearIgnoredInQMLAndClosePAL);
+    Window.domainConnectionRefused.disconnect(clearIgnoredInQMLAndClosePAL);
     Messages.unsubscribe(CHANNEL);
     Messages.messageReceived.disconnect(receiveMessage);
     Users.avatarDisconnected.disconnect(avatarDisconnected);

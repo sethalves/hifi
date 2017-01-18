@@ -106,8 +106,7 @@ public:
         ViewFrustum,
         RequestsDomainListData,
         ExitingSpaceBubble,
-        PerAvatarGainSet,
-        LAST_PACKET_TYPE = PerAvatarGainSet
+        LAST_PACKET_TYPE = ExitingSpaceBubble
     };
 };
 
