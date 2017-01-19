@@ -469,8 +469,6 @@ Rectangle {
                     // Set the userName appropriately
                     userModel.setProperty(userIndex, "userName", userName);
                     userModelData[userIndex].userName = userName; // Defensive programming
-                } else {
-                    console.log("updateUsername() called with unknown UUID: ", userId);
                 }
             }
             break;
@@ -486,8 +484,6 @@ Rectangle {
                     if (userIndex != -1) {
                         userModel.setProperty(userIndex, "audioLevel", audioLevel);
                         userModelData[userIndex].audioLevel = audioLevel; // Defensive programming
-                    } else {
-                        console.log("updateUsername() called with unknown UUID: ", userId);
                     }
                 }
             }
