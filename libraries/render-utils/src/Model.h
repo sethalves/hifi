@@ -80,6 +80,7 @@ public:
 
     // new Scene/Engine rendering support
     void setVisibleInScene(bool newValue, std::shared_ptr<render::Scene> scene);
+    void setLayeredInFront(bool layered, std::shared_ptr<render::Scene> scene);
     bool needsFixupInScene() const;
 
     bool needsReload() const { return _needsReload; }
@@ -98,10 +99,13 @@ public:
 
     bool isVisible() const { return _isVisible; }
 
+    bool isLayeredInFront() const { return _isLayeredInFront; }
+
     void updateRenderItems();
     void setRenderItemsNeedUpdate() { _renderItemsNeedUpdate = true; }
     bool getRenderItemsNeedUpdate() { return _renderItemsNeedUpdate; }
     AABox getRenderableMeshBound() const;
+    const render::ItemIDs& fetchRenderItemIDs() const;
 
     bool maybeStartBlender();
 
@@ -123,7 +127,7 @@ public:
     bool getSnapModelToRegistrationPoint() { return _snapModelToRegistrationPoint; }
 
     virtual void simulate(float deltaTime, bool fullUpdate = true);
-    virtual void updateClusterMatrices(glm::vec3 modelPosition, glm::quat modelOrientation);
+    virtual void updateClusterMatrices();
 
     /// Returns a reference to the shared geometry.
     const Geometry::Pointer& getGeometry() const { return _renderGeometry; }
@@ -248,9 +252,6 @@ signals:
 protected:
     bool addedToScene() const { return _addedToScene; }
 
-    void setPupilDilation(float dilation) { _pupilDilation = dilation; }
-    float getPupilDilation() const { return _pupilDilation; }
-
     void setBlendshapeCoefficients(const QVector<float>& coefficients) { _blendshapeCoefficients = coefficients; }
     const QVector<float>& getBlendshapeCoefficients() const { return _blendshapeCoefficients; }
 
@@ -344,7 +345,6 @@ protected:
     void deleteGeometry();
     void initJointTransforms();
 
-    float _pupilDilation;
     QVector<float> _blendshapeCoefficients;
 
     QUrl _url;
@@ -390,6 +390,8 @@ protected:
     QSet<std::shared_ptr<ModelMeshPartPayload>> _modelMeshRenderItemsSet;
     QMap<render::ItemID, render::PayloadPointer> _modelMeshRenderItems;
 
+    render::ItemIDs _modelMeshRenderItemIDs;
+
     bool _addedToScene { false }; // has been added to scene
     bool _needsFixupInScene { true }; // needs to be removed/re-added to scene
     bool _needsReload { true };
@@ -412,6 +414,8 @@ protected:
     bool _hasCalculatedTextureInfo { false };
     int _renderInfoDrawCalls { 0 };
     int _renderInfoHasTransparent { false };
+
+    bool _isLayeredInFront { false };
 
 private:
     float _loadingPriority { 0.0f };

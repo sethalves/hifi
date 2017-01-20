@@ -45,6 +45,8 @@ public:
  
     ContextStats() {}
     ContextStats(const ContextStats& stats) = default;
+
+    void evalDelta(const ContextStats& begin, const ContextStats& end); 
 };
 
 class Backend {
@@ -83,9 +85,10 @@ public:
         return reinterpret_cast<T*>(object.gpuObject.getGPUObject());
     }
 
+    void resetStats() const { _stats = ContextStats(); }
     void getStats(ContextStats& stats) const { stats = _stats; }
 
-
+    virtual bool isTextureManagementSparseEnabled() const = 0;
 
     // These should only be accessed by Backend implementation to repport the buffer and texture allocations,
     // they are NOT public calls
@@ -123,8 +126,9 @@ protected:
     }
 
     friend class Context;
-    ContextStats _stats;
+    mutable ContextStats _stats;
     StereoState _stereo;
+
 };
 
 class Context {
@@ -200,8 +204,14 @@ public:
     void downloadFramebuffer(const FramebufferPointer& srcFramebuffer, const Vec4i& region, QImage& destImage);
 
      // Repporting stats of the context
+    void resetStats() const;
     void getStats(ContextStats& stats) const;
 
+    // Same as above but grabbed at every end of a frame
+    void getFrameStats(ContextStats& stats) const;
+
+    double getFrameTimerGPUAverage() const;
+    double getFrameTimerBatchAverage() const;
 
     static uint32_t getBufferGPUCount();
     static Size getBufferGPUMemoryUsage();
@@ -209,6 +219,7 @@ public:
     static uint32_t getTextureGPUCount();
     static uint32_t getTextureGPUSparseCount();
     static Size getFreeGPUMemory();
+    static Size getUsedGPUMemory();
     static Size getTextureGPUMemoryUsage();
     static Size getTextureGPUVirtualMemoryUsage();
     static Size getTextureGPUFramebufferMemoryUsage();
@@ -221,7 +232,11 @@ protected:
     std::shared_ptr<Backend> _backend;
     bool _frameActive { false };
     FramePointer _currentFrame;
+    RangeTimerPointer _frameRangeTimer;
     StereoState  _stereo;
+
+    // Sampled at the end of every frame, the stats of all the counters
+    mutable ContextStats _frameStats;
 
     // This function can only be called by "static Shader::makeProgram()"
     // makeProgramShader(...) make a program shader ready to be used in a Batch.
@@ -269,7 +284,6 @@ protected:
     static std::atomic<Size> _textureGPUVirtualMemoryUsage;
     static std::atomic<Size> _textureGPUFramebufferMemoryUsage;
     static std::atomic<uint32_t> _textureGPUTransferCount;
-
 
     friend class Backend;
 };

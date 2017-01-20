@@ -27,6 +27,7 @@
 #include "Model.h"
 
 #include "RenderUtilsLogging.h"
+#include <Trace.h>
 
 using namespace std;
 
@@ -91,7 +92,6 @@ Model::Model(RigPointer rig, QObject* parent) :
     _snapModelToRegistrationPoint(false),
     _snappedToRegistrationPoint(false),
     _cauterizeBones(false),
-    _pupilDilation(0.0f),
     _url(HTTP_INVALID_COM),
     _isVisible(true),
     _blendNumber(0),
@@ -216,34 +216,30 @@ void Model::updateRenderItems() {
         render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
 
         Transform modelTransform;
-        modelTransform.setScale(scale);
         modelTransform.setTranslation(self->_translation);
         modelTransform.setRotation(self->_rotation);
 
-        Transform modelMeshOffset;
-        if (self->isLoaded()) {
-            // includes model offset and unitScale.
-            modelMeshOffset = Transform(self->_rig->getGeometryToRigTransform());
-        } else {
-            modelMeshOffset.postTranslate(self->_offset);
-        }
+        Transform scaledModelTransform(modelTransform);
+        scaledModelTransform.setScale(scale);
 
         uint32_t deleteGeometryCounter = self->_deleteGeometryCounter;
 
         render::PendingChanges pendingChanges;
         foreach (auto itemID, self->_modelMeshRenderItems.keys()) {
-            pendingChanges.updateItem<ModelMeshPartPayload>(itemID, [modelTransform, modelMeshOffset, deleteGeometryCounter](ModelMeshPartPayload& data) {
-                if (!data.hasStartedFade() && data._model && data._model->isLoaded() && data._model->getGeometry()->areTexturesLoaded()) {
-                    data.startFade();
-                }
-                // Ensure the model geometry was not reset between frames
-                if (data._model && data._model->isLoaded() && deleteGeometryCounter == data._model->_deleteGeometryCounter) {
-                    // lazy update of cluster matrices used for rendering.  We need to update them here, so we can correctly update the bounding box.
-                    data._model->updateClusterMatrices(modelTransform.getTranslation(), modelTransform.getRotation());
+            pendingChanges.updateItem<ModelMeshPartPayload>(itemID, [modelTransform, deleteGeometryCounter](ModelMeshPartPayload& data) {
+                if (data._model && data._model->isLoaded()) {
+                    if (!data.hasStartedFade() && data._model->getGeometry()->areTexturesLoaded()) {
+                        data.startFade();
+                    }
+                    // Ensure the model geometry was not reset between frames
+                    if (deleteGeometryCounter == data._model->_deleteGeometryCounter) {
+                        // lazy update of cluster matrices used for rendering.  We need to update them here, so we can correctly update the bounding box.
+                        data._model->updateClusterMatrices();
 
-                    // update the model transform and bounding box for this render item.
-                    const Model::MeshState& state = data._model->_meshStates.at(data._meshIndex);
-                    data.updateTransformForSkinnedMesh(modelTransform, modelMeshOffset, state.clusterMatrices);
+                        // update the model transform and bounding box for this render item.
+                        const Model::MeshState& state = data._model->_meshStates.at(data._meshIndex);
+                        data.updateTransformForSkinnedMesh(modelTransform, state.clusterMatrices, state.cauterizedClusterMatrices);
+                    }
                 }
             });
         }
@@ -252,9 +248,9 @@ void Model::updateRenderItems() {
         Transform collisionMeshOffset;
         collisionMeshOffset.setIdentity();
         foreach (auto itemID, self->_collisionRenderItems.keys()) {
-            pendingChanges.updateItem<MeshPartPayload>(itemID, [modelTransform, collisionMeshOffset](MeshPartPayload& data) {
+            pendingChanges.updateItem<MeshPartPayload>(itemID, [scaledModelTransform, collisionMeshOffset](MeshPartPayload& data) {
                 // update the model transform for this render item.
-                data.updateTransform(modelTransform, collisionMeshOffset);
+                data.updateTransform(scaledModelTransform, collisionMeshOffset);
             });
         }
 
@@ -280,7 +276,8 @@ void Model::reset() {
 }
 
 bool Model::updateGeometry() {
-    PROFILE_RANGE(__FUNCTION__);
+    PROFILE_RANGE(render_detail, __FUNCTION__);
+    PerformanceTimer perfTimer("Model::updateGeometry");
     bool needFullUpdate = false;
 
     if (!isLoaded()) {
@@ -291,6 +288,7 @@ bool Model::updateGeometry() {
 
     if (_rig->jointStatesEmpty() && getFBXGeometry().joints.size() > 0) {
         initJointStates();
+        assert(_meshStates.empty());
 
         const FBXGeometry& fbxGeometry = getFBXGeometry();
         foreach (const FBXMesh& mesh, fbxGeometry.meshes) {
@@ -300,6 +298,9 @@ bool Model::updateGeometry() {
 
             _meshStates.append(state);
 
+            // Note: we add empty buffers for meshes that lack blendshapes so we can access the buffers by index
+            // later in ModelMeshPayload, however the vast majority of meshes will not have them.
+            // TODO? make _blendedVertexBuffers a map instead of vector and only add for meshes with blendshapes?
             auto buffer = std::make_shared<gpu::Buffer>();
             if (!mesh.blendshapes.isEmpty()) {
                 buffer->resize((mesh.vertices.size() + mesh.normals.size()) * sizeof(glm::vec3));
@@ -474,7 +475,7 @@ bool Model::convexHullContains(glm::vec3 point) {
 // entity-scripts to call.  I think it would be best to do the picking once-per-frame (in cpu, or gpu if possible)
 // and then the calls use the most recent such result.
 void Model::recalculateMeshBoxes(bool pickAgainstTriangles) {
-    PROFILE_RANGE(__FUNCTION__);
+    PROFILE_RANGE(render, __FUNCTION__);
     bool calculatedMeshTrianglesNeeded = pickAgainstTriangles && !_calculatedMeshTrianglesValid;
 
     if (!_calculatedMeshBoxesValid || calculatedMeshTrianglesNeeded || (!_calculatedMeshPartBoxesValid && pickAgainstTriangles) ) {
@@ -618,6 +619,22 @@ void Model::setVisibleInScene(bool newValue, std::shared_ptr<render::Scene> scen
     }
 }
 
+
+void Model::setLayeredInFront(bool layered, std::shared_ptr<render::Scene> scene) {
+    if (_isLayeredInFront != layered) {
+        _isLayeredInFront = layered;
+
+        render::PendingChanges pendingChanges;
+        foreach(auto item, _modelMeshRenderItems.keys()) {
+            pendingChanges.resetItem(item, _modelMeshRenderItems[item]);
+        }
+        foreach(auto item, _collisionRenderItems.keys()) {
+            pendingChanges.resetItem(item, _collisionRenderItems[item]);
+        }
+        scene->enqueuePendingChanges(pendingChanges);
+    }
+}
+
 bool Model::addToScene(std::shared_ptr<render::Scene> scene,
                        render::PendingChanges& pendingChanges,
                        render::Item::Status::Getters& statusGetters) {
@@ -656,6 +673,7 @@ bool Model::addToScene(std::shared_ptr<render::Scene> scene,
                 hasTransparent = hasTransparent || renderItem.get()->getShapeKey().isTranslucent();
                 verticesCount += renderItem.get()->getVerticesCount();
                 _modelMeshRenderItems.insert(item, renderPayload);
+                _modelMeshRenderItemIDs.emplace_back(item);
             }
             somethingAdded = !_modelMeshRenderItems.empty();
 
@@ -678,6 +696,7 @@ void Model::removeFromScene(std::shared_ptr<render::Scene> scene, render::Pendin
     foreach (auto item, _modelMeshRenderItems.keys()) {
         pendingChanges.removeItem(item);
     }
+    _modelMeshRenderItemIDs.clear();
     _modelMeshRenderItems.clear();
     _modelMeshRenderItemsSet.clear();
 
@@ -848,6 +867,12 @@ void Model::setTextures(const QVariantMap& textures) {
         _needsUpdateTextures = true;
         _needsFixupInScene = true;
         _renderGeometry->setTextures(textures);
+    } else {
+        // FIXME(Huffman): Disconnect previously connected lambdas so we don't set textures multiple
+        // after the geometry has finished loading.
+        connect(&_renderWatcher, &GeometryResourceWatcher::finished, this, [this, textures]() {
+            _renderGeometry->setTextures(textures);
+        });
     }
 }
 
@@ -967,7 +992,7 @@ Blender::Blender(ModelPointer model, int blendNumber, const Geometry::WeakPointe
 }
 
 void Blender::run() {
-    PROFILE_RANGE(__FUNCTION__);
+    PROFILE_RANGE_EX(simulation_animation, __FUNCTION__, 0xFFFF0000, 0, { { "url", _model->getURL().toString() } });
     QVector<glm::vec3> vertices, normals;
     if (_model) {
         int offset = 0;
@@ -1088,7 +1113,8 @@ void Model::snapToRegistrationPoint() {
 }
 
 void Model::simulate(float deltaTime, bool fullUpdate) {
-    PROFILE_RANGE(__FUNCTION__);
+    PROFILE_RANGE(simulation_detail, __FUNCTION__);
+    PerformanceTimer perfTimer("Model::simulate");
     fullUpdate = updateGeometry() || fullUpdate || (_scaleToFit && !_scaledToFit)
                     || (_snapModelToRegistrationPoint && !_snappedToRegistrationPoint);
 
@@ -1125,7 +1151,7 @@ void Model::simulateInternal(float deltaTime) {
 }
 
 // virtual
-void Model::updateClusterMatrices(glm::vec3 modelPosition, glm::quat modelOrientation) {
+void Model::updateClusterMatrices() {
     PerformanceTimer perfTimer("Model::updateClusterMatrices");
 
     if (!_needsUpdateClusterMatrices || !isLoaded()) {
@@ -1133,28 +1159,39 @@ void Model::updateClusterMatrices(glm::vec3 modelPosition, glm::quat modelOrient
     }
     _needsUpdateClusterMatrices = false;
     const FBXGeometry& geometry = getFBXGeometry();
-    glm::mat4 zeroScale(glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+    static const glm::mat4 zeroScale(
+        glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
         glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
         glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
         glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
     auto cauterizeMatrix = _rig->getJointTransform(geometry.neckJointIndex) * zeroScale;
 
-    glm::mat4 modelToWorld = glm::mat4_cast(modelOrientation);
     for (int i = 0; i < _meshStates.size(); i++) {
         MeshState& state = _meshStates[i];
         const FBXMesh& mesh = geometry.meshes.at(i);
-
         for (int j = 0; j < mesh.clusters.size(); j++) {
             const FBXCluster& cluster = mesh.clusters.at(j);
             auto jointMatrix = _rig->getJointTransform(cluster.jointIndex);
-            state.clusterMatrices[j] = modelToWorld * jointMatrix * cluster.inverseBindMatrix;
+#if GLM_ARCH & GLM_ARCH_SSE2
+            glm::mat4 out, inverseBindMatrix = cluster.inverseBindMatrix;
+            glm_mat4_mul((glm_vec4*)&jointMatrix, (glm_vec4*)&inverseBindMatrix, (glm_vec4*)&out);
+            state.clusterMatrices[j] = out;
+#else
+            state.clusterMatrices[j] = jointMatrix * cluster.inverseBindMatrix;
+#endif
 
             // as an optimization, don't build cautrizedClusterMatrices if the boneSet is empty.
             if (!_cauterizeBoneSet.empty()) {
                 if (_cauterizeBoneSet.find(cluster.jointIndex) != _cauterizeBoneSet.end()) {
                     jointMatrix = cauterizeMatrix;
                 }
-                state.cauterizedClusterMatrices[j] = modelToWorld * jointMatrix * cluster.inverseBindMatrix;
+#if GLM_ARCH & GLM_ARCH_SSE2
+                glm::mat4 out, inverseBindMatrix = cluster.inverseBindMatrix;
+                glm_mat4_mul((glm_vec4*)&jointMatrix, (glm_vec4*)&inverseBindMatrix, (glm_vec4*)&out);
+                state.cauterizedClusterMatrices[j] = out;
+#else
+                state.cauterizedClusterMatrices[j] = jointMatrix * cluster.inverseBindMatrix;
+#endif
             }
         }
 
@@ -1266,6 +1303,10 @@ AABox Model::getRenderableMeshBound() const {
     }
 }
 
+const render::ItemIDs& Model::fetchRenderItemIDs() const {
+    return _modelMeshRenderItemIDs;
+}
+
 void Model::createRenderItemSet() {
     if (_collisionGeometry) {
         if (_collisionRenderItemsSet.empty()) {
@@ -1284,7 +1325,7 @@ void Model::createVisibleRenderItemSet() {
 
     // all of our mesh vectors must match in size
     if ((int)meshes.size() != _meshStates.size()) {
-        qDebug() << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
+        qCDebug(renderlogging) << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
         return;
     }
 
@@ -1444,6 +1485,7 @@ void ModelBlender::noteRequiresBlend(ModelPointer model) {
 
     {
         Lock lock(_mutex);
+
         _modelsRequiringBlends.insert(model);
     }
 }
