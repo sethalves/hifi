@@ -2329,7 +2329,7 @@ bool MyAvatar::didTeleport() {
 }
 
 void MyAvatar::handleZoneChange() {
-    EntityTreeRenderer* treeRenderer = qApp->getEntities();
+    auto treeRenderer = qApp->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->myAvatarZone();
     EntityItemPointer simulationZone = zone ? EntityItem::findAncestorZone(zone->getID()) : nullptr;
     QUuid zoneID = simulationZone ? simulationZone->getID() : QUuid();

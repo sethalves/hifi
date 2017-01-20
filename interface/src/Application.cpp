@@ -4079,10 +4079,14 @@ void Application::update(float deltaTime) {
 
                 if (Menu::getInstance()->isOptionChecked(MenuOption::DisplayDebugTimingDetails) &&
                         Menu::getInstance()->isOptionChecked(MenuOption::ExpandPhysicsSimulationTiming)) {
-                    _physicsEngine->harvestPerformanceStats();
+                    forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
+                        physicsEngine->harvestPerformanceStats();
+                    });
                 }
                 // NOTE: the PhysicsEngine stats are written to stdout NOT to Qt log framework
-                _physicsEngine->dumpStatsIfNecessary();
+                forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
+                    physicsEngine->dumpStatsIfNecessary();
+                });
             }
         }
     }
