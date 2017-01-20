@@ -119,7 +119,7 @@ signals:
     void receivedDomainServerList();
     void ignoredNode(const QUuid& nodeID, bool enabled);
     void ignoreRadiusEnabledChanged(bool isIgnored);
-    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint);
+    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint, bool isAdmin);
 
 private slots:
     void stopKeepalivePingTimer();

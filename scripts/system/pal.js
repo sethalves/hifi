@@ -103,6 +103,8 @@ ExtendedOverlay.prototype.select = function (selected) {
         return;
     }
     
+    UserActivityLogger.palAction(selected ? "avatar_selected" : "avatar_deselected", this.key);
+
     this.editOverlay({color: color(selected, this.hovering, this.audioLevel)});
     if (this.model) {
         this.model.editOverlay({textures: textures(selected)});
@@ -232,6 +234,25 @@ pal.fromQml.connect(function (message) { // messages are {method, params}, like 
     case 'refresh':
         removeOverlays();
         populateUserList();
+        UserActivityLogger.palAction("refresh", "");
+        break;
+    case 'updateGain':
+        data = message.params;
+        if (data['isReleased']) {
+            // isReleased=true happens once at the end of a cycle of dragging
+            // the slider about, but with same gain as last isReleased=false so
+            // we don't set the gain in that case, and only here do we want to
+            // send an analytic event.
+            UserActivityLogger.palAction("avatar_gain_changed", data['sessionId']);
+        } else {
+            Users.setAvatarGain(data['sessionId'], data['gain']);
+        }
+        break;
+    case 'displayNameUpdate':
+        if (MyAvatar.displayName != message.params) {
+            MyAvatar.displayName = message.params;
+            UserActivityLogger.palAction("display_name_change", "");
+        }
         break;
     default:
         print('Unrecognized message from Pal.qml:', JSON.stringify(message));
@@ -258,14 +279,12 @@ function populateUserList() {
             displayName: avatar.sessionDisplayName,
             userName: '',
             sessionId: id || '',
-            audioLevel: 0.0
+            audioLevel: 0.0,
+            admin: false
         };
-        // If the current user is an admin OR
-        // they're requesting their own username ("id" is blank)...
-        if (Users.canKick || !id) {
-            // Request the username from the given UUID
-            Users.requestUsernameFromID(id);
-        }
+        // Request the username, fingerprint, and admin status from the given UUID
+        // Username and fingerprint returns default constructor output if the requesting user isn't an admin
+        Users.requestUsernameFromID(id);
         // Request personal mute status and ignore status
         // from NodeList (as long as we're not requesting it for our own ID)
         if (id) {
@@ -280,16 +299,19 @@ function populateUserList() {
 }
 
 // The function that handles the reply from the server
-function usernameFromIDReply(id, username, machineFingerprint) {
+function usernameFromIDReply(id, username, machineFingerprint, isAdmin) {
     var data;
     // If the ID we've received is our ID...
     if (MyAvatar.sessionUUID === id) {
         // Set the data to contain specific strings.
-        data = ['', username];
-    } else {
+        data = ['', username, isAdmin];
+    } else if (Users.canKick) {
         // Set the data to contain the ID and the username (if we have one)
         // or fingerprint (if we don't have a username) string.
-        data = [id, username || machineFingerprint];
+        data = [id, username || machineFingerprint, isAdmin];
+    } else {
+        // Set the data to contain specific strings.
+        data = [id, '', isAdmin];
     }
     print('Username Data:', JSON.stringify(data));
     // Ship the data off to QML

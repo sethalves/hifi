@@ -14,7 +14,7 @@
 
 /* global getEntityCustomData, flatten, Xform, Script, Quat, Vec3, MyAvatar, Entities, Overlays, Settings,
    Reticle, Controller, Camera, Messages, Mat4, getControllerWorldLocation, getGrabPointSphereOffset, setGrabCommunications,
-   Menu */
+   Menu, HMD */
 /* eslint indent: ["error", 4, { "outerIIFEBody": 0 }] */
 
 (function() { // BEGIN LOCAL_SCOPE
@@ -60,10 +60,6 @@ var PICK_WITH_HAND_RAY = true;
 
 var EQUIP_SPHERE_SCALE_FACTOR = 0.65;
 
-var WEB_TOUCH_SPHERE_RADIUS = 0.017;
-var WEB_STYLUS_COLOR = { red: 0, green: 240, blue: 0 };
-var WEB_STYLUS_TIP_COLOR = { red: 0, green: 0, blue: 240 };
-var WEB_STYLUS_ALPHA = 1.0;
 var WEB_DISPLAY_STYLUS_DISTANCE = 0.5;
 var WEB_STYLUS_LENGTH = 0.2;
 var WEB_TOUCH_Y_OFFSET = 0.05; // how far forward (or back with a negative number) to slide stylus in hand
@@ -278,10 +274,6 @@ function distanceBetweenPointAndEntityBoundingBox(point, entityProps) {
     v.z = Math.min(v.z, localMax.z);
 
     return Vec3.distance(v, localPoint);
-}
-
-function angleBetween(a, b) {
-    return Math.acos(Vec3.dot(Vec3.normalize(a), Vec3.normalize(b)));
 }
 
 function projectOntoXYPlane(worldPos, position, rotation, dimensions, registrationPoint) {
@@ -1169,7 +1161,7 @@ function MyController(hand) {
         var nearWeb = false;
         for (var i = 0; i < candidateEntities.length; i++) {
             var props = entityPropertiesCache.getProps(candidateEntities[i]);
-            if (props && (props.type == "Web" || this.isTablet(props))) {
+            if (props && (props.type == "Web" || this.isTablet(candidateEntities[i]))) {
                 nearWeb = true;
                 break;
             }
@@ -1243,14 +1235,32 @@ function MyController(hand) {
     };
 
    this.handleStylusOnHomeButton = function(rayPickInfo) {
-        if (rayPickInfo.entityID) {
-            var entity = rayPickInfo.entityID;
-            var name = entityPropertiesCache.getProps(entity).name;
-            if (name == "homeButton") {
-                if (this.homeButtonTouched == false) {
+        if (rayPickInfo.overlayID) {
+            var homeButton = rayPickInfo.overlayID;
+            var hmdHomeButton = HMD.homeButtonID;
+            if (homeButton === hmdHomeButton) {
+                if (this.homeButtonTouched === false) {
                     this.homeButtonTouched = true;
                     Controller.triggerHapticPulse(1, 20, this.hand);
-                    Messages.sendLocalMessage("home", entity);
+                    Messages.sendLocalMessage("home", homeButton);
+                }
+            } else {
+                this.homeButtonTouched = false;
+            }
+        } else {
+            this.homeButtonTouched = false;
+        }
+    };
+
+    this.handleLaserOnHomeButton = function(rayPickInfo) {
+        if (rayPickInfo.overlayID && this.triggerSmoothedGrab()) {
+            var homeButton = rayPickInfo.overlayID;
+            var hmdHomeButton = HMD.homeButtonID;
+            if (homeButton === hmdHomeButton) {
+                if (this.homeButtonTouched === false) {
+                    this.homeButtonTouched = true;
+                    Controller.triggerHapticPulse(1, 20, this.hand);
+                    Messages.sendLocalMessage("home", homeButton);
                 }
             } else {
                 this.homeButtonTouched = false;
@@ -1636,6 +1646,7 @@ function MyController(hand) {
         }
 
         if (rayPickInfo.distance >= WEB_STYLUS_LENGTH / 2.0 + WEB_TOUCH_Y_OFFSET) {
+            this.handleLaserOnHomeButton(rayPickInfo);
             if (this.handleLaserOnWebEntity(rayPickInfo)) {
                 return;
             }
@@ -1680,8 +1691,8 @@ function MyController(hand) {
         Reticle.setVisible(false);
     };
 
-    this.isTablet = function (props) {
-        if (props.name == "WebTablet Tablet") { // XXX what's a better way to know this?
+    this.isTablet = function (entityID) {
+        if (entityID === HMD.tabletID) { // XXX what's a better way to know this?
             return true;
         }
         return false;
@@ -1703,7 +1714,7 @@ function MyController(hand) {
                     id: this.hand + 1, // 0 is reserved for hardware mouse
                     pos2D: projectOntoEntityXYPlane(entity, rayPickInfo.intersection),
                     pos3D: rayPickInfo.intersection,
-                    normal: rayPickInfo.normal,
+                     normal: rayPickInfo.normal,
                     direction: rayPickInfo.searchRay.direction,
                     button: "None"
                 };
@@ -1757,6 +1768,10 @@ function MyController(hand) {
         var pointerEvent;
         if (rayPickInfo.overlayID) {
             var overlay = rayPickInfo.overlayID;
+
+            if (!this.homeButtonTouched) {
+                Controller.triggerHapticPulse(1, 20, this.hand);
+            }
 
             if (Overlays.keyboardFocusOverlay != overlay) {
                 Entities.keyboardFocusEntity = null;
@@ -1865,7 +1880,7 @@ function MyController(hand) {
                 Entities.sendHoverOverEntity(entity, pointerEvent);
             }
 
-            if (this.triggerSmoothedGrab() && (!isEditing() || this.isTablet(props))) {
+            if (this.triggerSmoothedGrab() && (!isEditing() || this.isTablet(entity))) {
                 this.grabbedEntity = entity;
                 this.setState(STATE_ENTITY_LASER_TOUCHING, "begin touching entity '" + name + "'");
                 return true;
@@ -2018,9 +2033,7 @@ function MyController(hand) {
         }
 
         Controller.triggerHapticPulse(HAPTIC_PULSE_STRENGTH, HAPTIC_PULSE_DURATION, this.hand);
-
         this.turnOffVisualizations();
-
         this.previousRoomControllerPosition = roomControllerPosition;
     };
 
@@ -2719,6 +2732,8 @@ function MyController(hand) {
             Entities.sendClickReleaseOnEntity(this.grabbedEntity, pointerEvent);
             Entities.sendHoverLeaveEntity(this.grabbedEntity, pointerEvent);
         }
+        this.grabbedEntity = null;
+        this.grabbedOverlay = null;
     };
 
     this.entityTouching = function(dt) {
@@ -2728,7 +2743,6 @@ function MyController(hand) {
         entityPropertiesCache.addEntity(this.grabbedEntity);
 
         if (this.state == STATE_ENTITY_LASER_TOUCHING && !this.triggerSmoothedGrab()) {
-            this.grabbedEntity = null;
             this.setState(STATE_OFF, "released trigger");
             return;
         }
@@ -2740,7 +2754,6 @@ function MyController(hand) {
 
             if (this.state == STATE_ENTITY_STYLUS_TOUCHING &&
                 intersectInfo.distance > WEB_STYLUS_LENGTH / 2.0 + WEB_TOUCH_Y_OFFSET) {
-                this.grabbedEntity = null;
                 this.setState(STATE_OFF, "pulled away from web entity");
                 return;
             }
@@ -2837,19 +2850,19 @@ function MyController(hand) {
             Overlays.sendMouseReleaseOnOverlay(this.grabbedOverlay, pointerEvent);
             Overlays.sendHoverLeaveOverlay(this.grabbedOverlay, pointerEvent);
         }
+        this.grabbedEntity = null;
+        this.grabbedOverlay = null;
     };
 
     this.overlayTouching = function (dt) {
         this.touchingEnterTimer += dt;
 
         if (this.state == STATE_OVERLAY_STYLUS_TOUCHING && this.triggerSmoothedSqueezed()) {
-            this.grabbedEntity = null;
             this.setState(STATE_OFF, "trigger squeezed");
             return;
         }
 
         if (this.state == STATE_OVERLAY_LASER_TOUCHING && !this.triggerSmoothedGrab()) {
-            this.grabbedEntity = null;
             this.setState(STATE_OFF, "released trigger");
             return;
         }
