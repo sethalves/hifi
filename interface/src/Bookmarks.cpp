@@ -136,7 +136,7 @@ void Bookmarks::bookmarkLocation() {
     QString bookmarkAddress = addressManager->currentAddress().toString();
     
     Menu* menubar = Menu::getInstance();
-    if (contains(bookmarkName)) {
+    if (qApp->offscreenUiEnabled() && contains(bookmarkName)) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         auto duplicateBookmarkMessage = offscreenUi->createMessageBox(OffscreenUi::ICON_WARNING, "Duplicate Bookmark",
             "The bookmark name you entered already exists in your list.",

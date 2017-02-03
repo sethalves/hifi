@@ -80,6 +80,9 @@ public:
 
 
 QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
+    if (!qApp->offscreenUiEnabled()) {
+        return nullptr;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto desktop = offscreenUi->getDesktop();
     Qt::ConnectionType connectionType = Qt::AutoConnection;

@@ -145,21 +145,24 @@ QString HMDScriptingInterface::preferredAudioOutput() const {
 }
 
 bool HMDScriptingInterface::setHandLasers(int hands, bool enabled, const glm::vec4& color, const glm::vec3& direction) const {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    offscreenUi->executeOnUiThread([offscreenUi, enabled] {
-        offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);
-    });
+    if (qApp->offscreenUiEnabled()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
+        offscreenUi->executeOnUiThread([offscreenUi, enabled] {
+            offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);
+        });
+    }
     return qApp->getActiveDisplayPlugin()->setHandLaser(hands,
         enabled ? DisplayPlugin::HandLaserMode::Overlay : DisplayPlugin::HandLaserMode::None,
         color, direction);
 }
 
 bool HMDScriptingInterface::setExtraLaser(const glm::vec3& worldStart, bool enabled, const glm::vec4& color, const glm::vec3& direction) const {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    offscreenUi->executeOnUiThread([offscreenUi, enabled] {
-        offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);
-    });
-
+    if (qApp->offscreenUiEnabled()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
+        offscreenUi->executeOnUiThread([offscreenUi, enabled] {
+            offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);
+        });
+    }
 
     auto myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
     auto sensorToWorld = myAvatar->getSensorToWorldMatrix();

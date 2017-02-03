@@ -170,10 +170,11 @@ Menu::Menu() {
 
     // Avatar > Attachments...
     auto action = addActionToQMenuAndActionHash(avatarMenu, MenuOption::Attachments);
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->show(QString("hifi/dialogs/AttachmentsDialog.qml"), "AttachmentsDialog");
-    });
-
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->show(QString("hifi/dialogs/AttachmentsDialog.qml"), "AttachmentsDialog");
+        });
+    }
 
     // Avatar > Size
     MenuWrapper* avatarSizeMenu = avatarMenu->addMenu("Size");
@@ -293,21 +294,27 @@ Menu::Menu() {
 
     // Settings > General...
     action = addActionToQMenuAndActionHash(settingsMenu, MenuOption::Preferences, Qt::CTRL | Qt::Key_Comma, nullptr, nullptr, QAction::PreferencesRole);
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GeneralPreferencesDialog.qml"), "GeneralPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GeneralPreferencesDialog.qml"), "GeneralPreferencesDialog");
+        });
+    }
 
     // Settings > Avatar...
     action = addActionToQMenuAndActionHash(settingsMenu, "Avatar...");
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AvatarPreferencesDialog.qml"), "AvatarPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AvatarPreferencesDialog.qml"), "AvatarPreferencesDialog");
+        });
+    }
 
     // Settings > LOD...
     action = addActionToQMenuAndActionHash(settingsMenu, "LOD...");
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/LodPreferencesDialog.qml"), "LodPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/LodPreferencesDialog.qml"), "LodPreferencesDialog");
+        });
+    }
 
     // Settings > Control with Speech [advanced]
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN)
@@ -326,9 +333,11 @@ Menu::Menu() {
 
     // Developer > Graphics...
     action = addActionToQMenuAndActionHash(developerMenu, "Graphics...");
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GraphicsPreferencesDialog.qml"), "GraphicsPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GraphicsPreferencesDialog.qml"), "GraphicsPreferencesDialog");
+        });
+    }
 
     // Developer > Render >>>
     MenuWrapper* renderOptionsMenu = developerMenu->addMenu("Render");
@@ -549,10 +558,12 @@ Menu::Menu() {
     // Developer > Network >>>
     MenuWrapper* networkMenu = developerMenu->addMenu("Network");
     action = addActionToQMenuAndActionHash(networkMenu, MenuOption::Networking);
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QUrl("hifi/dialogs/NetworkingPreferencesDialog.qml"),
-                                                      "NetworkingPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QUrl("hifi/dialogs/NetworkingPreferencesDialog.qml"),
+                                                          "NetworkingPreferencesDialog");
+        });
+    }
     addActionToQMenuAndActionHash(networkMenu, MenuOption::ReloadContent, 0, qApp, SLOT(reloadResourceCaches()));
     addCheckableActionToQMenuAndActionHash(networkMenu,
         MenuOption::DisableActivityLogger,
@@ -613,9 +624,11 @@ Menu::Menu() {
     });
 
     action = addActionToQMenuAndActionHash(audioDebugMenu, "Buffers...");
-    connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AudioPreferencesDialog.qml"), "AudioPreferencesDialog");
-    });
+    if (qApp->offscreenUiEnabled()) {
+        connect(action, &QAction::triggered, [] {
+            DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AudioPreferencesDialog.qml"), "AudioPreferencesDialog");
+        });
+    }
 
     addCheckableActionToQMenuAndActionHash(audioDebugMenu, MenuOption::AudioNoiseReduction, 0, true,
         audioIO.data(), SLOT(toggleAudioNoiseReduction()));

@@ -85,6 +85,9 @@ OffscreenUi::OffscreenUi() {
 }
 
 QObject* OffscreenUi::getFlags() {
+    if (!offscreenFlags) {
+        offscreenFlags = new OffscreenFlags();
+    }
     return offscreenFlags;
 }
 

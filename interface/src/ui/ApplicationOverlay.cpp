@@ -96,6 +96,9 @@ void ApplicationOverlay::renderOverlay(RenderArgs* renderArgs) {
 }
 
 void ApplicationOverlay::renderQmlUi(RenderArgs* renderArgs) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     PROFILE_RANGE(app, __FUNCTION__);
 
     if (!_uiTexture) {
@@ -195,7 +198,9 @@ void ApplicationOverlay::renderRearView(RenderArgs* renderArgs) {
         glm::vec2 texCoordMaxCorner(viewport.width() * renderRatio / float(selfieTexture->getWidth()), viewport.height() * renderRatio / float(selfieTexture->getHeight()));
 
         batch.setResourceTexture(0, selfieTexture);
-        float alpha = DependencyManager::get<OffscreenUi>()->getDesktop()->property("unpinnedAlpha").toFloat();
+        float alpha = qApp->offscreenUiEnabled() ?
+            DependencyManager::get<OffscreenUi>()->getDesktop()->property("unpinnedAlpha").toFloat() :
+            0.5f;
         geometryCache->renderQuad(batch, bottomLeft, topRight, texCoordMinCorner, texCoordMaxCorner, glm::vec4(1.0f, 1.0f, 1.0f, alpha), _rearViewGeometryId);
 
         batch.setResourceTexture(0, renderArgs->_whiteTexture);

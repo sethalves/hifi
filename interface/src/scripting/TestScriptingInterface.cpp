@@ -57,6 +57,10 @@ void TestScriptingInterface::waitIdle() {
 }
 
 bool TestScriptingInterface::loadTestScene(QString scene) {
+    if (!qApp->offscreenUiEnabled()) {
+        return false;
+    }
+
     static const QString TEST_ROOT = "https://raw.githubusercontent.com/highfidelity/hifi_tests/master/";
     static const QString TEST_BINARY_ROOT = "https://hifi-public.s3.amazonaws.com/test_scene_data/";
     static const QString TEST_SCRIPTS_ROOT = TEST_ROOT + "scripts/";

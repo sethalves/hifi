@@ -20,6 +20,7 @@
 #include <MappingRequest.h>
 #include <NetworkLogging.h>
 #include <OffscreenUi.h>
+#include "Application.h"
 
 void AssetMappingModel::clear() {
     // make sure we are on the same thread before we touch the hash
@@ -76,6 +77,9 @@ void AssetMappingsScriptingInterface::getMapping(QString path, QJSValue callback
 }
 
 void AssetMappingsScriptingInterface::uploadFile(QString path, QString mapping, QJSValue startedCallback, QJSValue completedCallback, bool dropEvent) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     static const QString helpText =
         "Upload your asset to a specific folder by entering the full path. Specifying\n"
         "a new folder name will automatically create that folder for you.";

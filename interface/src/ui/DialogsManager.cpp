@@ -61,6 +61,9 @@ void DialogsManager::showFeed() {
 }
 
 void DialogsManager::setDomainConnectionFailureVisibility(bool visible) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     if (visible) {
         ConnectionFailureDialog::show();
     } else {

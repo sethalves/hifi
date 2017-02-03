@@ -100,6 +100,9 @@ void OverlayConductor::centerUI() {
 }
 
 void OverlayConductor::update(float dt) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     bool currentVisible = !offscreenUi->getDesktop()->property("pinned").toBool();
 

@@ -75,6 +75,9 @@ QScriptValue QmlWindowClass::constructor(QScriptContext* context, QScriptEngine*
     auto properties = parseArguments(context);
     QmlWindowClass* retVal { nullptr };
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
+    if (!offscreenUi) {
+        return QScriptValue(false);
+    }
     offscreenUi->executeOnUiThread([&] {
         retVal = new QmlWindowClass();
         retVal->initQml(properties);

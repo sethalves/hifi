@@ -12,6 +12,7 @@
 #include <QtCore/QObject>
 #include <OffscreenUi.h>
 #include <DependencyManager.h>
+#include "Application.h"
 
 class QmlWrapper : public QObject {
     Q_OBJECT
@@ -21,6 +22,9 @@ public:
     }
 
     Q_INVOKABLE void writeProperty(QString propertyName, QVariant propertyValue) {
+        if (!qApp->offscreenUiEnabled()) {
+            return;
+        }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->executeOnUiThread([=] {
             _qmlObject->setProperty(propertyName.toStdString().c_str(), propertyValue);
@@ -28,6 +32,9 @@ public:
     }
 
     Q_INVOKABLE void writeProperties(QVariant propertyMap) {
+        if (!qApp->offscreenUiEnabled()) {
+            return;
+        }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->executeOnUiThread([=] {
             QVariantMap map = propertyMap.toMap();
@@ -38,6 +45,9 @@ public:
     }
 
     Q_INVOKABLE QVariant readProperty(const QString& propertyName) {
+        if (!qApp->offscreenUiEnabled()) {
+            return QVariant(false);
+        }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         return offscreenUi->returnFromUiThread([&]()->QVariant {
             return _qmlObject->property(propertyName.toStdString().c_str());
@@ -45,6 +55,9 @@ public:
     }
 
     Q_INVOKABLE QVariant readProperties(const QVariant& propertyList) {
+        if (!qApp->offscreenUiEnabled()) {
+            return QVariant(false);
+        }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         return offscreenUi->returnFromUiThread([&]()->QVariant {
             QVariantMap result;

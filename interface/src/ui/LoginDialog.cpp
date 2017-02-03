@@ -20,6 +20,7 @@
 #include <plugins/PluginManager.h>
 #include <plugins/SteamClientPlugin.h>
 
+#include "Application.h"
 #include "AccountManager.h"
 #include "DependencyManager.h"
 #include "Menu.h"
@@ -141,6 +142,9 @@ void LoginDialog::createAccountFromStream(QString username) {
 }
 
 void LoginDialog::openUrl(const QString& url) const {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto browser = offscreenUi->load("Browser.qml");
     browser->setProperty("url", url);

@@ -28,7 +28,9 @@ static Setting::Handle<int> rearViewZoomLevel(QStringList() << SETTINGS_GROUP_NA
 AvatarInputs* AvatarInputs::getInstance() {
     if (!INSTANCE) {
         AvatarInputs::registerType();
-        AvatarInputs::show();
+        if (qApp->offscreenUiEnabled()) {
+            AvatarInputs::show();
+        }
         Q_ASSERT(INSTANCE);
     }
     return INSTANCE;
@@ -62,8 +64,11 @@ void AvatarInputs::update() {
     if (!Menu::getInstance()) {
         return;
     }
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     AI_UPDATE(mirrorVisible, Menu::getInstance()->isOptionChecked(MenuOption::MiniMirror) && !qApp->isHMDMode()
-        && !Menu::getInstance()->isOptionChecked(MenuOption::FullscreenMirror));
+              && !Menu::getInstance()->isOptionChecked(MenuOption::FullscreenMirror));
     AI_UPDATE(cameraEnabled, !Menu::getInstance()->isOptionChecked(MenuOption::NoFaceTracking));
     AI_UPDATE(cameraMuted, Menu::getInstance()->isOptionChecked(MenuOption::MuteFaceTracking));
     AI_UPDATE(isHMD, qApp->isHMDMode());

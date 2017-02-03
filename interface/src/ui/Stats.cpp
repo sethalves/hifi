@@ -39,12 +39,15 @@ using namespace std;
 static Stats* INSTANCE{ nullptr };
 
 Stats* Stats::getInstance() {
-    if (!INSTANCE) {
-        Stats::registerType();
-        Stats::show();
-        Q_ASSERT(INSTANCE);
+    if (qApp->offscreenUiEnabled()) {
+        if (!INSTANCE) {
+            Stats::registerType();
+            Stats::show();
+            Q_ASSERT(INSTANCE);
+        }
+        return INSTANCE;
     }
-    return INSTANCE;
+    return nullptr;
 }
 
 Stats::Stats(QQuickItem* parent) :  QQuickItem(parent) {

@@ -639,11 +639,17 @@ void Overlays::setKeyboardFocusOverlay(unsigned int id) {
 }
 
 float Overlays::width() const {
+    if (!qApp->offscreenUiEnabled()) {
+        return 640.0f;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     return offscreenUi->getWindow()->size().width();
 }
 
 float Overlays::height() const {
+    if (!qApp->offscreenUiEnabled()) {
+        return 480.0f;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     return offscreenUi->getWindow()->size().height();
 }

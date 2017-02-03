@@ -34,6 +34,9 @@ void DesktopScriptingInterface::setOverlayAlpha(float alpha) {
 }
 
 void DesktopScriptingInterface::show(const QString& path, const QString&  title) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "show", Qt::QueuedConnection, Q_ARG(QString, path), Q_ARG(QString, title));
         return;

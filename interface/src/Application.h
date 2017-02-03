@@ -109,6 +109,7 @@ class Application : public QApplication,
     friend class OctreePacketProcessor;
 
 private:
+    bool _offscreenUiEnabled { true };
     bool _shouldRunServer { false };
     QString _runServerPath;
     RunningMarker _runningMarker;
@@ -141,7 +142,8 @@ public:
     static void initPlugins(const QStringList& arguments);
     static void shutdownPlugins();
 
-    Application(int& argc, char** argv, QElapsedTimer& startup_time, bool runServer, QString runServerPathOption);
+    Application(int& argc, char** argv, QElapsedTimer& startup_time, bool runServer,
+                QString runServerPathOption, bool disableOffscreenUi);
     ~Application();
 
     void postLambdaEvent(std::function<void()> f) override;
@@ -291,6 +293,8 @@ public:
     Q_INVOKABLE void sendHoverEnterEntity(QUuid id, PointerEvent event);
     Q_INVOKABLE void sendHoverOverEntity(QUuid id, PointerEvent event);
     Q_INVOKABLE void sendHoverLeaveEntity(QUuid id, PointerEvent event);
+
+    bool offscreenUiEnabled() const { return _offscreenUiEnabled; }
 
 signals:
     void svoImportRequested(const QString& url);

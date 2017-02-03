@@ -32,6 +32,9 @@ QmlOverlay::QmlOverlay(const QUrl& url, const QmlOverlay* textOverlay)
 }
 
 void QmlOverlay::buildQmlElement(const QUrl& url) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     offscreenUi->returnFromUiThread([=] {
         offscreenUi->load(url, [=](QQmlContext* context, QObject* object) {
@@ -55,6 +58,9 @@ QmlOverlay::~QmlOverlay() {
 }
 
 void QmlOverlay::setProperties(const QVariantMap& properties) {
+    if (!qApp->offscreenUiEnabled()) {
+        return;
+    }
     Overlay2D::setProperties(properties);
     auto bounds = _bounds;
     std::weak_ptr<QQuickItem> weakQmlElement = _qmlElement;

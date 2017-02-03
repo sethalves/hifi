@@ -420,7 +420,10 @@ void ScriptEngines::setScriptsLocation(const QString& scriptsLocation) {
 
 void ScriptEngines::reloadAllScripts() {
     DependencyManager::get<ScriptCache>()->clearCache();
-    DependencyManager::get<OffscreenUi>()->clearCache();
+    auto offscreenUi = DependencyManager::get<OffscreenUi>();
+    if (offscreenUi) {
+        offscreenUi->clearCache();
+    }
     emit scriptsReloading();
     stopAllScripts(true);
 }

@@ -136,13 +136,16 @@ int main(int argc, const char* argv[]) {
     QCommandLineOption checkMinSpecOption("checkMinSpec", "Check if machine meets minimum specifications");
     QCommandLineOption runServerOption("runServer", "Whether to run the server");
     QCommandLineOption serverContentPathOption("serverContentPath", "Where to find server content", "serverContentPath");
+    QCommandLineOption disableOffscreenUiOption("disableOffscreenUi", "Disable OffscreenUi");
     parser.addOption(checkMinSpecOption);
     parser.addOption(runServerOption);
     parser.addOption(serverContentPathOption);
+    parser.addOption(disableOffscreenUiOption);
     parser.parse(arguments);
     bool runServer = parser.isSet(runServerOption);
     bool serverContentPathOptionIsSet = parser.isSet(serverContentPathOption);
     QString serverContentPathOptionValue = serverContentPathOptionIsSet ? parser.value(serverContentPathOption) : QString();
+    bool disableOffscreenUi = parser.isSet(disableOffscreenUiOption);
 
     QElapsedTimer startupTime;
     startupTime.start();
@@ -187,7 +190,8 @@ int main(int argc, const char* argv[]) {
 
     int exitCode;
     {
-        Application app(argc, const_cast<char**>(argv), startupTime, runServer, serverContentPathOptionValue);
+        Application app(argc, const_cast<char**>(argv), startupTime, runServer,
+                        serverContentPathOptionValue, disableOffscreenUi);
 
         // If we failed the OpenGLVersion check, log it.
         if (override) {
