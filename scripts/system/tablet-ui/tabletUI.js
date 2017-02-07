@@ -82,12 +82,13 @@
     Messages.subscribe("toggleHand");
     Messages.messageReceived.connect(toggleHand);
 
-    Script.setInterval(updateShowTablet, 100);
-
     // Initialise variables used to calculate audio level
     var accumulatedLevel = 0.0;
     // Note: Might have to tweak the following two based on the rate we're getting the data
     var AVERAGING_RATIO = 0.05;
+    var MIC_LEVEL_UPDATE_INTERVAL_MS = 100;
+
+    Script.setInterval(updateShowTablet, MIC_LEVEL_UPDATE_INTERVAL_MS);
 
     // Calculate microphone level with the same scaling equation (log scale, exponentially averaged) in AvatarInputs and pal.js
     function getMicLevel() {
