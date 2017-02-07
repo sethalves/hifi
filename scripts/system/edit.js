@@ -456,6 +456,9 @@ var toolBar = (function () {
 
 
     that.toggle = function () {
+        if (!isActive) {
+            HMD.showTablet = false;
+        }
         that.setActive(!isActive);
         activeButton.editProperties({isActive: isActive});
     };

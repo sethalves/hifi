@@ -43,6 +43,8 @@ public:
      */
     Q_INVOKABLE QObject* getTablet(const QString& tabletId);
 
+    Q_INVOKABLE void deactivateAll();
+
     void setQmlTabletRoot(QString tabletId, QQuickItem* qmlTabletRoot, QObject* qmlOffscreenSurface);
 
     void processEvent(const QKeyEvent* event);
@@ -127,6 +129,8 @@ public:
     QQuickItem* getQmlTablet() const;
 
     QQuickItem* getQmlMenu() const;
+
+    Q_INVOKABLE void deactivateAll();
 
 signals:
     /**jsdoc

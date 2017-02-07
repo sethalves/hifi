@@ -28,7 +28,7 @@ class HMDScriptingInterface : public AbstractHMDScriptingInterface, public Depen
     Q_PROPERTY(glm::vec3 position READ getPosition)
     Q_PROPERTY(glm::quat orientation READ getOrientation)
     Q_PROPERTY(bool mounted READ isMounted)
-    Q_PROPERTY(bool showTablet READ getShouldShowTablet)
+    Q_PROPERTY(bool showTablet READ getShouldShowTablet WRITE setShouldShowTablet)
     Q_PROPERTY(QUuid tabletID READ getCurrentTableUIID WRITE setCurrentTabletUIID)
     Q_PROPERTY(unsigned int homeButtonID READ getCurrentHomeButtonUUID WRITE setCurrentHomeButtonUUID)
     

@@ -512,6 +512,7 @@ function off() {
 }
 function onClicked() {
     if (!pal.visible) {
+        HMD.showTablet = false;
         Users.requestsDomainListData = true;
         populateUserList();
         pal.raise();

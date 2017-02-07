@@ -32,6 +32,7 @@
         UIWebTablet.register();
         HMD.tabletID = UIWebTablet.tabletEntityID;
         HMD.homeButtonID = UIWebTablet.homeButtonEntity;
+        Tablet.deactivateAll();
     }
 
     function hideTabletUI() {

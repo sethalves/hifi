@@ -56,6 +56,7 @@
             enabled = !enabled;
             button.editProperties({isActive: enabled});
         } else {
+            HMD.showTablet = false;
             Menu.triggerOption('Help...');
             enabled = !enabled;
             button.editProperties({isActive: enabled});

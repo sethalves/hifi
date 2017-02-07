@@ -39,6 +39,13 @@ QObject* TabletScriptingInterface::getTablet(const QString& tabletId) {
     }
 }
 
+void TabletScriptingInterface::deactivateAll() {
+    TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet("com.highfidelity.interface.tablet.system"));
+    if (tablet) {
+        tablet->deactivateAll();
+    }
+}
+
 void TabletScriptingInterface::setQmlTabletRoot(QString tabletId, QQuickItem* qmlTabletRoot, QObject* qmlOffscreenSurface) {
     TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet(tabletId));
     if (tablet) {
@@ -259,6 +266,15 @@ QObject* TabletProxy::addButton(const QVariant& properties) {
 
 bool TabletProxy::onHomeScreen() {
     return _state == State::Home;
+}
+
+void TabletProxy::deactivateAll() {
+    for (auto& buttonProxy : _tabletButtonProxies) {
+        QVariantMap properties = buttonProxy->getProperties();
+        if (properties.contains("isActive") && properties["isActive"].toBool()) {
+            buttonProxy->clickedSlot();
+        }
+    }
 }
 
 void TabletProxy::removeButton(QObject* tabletButtonProxy) {

@@ -20,6 +20,9 @@ var toolBar = null;
 var tablet = null;
 
 function onAddressBarShown(visible) {
+    if (visible) {
+        HMD.showTablet = false;
+    }
     button.editProperties({isActive: visible});
 }
 
