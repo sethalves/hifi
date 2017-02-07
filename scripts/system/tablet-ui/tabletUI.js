@@ -86,9 +86,9 @@
     var accumulatedLevel = 0.0;
     // Note: Might have to tweak the following two based on the rate we're getting the data
     var AVERAGING_RATIO = 0.05;
-    var MIC_LEVEL_UPDATE_INTERVAL_MS = 100;
+    var TABLET_UPDATE_INTERVAL = 100;
 
-    Script.setInterval(updateShowTablet, MIC_LEVEL_UPDATE_INTERVAL_MS);
+    Script.setInterval(updateShowTablet, TABLET_UPDATE_INTERVAL);
 
     // Calculate microphone level with the same scaling equation (log scale, exponentially averaged) in AvatarInputs and pal.js
     function getMicLevel() {
