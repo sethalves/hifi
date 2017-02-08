@@ -77,7 +77,29 @@ bool HMDScriptingInterface::shouldShowHandControllers() const {
     return _showHandControllersCount > 0;
 }
 
-void  HMDScriptingInterface::closeTablet() {
+uint64_t lastTabletUIToggle { 0 };
+const uint64_t toggleTabletUILockout { 500000 };
+void HMDScriptingInterface::toggleShouldShowTablet() {
+    uint64_t now = usecTimestampNow();
+    if (now - lastTabletUIToggle < toggleTabletUILockout) {
+        return;
+    }
+    lastTabletUIToggle = now;
+    _showTablet = !_showTablet;
+}
+
+void HMDScriptingInterface::setShouldShowTablet(bool value) {
+    if (_showTablet != value) {
+        toggleShouldShowTablet();
+    }
+}
+
+bool HMDScriptingInterface::getShouldShowTablet() const {
+    return _showTablet;
+}
+
+void HMDScriptingInterface::closeTablet() {
+    lastTabletUIToggle = usecTimestampNow();
     _showTablet = false;
 }
 
