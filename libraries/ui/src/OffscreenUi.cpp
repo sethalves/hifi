@@ -16,6 +16,7 @@
 #include <QtQml/QtQml>
 
 #include <gl/GLHelpers.h>
+#include <shared/GlobalAppProperties.h>
 
 #include <AbstractUriHandler.h>
 #include <AccountManager.h>
@@ -85,7 +86,7 @@ OffscreenUi::OffscreenUi() {
 }
 
 QObject* OffscreenUi::getFlags() {
-    if (!offscreenFlags) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         offscreenFlags = new OffscreenFlags();
     }
     return offscreenFlags;

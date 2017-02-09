@@ -12,7 +12,7 @@
 #include <QtCore/QObject>
 #include <OffscreenUi.h>
 #include <DependencyManager.h>
-#include "Application.h"
+#include <shared/GlobalAppProperties.h>
 
 class QmlWrapper : public QObject {
     Q_OBJECT
@@ -22,7 +22,7 @@ public:
     }
 
     Q_INVOKABLE void writeProperty(QString propertyName, QVariant propertyValue) {
-        if (!qApp->offscreenUiEnabled()) {
+        if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             return;
         }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -32,7 +32,7 @@ public:
     }
 
     Q_INVOKABLE void writeProperties(QVariant propertyMap) {
-        if (!qApp->offscreenUiEnabled()) {
+        if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             return;
         }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -45,7 +45,7 @@ public:
     }
 
     Q_INVOKABLE QVariant readProperty(const QString& propertyName) {
-        if (!qApp->offscreenUiEnabled()) {
+        if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             return QVariant(false);
         }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -55,7 +55,7 @@ public:
     }
 
     Q_INVOKABLE QVariant readProperties(const QVariant& propertyList) {
-        if (!qApp->offscreenUiEnabled()) {
+        if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             return QVariant(false);
         }
         auto offscreenUi = DependencyManager::get<OffscreenUi>();

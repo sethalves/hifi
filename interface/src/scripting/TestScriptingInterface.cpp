@@ -15,6 +15,7 @@
 #include <Trace.h>
 #include <StatTracker.h>
 #include <OffscreenUi.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 
@@ -57,7 +58,7 @@ void TestScriptingInterface::waitIdle() {
 }
 
 bool TestScriptingInterface::loadTestScene(QString scene) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return false;
     }
 

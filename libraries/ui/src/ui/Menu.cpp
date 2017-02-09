@@ -13,6 +13,7 @@
 #include <QtWidgets/QShortcut>
 
 #include <SettingHandle.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "../VrMenu.h"
 #include "../OffscreenUi.h"
@@ -546,8 +547,8 @@ void Menu::removeActionGroup(const QString& groupName) {
 }
 
 MenuWrapper::MenuWrapper(ui::Menu& rootMenu, QMenu* menu) : _rootMenu(rootMenu), _realMenu(menu) {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->addMenu(menu);
         });
@@ -569,8 +570,8 @@ void MenuWrapper::setEnabled(bool enabled) {
 
 QAction* MenuWrapper::addSeparator() {
     QAction* action = _realMenu->addSeparator();
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->addSeparator(_realMenu);
         });
@@ -580,8 +581,8 @@ QAction* MenuWrapper::addSeparator() {
 
 void MenuWrapper::addAction(QAction* action) {
     _realMenu->addAction(action);
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->addAction(_realMenu, action);
         });
@@ -590,8 +591,8 @@ void MenuWrapper::addAction(QAction* action) {
 
 QAction* MenuWrapper::addAction(const QString& menuName) {
     QAction* action = _realMenu->addAction(menuName);
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->addAction(_realMenu, action);
         });
@@ -601,8 +602,8 @@ QAction* MenuWrapper::addAction(const QString& menuName) {
 
 QAction* MenuWrapper::addAction(const QString& menuName, const QObject* receiver, const char* member, const QKeySequence& shortcut) {
     QAction* action = _realMenu->addAction(menuName, receiver, member, shortcut);
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->addAction(_realMenu, action);
         });
@@ -612,8 +613,8 @@ QAction* MenuWrapper::addAction(const QString& menuName, const QObject* receiver
 
 void MenuWrapper::removeAction(QAction* action) {
     _realMenu->removeAction(action);
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->removeAction(action);
         });
@@ -622,8 +623,8 @@ void MenuWrapper::removeAction(QAction* action) {
 
 void MenuWrapper::insertAction(QAction* before, QAction* action) {
     _realMenu->insertAction(before, action);
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->addMenuInitializer([=](VrMenu* vrMenu) {
             vrMenu->insertAction(before, action);
         });

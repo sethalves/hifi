@@ -15,6 +15,7 @@
 #include <QScriptValue>
 
 #include <SettingHandle.h>
+#include <shared/GlobalAppProperties.h>
 
 #include <display-plugins/CompositorHelper.h>
 
@@ -255,7 +256,7 @@ int WindowScriptingInterface::openMessageBox(QString title, QString text, int bu
 }
 
 int WindowScriptingInterface::createMessageBox(QString title, QString text, int buttons, int defaultButton) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return -1;
     }
     auto messageBox = DependencyManager::get<OffscreenUi>()->createMessageBox(OffscreenUi::ICON_INFORMATION, title, text, 

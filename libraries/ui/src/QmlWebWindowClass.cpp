@@ -12,6 +12,7 @@
 
 #include <QtScript/QScriptContext>
 #include <QtScript/QScriptEngine>
+#include <shared/GlobalAppProperties.h>
 
 #include "OffscreenUi.h"
 
@@ -22,10 +23,10 @@ static const char* const SCRIPT_PROPERTY = "scriptUrl";
 QScriptValue QmlWebWindowClass::constructor(QScriptContext* context, QScriptEngine* engine) {
     auto properties = parseArguments(context);
     QmlWebWindowClass* retVal { nullptr };
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (!offscreenUi) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return QScriptValue(false);
     }
+    auto offscreenUi = DependencyManager::get<OffscreenUi>();
     offscreenUi->executeOnUiThread([&] {
         retVal = new QmlWebWindowClass();
         retVal->initQml(properties);

@@ -24,6 +24,7 @@
 #include <OffscreenUi.h>
 #include <PerfStat.h>
 #include <plugins/DisplayPlugin.h>
+#include <shared/GlobalAppProperties.h>
 
 #include <gl/Context.h>
 
@@ -39,7 +40,7 @@ using namespace std;
 static Stats* INSTANCE{ nullptr };
 
 Stats* Stats::getInstance() {
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         if (!INSTANCE) {
             Stats::registerType();
             Stats::show();

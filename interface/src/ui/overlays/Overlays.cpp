@@ -17,6 +17,7 @@
 #include <OffscreenUi.h>
 #include <render/Scene.h>
 #include <RegisteredMetaTypes.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "InterfaceLogging.h"
@@ -639,16 +640,16 @@ void Overlays::setKeyboardFocusOverlay(unsigned int id) {
 }
 
 float Overlays::width() const {
-    if (!qApp->offscreenUiEnabled()) {
-        return 640.0f;
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        return 0.0f;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     return offscreenUi->getWindow()->size().width();
 }
 
 float Overlays::height() const {
-    if (!qApp->offscreenUiEnabled()) {
-        return 480.0f;
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        return 0.0f;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     return offscreenUi->getWindow()->size().height();

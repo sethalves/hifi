@@ -23,6 +23,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 
+#include <shared/GlobalAppProperties.h>
 #include "OffscreenUi.h"
 
 static const char* const SOURCE_PROPERTY = "source";
@@ -74,10 +75,10 @@ QVariantMap QmlWindowClass::parseArguments(QScriptContext* context) {
 QScriptValue QmlWindowClass::constructor(QScriptContext* context, QScriptEngine* engine) {
     auto properties = parseArguments(context);
     QmlWindowClass* retVal { nullptr };
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (!offscreenUi) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return QScriptValue(false);
     }
+    auto offscreenUi = DependencyManager::get<OffscreenUi>();
     offscreenUi->executeOnUiThread([&] {
         retVal = new QmlWindowClass();
         retVal->initQml(properties);

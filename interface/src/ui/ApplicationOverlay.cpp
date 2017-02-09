@@ -19,6 +19,7 @@
 #include <CursorManager.h>
 #include <PerfStat.h>
 #include <gl/Config.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "AudioClient.h"
 #include "audio/AudioScope.h"
@@ -96,7 +97,7 @@ void ApplicationOverlay::renderOverlay(RenderArgs* renderArgs) {
 }
 
 void ApplicationOverlay::renderQmlUi(RenderArgs* renderArgs) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     PROFILE_RANGE(app, __FUNCTION__);
@@ -198,7 +199,7 @@ void ApplicationOverlay::renderRearView(RenderArgs* renderArgs) {
         glm::vec2 texCoordMaxCorner(viewport.width() * renderRatio / float(selfieTexture->getWidth()), viewport.height() * renderRatio / float(selfieTexture->getHeight()));
 
         batch.setResourceTexture(0, selfieTexture);
-        float alpha = qApp->offscreenUiEnabled() ?
+        float alpha = qApp->property(hifi::properties::ENABLE_UI).toBool() ?
             DependencyManager::get<OffscreenUi>()->getDesktop()->property("unpinnedAlpha").toFloat() :
             0.5f;
         geometryCache->renderQuad(batch, bottomLeft, topRight, texCoordMinCorner, texCoordMaxCorner, glm::vec4(1.0f, 1.0f, 1.0f, alpha), _rearViewGeometryId);

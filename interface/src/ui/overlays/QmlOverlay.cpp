@@ -18,6 +18,7 @@
 #include <SharedUtil.h>
 #include <TextureCache.h>
 #include <ViewFrustum.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "text/FontFamilies.h"
@@ -32,7 +33,7 @@ QmlOverlay::QmlOverlay(const QUrl& url, const QmlOverlay* textOverlay)
 }
 
 void QmlOverlay::buildQmlElement(const QUrl& url) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -58,7 +59,7 @@ QmlOverlay::~QmlOverlay() {
 }
 
 void QmlOverlay::setProperties(const QVariantMap& properties) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     Overlay2D::setProperties(properties);

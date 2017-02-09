@@ -26,6 +26,7 @@
 #include <VrMenu.h>
 #include <ScriptEngines.h>
 #include <MenuItemProperties.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "AccountManager.h"
@@ -170,7 +171,7 @@ Menu::Menu() {
 
     // Avatar > Attachments...
     auto action = addActionToQMenuAndActionHash(avatarMenu, MenuOption::Attachments);
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->show(QString("hifi/dialogs/AttachmentsDialog.qml"), "AttachmentsDialog");
         });
@@ -294,7 +295,7 @@ Menu::Menu() {
 
     // Settings > General...
     action = addActionToQMenuAndActionHash(settingsMenu, MenuOption::Preferences, Qt::CTRL | Qt::Key_Comma, nullptr, nullptr, QAction::PreferencesRole);
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GeneralPreferencesDialog.qml"), "GeneralPreferencesDialog");
         });
@@ -302,7 +303,7 @@ Menu::Menu() {
 
     // Settings > Avatar...
     action = addActionToQMenuAndActionHash(settingsMenu, "Avatar...");
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AvatarPreferencesDialog.qml"), "AvatarPreferencesDialog");
         });
@@ -310,7 +311,7 @@ Menu::Menu() {
 
     // Settings > LOD...
     action = addActionToQMenuAndActionHash(settingsMenu, "LOD...");
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/LodPreferencesDialog.qml"), "LodPreferencesDialog");
         });
@@ -333,7 +334,7 @@ Menu::Menu() {
 
     // Developer > Graphics...
     action = addActionToQMenuAndActionHash(developerMenu, "Graphics...");
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GraphicsPreferencesDialog.qml"), "GraphicsPreferencesDialog");
         });
@@ -558,7 +559,7 @@ Menu::Menu() {
     // Developer > Network >>>
     MenuWrapper* networkMenu = developerMenu->addMenu("Network");
     action = addActionToQMenuAndActionHash(networkMenu, MenuOption::Networking);
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QUrl("hifi/dialogs/NetworkingPreferencesDialog.qml"),
                                                           "NetworkingPreferencesDialog");
@@ -624,7 +625,7 @@ Menu::Menu() {
     });
 
     action = addActionToQMenuAndActionHash(audioDebugMenu, "Buffers...");
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(action, &QAction::triggered, [] {
             DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AudioPreferencesDialog.qml"), "AudioPreferencesDialog");
         });

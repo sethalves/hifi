@@ -19,8 +19,8 @@
 #include <NetworkingConstants.h>
 #include <plugins/PluginManager.h>
 #include <plugins/SteamClientPlugin.h>
+#include <shared/GlobalAppProperties.h>
 
-#include "Application.h"
 #include "AccountManager.h"
 #include "DependencyManager.h"
 #include "Menu.h"
@@ -142,7 +142,7 @@ void LoginDialog::createAccountFromStream(QString username) {
 }
 
 void LoginDialog::openUrl(const QString& url) const {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();

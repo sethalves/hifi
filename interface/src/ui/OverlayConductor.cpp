@@ -10,6 +10,7 @@
 
 #include <OffscreenUi.h>
 #include <display-plugins/CompositorHelper.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "avatar/AvatarManager.h"
@@ -100,7 +101,7 @@ void OverlayConductor::centerUI() {
 }
 
 void OverlayConductor::update(float dt) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();

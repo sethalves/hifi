@@ -428,7 +428,9 @@ bool setupEssentials(int& argc, char** argv) {
     const char** constArgv = const_cast<const char**>(argv);
     const char* portStr = getCmdOption(argc, constArgv, "--listenPort");
     const int listenPort = portStr ? atoi(portStr) : INVALID_PORT;
+
     bool disableOffscreenUi = cmdOptionExists(argc, constArgv, "--disableOffscreenUi");
+    qApp->setProperty(hifi::properties::ENABLE_UI, !disableOffscreenUi);
 
     Setting::init();
 
@@ -548,10 +550,8 @@ Setting::Handle<int> sessionRunTime{ "sessionRunTime", 0 };
 const float DEFAULT_HMD_TABLET_SCALE_PERCENT = 100.0f;
 const float DEFAULT_DESKTOP_TABLET_SCALE_PERCENT = 75.0f;
 
-Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bool runServer,
-                         QString runServerPathOption, bool disableOffscreenUi) :
+Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bool runServer, QString runServerPathOption) :
     QApplication(argc, argv),
-    _offscreenUiEnabled(!disableOffscreenUi),
     _shouldRunServer(runServer),
     _runServerPath(runServerPathOption),
     _runningMarker(this, RUNNING_MARKER_FILENAME),
@@ -856,7 +856,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         getEntities()->reloadEntityScripts();
     }, Qt::QueuedConnection);
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         connect(scriptEngines, &ScriptEngines::scriptLoadError,
                 scriptEngines, [](const QString& filename, const QString& error){
                     OffscreenUi::warning(nullptr, "Error Loading Script", filename + " failed to load.");
@@ -1037,7 +1037,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                     break;
             }
 
-            if (!qApp->offscreenUiEnabled()) {
+            if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
                 return;
             }
 
@@ -1129,7 +1129,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         return qApp->getMyAvatar()->getCharacterController()->onGround() ? 1 : 0;
     });
     _applicationStateDevice->setInputVariant(STATE_NAV_FOCUSED, []() -> float {
-        return (qApp->offscreenUiEnabled() && DependencyManager::get<OffscreenUi>()->navigationFocused()) ? 1 : 0;
+        return (qApp->property(hifi::properties::ENABLE_UI).toBool() && DependencyManager::get<OffscreenUi>()->navigationFocused()) ? 1 : 0;
     });
 
     // Setup the _keyboardMouseDevice, _touchscreenDevice and the user input mapper with the default bindings
@@ -1151,7 +1151,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     // Now that we've loaded the menu and thus switched to the previous display plugin
     // we can unlock the desktop repositioning code, since all the positions will be
     // relative to the desktop size for this plugin
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->getDesktop()->setProperty("repositionLocked", false);
     }
@@ -1568,7 +1568,7 @@ void Application::domainConnectionRefused(const QString& reasonMessage, int reas
         case DomainHandler::ConnectionRefusedReason::Unknown: {
             QString message = "Unable to connect to the location you are visiting.\n";
             message += reasonMessage;
-            if (qApp->offscreenUiEnabled()) {
+            if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
                 OffscreenUi::warning("", message);
             }
             break;
@@ -1667,7 +1667,7 @@ void Application::aboutToQuit() {
     getActiveDisplayPlugin()->deactivate();
 
     // Hide Running Scripts dialog so that it gets destroyed in an orderly manner; prevents warnings at shutdown.
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         DependencyManager::get<OffscreenUi>()->hide("RunningScripts");
     }
 
@@ -1753,7 +1753,7 @@ void Application::cleanupBeforeQuit() {
 #endif
 
     // stop QML
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         DependencyManager::destroy<OffscreenUi>();
     }
 
@@ -1924,7 +1924,7 @@ void Application::initializeUi() {
 
     QQmlContext* rootContext { nullptr };
     QQmlEngine* engine { nullptr };
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->create(_glWidget->qglContext());
 
@@ -1948,8 +1948,7 @@ void Application::initializeUi() {
 
     setupPreferences();
 
-    if (qApp->offscreenUiEnabled()) {
-        auto offscreenUi = DependencyManager::get<OffscreenUi>();
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         // For some reason there is already an "Application" object in the QML context,
         // though I can't find it. Hence, "ApplicationInterface"
         rootContext->setContextProperty("ApplicationInterface", this);
@@ -2018,6 +2017,7 @@ void Application::initializeUi() {
             rootContext->setContextProperty("Steam", new SteamScriptingInterface(engine, steamClient.get()));
         }
 
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         _glWidget->installEventFilter(offscreenUi.data());
         offscreenUi->setMouseTranslator([=](const QPointF& pt) {
             QPointF result = pt;
@@ -2055,7 +2055,7 @@ void Application::initializeUi() {
     });
 
     // Pre-create a couple of Web3D overlays to speed up tablet UI
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenSurfaceCache = DependencyManager::get<OffscreenQmlSurfaceCache>();
         offscreenSurfaceCache->reserve(Web3DOverlay::QML, 2);
     }
@@ -2121,7 +2121,7 @@ void Application::paintGL() {
         batch.resetStages();
     });
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto inputs = AvatarInputs::getInstance();
         if (inputs->mirrorVisible()) {
             PerformanceTimer perfTimer("Mirror");
@@ -2317,7 +2317,7 @@ void Application::paintGL() {
     renderArgs._blitFramebuffer.reset();
     renderArgs._context->enableStereo(false);
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         Stats::getInstance()->setRenderDetails(renderArgs._details);
     }
 
@@ -2362,7 +2362,7 @@ void Application::setDesktopTabletScale(float desktopTabletScale) {
 }
 
 void Application::setSettingConstrainToolbarPosition(bool setting) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     _constrainToolbarPosition.set(setting);
@@ -2370,7 +2370,7 @@ void Application::setSettingConstrainToolbarPosition(bool setting) {
 }
 
 void Application::aboutApp() {
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         InfoView::show(INFO_WELCOME_PATH);
     }
 }
@@ -2400,7 +2400,7 @@ void Application::showHelp() {
     queryString.addQueryItem("handControllerName", handControllerName);
     queryString.addQueryItem("defaultTab", defaultTab);
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         InfoView::show(INFO_HELP_PATH, false, queryString.toString());
     }
 }
@@ -2435,7 +2435,7 @@ void Application::resizeGL() {
         loadViewFrustum(_myCamera, _viewFrustum);
     }
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         auto uiSize = displayPlugin->getRecommendedUiSize();
         // Bit of a hack since there's no device pixel ratio change event I can find.
@@ -2637,7 +2637,7 @@ bool Application::eventFilter(QObject* object, QEvent* event) {
     }
 
     if (event->type() == QEvent::ShortcutOverride) {
-        if (qApp->offscreenUiEnabled() && DependencyManager::get<OffscreenUi>()->shouldSwallowShortcut(event)) {
+        if (qApp->property(hifi::properties::ENABLE_UI).toBool() && DependencyManager::get<OffscreenUi>()->shouldSwallowShortcut(event)) {
             event->accept();
             return true;
         }
@@ -2711,7 +2711,7 @@ void Application::keyPressEvent(QKeyEvent* event) {
 
             case Qt::Key_X:
                 if (isShifted && isMeta) {
-                    if (qApp->offscreenUiEnabled()) {
+                    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
                         auto offscreenUi = DependencyManager::get<OffscreenUi>();
                         offscreenUi->togglePinned();
                         //offscreenUi->getRootContext()->engine()->clearComponentCache();
@@ -2729,7 +2729,7 @@ void Application::keyPressEvent(QKeyEvent* event) {
 
             case Qt::Key_B:
                 if (isMeta) {
-                    if (qApp->offscreenUiEnabled()) {
+                    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
                         auto offscreenUi = DependencyManager::get<OffscreenUi>();
                         offscreenUi->load("Browser.qml");
                     }
@@ -3096,7 +3096,7 @@ void Application::mouseMoveEvent(QMouseEvent* event) {
         return; // bail
     }
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         auto eventPosition = compositor.getMouseEventPosition(event);
         QPointF transformedPos = offscreenUi->mapToVirtualScreen(eventPosition, _glWidget);
@@ -3134,7 +3134,7 @@ void Application::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void Application::mousePressEvent(QMouseEvent* event) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
 
@@ -3191,7 +3191,7 @@ void Application::mouseDoublePressEvent(QMouseEvent* event) const {
 }
 
 void Application::mouseReleaseEvent(QMouseEvent* event) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
 
@@ -3448,14 +3448,13 @@ void Application::idle(float nsecsElapsed) {
     // Update the deadlock watchdog
     updateHeartbeat();
 
-    if (qApp->offscreenUiEnabled()) {
-        auto offscreenUi = DependencyManager::get<OffscreenUi>();
-
-        // These tasks need to be done on our first idle, because we don't want the showing of
-        // overlay subwindows to do a showDesktop() until after the first time through
-        static bool firstIdle = true;
-        if (firstIdle) {
+    // These tasks need to be done on our first idle, because we don't want the showing of
+    // overlay subwindows to do a showDesktop() until after the first time through
+    static bool firstIdle = true;
+    if (firstIdle) {
+        if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             firstIdle = false;
+            auto offscreenUi = DependencyManager::get<OffscreenUi>();
             connect(offscreenUi.data(), &OffscreenUi::showDesktop, this, &Application::showDesktop);
         }
     }
@@ -3502,7 +3501,7 @@ void Application::idle(float nsecsElapsed) {
     float secondsSinceLastUpdate = nsecsElapsed / NSECS_PER_MSEC / MSECS_PER_SECOND;
 
     // If the offscreen Ui has something active that is NOT the root, then assume it has keyboard focus.
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         if (_keyboardDeviceHasFocus &&
             offscreenUi && offscreenUi->getWindow()->activeFocusItem() != offscreenUi->getRootItem()) {
@@ -3515,7 +3514,7 @@ void Application::idle(float nsecsElapsed) {
 
     checkChangeCursor();
 
-    if (offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         Stats::getInstance()->updateStats();
     }
 
@@ -5264,7 +5263,7 @@ void Application::nodeActivated(SharedNodePointer node) {
     if (node->getType() == NodeType::AssetServer) {
         // asset server just connected - check if we have the asset browser showing
 
-        if (qApp->offscreenUiEnabled()) {
+        if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             auto offscreenUi = DependencyManager::get<OffscreenUi>();
             auto assetDialog = offscreenUi->getRootItem()->findChild<QQuickItem*>("AssetServer");
 
@@ -5342,7 +5341,7 @@ void Application::nodeKilled(SharedNodePointer node) {
     } else if (node->getType() == NodeType::AssetServer) {
         // asset server going away - check if we have the asset browser showing
 
-        if (qApp->offscreenUiEnabled()) {
+        if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             auto offscreenUi = DependencyManager::get<OffscreenUi>();
             auto assetDialog = offscreenUi->getRootItem()->findChild<QQuickItem*>("AssetServer");
 
@@ -5802,7 +5801,7 @@ bool Application::displayAvatarAttachmentConfirmationDialog(const QString& name)
 }
 
 void Application::toggleRunningScriptsWidget() const {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     static const QUrl url("hifi/dialogs/RunningScripts.qml");
@@ -5833,7 +5832,7 @@ void Application::showAssetServerWidget(QString filePath) {
             emit uploadRequest(filePath);
         }
     };
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         DependencyManager::get<OffscreenUi>()->show(url, "AssetServer", startUpload);
     }
     startUpload(nullptr, nullptr);
@@ -6127,7 +6126,7 @@ void Application::addAssetToWorldInfo(QString modelName, QString infoText) {
     _addAssetToWorldInfoKeys.append(modelName);
     _addAssetToWorldInfoMessages.append(infoText);
 
-    if (qApp->offscreenUiEnabled() && !_addAssetToWorldErrorTimer.isActive()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool() && !_addAssetToWorldErrorTimer.isActive()) {
         if (!_addAssetToWorldMessageBox) {
             _addAssetToWorldMessageBox = DependencyManager::get<OffscreenUi>()->createMessageBox(OffscreenUi::ICON_INFORMATION,
                 "Downloading Model", "", QMessageBox::NoButton, QMessageBox::NoButton);
@@ -6211,7 +6210,7 @@ void Application::addAssetToWorldError(QString modelName, QString errorText) {
 
     addAssetToWorldInfoClear(modelName);
 
-    if (qApp->offscreenUiEnabled() && !_addAssetToWorldMessageBox) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool() && !_addAssetToWorldMessageBox) {
         _addAssetToWorldMessageBox = DependencyManager::get<OffscreenUi>()->createMessageBox(OffscreenUi::ICON_INFORMATION,
             "Downloading Model", "", QMessageBox::NoButton, QMessageBox::NoButton);
         connect(_addAssetToWorldMessageBox, SIGNAL(destroyed()), this, SLOT(onAssetToWorldMessageBoxClosed()));
@@ -6687,7 +6686,7 @@ void Application::updateDisplayMode() {
 
     // Make the switch atomic from the perspective of other threads
     bool wasRepositionLocked { false };
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         std::unique_lock<std::mutex> lock(_displayPluginLock);
         // Tell the desktop to no reposition (which requires plugin info), until we have set the new plugin, below.
@@ -6725,7 +6724,7 @@ void Application::updateDisplayMode() {
         }
     }
 
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         _offscreenContext->makeCurrent();
         offscreenUi->resize(fromGlm(newDisplayPlugin->getRecommendedUiSize()));

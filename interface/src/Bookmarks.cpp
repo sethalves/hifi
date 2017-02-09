@@ -17,6 +17,7 @@
 #include <QJsonDocument>
 #include <QMessageBox>
 #include <QStandardPaths>
+#include <shared/GlobalAppProperties.h>
 
 #include <AddressManager.h>
 #include <Application.h>
@@ -136,7 +137,7 @@ void Bookmarks::bookmarkLocation() {
     QString bookmarkAddress = addressManager->currentAddress().toString();
     
     Menu* menubar = Menu::getInstance();
-    if (qApp->offscreenUiEnabled() && contains(bookmarkName)) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool() && contains(bookmarkName)) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         auto duplicateBookmarkMessage = offscreenUi->createMessageBox(OffscreenUi::ICON_WARNING, "Duplicate Bookmark",
             "The bookmark name you entered already exists in your list.",

@@ -20,7 +20,7 @@
 #include <MappingRequest.h>
 #include <NetworkLogging.h>
 #include <OffscreenUi.h>
-#include "Application.h"
+#include <shared/GlobalAppProperties.h>
 
 void AssetMappingModel::clear() {
     // make sure we are on the same thread before we touch the hash
@@ -77,7 +77,7 @@ void AssetMappingsScriptingInterface::getMapping(QString path, QJSValue callback
 }
 
 void AssetMappingsScriptingInterface::uploadFile(QString path, QString mapping, QJSValue startedCallback, QJSValue completedCallback, bool dropEvent) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     static const QString helpText =

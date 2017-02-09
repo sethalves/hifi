@@ -17,6 +17,7 @@
 #include <Application.h>
 #include <MainWindow.h>
 #include <PathUtils.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "AddressBarDialog.h"
 #include "BandwidthDialog.h"
@@ -61,7 +62,7 @@ void DialogsManager::showFeed() {
 }
 
 void DialogsManager::setDomainConnectionFailureVisibility(bool visible) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     if (visible) {

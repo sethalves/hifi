@@ -19,6 +19,7 @@
 #include <display-plugins/CompositorHelper.h>
 #include <DependencyManager.h>
 #include <OffscreenUi.h>
+#include <shared/GlobalAppProperties.h>
 
 int DesktopScriptingInterface::getWidth() {
     QSize size = qApp->getWindow()->windowHandle()->screen()->virtualSize();
@@ -34,7 +35,7 @@ void DesktopScriptingInterface::setOverlayAlpha(float alpha) {
 }
 
 void DesktopScriptingInterface::show(const QString& path, const QString&  title) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     if (QThread::currentThread() != thread()) {

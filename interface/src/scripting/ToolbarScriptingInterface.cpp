@@ -12,6 +12,7 @@
 #include <QtCore/QThread>
 
 #include <OffscreenUi.h>
+#include <shared/GlobalAppProperties.h>
 #include "QmlWrapper.h"
 
 class ToolbarButtonProxy : public QmlWrapper {
@@ -80,7 +81,7 @@ public:
 
 
 QObject* ToolbarScriptingInterface::getToolbar(const QString& toolbarId) {
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return nullptr;
     }
     auto offscreenUi = DependencyManager::get<OffscreenUi>();

@@ -19,6 +19,7 @@
 #include <OffscreenUi.h>
 #include <plugins/PluginUtils.h>
 #include <QUuid>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 
@@ -145,7 +146,7 @@ QString HMDScriptingInterface::preferredAudioOutput() const {
 }
 
 bool HMDScriptingInterface::setHandLasers(int hands, bool enabled, const glm::vec4& color, const glm::vec3& direction) const {
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->executeOnUiThread([offscreenUi, enabled] {
             offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);
@@ -157,7 +158,7 @@ bool HMDScriptingInterface::setHandLasers(int hands, bool enabled, const glm::ve
 }
 
 bool HMDScriptingInterface::setExtraLaser(const glm::vec3& worldStart, bool enabled, const glm::vec4& color, const glm::vec3& direction) const {
-    if (qApp->offscreenUiEnabled()) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->executeOnUiThread([offscreenUi, enabled] {
             offscreenUi->getDesktop()->setProperty("hmdHandMouseActive", enabled);

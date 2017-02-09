@@ -15,7 +15,7 @@
 #include <SettingHandle.h>
 #include <UserActivityLogger.h>
 #include <PathUtils.h>
-
+#include <shared/GlobalAppProperties.h>
 #include <OffscreenUi.h>
 
 #include "ScriptEngine.h"
@@ -420,8 +420,8 @@ void ScriptEngines::setScriptsLocation(const QString& scriptsLocation) {
 
 void ScriptEngines::reloadAllScripts() {
     DependencyManager::get<ScriptCache>()->clearCache();
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    if (offscreenUi) {
+    if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
+        auto offscreenUi = DependencyManager::get<OffscreenUi>();
         offscreenUi->clearCache();
     }
     emit scriptsReloading();

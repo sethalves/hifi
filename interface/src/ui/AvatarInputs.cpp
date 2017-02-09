@@ -11,6 +11,7 @@
 
 #include <AudioClient.h>
 #include <SettingHandle.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "devices/FaceTracker.h"
@@ -28,7 +29,7 @@ static Setting::Handle<int> rearViewZoomLevel(QStringList() << SETTINGS_GROUP_NA
 AvatarInputs* AvatarInputs::getInstance() {
     if (!INSTANCE) {
         AvatarInputs::registerType();
-        if (qApp->offscreenUiEnabled()) {
+        if (qApp->property(hifi::properties::ENABLE_UI).toBool()) {
             AvatarInputs::show();
         }
         Q_ASSERT(INSTANCE);
@@ -64,7 +65,7 @@ void AvatarInputs::update() {
     if (!Menu::getInstance()) {
         return;
     }
-    if (!qApp->offscreenUiEnabled()) {
+    if (!qApp->property(hifi::properties::ENABLE_UI).toBool()) {
         return;
     }
     AI_UPDATE(mirrorVisible, Menu::getInstance()->isOptionChecked(MenuOption::MiniMirror) && !qApp->isHMDMode()
