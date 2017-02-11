@@ -16,6 +16,8 @@ import QtQuick.Controls 1.4
 import "../styles-uit"
 import "../controls-uit" as HifiControls
 
+// references HMD, Users, UserActivityLogger from root context
+
 Rectangle {
     id: pal
     // Size
@@ -26,7 +28,7 @@ Rectangle {
     // Properties
     property int myCardHeight: 90
     property int rowHeight: 70
-    property int actionButtonWidth: 75
+    property int actionButtonWidth: 55
     property int nameCardWidth: palContainer.width - actionButtonWidth*(iAmAdmin ? 4 : 2) - 4 - hifi.dimensions.scrollbarBackgroundWidth
     property var myData: ({displayName: "", userName: "", audioLevel: 0.0, admin: true}) // valid dummy until set
     property var ignored: ({}); // Keep a local list of ignored avatars & their data. Necessary because HashMap is slow to respond after ignoring.
@@ -35,7 +37,9 @@ Rectangle {
     // Keep a local list of per-avatar gainSliderValueDBs. Far faster than fetching this data from the server.
     // NOTE: if another script modifies the per-avatar gain, this value won't be accurate!
     property var gainSliderValueDB: ({});
-    
+
+    HifiConstants { id: hifi }
+
     // The letterbox used for popup messages
     LetterboxMessage {
         id: letterboxMessage
@@ -51,10 +55,11 @@ Rectangle {
 
     // This is the container for the PAL
     Rectangle {
+        property bool punctuationMode: false
         id: palContainer
         // Size
-        width: pal.width - 50
-        height: pal.height - 50
+        width: pal.width - 10
+        height: pal.height - 10
         // Style
         color: pal.color
         // Anchors
@@ -158,8 +163,9 @@ Rectangle {
         onSortIndicatorOrderChanged: sortModel()
 
         TableViewColumn {
+            id: displayNameHeader
             role: "displayName"
-            title: "NAMES"
+            title: table.rowCount + (table.rowCount === 1 ? " NAME" : " NAMES")
             width: nameCardWidth
             movable: false
             resizable: false
@@ -218,10 +224,10 @@ Rectangle {
                 id: nameCard
                 // Properties
                 displayName: styleData.value
-                userName: model && model.userName
-                audioLevel: model && model.audioLevel
+                userName: model ? model.userName : ""
+                audioLevel: model ? model.audioLevel : 0.0
                 visible: !isCheckBox && !isButton
-                uuid: model && model.sessionId
+                uuid: model ? model.sessionId : ""
                 selected: styleData.selected
                 isAdmin: model && model.admin
                 // Size
@@ -241,15 +247,16 @@ Rectangle {
                 id: actionCheckBox
                 visible: isCheckBox
                 anchors.centerIn: parent
-                checked: model[styleData.role]
+                checked: model ? model[styleData.role] : false
                 // If this is a "Personal Mute" checkbox, disable the checkbox if the "Ignore" checkbox is checked.
-                enabled: !(styleData.role === "personalMute" && model["ignore"])
+                enabled: !(styleData.role === "personalMute" && (model ? model["ignore"] : true))
                 boxSize: 24
                 onClicked: {
                     var newValue = !model[styleData.role]
                     userModel.setProperty(model.userIndex, styleData.role, newValue)
                     userModelData[model.userIndex][styleData.role] = newValue // Defensive programming
                     Users[styleData.role](model.sessionId, newValue)
+                    UserActivityLogger["palAction"](newValue ? styleData.role : "un-" + styleData.role, model.sessionId)
                     if (styleData.role === "ignore") {
                         userModel.setProperty(model.userIndex, "personalMute", newValue)
                         userModelData[model.userIndex]["personalMute"] = newValue // Defensive programming
@@ -276,6 +283,7 @@ Rectangle {
                 height: 24
                 onClicked: {
                     Users[styleData.role](model.sessionId)
+                    UserActivityLogger["palAction"](styleData.role, model.sessionId)
                     if (styleData.role === "kick") {
                         // Just for now, while we cannot undo "Ban":
                         userModel.remove(model.userIndex)
@@ -349,6 +357,11 @@ Rectangle {
         visible: iAmAdmin
         color: hifi.colors.lightGrayText
     }
+    TextMetrics {
+        id: displayNameHeaderMetrics
+        text: displayNameHeader.title
+        font: displayNameHeader.font
+    }
     // This Rectangle refers to the [?] popup button next to "NAMES"
     Rectangle {
         color: hifi.colors.tableBackgroundLight
@@ -357,7 +370,7 @@ Rectangle {
         anchors.left: table.left
         anchors.top: table.top
         anchors.topMargin: 1
-        anchors.leftMargin: nameCardWidth/2 + 24
+        anchors.leftMargin: nameCardWidth/2 + displayNameHeaderMetrics.width/2 + 6
         RalewayRegular {
             id: helpText
             text: "[?]"
@@ -388,7 +401,7 @@ Rectangle {
         width: 20
         height: 28
         anchors.right: adminTab.right
-        anchors.rightMargin: 31 + hifi.dimensions.scrollbarBackgroundWidth
+        anchors.rightMargin: 10 + hifi.dimensions.scrollbarBackgroundWidth
         anchors.top: adminTab.top
         anchors.topMargin: 2
         RalewayRegular {
@@ -413,6 +426,34 @@ Rectangle {
             onExited: adminHelpText.color = hifi.colors.redHighlight
         }
     }
+    }
+
+    HifiControls.Keyboard {
+        id: keyboard
+        raised: myCard.currentlyEditingDisplayName && HMD.active
+        numeric: parent.punctuationMode
+        anchors {
+            bottom: parent.bottom
+            left: parent.left
+            right: parent.right
+        }
+    }
+
+    // Timer used when selecting table rows that aren't yet present in the model
+    // (i.e. when selecting avatars using edit.js or sphere overlays)
+    Timer {
+        property bool selected // Selected or deselected?
+        property int userIndex // The userIndex of the avatar we want to select
+        id: selectionTimer
+        onTriggered: {
+            if (selected) {
+                table.selection.clear(); // for now, no multi-select
+                table.selection.select(userIndex);
+                table.positionViewAtRow(userIndex, ListView.Beginning);
+            } else {
+                table.selection.deselect(userIndex);
+            }
+        }
     }
 
     function findSessionIndex(sessionId, optionalData) { // no findIndex in .qml
@@ -451,19 +492,30 @@ Rectangle {
         case 'select':
             var sessionIds = message.params[0];
             var selected = message.params[1];
+            var alreadyRefreshed = message.params[2];
             var userIndex = findSessionIndex(sessionIds[0]);
             if (sessionIds.length > 1) {
                 letterbox("", "", 'Only one user can be selected at a time.');
             } else if (userIndex < 0) {
-                letterbox("", "", 'The last editor is not among this list of users.');
-            } else {
-                if (selected) {
-                    table.selection.clear(); // for now, no multi-select
-                    table.selection.select(userIndex);
-                    table.positionViewAtRow(userIndex, ListView.Visible);
+                // If we've already refreshed the PAL and the avatar still isn't present in the model...
+                if (alreadyRefreshed === true) {
+                    letterbox('', '', 'The last editor of this object is either you or not among this list of users.');
                 } else {
-                    table.selection.deselect(userIndex);
+                    pal.sendToScript({method: 'refresh', params: message.params});
                 }
+            } else {
+                // If we've already refreshed the PAL and found the avatar in the model
+                if (alreadyRefreshed === true) {
+                    // Wait a little bit before trying to actually select the avatar in the table
+                    selectionTimer.interval = 250;
+                } else {
+                    // If we've found the avatar in the model and didn't need to refresh,
+                    // select the avatar in the table immediately
+                    selectionTimer.interval = 0;
+                }
+                selectionTimer.selected = selected;
+                selectionTimer.userIndex = userIndex;
+                selectionTimer.start();
             }
             break;
         // Received an "updateUsername()" request from the JS

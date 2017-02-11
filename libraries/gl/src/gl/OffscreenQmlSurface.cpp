@@ -604,6 +604,9 @@ QObject* OffscreenQmlSurface::finishQmlLoad(std::function<void(QQmlContext*, QOb
         qFatal("Could not load object as root item");
         return nullptr;
     }
+
+    connect(newItem, SIGNAL(sendToScript(QVariant)), this, SIGNAL(fromQml(QVariant)));
+
     // The root item is ready. Associate it with the window.
     _rootItem = newItem;
     _rootItem->setParentItem(_quickWindow->contentItem());
@@ -749,8 +752,12 @@ void OffscreenQmlSurface::resume() {
     _paused = false;
     _render = true;
 
-    getRootItem()->setProperty("eventBridge", QVariant::fromValue(this));
-    getRootContext()->setContextProperty("webEntity", this);
+    if (getRootItem()) {
+        getRootItem()->setProperty("eventBridge", QVariant::fromValue(this));
+    }
+    if (getRootContext()) {
+        getRootContext()->setContextProperty("webEntity", this);
+    }
 }
 
 bool OffscreenQmlSurface::isPaused() const {
@@ -945,6 +952,15 @@ void OffscreenQmlSurface::emitWebEvent(const QVariant& message) {
         } else {
             emit webEventReceived(message);
         }
+    }
+}
+
+void OffscreenQmlSurface::sendToQml(const QVariant& message) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "emitQmlEvent", Qt::QueuedConnection, Q_ARG(QVariant, message));
+    } else if (_rootItem) {
+        // call fromScript method on qml root
+        QMetaObject::invokeMethod(_rootItem, "fromScript", Qt::QueuedConnection, Q_ARG(QVariant, message));
     }
 }
 

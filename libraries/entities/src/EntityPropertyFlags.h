@@ -184,6 +184,8 @@ enum EntityPropertyList {
     PROP_LAST_EDITED_BY,
     PROP_LOCALIZED_SIMULATION, // does a zone localize the physics of its children?
 
+    PROP_SERVER_SCRIPTS,
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,

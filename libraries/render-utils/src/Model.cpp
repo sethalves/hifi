@@ -78,11 +78,12 @@ void initCollisionMaterials() {
     }
 }
 
-Model::Model(RigPointer rig, QObject* parent) :
+Model::Model(RigPointer rig, QObject* parent, SpatiallyNestable* spatiallyNestableOverride) :
     QObject(parent),
     _renderGeometry(),
     _collisionGeometry(),
     _renderWatcher(_renderGeometry),
+    _spatiallyNestableOverride(spatiallyNestableOverride),
     _translation(0.0f),
     _rotation(),
     _scale(1.0f, 1.0f, 1.0f),
@@ -91,7 +92,6 @@ Model::Model(RigPointer rig, QObject* parent) :
     _scaledToFit(false),
     _snapModelToRegistrationPoint(false),
     _snappedToRegistrationPoint(false),
-    _cauterizeBones(false),
     _url(HTTP_INVALID_COM),
     _isVisible(true),
     _blendNumber(0),
@@ -132,6 +132,23 @@ void Model::setTranslation(const glm::vec3& translation) {
 void Model::setRotation(const glm::quat& rotation) {
     _rotation = rotation;
     updateRenderItems();
+}
+
+Transform Model::getTransform() const {
+    if (_spatiallyNestableOverride) {
+        bool success;
+        Transform transform = _spatiallyNestableOverride->getTransform(success);
+        if (success) {
+            transform.setScale(getScale());
+            return transform;
+        }
+    }
+
+    Transform transform;
+    transform.setScale(getScale());
+    transform.setTranslation(getTranslation());
+    transform.setRotation(getRotation());
+    return transform;
 }
 
 void Model::setScale(const glm::vec3& scale) {
@@ -215,30 +232,23 @@ void Model::updateRenderItems() {
 
         render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
 
-        Transform modelTransform;
-        modelTransform.setTranslation(self->_translation);
-        modelTransform.setRotation(self->_rotation);
-
-        Transform scaledModelTransform(modelTransform);
-        scaledModelTransform.setScale(scale);
-
         uint32_t deleteGeometryCounter = self->_deleteGeometryCounter;
 
         render::PendingChanges pendingChanges;
         foreach (auto itemID, self->_modelMeshRenderItems.keys()) {
-            pendingChanges.updateItem<ModelMeshPartPayload>(itemID, [modelTransform, deleteGeometryCounter](ModelMeshPartPayload& data) {
+            pendingChanges.updateItem<ModelMeshPartPayload>(itemID, [deleteGeometryCounter](ModelMeshPartPayload& data) {
                 if (data._model && data._model->isLoaded()) {
-                    if (!data.hasStartedFade() && data._model->getGeometry()->areTexturesLoaded()) {
-                        data.startFade();
-                    }
                     // Ensure the model geometry was not reset between frames
                     if (deleteGeometryCounter == data._model->_deleteGeometryCounter) {
+                        Transform modelTransform = data._model->getTransform();
+                        modelTransform.setScale(glm::vec3(1.0f));
+
                         // lazy update of cluster matrices used for rendering.  We need to update them here, so we can correctly update the bounding box.
                         data._model->updateClusterMatrices();
 
                         // update the model transform and bounding box for this render item.
                         const Model::MeshState& state = data._model->_meshStates.at(data._meshIndex);
-                        data.updateTransformForSkinnedMesh(modelTransform, state.clusterMatrices, state.cauterizedClusterMatrices);
+                        data.updateTransformForSkinnedMesh(modelTransform, state.clusterMatrices);
                     }
                 }
             });
@@ -247,10 +257,11 @@ void Model::updateRenderItems() {
         // collision mesh does not share the same unit scale as the FBX file's mesh: only apply offset
         Transform collisionMeshOffset;
         collisionMeshOffset.setIdentity();
+        Transform modelTransform = self->getTransform();
         foreach (auto itemID, self->_collisionRenderItems.keys()) {
-            pendingChanges.updateItem<MeshPartPayload>(itemID, [scaledModelTransform, collisionMeshOffset](MeshPartPayload& data) {
+            pendingChanges.updateItem<MeshPartPayload>(itemID, [modelTransform, collisionMeshOffset](MeshPartPayload& data) {
                 // update the model transform for this render item.
-                data.updateTransform(scaledModelTransform, collisionMeshOffset);
+                data.updateTransform(modelTransform, collisionMeshOffset);
             });
         }
 
@@ -276,8 +287,6 @@ void Model::reset() {
 }
 
 bool Model::updateGeometry() {
-    PROFILE_RANGE(render_detail, __FUNCTION__);
-    PerformanceTimer perfTimer("Model::updateGeometry");
     bool needFullUpdate = false;
 
     if (!isLoaded()) {
@@ -294,8 +303,6 @@ bool Model::updateGeometry() {
         foreach (const FBXMesh& mesh, fbxGeometry.meshes) {
             MeshState state;
             state.clusterMatrices.resize(mesh.clusters.size());
-            state.cauterizedClusterMatrices.resize(mesh.clusters.size());
-
             _meshStates.append(state);
 
             // Note: we add empty buffers for meshes that lack blendshapes so we can access the buffers by index
@@ -1134,7 +1141,11 @@ void Model::simulate(float deltaTime, bool fullUpdate) {
         if (_snapModelToRegistrationPoint && !_snappedToRegistrationPoint) {
             snapToRegistrationPoint();
         }
-        simulateInternal(deltaTime);
+        // update the world space transforms for all joints
+        glm::mat4 parentTransform = glm::scale(_scale) * glm::translate(_offset);
+        updateRig(deltaTime, parentTransform);
+
+        computeMeshPartLocalBounds();
     }
 }
 
@@ -1144,10 +1155,12 @@ void Model::updateRig(float deltaTime, glm::mat4 parentTransform) {
     _rig->updateAnimations(deltaTime, parentTransform);
 }
 
-void Model::simulateInternal(float deltaTime) {
-    // update the world space transforms for all joints
-    glm::mat4 parentTransform = glm::scale(_scale) * glm::translate(_offset);
-    updateRig(deltaTime, parentTransform);
+void Model::computeMeshPartLocalBounds() {
+	for (auto& part : _modelMeshRenderItemsSet) {
+        assert(part->_meshIndex < _modelMeshRenderItemsSet.size());
+        const Model::MeshState& state = _meshStates.at(part->_meshIndex);
+        part->computeAdjustedLocalBound(state.clusterMatrices);
+    }
 }
 
 // virtual
@@ -1159,40 +1172,19 @@ void Model::updateClusterMatrices() {
     }
     _needsUpdateClusterMatrices = false;
     const FBXGeometry& geometry = getFBXGeometry();
-    static const glm::mat4 zeroScale(
-        glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-        glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-        glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-        glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-    auto cauterizeMatrix = _rig->getJointTransform(geometry.neckJointIndex) * zeroScale;
-
     for (int i = 0; i < _meshStates.size(); i++) {
         MeshState& state = _meshStates[i];
         const FBXMesh& mesh = geometry.meshes.at(i);
         for (int j = 0; j < mesh.clusters.size(); j++) {
             const FBXCluster& cluster = mesh.clusters.at(j);
             auto jointMatrix = _rig->getJointTransform(cluster.jointIndex);
-#if GLM_ARCH & GLM_ARCH_SSE2
+#if (GLM_ARCH & GLM_ARCH_SSE2) && !(defined Q_OS_MACOS)
             glm::mat4 out, inverseBindMatrix = cluster.inverseBindMatrix;
             glm_mat4_mul((glm_vec4*)&jointMatrix, (glm_vec4*)&inverseBindMatrix, (glm_vec4*)&out);
             state.clusterMatrices[j] = out;
 #else
             state.clusterMatrices[j] = jointMatrix * cluster.inverseBindMatrix;
 #endif
-
-            // as an optimization, don't build cautrizedClusterMatrices if the boneSet is empty.
-            if (!_cauterizeBoneSet.empty()) {
-                if (_cauterizeBoneSet.find(cluster.jointIndex) != _cauterizeBoneSet.end()) {
-                    jointMatrix = cauterizeMatrix;
-                }
-#if GLM_ARCH & GLM_ARCH_SSE2
-                glm::mat4 out, inverseBindMatrix = cluster.inverseBindMatrix;
-                glm_mat4_mul((glm_vec4*)&jointMatrix, (glm_vec4*)&inverseBindMatrix, (glm_vec4*)&out);
-                state.cauterizedClusterMatrices[j] = out;
-#else
-                state.cauterizedClusterMatrices[j] = jointMatrix * cluster.inverseBindMatrix;
-#endif
-            }
         }
 
         // Once computed the cluster matrices, update the buffer(s)
@@ -1203,17 +1195,6 @@ void Model::updateClusterMatrices() {
             } else {
                 state.clusterBuffer->setSubData(0, state.clusterMatrices.size() * sizeof(glm::mat4),
                                                 (const gpu::Byte*) state.clusterMatrices.constData());
-            }
-
-            if (!_cauterizeBoneSet.empty() && (state.cauterizedClusterMatrices.size() > 1)) {
-                if (!state.cauterizedClusterBuffer) {
-                    state.cauterizedClusterBuffer =
-                        std::make_shared<gpu::Buffer>(state.cauterizedClusterMatrices.size() * sizeof(glm::mat4),
-                                                      (const gpu::Byte*) state.cauterizedClusterMatrices.constData());
-                } else {
-                    state.cauterizedClusterBuffer->setSubData(0, state.cauterizedClusterMatrices.size() * sizeof(glm::mat4),
-                                                              (const gpu::Byte*) state.cauterizedClusterMatrices.constData());
-                }
             }
         }
     }
@@ -1358,6 +1339,7 @@ void Model::createVisibleRenderItemSet() {
             shapeID++;
         }
     }
+    computeMeshPartLocalBounds();
 }
 
 void Model::createCollisionRenderItemSet() {
@@ -1485,7 +1467,6 @@ void ModelBlender::noteRequiresBlend(ModelPointer model) {
 
     {
         Lock lock(_mutex);
-
         _modelsRequiringBlends.insert(model);
     }
 }

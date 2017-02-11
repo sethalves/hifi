@@ -48,12 +48,17 @@ PacketVersion versionForPacketType(PacketType packetType) {
         case PacketType::EntityAdd:
         case PacketType::EntityEdit:
         case PacketType::EntityData:
+        case PacketType::EntityPhysics:
             return VERSION_ENTITIES_ZONE_LOCAL_SIMULATION;
+        case PacketType::EntityQuery:
+            return static_cast<PacketVersion>(EntityQueryPacketVersion::JsonFilter);
         case PacketType::AvatarIdentity:
         case PacketType::AvatarData:
         case PacketType::BulkAvatarData:
         case PacketType::KillAvatar:
-            return static_cast<PacketVersion>(AvatarMixerPacketVersion::Unignore);
+            return static_cast<PacketVersion>(AvatarMixerPacketVersion::VariableAvatarData);
+        case PacketType::MessagesData:
+            return static_cast<PacketVersion>(MessageDataVersion::TextOrBinaryData);
         case PacketType::ICEServerHeartbeat:
             return 18; // ICE Server Heartbeat signing
         case PacketType::AssetGetInfo:

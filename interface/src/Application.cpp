@@ -41,6 +41,7 @@
 
 #include <QtMultimedia/QMediaPlayer>
 
+#include <QFontDatabase>
 #include <QProcessEnvironment>
 #include <QTemporaryDir>
 
@@ -61,7 +62,8 @@
 #include <CursorManager.h>
 #include <DebugDraw.h>
 #include <DeferredLightingEffect.h>
-#include <display-plugins/DisplayPlugin.h>
+#include <EntityScriptClient.h>
+#include <EntityScriptServerLogClient.h>
 #include <EntityScriptingInterface.h>
 #include <ErrorDialog.h>
 #include <FileScriptingInterface.h>
@@ -111,6 +113,7 @@
 #include <ScriptEngines.h>
 #include <ScriptCache.h>
 #include <SoundCache.h>
+#include <TabletScriptingInterface.h>
 #include <Tooltip.h>
 #include <udt/PacketHeaders.h>
 #include <UserActivityLogger.h>
@@ -436,6 +439,7 @@ bool setupEssentials(int& argc, char** argv) {
     }
 
     DependencyManager::set<tracing::Tracer>();
+    PROFILE_SET_THREAD_NAME("Main Thread");
 
 #if defined(Q_OS_WIN)
     // Select appropriate audio DLL
@@ -461,7 +465,7 @@ bool setupEssentials(int& argc, char** argv) {
     // Set dependencies
     DependencyManager::set<AccountManager>(std::bind(&Application::getUserAgent, qApp));
     DependencyManager::set<StatTracker>();
-    DependencyManager::set<ScriptEngines>();
+    DependencyManager::set<ScriptEngines>(ScriptEngine::CLIENT_SCRIPT);
     DependencyManager::set<Preferences>();
     DependencyManager::set<recording::Deck>();
     DependencyManager::set<recording::Recorder>();
@@ -494,6 +498,7 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::set<WindowScriptingInterface>();
     DependencyManager::set<HMDScriptingInterface>();
     DependencyManager::set<ResourceScriptingInterface>();
+    DependencyManager::set<TabletScriptingInterface>();
     DependencyManager::set<ToolbarScriptingInterface>();
     DependencyManager::set<UserActivityLoggerScriptingInterface>();
 
@@ -518,6 +523,8 @@ bool setupEssentials(int& argc, char** argv) {
     DependencyManager::set<CompositorHelper>();
     DependencyManager::set<PhysicsEngineTracker>();
     DependencyManager::set<OffscreenQmlSurfaceCache>();
+    DependencyManager::set<EntityScriptClient>();
+    DependencyManager::set<EntityScriptServerLogClient>();
     return previousSessionCrashed;
 }
 
@@ -540,6 +547,9 @@ Q_GUI_EXPORT void qt_gl_set_global_share_context(QOpenGLContext *context);
 
 Setting::Handle<int> sessionRunTime{ "sessionRunTime", 0 };
 
+const float DEFAULT_HMD_TABLET_SCALE_PERCENT = 100.0f;
+const float DEFAULT_DESKTOP_TABLET_SCALE_PERCENT = 75.0f;
+
 Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bool runServer, QString runServerPathOption) :
     QApplication(argc, argv),
     _shouldRunServer(runServer),
@@ -556,6 +566,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _mirrorViewRect(QRect(MIRROR_VIEW_LEFT_PADDING, MIRROR_VIEW_TOP_PADDING, MIRROR_VIEW_WIDTH, MIRROR_VIEW_HEIGHT)),
     _previousScriptLocation("LastScriptLocation", DESKTOP_LOCATION),
     _fieldOfView("fieldOfView", DEFAULT_FIELD_OF_VIEW_DEGREES),
+    _hmdTabletScale("hmdTabletScale", DEFAULT_HMD_TABLET_SCALE_PERCENT),
+    _desktopTabletScale("desktopTabletScale", DEFAULT_DESKTOP_TABLET_SCALE_PERCENT),
     _constrainToolbarPosition("toolbar/constrainToolbarToCenterX", true),
     _scaleMirror(1.0f),
     _rotateMirror(0.0f),
@@ -855,7 +867,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
 
     // tell the NodeList instance who to tell the domain server we care about
     nodeList->addSetOfNodeTypesToNodeInterestSet(NodeSet() << NodeType::AudioMixer << NodeType::AvatarMixer
-        << NodeType::EntityServer << NodeType::AssetServer << NodeType::MessagesMixer);
+        << NodeType::EntityServer << NodeType::AssetServer << NodeType::MessagesMixer << NodeType::EntityScriptServer);
 
     // connect to the packet sent signal of the _entityEditSender
     connect(&_entityEditSender, &EntityEditPacketSender::packetSent, this, &Application::packetSent);
@@ -978,7 +990,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     connect(userInputMapper.data(), &UserInputMapper::actionEvent, [this](int action, float state) {
         using namespace controller;
         auto offscreenUi = DependencyManager::get<OffscreenUi>();
-        if (offscreenUi->navigationFocused()) {
+        auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
+        {
             auto actionEnum = static_cast<Action>(action);
             int key = Qt::Key_unknown;
             static int lastKey = Qt::Key_unknown;
@@ -1022,25 +1035,28 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                     break;
             }
 
-            if (navAxis) {
+            auto window = tabletScriptingInterface->getTabletWindow();
+            if (navAxis && window) {
                 if (lastKey != Qt::Key_unknown) {
                     QKeyEvent event(QEvent::KeyRelease, lastKey, Qt::NoModifier);
-                    sendEvent(offscreenUi->getWindow(), &event);
+                    sendEvent(window, &event);
                     lastKey = Qt::Key_unknown;
                 }
 
                 if (key != Qt::Key_unknown) {
                     QKeyEvent event(QEvent::KeyPress, key, Qt::NoModifier);
-                    sendEvent(offscreenUi->getWindow(), &event);
+                    sendEvent(window, &event);
+                    tabletScriptingInterface->processEvent(&event);
                     lastKey = key;
                 }
-            } else if (key != Qt::Key_unknown) {
+            } else if (key != Qt::Key_unknown && window) {
                 if (state) {
                     QKeyEvent event(QEvent::KeyPress, key, Qt::NoModifier);
-                    sendEvent(offscreenUi->getWindow(), &event);
+                    sendEvent(window, &event);
+                    tabletScriptingInterface->processEvent(&event);
                 } else {
                     QKeyEvent event(QEvent::KeyRelease, key, Qt::NoModifier);
-                    sendEvent(offscreenUi->getWindow(), &event);
+                    sendEvent(window, &event);
                 }
                 return;
             }
@@ -1066,12 +1082,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                 DependencyManager::get<AudioClient>()->toggleMute();
             } else if (action == controller::toInt(controller::Action::CYCLE_CAMERA)) {
                 cycleCamera();
-            } else if (action == controller::toInt(controller::Action::UI_NAV_SELECT)) {
-                if (!offscreenUi->navigationFocused()) {
-                    toggleMenuUnderReticle();
-                }
             } else if (action == controller::toInt(controller::Action::CONTEXT_MENU)) {
-                toggleMenuUnderReticle();
+                toggleTabletUI();
             } else if (action == controller::toInt(controller::Action::RETICLE_X)) {
                 auto oldPos = getApplicationCompositor().getReticlePosition();
                 getApplicationCompositor().setReticlePosition({ oldPos.x + state, oldPos.y });
@@ -1201,8 +1213,11 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
     connect(entityScriptingInterface.data(), &EntityScriptingInterface::clickDownOnEntity,
             [this](const EntityItemID& entityItemID, const PointerEvent& event) {
-        setKeyboardFocusOverlay(UNKNOWN_OVERLAY_ID);
-        setKeyboardFocusEntity(entityItemID);
+        auto entity = getEntities()->getTree()->findEntityByID(entityItemID);
+        if (entity && entity->wantsKeyboardFocus()) {
+            setKeyboardFocusOverlay(UNKNOWN_OVERLAY_ID);
+            setKeyboardFocusEntity(entityItemID);
+        }
     });
 
     connect(entityScriptingInterface.data(), &EntityScriptingInterface::deletingEntity, [=](const EntityItemID& entityItemID) {
@@ -1590,15 +1605,17 @@ QString Application::getUserAgent() {
     return userAgent;
 }
 
-void Application::toggleMenuUnderReticle() const {
-    // In HMD, if the menu is near the mouse but not under it, the reticle can be at a significantly
-    // different depth. When you focus on the menu, the cursor can appear to your crossed eyes as both
-    // on the menu and off.
-    // Even in 2D, it is arguable whether the user would want the menu to be to the side.
-    const float X_LEFT_SHIFT = 50.0;
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    auto reticlePosition = getApplicationCompositor().getReticlePosition();
-    offscreenUi->toggleMenu(QPoint(reticlePosition.x - X_LEFT_SHIFT, reticlePosition.y));
+uint64_t lastTabletUIToggle { 0 };
+const uint64_t toggleTabletUILockout { 500000 };
+void Application::toggleTabletUI() const {
+    uint64_t now = usecTimestampNow();
+    if (now - lastTabletUIToggle < toggleTabletUILockout) {
+        return;
+    }
+    lastTabletUIToggle = now;
+
+    auto HMD = DependencyManager::get<HMDScriptingInterface>();
+    HMD->toggleShouldShowTablet();
 }
 
 void Application::checkChangeCursor() {
@@ -1945,6 +1962,8 @@ void Application::initializeUi() {
 
     rootContext->setContextProperty("AvatarList", DependencyManager::get<AvatarManager>().data());
     rootContext->setContextProperty("Users", DependencyManager::get<UsersScriptingInterface>().data());
+
+    rootContext->setContextProperty("UserActivityLogger", DependencyManager::get<UserActivityLoggerScriptingInterface>().data());
 
     rootContext->setContextProperty("Camera", &_myCamera);
 
@@ -2314,6 +2333,14 @@ void Application::setFieldOfView(float fov) {
         _fieldOfView.set(fov);
         resizeGL();
     }
+}
+
+void Application::setHMDTabletScale(float hmdTabletScale) {
+    _hmdTabletScale.set(hmdTabletScale);
+}
+
+void Application::setDesktopTabletScale(float desktopTabletScale) {
+    _desktopTabletScale.set(desktopTabletScale);
 }
 
 void Application::setSettingConstrainToolbarPosition(bool setting) {
@@ -2940,10 +2967,6 @@ void Application::keyPressEvent(QKeyEvent* event) {
 
 
 void Application::keyReleaseEvent(QKeyEvent* event) {
-    if (event->key() == Qt::Key_Alt && _altPressed && hasFocus()) {
-        toggleMenuUnderReticle();
-    }
-
     _keysPressed.remove(event->key());
 
     _controllerScriptingInterface->emitKeyReleaseEvent(event); // send events to any registered scripts
@@ -4172,9 +4195,13 @@ void Application::setKeyboardFocusOverlay(unsigned int overlayID) {
             }
             _lastAcceptedKeyPress = usecTimestampNow();
 
-            auto size = overlay->getSize() * FOCUS_HIGHLIGHT_EXPANSION_FACTOR;
-            const float OVERLAY_DEPTH = 0.0105f;
-            setKeyboardFocusHighlight(overlay->getPosition(), overlay->getRotation(), glm::vec3(size.x, size.y, OVERLAY_DEPTH));
+            if (overlay->getProperty("showKeyboardFocusHighlight").toBool()) {
+                auto size = overlay->getSize() * FOCUS_HIGHLIGHT_EXPANSION_FACTOR;
+                const float OVERLAY_DEPTH = 0.0105f;
+                setKeyboardFocusHighlight(overlay->getPosition(), overlay->getRotation(), glm::vec3(size.x, size.y, OVERLAY_DEPTH));
+            } else if (_keyboardFocusHighlight) {
+                _keyboardFocusHighlight->setVisible(false);
+            }
         }
     }
 }
@@ -4411,11 +4438,18 @@ void Application::update(float deltaTime) {
             PROFILE_RANGE_EX(simulation_physics, "HarvestChanges", 0xffffff00, (uint64_t)getActiveDisplayPlugin()->presentCount());
             PerformanceTimer perfTimer("harvestChanges");
             bool hasOutgoingChanges = false;
+            QList<const CollisionEvents*> collisionEventsPerEngine;
             forEachPhysicsEngine([&hasOutgoingChanges](PhysicsEnginePointer physicsEngine) {
                 hasOutgoingChanges |= physicsEngine->hasOutgoingChanges();
             });
 
             if (hasOutgoingChanges) {
+                // grab the collision events BEFORE handleOutgoingChanges() because at this point
+                // we have a better idea of which objects we own or should own.
+                forEachPhysicsEngine([&](PhysicsEnginePointer physicsEngine) {
+                    collisionEventsPerEngine.push_back(&physicsEngine->getCollisionEvents());
+                });
+
                 getEntities()->getTree()->withWriteLock([&] {
                     PerformanceTimer perfTimer("handleOutgoingChanges");
                     forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
@@ -4427,8 +4461,10 @@ void Application::update(float deltaTime) {
                     });
                 });
 
-                forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
-                    auto collisionEvents = physicsEngine->getCollisionEvents();
+                forEachPhysicsEngine([&avatarManager, &collisionEventsPerEngine, this](PhysicsEnginePointer physicsEngine) {
+                    // handleCollisionEvents() AFTER handleOutgoinChanges()
+                    PerformanceTimer perfTimer("entities");
+                    auto& collisionEvents = *collisionEventsPerEngine.takeFirst();
                     avatarManager->handleCollisionEvents(collisionEvents);
 
                     physicsEngine->dumpStatsIfNecessary();
@@ -5226,6 +5262,7 @@ void Application::nodeAdded(SharedNodePointer node) const {
     if (node->getType() == NodeType::AvatarMixer) {
         // new avatar mixer, send off our identity packet right away
         getMyAvatar()->sendIdentityPacket();
+        getMyAvatar()->resetLastSent();
     }
 }
 
@@ -5547,6 +5584,12 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     auto scriptingInterface = DependencyManager::get<controller::ScriptingInterface>();
     scriptEngine->registerGlobalObject("Controller", scriptingInterface.data());
     UserInputMapper::registerControllerTypes(scriptEngine);
+
+    auto recordingInterface = DependencyManager::get<RecordingScriptingInterface>();
+    scriptEngine->registerGlobalObject("Recording", recordingInterface.data());
+
+    auto entityScriptServerLog = DependencyManager::get<EntityScriptServerLogClient>();
+    scriptEngine->registerGlobalObject("EntityScriptServerLog", entityScriptServerLog.data());
 
     // connect this script engines printedMessage signal to the global ScriptEngines these various messages
     connect(scriptEngine, &ScriptEngine::printedMessage, DependencyManager::get<ScriptEngines>().data(), &ScriptEngines::onPrintedMessage);
@@ -6308,6 +6351,17 @@ void Application::toggleLogDialog() {
     }
 }
 
+void Application::toggleEntityScriptServerLogDialog() {
+    if (! _entityScriptServerLogDialog) {
+        _entityScriptServerLogDialog = new EntityScriptServerLogDialog(nullptr);
+    }
+
+    if (_entityScriptServerLogDialog->isVisible()) {
+        _entityScriptServerLogDialog->hide();
+    } else {
+        _entityScriptServerLogDialog->show();
+    }
+}
 
 void Application::takeSnapshot(bool notify, bool includeAnimated, float aspectRatio) {
     postLambdaEvent([notify, includeAnimated, aspectRatio, this] {

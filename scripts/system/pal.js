@@ -11,6 +11,8 @@
 // See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+(function() { // BEGIN LOCAL_SCOPE
+
 // hardcoding these as it appears we cannot traverse the originalTextures in overlays???  Maybe I've missed 
 // something, will revisit as this is sorta horrible.
 const UNSELECTED_TEXTURES = {"idle-D": Script.resolvePath("./assets/models/Avatar-Overlay-v1.fbx/Avatar-Overlay-v1.fbm/avatar-overlay-idle.png"),
@@ -27,7 +29,7 @@ const UNSELECTED_COLOR = { red: 0x1F, green: 0xC6, blue: 0xA6};
 const SELECTED_COLOR = {red: 0xF3, green: 0x91, blue: 0x29};
 const HOVER_COLOR = {red: 0xD0, green: 0xD0, blue: 0xD0}; // almost white for now
 
-(function() { // BEGIN LOCAL_SCOPE
+var conserveResources = true;
 
 Script.include("/~/system/libraries/controllers.js");
 
@@ -103,6 +105,8 @@ ExtendedOverlay.prototype.select = function (selected) {
         return;
     }
     
+    UserActivityLogger.palAction(selected ? "avatar_selected" : "avatar_deselected", this.key);
+
     this.editOverlay({color: color(selected, this.hovering, this.audioLevel)});
     if (this.model) {
         this.model.editOverlay({textures: textures(selected)});
@@ -199,8 +203,7 @@ var pal = new OverlayWindow({
     height: 640,
     visible: false
 });
-pal.fromQml.connect(function (message) { // messages are {method, params}, like json-rpc. See also sendToQml.
-    print('From PAL QML:', JSON.stringify(message));
+function fromQml(message) { // messages are {method, params}, like json-rpc. See also sendToQml.
     switch (message.method) {
     case 'selected':
         selectedIds = message.params;
@@ -231,21 +234,39 @@ pal.fromQml.connect(function (message) { // messages are {method, params}, like 
         break;
     case 'refresh':
         removeOverlays();
-        populateUserList();
+        populateUserList(message.params);
+        UserActivityLogger.palAction("refresh", "");
         break;
     case 'updateGain':
         data = message.params;
-        Users.setAvatarGain(data['sessionId'], data['gain']);
+        if (data['isReleased']) {
+            // isReleased=true happens once at the end of a cycle of dragging
+            // the slider about, but with same gain as last isReleased=false so
+            // we don't set the gain in that case, and only here do we want to
+            // send an analytic event.
+            UserActivityLogger.palAction("avatar_gain_changed", data['sessionId']);
+        } else {
+            Users.setAvatarGain(data['sessionId'], data['gain']);
+        }
         break;
     case 'displayNameUpdate':
         if (MyAvatar.displayName != message.params) {
             MyAvatar.displayName = message.params;
+            UserActivityLogger.palAction("display_name_change", "");
         }
         break;
     default:
         print('Unrecognized message from Pal.qml:', JSON.stringify(message));
     }
-});
+}
+
+function sendToQml(message) {
+    if (Settings.getValue("HUDUIEnabled")) {
+        pal.sendToQml(message);
+    } else {
+        tablet.sendToQml(message);
+    }
+}
 
 //
 // Main operations.
@@ -253,15 +274,16 @@ pal.fromQml.connect(function (message) { // messages are {method, params}, like 
 function addAvatarNode(id) {
     var selected = ExtendedOverlay.isSelected(id);
     return new ExtendedOverlay(id, "sphere", { 
-         drawInFront: true, 
-         solid: true, 
-         alpha: 0.8, 
-         color: color(selected, false, 0.0),
-         ignoreRayIntersection: false}, selected, true);
+        drawInFront: true,
+        solid: true,
+        alpha: 0.8,
+        color: color(selected, false, 0.0),
+        ignoreRayIntersection: false}, selected, !conserveResources);
 }
-function populateUserList() {
-    var data = [];
-    AvatarList.getAvatarIdentifiers().sort().forEach(function (id) { // sorting the identifiers is just an aid for debugging
+function populateUserList(selectData) {
+    var data = [], avatars = AvatarList.getAvatarIdentifiers();
+    conserveResources = avatars.length > 20;
+    avatars.forEach(function (id) { // sorting the identifiers is just an aid for debugging
         var avatar = AvatarList.getAvatar(id);
         var avatarPalDatum = {
             displayName: avatar.sessionDisplayName,
@@ -283,7 +305,11 @@ function populateUserList() {
         data.push(avatarPalDatum);
         print('PAL data:', JSON.stringify(avatarPalDatum));
     });
-    pal.sendToQml({method: 'users', params: data});
+    sendToQml({ method: 'users', params: data });
+    if (selectData) {
+        selectData[2] = true;
+        sendToQml({ method: 'select', params: selectData });
+    }
 }
 
 // The function that handles the reply from the server
@@ -303,7 +329,7 @@ function usernameFromIDReply(id, username, machineFingerprint, isAdmin) {
     }
     print('Username Data:', JSON.stringify(data));
     // Ship the data off to QML
-    pal.sendToQml({ method: 'updateUsername', params: data });
+    sendToQml({ method: 'updateUsername', params: data });
 }
 
 var pingPong = true;
@@ -376,8 +402,8 @@ function removeOverlays() {
 function handleClick(pickRay) {
     ExtendedOverlay.applyPickRay(pickRay, function (overlay) {
         // Don't select directly. Tell qml, who will give us back a list of ids.
-        var message = {method: 'select', params: [[overlay.key], !overlay.selected]};
-        pal.sendToQml(message);
+        var message = {method: 'select', params: [[overlay.key], !overlay.selected, false]};
+        sendToQml(message);
         return true;
     });
 }
@@ -459,6 +485,80 @@ triggerMapping.from(Controller.Standard.LTClick).peek().to(makeClickHandler(Cont
 triggerPressMapping.from(Controller.Standard.RT).peek().to(makePressHandler(Controller.Standard.RightHand));
 triggerPressMapping.from(Controller.Standard.LT).peek().to(makePressHandler(Controller.Standard.LeftHand));
 //
+// Manage the connection between the button and the window.
+//
+var button;
+var buttonName = "PEOPLE";
+var tablet = null;
+var toolBar = null;
+if (Settings.getValue("HUDUIEnabled")) {
+    toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
+    button = toolBar.addButton({
+        objectName: buttonName,
+        imageURL: Script.resolvePath("assets/images/tools/people.svg"),
+        visible: true,
+        alpha: 0.9
+    });
+    pal.fromQml.connect(fromQml);
+} else {
+    tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+    button = tablet.addButton({
+        text: buttonName,
+        icon: "icons/tablet-icons/people-i.svg",
+        sortOrder: 7
+    });
+    tablet.fromQml.connect(fromQml);
+}
+
+var isWired = false;
+var audioTimer;
+var AUDIO_LEVEL_UPDATE_INTERVAL_MS = 100; // 10hz for now (change this and change the AVERAGING_RATIO too)
+var AUDIO_LEVEL_CONSERVED_UPDATE_INTERVAL_MS = 300;
+function off() {
+    if (isWired) { // It is not ok to disconnect these twice, hence guard.
+        Script.update.disconnect(updateOverlays);
+        Controller.mousePressEvent.disconnect(handleMouseEvent);
+        Controller.mouseMoveEvent.disconnect(handleMouseMoveEvent);
+        isWired = false;
+    }
+    if (audioTimer) { Script.clearInterval(audioTimer); }
+    triggerMapping.disable(); // It's ok if we disable twice.
+    triggerPressMapping.disable(); // see above
+    removeOverlays();
+    Users.requestsDomainListData = false;
+}
+function onClicked() {
+    if (Settings.getValue("HUDUIEnabled")) {
+        if (!pal.visible) {
+            Users.requestsDomainListData = true;
+            populateUserList();
+            pal.raise();
+            isWired = true;
+            Script.update.connect(updateOverlays);
+            Controller.mousePressEvent.connect(handleMouseEvent);
+            Controller.mouseMoveEvent.connect(handleMouseMoveEvent);
+            triggerMapping.enable();
+            triggerPressMapping.enable();
+            audioTimer = createAudioInterval(conserveResources ? AUDIO_LEVEL_CONSERVED_UPDATE_INTERVAL_MS : AUDIO_LEVEL_UPDATE_INTERVAL_MS);
+        } else {
+            off();
+        }
+        pal.setVisible(!pal.visible);
+    } else {
+        tablet.loadQMLSource("../Pal.qml");
+        Users.requestsDomainListData = true;
+        populateUserList();
+        isWired = true;
+        Script.update.connect(updateOverlays);
+        Controller.mousePressEvent.connect(handleMouseEvent);
+        Controller.mouseMoveEvent.connect(handleMouseMoveEvent);
+        triggerMapping.enable();
+        triggerPressMapping.enable();
+        audioTimer = createAudioInterval(conserveResources ? AUDIO_LEVEL_CONSERVED_UPDATE_INTERVAL_MS : AUDIO_LEVEL_UPDATE_INTERVAL_MS);
+    }
+}
+
+//
 // Message from other scripts, such as edit.js
 //
 var CHANNEL = 'com.highfidelity.pal';
@@ -473,7 +573,7 @@ function receiveMessage(channel, messageString, senderID) {
         if (!pal.visible) {
             onClicked();
         }
-        pal.sendToQml(message); // Accepts objects, not just strings.
+        sendToQml(message); // Accepts objects, not just strings.
         break;
     default:
         print('Unrecognized PAL message', messageString);
@@ -487,9 +587,7 @@ var AVERAGING_RATIO = 0.05;
 var LOUDNESS_FLOOR = 11.0;
 var LOUDNESS_SCALE = 2.8 / 5.0;
 var LOG2 = Math.log(2.0);
-var AUDIO_LEVEL_UPDATE_INTERVAL_MS = 100; // 10hz for now (change this and change the AVERAGING_RATIO too)
 var myData = {}; // we're not includied in ExtendedOverlay.get.
-var audioInterval;
 
 function getAudioLevel(id) {
     // the VU meter should work similarly to the one in AvatarInputs: log scale, exponentially averaged
@@ -521,90 +619,48 @@ function getAudioLevel(id) {
     return audioLevel;
 }
 
-function createAudioInterval() {
+function createAudioInterval(interval) {
     // we will update the audioLevels periodically
     // TODO: tune for efficiency - expecially with large numbers of avatars
     return Script.setInterval(function () {
-        if (pal.visible) {
-            var param = {};
-            AvatarList.getAvatarIdentifiers().forEach(function (id) {
-                var level = getAudioLevel(id);
-                // qml didn't like an object with null/empty string for a key, so...
-                var userId = id || 0;
-                param[userId] = level;
-            });
-            pal.sendToQml({method: 'updateAudioLevel', params: param});
-        }
-    }, AUDIO_LEVEL_UPDATE_INTERVAL_MS);
+        var param = {};
+        AvatarList.getAvatarIdentifiers().forEach(function (id) {
+            var level = getAudioLevel(id);
+            // qml didn't like an object with null/empty string for a key, so...
+            var userId = id || 0;
+            param[userId] = level;
+        });
+        sendToQml({method: 'updateAudioLevel', params: param});
+    }, interval);
 }
 
-//
-// Manage the connection between the button and the window.
-//
-var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
-var buttonName = "pal";
-var button = toolBar.addButton({
-    objectName: buttonName,
-    imageURL: Script.resolvePath("assets/images/tools/people.svg"),
-    visible: true,
-    hoverState: 2,
-    defaultState: 1,
-    buttonState: 1,
-    alpha: 0.9
-});
-var isWired = false;
-function off() {
-    if (isWired) { // It is not ok to disconnect these twice, hence guard.
-        Script.update.disconnect(updateOverlays);
-        Controller.mousePressEvent.disconnect(handleMouseEvent);
-        Controller.mouseMoveEvent.disconnect(handleMouseMoveEvent);
-        isWired = false;
-    }
-    triggerMapping.disable(); // It's ok if we disable twice.
-    triggerPressMapping.disable(); // see above
-    removeOverlays();
-    Users.requestsDomainListData = false;
-    if (audioInterval) {
-        Script.clearInterval(audioInterval);
-    }
-}
-function onClicked() {
-    if (!pal.visible) {
-        Users.requestsDomainListData = true;
-        populateUserList();
-        pal.raise();
-        isWired = true;
-        Script.update.connect(updateOverlays);
-        Controller.mousePressEvent.connect(handleMouseEvent);
-        Controller.mouseMoveEvent.connect(handleMouseMoveEvent);
-        triggerMapping.enable();
-        triggerPressMapping.enable();
-        createAudioInterval();
-    } else {
-        off();
-    }
-    pal.setVisible(!pal.visible);
-}
 function avatarDisconnected(nodeID) {
     // remove from the pal list
-    pal.sendToQml({method: 'avatarDisconnected', params: [nodeID]});
+    sendToQml({method: 'avatarDisconnected', params: [nodeID]});
 }
 //
 // Button state.
 //
 function onVisibleChanged() {
-    button.writeProperty('buttonState', pal.visible ? 0 : 1);
-    button.writeProperty('defaultState', pal.visible ? 0 : 1);
-    button.writeProperty('hoverState', pal.visible ? 2 : 3);
+    button.editProperties({isActive: pal.visible});
 }
 button.clicked.connect(onClicked);
 pal.visibleChanged.connect(onVisibleChanged);
 pal.closed.connect(off);
+
+if (!Settings.getValue("HUDUIEnabled")) {
+    tablet.screenChanged.connect(function (type, url) {
+        if (type !== "QML" || url !== "../Pal.qml") {
+            off();
+        }
+    });
+}
+
 Users.usernameFromIDReply.connect(usernameFromIDReply);
 Users.avatarDisconnected.connect(avatarDisconnected);
 
 function clearLocalQMLDataAndClosePAL() {
-    pal.sendToQml({ method: 'clearLocalQMLData' });
+    sendToQml({ method: 'clearLocalQMLData' });
     if (pal.visible) {
         onClicked(); // Close the PAL
     }
@@ -617,7 +673,12 @@ Window.domainConnectionRefused.connect(clearLocalQMLDataAndClosePAL);
 //
 Script.scriptEnding.connect(function () {
     button.clicked.disconnect(onClicked);
-    toolBar.removeButton(buttonName);
+    if (tablet) {
+        tablet.removeButton(button);
+    }
+    if (toolBar) {
+        toolBar.removeButton(buttonName);
+    }
     pal.visibleChanged.disconnect(onVisibleChanged);
     pal.closed.disconnect(off);
     Users.usernameFromIDReply.disconnect(usernameFromIDReply);

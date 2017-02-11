@@ -34,6 +34,7 @@ Item {
     property bool isMyCard: false
     property bool selected: false
     property bool isAdmin: false
+    property bool currentlyEditingDisplayName: false
 
     /* User image commented out for now - will probably be re-introduced later.
     Column {
@@ -104,6 +105,7 @@ Item {
                     focus = false
                     myDisplayName.border.width = 0
                     color = hifi.colors.darkGray
+                    currentlyEditingDisplayName = false
                 }
             }
             MouseArea {
@@ -115,10 +117,12 @@ Item {
                     myDisplayNameText.focus ? myDisplayNameText.cursorPosition = myDisplayNameText.positionAt(mouseX, mouseY, TextInput.CursorOnCharacter) : myDisplayNameText.selectAll();
                     myDisplayNameText.focus = true
                     myDisplayNameText.color = "black"
+                    currentlyEditingDisplayName = true
                 }
                 onDoubleClicked: {
                     myDisplayNameText.selectAll();
                     myDisplayNameText.focus = true;
+                    currentlyEditingDisplayName = true
                 }
                 onEntered: myDisplayName.color = hifi.colors.lightGrayText
                 onExited: myDisplayName.color = hifi.colors.textFieldLightBackground
@@ -346,7 +350,12 @@ Item {
             maximumValue: 20.0
             stepSize: 5
             updateValueWhileDragging: true
-            onValueChanged: updateGainFromQML(uuid, value)
+            onValueChanged: updateGainFromQML(uuid, value, false)
+            onPressedChanged: {
+                if (!pressed) {
+                    updateGainFromQML(uuid, value, true)
+                }
+            }
             MouseArea {
                 anchors.fill: parent
                 onWheel: {
@@ -360,7 +369,8 @@ Item {
                     mouse.accepted = false
                 }
                 onReleased: {
-                    // Pass through to Slider
+                    // the above mouse.accepted seems to make this 
+                    // never get called, nonetheless...
                     mouse.accepted = false
                 }
             }
@@ -382,12 +392,13 @@ Item {
         }
     }
 
-    function updateGainFromQML(avatarUuid, sliderValue) {
-        if (pal.gainSliderValueDB[avatarUuid] !== sliderValue) {
+    function updateGainFromQML(avatarUuid, sliderValue, isReleased) {
+        if (isReleased || pal.gainSliderValueDB[avatarUuid] !== sliderValue) {
             pal.gainSliderValueDB[avatarUuid] = sliderValue;
             var data = {
                 sessionId: avatarUuid,
-                gain: sliderValue
+                gain: sliderValue,
+                isReleased: isReleased
             };
             pal.sendToScript({method: 'updateGain', params: data});
         }

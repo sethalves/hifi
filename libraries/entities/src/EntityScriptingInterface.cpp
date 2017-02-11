@@ -25,6 +25,9 @@
 #include "QVariantGLM.h"
 #include "SimulationOwner.h"
 #include "ZoneEntityItem.h"
+#include "WebEntityItem.h"
+#include <EntityScriptClient.h>
+#include <Profile.h>
 
 
 EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership) :
@@ -176,6 +179,8 @@ EntityItemProperties convertLocationFromScriptSemantics(const EntityItemProperti
 
 
 QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties, bool clientOnly) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     _activityTracking.addedEntityCount++;
 
     EntityItemProperties propertiesWithSimID = properties;
@@ -193,11 +198,6 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
         const QUuid myNodeID = nodeList->getSessionUUID();
         propertiesWithSimID.setClientOnly(clientOnly);
         propertiesWithSimID.setOwningAvatarID(myNodeID);
-    }
-
-    if (propertiesWithSimID.getParentID() == AVATAR_SELF_ID) {
-        qCDebug(entities) << "ERROR: Cannot set entity parent ID to the local-only MyAvatar ID";
-        propertiesWithSimID.setParentID(QUuid());
     }
 
     auto dimensions = propertiesWithSimID.getDimensions();
@@ -226,16 +226,6 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
                     if (success) {
                         propertiesWithSimID.setQueryAACube(queryAACube);
                     }
-                }
-
-                if (_bidOnSimulationOwnership) {
-                    // This Node is creating a new object.  If it's in motion, set this Node as the simulator.
-                    auto nodeList = DependencyManager::get<NodeList>();
-                    const QUuid myNodeID = nodeList->getSessionUUID();
-
-                    // and make note of it now, so we can act on it right away.
-                    propertiesWithSimID.setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
-                    entity->setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
                 }
 
                 entity->setLastBroadcast(usecTimestampNow());
@@ -279,6 +269,8 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
 }
 
 EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identity, EntityPropertyFlags desiredProperties) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     EntityItemProperties results;
     if (_entityTree) {
         _entityTree->withReadLock([&] {
@@ -325,6 +317,8 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
 }
 
 QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     _activityTracking.editedEntityCount++;
 
     EntityItemProperties properties = scriptSideProperties;
@@ -376,9 +370,6 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 
             if (!scriptSideProperties.parentIDChanged()) {
                 properties.setParentID(entity->getParentID());
-            } else if (scriptSideProperties.getParentID() == AVATAR_SELF_ID) {
-                qCDebug(entities) << "ERROR: Cannot set entity parent ID to the local-only MyAvatar ID";
-                properties.setParentID(QUuid());
             }
             if (!scriptSideProperties.parentJointIndexChanged()) {
                 properties.setParentJointIndex(entity->getParentJointIndex());
@@ -449,6 +440,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                     // we make a bid for simulation ownership
                     properties.setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
                     entity->pokeSimulationOwnership();
+                    entity->rememberHasSimulationOwnershipBid();
                 }
             }
             if (properties.parentRelatedPropertyChanged() && entity->computePuffedQueryAACube()) {
@@ -478,6 +470,8 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
 }
 
 void EntityScriptingInterface::deleteEntity(QUuid id) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     _activityTracking.deletedEntityCount++;
 
     EntityItemID entityID(id);
@@ -533,6 +527,8 @@ void EntityScriptingInterface::setEntitiesScriptEngine(EntitiesScriptEngineProvi
 }
 
 void EntityScriptingInterface::callEntityMethod(QUuid id, const QString& method, const QStringList& params) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     std::lock_guard<std::recursive_mutex> lock(_entitiesScriptEngineLock);
     if (_entitiesScriptEngine) {
         EntityItemID entityID{ id };
@@ -541,6 +537,8 @@ void EntityScriptingInterface::callEntityMethod(QUuid id, const QString& method,
 }
 
 QUuid EntityScriptingInterface::findClosestEntity(const glm::vec3& center, float radius) const {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     EntityItemID result;
     if (_entityTree) {
         EntityItemPointer closestEntity;
@@ -564,6 +562,8 @@ void EntityScriptingInterface::dumpTree() const {
 }
 
 QVector<QUuid> EntityScriptingInterface::findEntities(const glm::vec3& center, float radius) const {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QVector<QUuid> result;
     if (_entityTree) {
         QVector<EntityItemPointer> entities;
@@ -579,6 +579,8 @@ QVector<QUuid> EntityScriptingInterface::findEntities(const glm::vec3& center, f
 }
 
 QVector<QUuid> EntityScriptingInterface::findEntitiesInBox(const glm::vec3& corner, const glm::vec3& dimensions) const {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QVector<QUuid> result;
     if (_entityTree) {
         QVector<EntityItemPointer> entities;
@@ -595,6 +597,8 @@ QVector<QUuid> EntityScriptingInterface::findEntitiesInBox(const glm::vec3& corn
 }
 
 QVector<QUuid> EntityScriptingInterface::findEntitiesInFrustum(QVariantMap frustum) const {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QVector<QUuid> result;
 
     const QString POSITION_PROPERTY = "position";
@@ -638,6 +642,7 @@ QVector<QUuid> EntityScriptingInterface::findEntitiesInFrustum(QVariantMap frust
 
 RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersection(const PickRay& ray, bool precisionPicking, 
                 const QScriptValue& entityIdsToInclude, const QScriptValue& entityIdsToDiscard, bool visibleOnly, bool collidableOnly) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
 
     QVector<EntityItemID> entitiesToInclude = qVectorEntityItemIDFromScriptValue(entityIdsToInclude);
     QVector<EntityItemID> entitiesToDiscard = qVectorEntityItemIDFromScriptValue(entityIdsToDiscard);
@@ -677,6 +682,38 @@ RayToEntityIntersectionResult EntityScriptingInterface::findRayIntersectionWorke
     return result;
 }
 
+bool EntityScriptingInterface::reloadServerScripts(QUuid entityID) {
+    auto client = DependencyManager::get<EntityScriptClient>();
+    return client->reloadServerScript(entityID);
+}
+
+bool EntityScriptingInterface::getServerScriptStatus(QUuid entityID, QScriptValue callback) {
+    auto client = DependencyManager::get<EntityScriptClient>();
+    auto request = client->createScriptStatusRequest(entityID);
+    connect(request, &GetScriptStatusRequest::finished, callback.engine(), [callback](GetScriptStatusRequest* request) mutable {
+        QString statusString;
+        switch (request->getStatus()) {
+            case RUNNING:
+                statusString = "running";
+                break;
+            case ERROR_LOADING_SCRIPT:
+                statusString = "error_loading_script";
+                break;
+            case ERROR_RUNNING_SCRIPT:
+                statusString = "error_running_script";
+                break;
+            default:
+                statusString = "";
+                break;
+        }
+        QScriptValueList args { request->getResponseReceived(), request->getIsRunning(), statusString, request->getErrorInfo() };
+        callback.call(QScriptValue(), args);
+        request->deleteLater();
+    });
+    request->start();
+    return true;
+}
+
 void EntityScriptingInterface::setLightsArePickable(bool value) {
     LightEntityItem::setLightsArePickable(value);
 }
@@ -713,6 +750,8 @@ RayToEntityIntersectionResult::RayToEntityIntersectionResult() :
 }
 
 QScriptValue RayToEntityIntersectionResultToScriptValue(QScriptEngine* engine, const RayToEntityIntersectionResult& value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QScriptValue obj = engine->newObject();
     obj.setProperty("intersects", value.intersects);
     obj.setProperty("accurate", value.accurate);
@@ -760,6 +799,8 @@ QScriptValue RayToEntityIntersectionResultToScriptValue(QScriptEngine* engine, c
 }
 
 void RayToEntityIntersectionResultFromScriptValue(const QScriptValue& object, RayToEntityIntersectionResult& value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     value.intersects = object.property("intersects").toVariant().toBool();
     value.accurate = object.property("accurate").toVariant().toBool();
     QScriptValue entityIDValue = object.property("entityID");
@@ -797,6 +838,8 @@ void RayToEntityIntersectionResultFromScriptValue(const QScriptValue& object, Ra
 
 bool EntityScriptingInterface::setVoxels(QUuid entityID,
                                          std::function<bool(PolyVoxEntityItem&)> actor) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     if (!_entityTree) {
         return false;
     }
@@ -821,6 +864,8 @@ bool EntityScriptingInterface::setVoxels(QUuid entityID,
 }
 
 bool EntityScriptingInterface::setPoints(QUuid entityID, std::function<bool(LineEntityItem&)> actor) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     if (!_entityTree) {
         return false;
     }
@@ -860,18 +905,24 @@ bool EntityScriptingInterface::setPoints(QUuid entityID, std::function<bool(Line
 
 
 bool EntityScriptingInterface::setVoxelSphere(QUuid entityID, const glm::vec3& center, float radius, int value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     return setVoxels(entityID, [center, radius, value](PolyVoxEntityItem& polyVoxEntity) {
             return polyVoxEntity.setSphere(center, radius, value);
         });
 }
 
 bool EntityScriptingInterface::setVoxel(QUuid entityID, const glm::vec3& position, int value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     return setVoxels(entityID, [position, value](PolyVoxEntityItem& polyVoxEntity) {
             return polyVoxEntity.setVoxelInVolume(position, value);
         });
 }
 
 bool EntityScriptingInterface::setAllVoxels(QUuid entityID, int value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     return setVoxels(entityID, [value](PolyVoxEntityItem& polyVoxEntity) {
             return polyVoxEntity.setAll(value);
         });
@@ -879,12 +930,16 @@ bool EntityScriptingInterface::setAllVoxels(QUuid entityID, int value) {
 
 bool EntityScriptingInterface::setVoxelsInCuboid(QUuid entityID, const glm::vec3& lowPosition,
                                                  const glm::vec3& cuboidSize, int value) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     return setVoxels(entityID, [lowPosition, cuboidSize, value](PolyVoxEntityItem& polyVoxEntity) {
             return polyVoxEntity.setCuboid(lowPosition, cuboidSize, value);
         });
 }
 
 bool EntityScriptingInterface::setAllPoints(QUuid entityID, const QVector<glm::vec3>& points) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     EntityItemPointer entity = static_cast<EntityItemPointer>(_entityTree->findEntityByEntityItemID(entityID));
     if (!entity) {
         qCDebug(entities) << "EntityScriptingInterface::setPoints no entity with ID" << entityID;
@@ -903,6 +958,8 @@ bool EntityScriptingInterface::setAllPoints(QUuid entityID, const QVector<glm::v
 }
 
 bool EntityScriptingInterface::appendPoint(QUuid entityID, const glm::vec3& point) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     EntityItemPointer entity = static_cast<EntityItemPointer>(_entityTree->findEntityByEntityItemID(entityID));
     if (!entity) {
         qCDebug(entities) << "EntityScriptingInterface::setPoints no entity with ID" << entityID;
@@ -977,6 +1034,8 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
 QUuid EntityScriptingInterface::addAction(const QString& actionTypeString,
                                           const QUuid& entityID,
                                           const QVariantMap& arguments) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QUuid actionID = QUuid::createUuid();
     auto actionFactory = DependencyManager::get<EntityActionFactoryInterface>();
     bool success = false;
@@ -1008,6 +1067,8 @@ QUuid EntityScriptingInterface::addAction(const QString& actionTypeString,
 
 
 bool EntityScriptingInterface::updateAction(const QUuid& entityID, const QUuid& actionID, const QVariantMap& arguments) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     return actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             bool success = entity->updateAction(simulation, actionID, arguments);
             if (success) {
@@ -1018,6 +1079,8 @@ bool EntityScriptingInterface::updateAction(const QUuid& entityID, const QUuid& 
 }
 
 bool EntityScriptingInterface::deleteAction(const QUuid& entityID, const QUuid& actionID) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     bool success = false;
     actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             success = entity->removeAction(simulation, actionID);
@@ -1031,6 +1094,8 @@ bool EntityScriptingInterface::deleteAction(const QUuid& entityID, const QUuid& 
 }
 
 QVector<QUuid> EntityScriptingInterface::getActionIDs(const QUuid& entityID) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QVector<QUuid> result;
     actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             QList<QUuid> actionIDs = entity->getActionIDs();
@@ -1041,6 +1106,8 @@ QVector<QUuid> EntityScriptingInterface::getActionIDs(const QUuid& entityID) {
 }
 
 QVariantMap EntityScriptingInterface::getActionArguments(const QUuid& entityID, const QUuid& actionID) {
+    PROFILE_RANGE(script_entities, __FUNCTION__);
+
     QVariantMap result;
     actionWorker(entityID, [&](EntitySimulationPointer simulation, EntityItemPointer entity) {
             result = entity->getActionArguments(actionID);
@@ -1339,14 +1406,16 @@ bool EntityScriptingInterface::isChildOfParent(QUuid childID, QUuid parentID) {
 
     _entityTree->withReadLock([&] {
         EntityItemPointer parent = _entityTree->findEntityByEntityItemID(parentID);
-        parent->forEachDescendant([&](SpatiallyNestablePointer descendant) {
-            if(descendant->getID() == childID) {
-                isChild = true;
-                return; 
-            }
-        });
+        if (parent) {
+            parent->forEachDescendant([&](SpatiallyNestablePointer descendant) {
+                if (descendant->getID() == childID) {
+                    isChild = true;
+                    return;
+                }
+            });
+        }
     });
-    
+
     return isChild;
 }
 
@@ -1362,7 +1431,8 @@ QVector<QUuid> EntityScriptingInterface::getChildrenIDsOfJoint(const QUuid& pare
             return;
         }
         parent->forEachChild([&](SpatiallyNestablePointer child) {
-            if (child->getParentJointIndex() == jointIndex) {
+            if (child->getParentJointIndex() == jointIndex &&
+                child->getNestableType() != NestableType::Overlay) {
                 result.push_back(child->getID());
             }
         });
@@ -1457,3 +1527,12 @@ void EntityScriptingInterface::setCostMultiplier(float value) {
     costMultiplier = value;
 }
 
+QObject* EntityScriptingInterface::getWebViewRoot(const QUuid& entityID) {
+    if (auto entity = checkForTreeEntityAndTypeMatch(entityID, EntityTypes::Web)) {
+        auto webEntity = std::dynamic_pointer_cast<WebEntityItem>(entity);
+        QObject* root = webEntity->getRootItem();
+        return root;
+    } else {
+        return nullptr;
+    }
+}

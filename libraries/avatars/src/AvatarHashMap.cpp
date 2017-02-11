@@ -90,7 +90,7 @@ AvatarSharedPointer AvatarHashMap::newOrExistingAvatar(const QUuid& sessionUUID,
     return avatar;
 }
 
-AvatarSharedPointer AvatarHashMap::findAvatar(const QUuid& sessionUUID) {
+AvatarSharedPointer AvatarHashMap::findAvatar(const QUuid& sessionUUID) const {
     QReadLocker locker(&_hashLock);
     if (_avatarHash.contains(sessionUUID)) {
         return _avatarHash.value(sessionUUID);
@@ -148,7 +148,9 @@ void AvatarHashMap::processAvatarIdentityPacket(QSharedPointer<ReceivedMessage> 
     if (!nodeList->isIgnoringNode(identity.uuid) || nodeList->getRequestsDomainListData()) {
         // mesh URL for a UUID, find avatar in our list
         auto avatar = newOrExistingAvatar(identity.uuid, sendingNode);
-        avatar->processAvatarIdentity(identity);
+        bool identityChanged = false;
+        bool displayNameChanged = false;
+        avatar->processAvatarIdentity(identity, identityChanged, displayNameChanged);
     }
 }
 
