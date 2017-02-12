@@ -210,9 +210,6 @@ public:
 protected:
     const NestableType _nestableType; // EntityItem or an AvatarData
     QUuid _id;
-    QUuid _parentID; // what is this thing's transform relative to?
-    quint16 _parentJointIndex { INVALID_JOINT_INDEX }; // which joint of the parent is this relative to?
-
     mutable SpatiallyNestableWeakPointer _parent;
 
     virtual void beParentOfChild(SpatiallyNestablePointer newChild) const;
@@ -238,6 +235,9 @@ protected:
     bool _simulationMayHaveChanged { false };
 
 private:
+    QUuid _parentID; // what is this thing's transform relative to?
+    quint16 _parentJointIndex { INVALID_JOINT_INDEX }; // which joint of the parent is this relative to?
+
     mutable ReadWriteLockable _transformLock;
     mutable ReadWriteLockable _idLock;
     mutable ReadWriteLockable _velocityLock;
