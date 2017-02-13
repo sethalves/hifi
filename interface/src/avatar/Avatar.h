@@ -275,6 +275,7 @@ protected:
     RateCounter<> _skeletonModelSimulationRate;
     RateCounter<> _jointDataSimulationRate;
 
+    virtual void locationChanged(bool tellPhysics = true) override;
 
 private:
     uint64_t _lastRenderUpdateTime { 0 };

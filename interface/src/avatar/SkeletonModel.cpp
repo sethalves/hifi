@@ -24,7 +24,7 @@
 #include "AnimDebugDraw.h"
 
 SkeletonModel::SkeletonModel(Avatar* owningAvatar, QObject* parent, RigPointer rig) :
-    CauterizedModel(rig, parent),
+    CauterizedModel(rig, parent, owningAvatar),
     _owningAvatar(owningAvatar),
     _boundingCapsuleLocalOffset(0.0f),
     _boundingCapsuleRadius(0.0f),

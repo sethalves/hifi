@@ -19,7 +19,7 @@ class CauterizedModel : public Model {
     Q_OBJECT
 
 public:
-    CauterizedModel(RigPointer rig, QObject* parent);
+    CauterizedModel(RigPointer rig, QObject* parent, SpatiallyNestable* spatiallyNestableOverride = nullptr);
     virtual ~CauterizedModel();
 
     void flagAsCauterized() { _isCauterized = true; }

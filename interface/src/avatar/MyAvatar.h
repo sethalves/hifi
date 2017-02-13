@@ -323,6 +323,8 @@ public slots:
 
     void handleZoneChange();
 
+    virtual void locationChanged(bool tellPhysics = true) override;
+
 signals:
     void audioListenerModeChanged();
     void transformChanged();

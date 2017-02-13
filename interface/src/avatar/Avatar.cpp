@@ -626,6 +626,14 @@ void Avatar::render(RenderArgs* renderArgs, const glm::vec3& cameraPosition) {
     }
 }
 
+
+void Avatar::locationChanged(bool tellPhysics) {
+    PerformanceTimer pertTimer("locationChanged");
+    SpatiallyNestable::locationChanged(tellPhysics);
+    _skeletonModel->updateRenderItems();
+}
+
+
 glm::quat Avatar::computeRotationFromBodyToWorldUp(float proportion) const {
     glm::quat orientation = getOrientation();
     glm::vec3 currentUp = orientation * IDENTITY_UP;

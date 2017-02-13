@@ -138,6 +138,11 @@ Transform Model::getTransform() const {
     if (_spatiallyNestableOverride) {
         bool success;
         Transform transform = _spatiallyNestableOverride->getTransform(success);
+        if (_spatiallyNestableOverride->getNestableType() == NestableType::Avatar) {
+            glm::quat rotation = transform.getRotation();
+            rotation *= Quaternions::Y_180;
+            transform.setRotation(rotation);
+        }
         if (success) {
             transform.setScale(getScale());
             return transform;
