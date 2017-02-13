@@ -59,6 +59,7 @@ public:
 
     void removeObjects(const VectorOfMotionStates& objects);
     void removeObjects(const SetOfMotionStates& objects); // only called during teardown
+    void removeObject(ObjectMotionState* object, bool doBumpAndPrune = true);
 
     void addObjects(const VectorOfMotionStates& objects);
     void addObject(ObjectMotionState* object);

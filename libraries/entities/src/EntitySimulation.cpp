@@ -78,6 +78,9 @@ void EntitySimulation::addEntityInternal(EntityItemPointer entity) {
     }
 }
 
+void EntitySimulation::transferEntityInternal(EntityItemPointer entity) {
+}
+
 void EntitySimulation::changeEntityInternal(EntityItemPointer entity) {
     QMutexLocker lock(&_mutex);
     if (entity->isMovingRelativeToParent() && !entity->getPhysicsInfo()) {
@@ -189,6 +192,12 @@ void EntitySimulation::addEntity(EntityItemPointer entity) {
     // DirtyFlags are used to signal changes to entities that have already been added,
     // so we can clear them for this entity which has just been added.
     entity->clearDirtyFlags();
+}
+
+void EntitySimulation::transferEntity(EntityItemPointer entity) {
+    QMutexLocker lock(&_mutex);
+    assert(entity);
+    transferEntityInternal(entity);
 }
 
 void EntitySimulation::changeEntity(EntityItemPointer entity) {

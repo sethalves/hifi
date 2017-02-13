@@ -4368,6 +4368,7 @@ void Application::update(float deltaTime) {
 
     if (_physicsEnabled) {
         PROFILE_RANGE_EX(simulation_physics, "Physics", 0xffff0000, (uint64_t)getActiveDisplayPlugin()->presentCount());
+        EntityTreePointer entityTree = getEntities()->getTree();
 
         PerformanceTimer perfTimer("physics");
 
@@ -4383,14 +4384,14 @@ void Application::update(float deltaTime) {
             });
             _entitySimulation->deleteObjectsRemovedFromPhysics();
 
-            getEntities()->getTree()->withReadLock([&] {
+            entityTree->withReadLock([&] {
                 _entitySimulation->getObjectsToAddToPhysics(motionStates);
                 motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
                 forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
                     physicsEngine->addObjects(motionStatesPerEngine[physicsEngine->getID()]);
                 });
             });
-            getEntities()->getTree()->withReadLock([&] {
+            entityTree->withReadLock([&] {
                 _entitySimulation->getObjectsToChange(motionStates);
                 motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
                 VectorOfMotionStates stillNeedChange;
@@ -4398,6 +4399,18 @@ void Application::update(float deltaTime) {
                     stillNeedChange += physicsEngine->changeObjects(motionStatesPerEngine[physicsEngine->getID()]);
                 });
                 _entitySimulation->setObjectsToChange(stillNeedChange);
+            });
+            entityTree->withReadLock([&] {
+                _entitySimulation->getObjectsToTransfer(motionStates);
+                foreach (ObjectMotionState* motionState, motionStates) {
+                    auto oldPhysicsEngine = motionState->getPhysicsEngine();
+                    auto newPhysicsEngine = motionState->getShouldBeInPhysicsEngine();
+                    if (oldPhysicsEngine && newPhysicsEngine) {
+                        qDebug() << "old = " << oldPhysicsEngine.get() << ", new = " << newPhysicsEngine.get();
+                        oldPhysicsEngine->removeObject(motionState);
+                        newPhysicsEngine->addObject(motionState);
+                    }
+                }
             });
 
             _entitySimulation->applyActionChanges();
@@ -4428,7 +4441,7 @@ void Application::update(float deltaTime) {
         {
             PROFILE_RANGE_EX(simulation_physics, "StepSimulation", 0xffff8000, (uint64_t)getActiveDisplayPlugin()->presentCount());
             PerformanceTimer perfTimer("stepSimulation");
-            getEntities()->getTree()->withWriteLock([&] {
+            entityTree->withWriteLock([&] {
                 forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine) {
                     physicsEngine->stepSimulation();
                 });
@@ -4450,7 +4463,7 @@ void Application::update(float deltaTime) {
                     collisionEventsPerEngine.push_back(&physicsEngine->getCollisionEvents());
                 });
 
-                getEntities()->getTree()->withWriteLock([&] {
+                entityTree->withWriteLock([&] {
                     PerformanceTimer perfTimer("handleOutgoingChanges");
                     forEachPhysicsEngine([&avatarManager, this](PhysicsEnginePointer physicsEngine) {
                         if (physicsEngine->hasOutgoingChanges()) {

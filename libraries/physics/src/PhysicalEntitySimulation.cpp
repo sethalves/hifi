@@ -58,6 +58,16 @@ void PhysicalEntitySimulation::addEntityInternal(EntityItemPointer entity) {
     }
 }
 
+void PhysicalEntitySimulation::transferEntityInternal(EntityItemPointer entity) {
+    QMutexLocker lock(&_mutex);
+    assert(entity);
+    assert(!entity->isDead());
+    if (entity->shouldBePhysical()) {
+        _entitiesToTransfer.insert(entity);
+    }
+}
+
+
 void PhysicalEntitySimulation::removeEntityInternal(EntityItemPointer entity) {
     if (entity->isSimulated()) {
         EntitySimulation::removeEntityInternal(entity);
@@ -234,7 +244,7 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
             if (shapeInfo.getType() == SHAPE_TYPE_COMPOUND) {
                 if (numPoints > MAX_HULL_POINTS) {
                     qWarning() << "convex hull with" << numPoints
-                        << "points for entity" << entity->getName()
+                        << "points for entity" << entity->getDebugName()
                         << "at" << entity->getPosition() << " will be reduced";
                 }
             }
@@ -270,6 +280,21 @@ void PhysicalEntitySimulation::getObjectsToChange(VectorOfMotionStates& result) 
         result.push_back(motionState);
     }
     _pendingChanges.clear();
+}
+
+void PhysicalEntitySimulation::getObjectsToTransfer(VectorOfMotionStates& result) {
+    result.clear();
+    QMutexLocker lock(&_mutex);
+    SetOfEntities::iterator entityItr = _entitiesToTransfer.begin();
+    while (entityItr != _entitiesToTransfer.end()) {
+        EntityItemPointer entity = (*entityItr);
+        EntityMotionState* motionState = dynamic_cast<EntityMotionState*>(entity->getPhysicsInfo());
+        if (motionState) {
+            result.push_back(motionState);
+        }
+        ++entityItr;
+    }
+    _entitiesToTransfer.clear();
 }
 
 void PhysicalEntitySimulation::handleOutgoingChanges(const VectorOfMotionStates& motionStates) {

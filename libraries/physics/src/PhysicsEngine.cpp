@@ -143,6 +143,23 @@ void PhysicsEngine::addObjectToDynamicsWorld(ObjectMotionState* motionState) {
     motionState->clearIncomingDirtyFlags();
 }
 
+void PhysicsEngine::removeObject(ObjectMotionState* object, bool doBumpAndPrune) {
+    if (doBumpAndPrune) {
+        bumpAndPruneContacts(object);
+    }
+
+    btRigidBody* body = object->getRigidBody();
+    if (body) {
+        _dynamicsWorld->removeRigidBody(body);
+        object->setPhysicsEngine(nullptr);
+
+        // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
+        object->setRigidBody(nullptr);
+        body->setMotionState(nullptr);
+        delete body;
+    }
+}
+
 void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
     // first bump and prune contacts for all objects in the list
     for (auto object : objects) {
@@ -151,16 +168,7 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
 
     // then remove them
     for (auto object : objects) {
-        btRigidBody* body = object->getRigidBody();
-        if (body) {
-            _dynamicsWorld->removeRigidBody(body);
-            object->setPhysicsEngine(nullptr);
-
-            // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-            object->setRigidBody(nullptr);
-            body->setMotionState(nullptr);
-            delete body;
-        }
+        removeObject(object, false);
     }
 }
 
@@ -168,15 +176,7 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
 void PhysicsEngine::removeObjects(const SetOfMotionStates& objects) {
     _contactMap.clear();
     for (auto object : objects) {
-        btRigidBody* body = object->getRigidBody();
-        if (body) {
-            _dynamicsWorld->removeRigidBody(body);
-
-            // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-            object->setRigidBody(nullptr);
-            body->setMotionState(nullptr);
-            delete body;
-        }
+        removeObject(object, false);
     }
 }
 

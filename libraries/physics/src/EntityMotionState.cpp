@@ -773,8 +773,7 @@ void EntityMotionState::maybeSwitchPhysicsEngines() {
     }
 
     if (currentPhysicsEngine != shouldBeInPhysicsEngine) {
-        simulation->removeEntity(_entity->getThisPointer());
-        simulation->addEntity(_entity->getThisPointer());
+        simulation->transferEntity(_entity->getThisPointer());
     }
 }
 
