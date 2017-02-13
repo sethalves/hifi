@@ -4403,12 +4403,19 @@ void Application::update(float deltaTime) {
             entityTree->withReadLock([&] {
                 _entitySimulation->getObjectsToTransfer(motionStates);
                 foreach (ObjectMotionState* motionState, motionStates) {
-                    auto oldPhysicsEngine = motionState->getPhysicsEngine();
-                    auto newPhysicsEngine = motionState->getShouldBeInPhysicsEngine();
-                    if (oldPhysicsEngine && newPhysicsEngine) {
-                        qDebug() << "old = " << oldPhysicsEngine.get() << ", new = " << newPhysicsEngine.get();
-                        oldPhysicsEngine->removeObject(motionState);
-                        newPhysicsEngine->addObject(motionState);
+                    EntityMotionState* entityMotionState = dynamic_cast<EntityMotionState*>(motionState);
+                    if (entityMotionState) {
+                        EntityItemPointer entity = entityMotionState->getEntity();
+                        auto oldPhysicsEngine = motionState->getPhysicsEngine();
+                        auto newPhysicsEngine = motionState->getShouldBeInPhysicsEngine();
+                        if (oldPhysicsEngine && newPhysicsEngine) {
+                            qDebug() << "old = " << oldPhysicsEngine.get() << ", new = " << newPhysicsEngine.get();
+                            oldPhysicsEngine->removeObject(motionState);
+                            entity->setPhysicsInfo(nullptr);
+                            delete motionState;
+                            // newPhysicsEngine->addObject(motionState);
+                            _entitySimulation->addEntity(entity);
+                        }
                     }
                 }
             });
@@ -4427,8 +4434,12 @@ void Application::update(float deltaTime) {
             }
             avatarManager->getObjectsToChange(motionStates);
             motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
+
             forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
-                physicsEngine->changeObjects(motionStatesPerEngine[physicsEngine->getID()]);
+                auto& motionStatesForThisEngine = motionStatesPerEngine[physicsEngine->getID()];
+                if (motionStatesForThisEngine.size() > 0) {
+                    physicsEngine->changeObjects(motionStatesForThisEngine);
+                }
             });
 
             myAvatar->prepareForPhysicsSimulation();

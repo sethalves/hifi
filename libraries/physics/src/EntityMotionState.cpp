@@ -746,7 +746,7 @@ void EntityMotionState::setMotionType(PhysicsMotionType motionType) {
 // virtual
 QString EntityMotionState::getName() const {
     assert(entityTreeIsLocked());
-    return _entity->getName();
+    return _entity->getDebugName();
 }
 
 // virtual
