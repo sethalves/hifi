@@ -4409,12 +4409,8 @@ void Application::update(float deltaTime) {
                         auto oldPhysicsEngine = motionState->getPhysicsEngine();
                         auto newPhysicsEngine = motionState->getShouldBeInPhysicsEngine();
                         if (oldPhysicsEngine && newPhysicsEngine) {
-                            qDebug() << "old = " << oldPhysicsEngine.get() << ", new = " << newPhysicsEngine.get();
                             oldPhysicsEngine->removeObject(motionState);
-                            entity->setPhysicsInfo(nullptr);
-                            delete motionState;
-                            // newPhysicsEngine->addObject(motionState);
-                            _entitySimulation->addEntity(entity);
+                            newPhysicsEngine->addObject(motionState);
                         }
                     }
                 }
