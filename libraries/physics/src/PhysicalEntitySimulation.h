@@ -85,13 +85,26 @@ private:
 typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
 
 template<class T>
-inline QHash<QUuid, T> sortMotionStatesByEngine(T unsortedStates) {
-    QHash<QUuid, T> result;
+inline QHash<QUuid, QVector<T>> sortMotionStatesByEngine(QVector<T> unsortedStates) {
+    QHash<QUuid, QVector<T>> result;
     foreach (ObjectMotionState* motionState, unsortedStates) {
-        EntityMotionState* entityMotionState = dynamic_cast<EntityMotionState*>(motionState);
-        if (entityMotionState) {
-            PhysicsEnginePointer physicsEngine = entityMotionState->getPhysicsEngine();
-            result[physicsEngine->getID()] += entityMotionState;
+        T upcastMotionState = dynamic_cast<T>(motionState);
+        if (upcastMotionState) {
+            PhysicsEnginePointer physicsEngine = upcastMotionState->getPhysicsEngine();
+            result[physicsEngine->getID()] += upcastMotionState;
+        }
+    }
+    return result;
+}
+
+template<class T>
+inline QHash<QUuid, QSet<T>> sortMotionStatesByEngine(QSet<T> unsortedStates) {
+    QHash<QUuid, QSet<T>> result;
+    foreach (ObjectMotionState* motionState, unsortedStates) {
+        T upcastMotionState = dynamic_cast<T>(motionState);
+        if (upcastMotionState) {
+            PhysicsEnginePointer physicsEngine = upcastMotionState->getPhysicsEngine();
+            result[physicsEngine->getID()] += upcastMotionState;
         }
     }
     return result;

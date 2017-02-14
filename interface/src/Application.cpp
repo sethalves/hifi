@@ -4427,14 +4427,15 @@ void Application::update(float deltaTime) {
             forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
                 physicsEngine->removeObjects(motionStatesPerEngine[physicsEngine->getID()]);
             });
+
             avatarManager->getObjectsToAddToPhysics(motionStates);
             foreach (ObjectMotionState* motionState, motionStates) {
                 PhysicsEnginePointer physicsEngine = motionState->getPhysicsEngine();
                 physicsEngine->addObject(motionState);
             }
+
             avatarManager->getObjectsToChange(motionStates);
             motionStatesPerEngine = sortMotionStatesByEngine(motionStates);
-
             forEachPhysicsEngine([motionStatesPerEngine](PhysicsEnginePointer physicsEngine) {
                 auto& motionStatesForThisEngine = motionStatesPerEngine[physicsEngine->getID()];
                 if (motionStatesForThisEngine.size() > 0) {
