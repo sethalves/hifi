@@ -564,8 +564,6 @@ var grabber = new Grabber();
 function pressEvent(event) {
     if (Settings.getProperty("com.highfidelity.tracingMousePress")) {
         print("mouse-trace grab.js pressEvent");
-    } else {
-        print("grab.js NO");
     }
     grabber.pressEvent(event);
 }
@@ -578,8 +576,8 @@ function moveEvent(event) {
 }
 
 function releaseEvent(event) {
-    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
-        qDebug() << "mouse-trace grab.js releaseEvent";
+    if (Settings.getProperty("com.highfidelity.tracingMouseRelease")) {
+        print("mouse-trace grab.js releaseEvent");
     }
     grabber.releaseEvent(event);
 }
