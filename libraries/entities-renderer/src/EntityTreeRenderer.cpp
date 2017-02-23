@@ -24,6 +24,7 @@
 #include <SceneScriptingInterface.h>
 #include <ScriptEngine.h>
 #include <procedural/ProceduralSkybox.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "EntityTreeRenderer.h"
 
@@ -700,9 +701,10 @@ void EntityTreeRenderer::mousePressEvent(QMouseEvent* event) {
 
     bool precisionPicking = !_dontDoPrecisionPicking;
     RayToEntityIntersectionResult rayPickResult = findRayIntersectionWorker(ray, Octree::Lock, precisionPicking);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace EntityTreeRenderer::mousePressEvent" << rayPickResult.intersects << rayPickResult.entityID;
+    }
     if (rayPickResult.intersects) {
-        //qCDebug(entitiesrenderer) << "mousePressEvent over entity:" << rayPickResult.entityID;
-
         QString urlString = rayPickResult.properties.getHref();
         QUrl url = QUrl(urlString, QUrl::StrictMode);
         if (url.isValid() && !url.isEmpty()){
@@ -746,9 +748,10 @@ void EntityTreeRenderer::mouseReleaseEvent(QMouseEvent* event) {
     PickRay ray = _viewState->computePickRay(event->x(), event->y());
     bool precisionPicking = !_dontDoPrecisionPicking;
     RayToEntityIntersectionResult rayPickResult = findRayIntersectionWorker(ray, Octree::Lock, precisionPicking);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace EntityTreeRenderer::mouseReleaseEvent" << rayPickResult.intersects << rayPickResult.entityID;
+    }
     if (rayPickResult.intersects) {
-        //qCDebug(entitiesrenderer) << "mouseReleaseEvent over entity:" << rayPickResult.entityID;
-
         glm::vec2 pos2D = projectOntoEntityXYPlane(rayPickResult.entity, ray, rayPickResult);
         PointerEvent pointerEvent(PointerEvent::Release, MOUSE_POINTER_ID,
                                   pos2D, rayPickResult.intersection,
@@ -797,8 +800,10 @@ void EntityTreeRenderer::mouseMoveEvent(QMouseEvent* event) {
 
     bool precisionPicking = false; // for mouse moves we do not do precision picking
     RayToEntityIntersectionResult rayPickResult = findRayIntersectionWorker(ray, Octree::TryLock, precisionPicking);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityTreeRenderer::mouseMoveEvent" << rayPickResult.intersects << rayPickResult.entityID;
+    }
     if (rayPickResult.intersects) {
-
         glm::vec2 pos2D = projectOntoEntityXYPlane(rayPickResult.entity, ray, rayPickResult);
         PointerEvent pointerEvent(PointerEvent::Move, MOUSE_POINTER_ID,
                                   pos2D, rayPickResult.intersection,

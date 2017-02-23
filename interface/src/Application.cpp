@@ -586,6 +586,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     setProperty(hifi::properties::STEAM, (steamClient && steamClient->isRunning()));
     setProperty(hifi::properties::CRASHED, _previousSessionCrashed);
 
+    setProperty(hifi::properties::TRACING_MOUSE_PRESS, true);
+    setProperty(hifi::properties::TRACING_MOUSE_MOVE, false);
+    setProperty(hifi::properties::TRACING_MOUSE_RELEASE, true);
+
     {
         const QString TEST_SCRIPT = "--testScript";
         const QString TRACE_FILE = "--traceFile";
@@ -1065,10 +1069,16 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
             auto reticlePos = getApplicationCompositor().getReticlePosition();
             QPoint localPos(reticlePos.x, reticlePos.y); // both hmd and desktop already handle this in our coordinates.
             if (state) {
+                if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                    qDebug() << "mouse-trace Application::Application UserInputMapper::actionEvent press";
+                }
                 QMouseEvent mousePress(QEvent::MouseButtonPress, localPos, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
                 sendEvent(_glWidget, &mousePress);
                 _reticleClickPressed = true;
             } else {
+                if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                    qDebug() << "mouse-trace Application::Application UserInputMapper::actionEvent release";
+                }
                 QMouseEvent mouseRelease(QEvent::MouseButtonRelease, localPos, Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
                 sendEvent(_glWidget, &mouseRelease);
                 _reticleClickPressed = false;
@@ -1227,6 +1237,9 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
 
     // If the user clicks somewhere where there is NO entity at all, we will release focus
     connect(getEntities().data(), &EntityTreeRenderer::mousePressOffEntity, [=]() {
+        if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+            qDebug() << "mouse-trace Application::Application mousePressOffEntity";
+        }
         setKeyboardFocusEntity(UNKNOWN_ENTITY_ID);
     });
 
@@ -1234,6 +1247,9 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto overlays = &(qApp->getOverlays());
 
     connect(overlays, &Overlays::mousePressOnOverlay, [=](OverlayID overlayID, const PointerEvent& event) {
+        if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+            qDebug() << "mouse-trace Application::Application Overlays::mousePressOnOverlay press " << overlayID;
+        }
         setKeyboardFocusEntity(UNKNOWN_ENTITY_ID);
         setKeyboardFocusOverlay(overlayID);
     });
@@ -1245,6 +1261,9 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     });
 
     connect(overlays, &Overlays::mousePressOffOverlay, [=]() {
+        if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+            qDebug() << "mouse-trace Application::Application Overlays::mousePressOffOverlay";
+        }
         setKeyboardFocusOverlay(UNKNOWN_OVERLAY_ID);
     });
 
@@ -2540,15 +2559,27 @@ bool Application::event(QEvent* event) {
 
     switch (event->type()) {
         case QEvent::MouseMove:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+                qDebug() << "mouse-trace Application::event QEvent::MouseMove";
+            }
             mouseMoveEvent(static_cast<QMouseEvent*>(event));
             return true;
         case QEvent::MouseButtonPress:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                qDebug() << "mouse-trace Application::event QEvent::MouseButtonPress";
+            }
             mousePressEvent(static_cast<QMouseEvent*>(event));
             return true;
         case QEvent::MouseButtonDblClick:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                qDebug() << "mouse-trace Application::event QEvent::MouseButtonDblClick";
+            }
             mouseDoublePressEvent(static_cast<QMouseEvent*>(event));
             return true;
         case QEvent::MouseButtonRelease:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+                qDebug() << "mouse-trace Application::event QEvent::MouseButtonRelease";
+            }
             mouseReleaseEvent(static_cast<QMouseEvent*>(event));
             return true;
         case QEvent::KeyPress:
@@ -3060,6 +3091,10 @@ void Application::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::mouseMoveEvent " << _reticleClickPressed;
+    }
+
     maybeToggleMenuVisible(event);
 
     auto& compositor = getApplicationCompositor();
@@ -3106,6 +3141,14 @@ void Application::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void Application::mousePressEvent(QMouseEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::mousePressEvent "
+                 << _controllerScriptingInterface->isMouseCaptured()
+                 << _controllerScriptingInterface->areEntityClicksCaptured()
+                 << hasFocus()
+                 << _keyboardMouseDevice->isActive();
+    }
+
     // Inhibit the menu if the user is using alt-mouse dragging
     _altPressed = false;
 
@@ -3153,6 +3196,10 @@ void Application::mousePressEvent(QMouseEvent* event) {
 }
 
 void Application::mouseDoublePressEvent(QMouseEvent* event) const {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::mouseDoublePressEvent"
+                 << _controllerScriptingInterface->isMouseCaptured();
+    }
     // if one of our scripts have asked to capture this event, then stop processing it
     if (_controllerScriptingInterface->isMouseCaptured()) {
         return;
@@ -3162,6 +3209,12 @@ void Application::mouseDoublePressEvent(QMouseEvent* event) const {
 }
 
 void Application::mouseReleaseEvent(QMouseEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Application::mouseReleaseEvent"
+                 << _controllerScriptingInterface->isMouseCaptured()
+                 << hasFocus()
+                 << _keyboardMouseDevice->isActive();
+    }
 
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
     auto eventPosition = getApplicationCompositor().getMouseEventPosition(event);
@@ -3198,6 +3251,12 @@ void Application::mouseReleaseEvent(QMouseEvent* event) {
 }
 
 void Application::touchUpdateEvent(QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::touchUpdateEvent"
+                 << _controllerScriptingInterface->isTouchCaptured()
+                 << _keyboardMouseDevice->isActive()
+                 << (_touchscreenDevice && _touchscreenDevice->isActive());
+    }
     _altPressed = false;
 
     if (event->type() == QEvent::TouchUpdate) {
@@ -3220,6 +3279,12 @@ void Application::touchUpdateEvent(QTouchEvent* event) {
 }
 
 void Application::touchBeginEvent(QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::touchBeginEvent"
+                 << _controllerScriptingInterface->isTouchCaptured()
+                 << _keyboardMouseDevice->isActive()
+                 << (_touchscreenDevice && _touchscreenDevice->isActive());
+    }
     _altPressed = false;
     TouchEvent thisEvent(*event); // on touch begin, we don't compare to last event
     _controllerScriptingInterface->emitTouchBeginEvent(thisEvent); // send events to any registered scripts
@@ -3242,6 +3307,13 @@ void Application::touchBeginEvent(QTouchEvent* event) {
 }
 
 void Application::touchEndEvent(QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Application::touchEndEvent"
+                 << _controllerScriptingInterface->isTouchCaptured()
+                 << _keyboardMouseDevice->isActive()
+                 << (_touchscreenDevice && _touchscreenDevice->isActive());
+    }
+
     _altPressed = false;
     TouchEvent thisEvent(*event, _lastTouchEvent);
     _controllerScriptingInterface->emitTouchEndEvent(thisEvent); // send events to any registered scripts
@@ -3263,12 +3335,21 @@ void Application::touchEndEvent(QTouchEvent* event) {
 }
 
 void Application::touchGestureEvent(QGestureEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::touchGestureEvent";
+    }
     if (_touchscreenDevice && _touchscreenDevice->isActive()) {
         _touchscreenDevice->touchGestureEvent(event);
     }
 }
 
 void Application::wheelEvent(QWheelEvent* event) const {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::wheelEvent"
+                 << _controllerScriptingInterface->isWheelCaptured()
+                 << _keyboardMouseDevice->isActive();
+    }
+
     _altPressed = false;
     _controllerScriptingInterface->emitWheelEvent(event); // send events to any registered scripts
 
@@ -6823,46 +6904,73 @@ bool Application::isForeground() const {
 }
 
 void Application::sendMousePressOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::sendMousePressOnEntity " << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->mousePressOnEntity(entityItemID, event);
 }
 
 void Application::sendMouseMoveOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::sendMouseMoveOnEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->mouseMoveOnEntity(entityItemID, event);
 }
 
 void Application::sendMouseReleaseOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Application::sendMouseReleaseOnEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->mouseReleaseOnEntity(entityItemID, event);
 }
 
 void Application::sendClickDownOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::sendClickDownOnEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->clickDownOnEntity(entityItemID, event);
 }
 
 void Application::sendHoldingClickOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Application::sendHoldingClickOnEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->holdingClickOnEntity(entityItemID, event);
 }
 
 void Application::sendClickReleaseOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Application::sendClickReleaseOnEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->clickReleaseOnEntity(entityItemID, event);
 }
 
 void Application::sendHoverEnterEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::sendHoverEnterEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->hoverEnterEntity(entityItemID, event);
 }
 
 void Application::sendHoverOverEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::sendHoverOverEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->hoverOverEntity(entityItemID, event);
 }
 
 void Application::sendHoverLeaveEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Application::sendHoverLeaveEntity" << id;
+    }
     EntityItemID entityItemID(id);
     emit getEntities()->hoverLeaveEntity(entityItemID, event);
 }
