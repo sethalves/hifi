@@ -24,6 +24,7 @@
 #include <TextureCache.h>
 #include <gpu/Context.h>
 #include <TabletScriptingInterface.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "EntityTreeRenderer.h"
 #include "EntitiesRendererLogging.h"
@@ -148,6 +149,9 @@ bool RenderableWebEntityItem::buildWebSurface(QSharedPointer<EntityTreeRenderer>
     _mouseMoveConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::mouseMoveOnEntity, forwardPointerEvent);
     _hoverLeaveConnection = QObject::connect(renderer.data(), &EntityTreeRenderer::hoverLeaveEntity,
                                              [=](const EntityItemID& entityItemID, const PointerEvent& event) {
+        if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+            qDebug() << "mouse-trace RenderableWebEntityItem::buildWebSurface hoverLeaveEntity" << entityItemID;
+        }
         if (this->_pressed && this->getID() == entityItemID) {
             // If the user mouses off the entity while the button is down, simulate a touch end.
             QTouchEvent::TouchPoint point;
@@ -317,6 +321,9 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
     glm::vec2 windowPos = event.getPos2D() * (METERS_TO_INCHES * _dpi);
     QPointF windowPoint(windowPos.x, windowPos.y);
     if (event.getType() == PointerEvent::Move) {
+        if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+            qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Move" << getID();
+        }
         // Forward a mouse move event to webSurface
         QMouseEvent* mouseEvent = new QMouseEvent(QEvent::MouseMove, windowPoint, windowPoint, windowPoint, Qt::NoButton, Qt::NoButton, Qt::NoModifier);
         QCoreApplication::postEvent(_webSurface->getWindow(), mouseEvent);
@@ -325,8 +332,14 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
     {
         // Forward a touch update event to webSurface
         if (event.getType() == PointerEvent::Press) {
+            if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Press" << getID();
+            }
             this->_pressed = true;
         } else if (event.getType() == PointerEvent::Release) {
+            if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+                qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Release" << getID();
+            }
             this->_pressed = false;
         }
 
@@ -334,15 +347,24 @@ void RenderableWebEntityItem::handlePointerEvent(const PointerEvent& event) {
         Qt::TouchPointState touchPointState;
         switch (event.getType()) {
         case PointerEvent::Press:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+                qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Press" << getID();
+            }
             type = QEvent::TouchBegin;
             touchPointState = Qt::TouchPointPressed;
             break;
         case PointerEvent::Release:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+                qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Release" << getID();
+            }
             type = QEvent::TouchEnd;
             touchPointState = Qt::TouchPointReleased;
             break;
         case PointerEvent::Move:
         default:
+            if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+                qDebug() << "mouse-trace RenderableWebEntityItem::handlePointerEvent PointerEvent::Move" << getID();
+            }
             type = QEvent::TouchUpdate;
             touchPointState = Qt::TouchPointMoved;
             break;

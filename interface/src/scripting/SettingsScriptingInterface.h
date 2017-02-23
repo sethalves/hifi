@@ -25,6 +25,8 @@ public slots:
     QVariant getValue(const QString& setting);
     QVariant getValue(const QString& setting, const QVariant& defaultValue);
     void setValue(const QString& setting, const QVariant& value);
+
+    QVariant getProperty(const QString& propertyName);
 };
 
 #endif // hifi_SettingsScriptingInterface_h

@@ -317,6 +317,10 @@ Grabber.prototype.computeNewGrabPlane = function() {
 };
 
 Grabber.prototype.pressEvent = function(event) {
+    if (Settings.getProperty("com.highfidelity.tracingMousePress")) {
+        print("mouse-trace grab.js Grabber.prototype.pressEvent");
+    }
+
     if (isInEditMode()) {
         return;
     }
@@ -404,6 +408,9 @@ Grabber.prototype.pressEvent = function(event) {
 };
 
 Grabber.prototype.releaseEvent = function(event) {
+    if (Settings.getProperty("com.highfidelity.tracingMouseRelease")) {
+        print("mouse-trace grab.js Grabber.prototype.releaseEvent");
+    }
     if (event.isLeftButton!==true ||event.isRightButton===true || event.isMiddleButton===true) {
         return;
     }
@@ -433,6 +440,9 @@ Grabber.prototype.releaseEvent = function(event) {
 };
 
 Grabber.prototype.moveEvent = function(event) {
+    if (Settings.getProperty("com.highfidelity.tracingMouseMove")) {
+        print("mouse-trace grab.js Grabber.prototype.moveEvent");
+    }
     if (!this.isGrabbing) {
         return;
     }
@@ -552,14 +562,25 @@ Grabber.prototype.keyPressEvent = function(event) {
 var grabber = new Grabber();
 
 function pressEvent(event) {
+    if (Settings.getProperty("com.highfidelity.tracingMousePress")) {
+        print("mouse-trace grab.js pressEvent");
+    } else {
+        print("grab.js NO");
+    }
     grabber.pressEvent(event);
 }
 
 function moveEvent(event) {
+    if (Settings.getProperty("com.highfidelity.tracingMouseMove")) {
+        print("mouse-trace grab.js moveEvent");
+    }
     grabber.moveEvent(event);
 }
 
 function releaseEvent(event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace grab.js releaseEvent";
+    }
     grabber.releaseEvent(event);
 }
 
