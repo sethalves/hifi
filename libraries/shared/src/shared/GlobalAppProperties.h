@@ -19,6 +19,9 @@ namespace hifi { namespace properties {
     extern const char* TEST;
     extern const char* TRACING;
     extern const char* HMD;
+    extern const char* TRACING_MOUSE_PRESS;
+    extern const char* TRACING_MOUSE_MOVE;
+    extern const char* TRACING_MOUSE_RELEASE;
 
     namespace gl {
         extern const char* BACKEND;

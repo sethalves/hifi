@@ -28,11 +28,13 @@
         var DEFAULT_WIDTH = 0.4375;
         var DEFAULT_HMD_TABLET_SCALE = 100;
         var HMD_TABLET_SCALE = Settings.getValue("hmdTabletScale") || DEFAULT_HMD_TABLET_SCALE;
-        UIWebTablet = new WebTablet("qml/hifi/tablet/TabletRoot.qml", DEFAULT_WIDTH * (HMD_TABLET_SCALE / 100), null, activeHand, true);
+        UIWebTablet = new WebTablet("qml/hifi/tablet/TabletRoot.qml",
+                                    DEFAULT_WIDTH * (HMD_TABLET_SCALE / 100), null, activeHand, true);
         UIWebTablet.register();
         HMD.tabletID = UIWebTablet.tabletEntityID;
-        HMD.homeButtonID = UIWebTablet.homeButtonID;
-        HMD.tabletScreenID = UIWebTablet.webOverlayID;
+        print("TABLET frameID=" + UIWebTablet.tabletEntityID +
+              " homeButtonID=" + UIWebTablet.homeButtonID +
+              " screenID=" + UIWebTablet.webOverlayID);
     }
 
     function hideTabletUI() {

@@ -17,6 +17,7 @@
 #include <OffscreenUi.h>
 #include <render/Scene.h>
 #include <RegisteredMetaTypes.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "Application.h"
 #include "InterfaceLogging.h"
@@ -624,26 +625,44 @@ bool Overlays::isAddedOverlay(OverlayID id) {
 }
 
 void Overlays::sendMousePressOnOverlay(OverlayID overlayID, const PointerEvent& event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendMousePressOnOverlay" << overlayID;
+    }
     emit mousePressOnOverlay(overlayID, event);
 }
 
 void Overlays::sendMouseReleaseOnOverlay(OverlayID overlayID, const PointerEvent& event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendMouseReleaseOnOverlay" << overlayID;
+    }
     emit mouseReleaseOnOverlay(overlayID, event);
 }
 
 void Overlays::sendMouseMoveOnOverlay(OverlayID overlayID, const PointerEvent& event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendMouseMoveOnOverlay" << overlayID;
+    }
     emit mouseMoveOnOverlay(overlayID, event);
 }
 
 void Overlays::sendHoverEnterOverlay(OverlayID id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendHoverEnterOverlay" << id;
+    }
     emit hoverEnterOverlay(id, event);
 }
 
 void Overlays::sendHoverOverOverlay(OverlayID  id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendHoverOverOverlay" << id;
+    }
     emit hoverOverOverlay(id, event);
 }
 
 void Overlays::sendHoverLeaveOverlay(OverlayID  id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Overlays::sendHoverLeaveOverlay" << id;
+    }
     emit hoverLeaveOverlay(id, event);
 }
 
@@ -764,6 +783,11 @@ void Overlays::mousePressEvent(QMouseEvent* event) {
 
     PickRay ray = qApp->computePickRay(event->x(), event->y());
     RayToOverlayIntersectionResult rayPickResult = findRayIntersectionForMouseEvent(ray);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace Overlays::mousePressEvent"
+                 << rayPickResult.intersects
+                 << rayPickResult.overlayID;
+    }
     if (rayPickResult.intersects) {
         _currentClickingOnOverlayID = rayPickResult.overlayID;
 
@@ -785,6 +809,11 @@ void Overlays::mouseReleaseEvent(QMouseEvent* event) {
 
     PickRay ray = qApp->computePickRay(event->x(), event->y());
     RayToOverlayIntersectionResult rayPickResult = findRayIntersectionForMouseEvent(ray);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace Overlays::mouseReleaseEvent"
+                 << rayPickResult.intersects
+                 << rayPickResult.overlayID;
+    }
     if (rayPickResult.intersects) {
 
         // Only Web overlays can have focus.
@@ -803,6 +832,11 @@ void Overlays::mouseMoveEvent(QMouseEvent* event) {
 
     PickRay ray = qApp->computePickRay(event->x(), event->y());
     RayToOverlayIntersectionResult rayPickResult = findRayIntersectionForMouseEvent(ray);
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace Overlays::mouseMoveEvent"
+                 << rayPickResult.intersects
+                 << rayPickResult.overlayID;
+    }
     if (rayPickResult.intersects) {
 
         // Only Web overlays can have focus.

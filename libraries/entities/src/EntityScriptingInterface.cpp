@@ -14,6 +14,7 @@
 #include <VariantMapToScriptValue.h>
 #include <SharedUtil.h>
 #include <SpatialParentFinder.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "EntitiesLogging.h"
 #include "EntityActionFactoryInterface.h"
@@ -1439,38 +1440,65 @@ void EntityScriptingInterface::setKeyboardFocusEntity(QUuid id) {
 }
 
 void EntityScriptingInterface::sendMousePressOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendMousePressOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendMousePressOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendMouseMoveOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendMouseMoveOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendMouseMoveOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendMouseReleaseOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendMouseReleaseOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendMouseReleaseOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendClickDownOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendClickDownOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendClickDownOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendHoldingClickOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendHoldingClickOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendHoldingClickOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendClickReleaseOnEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendClickReleaseOnEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendClickReleaseOnEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendHoverEnterEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendHoverEnterEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendHoverEnterEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendHoverOverEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendHoverOverEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendHoverOverEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 
 void EntityScriptingInterface::sendHoverLeaveEntity(QUuid id, PointerEvent event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace EntityScriptingInterface::sendHoverLeaveEntity" << id;
+    }
     QMetaObject::invokeMethod(qApp, "sendHoverLeaveEntity", Qt::QueuedConnection, Q_ARG(QUuid, id), Q_ARG(PointerEvent, event));
 }
 

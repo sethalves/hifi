@@ -9,6 +9,7 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include <QApplication>
 #include "SettingsScriptingInterface.h"
 
 #include <SettingHandle.h>
@@ -36,4 +37,10 @@ QVariant SettingsScriptingInterface::getValue(const QString& setting, const QVar
 
 void SettingsScriptingInterface::setValue(const QString& setting, const QVariant& value) {
     Setting::Handle<QVariant>(setting).set(value);
+}
+
+QVariant SettingsScriptingInterface::getProperty(const QString& propertyName) {
+    QByteArray propertyNameBA = propertyName.toLatin1();
+    const char *propertyNameC = propertyNameBA.data();
+    return qApp->property(propertyNameC);
 }

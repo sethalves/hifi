@@ -17,6 +17,7 @@
 #include <controllers/UserInputMapper.h>
 #include <PathUtils.h>
 #include <NumericalConstants.h>
+#include <shared/GlobalAppProperties.h>
 
 const char* KeyboardMouseDevice::NAME = "Keyboard/Mouse";
 bool KeyboardMouseDevice::_enableTouch = true;
@@ -67,6 +68,9 @@ void KeyboardMouseDevice::keyReleaseEvent(QKeyEvent* event) {
 }
 
 void KeyboardMouseDevice::mousePressEvent(QMouseEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::mousePressEvent";
+    }
     auto input = _inputDevice->makeInput((Qt::MouseButton) event->button());
     auto result = _inputDevice->_buttonPressedMap.insert(input.getChannel());
     if (!result.second) {
@@ -83,6 +87,9 @@ void KeyboardMouseDevice::mousePressEvent(QMouseEvent* event) {
 }
 
 void KeyboardMouseDevice::mouseReleaseEvent(QMouseEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_RELEASE).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::mouseReleaseEvent";
+    }
     auto input = _inputDevice->makeInput((Qt::MouseButton) event->button());
     _inputDevice->_buttonPressedMap.erase(input.getChannel());
 
@@ -104,6 +111,9 @@ void KeyboardMouseDevice::eraseMouseClicked() {
 }
 
 void KeyboardMouseDevice::mouseMoveEvent(QMouseEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::mouseMoveEvent";
+    }
     QPoint currentPos = event->pos();
     QPoint currentMove = currentPos - _lastCursor;
 
@@ -128,6 +138,9 @@ void KeyboardMouseDevice::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void KeyboardMouseDevice::wheelEvent(QWheelEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::wheelEvent";
+    }
     auto currentMove = event->angleDelta() / 120.0f;
 
     _inputDevice->_axisStateMap[_inputDevice->makeInput(MOUSE_AXIS_WHEEL_X_POS).getChannel()] = (currentMove.x() > 0 ? currentMove.x() : 0.0f);
@@ -148,6 +161,9 @@ glm::vec2 evalAverageTouchPoints(const QList<QTouchEvent::TouchPoint>& points) {
 }
 
 void KeyboardMouseDevice::touchBeginEvent(const QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::touchBeginEvent" << _enableTouch;
+    }
     if (_enableTouch) {
         _isTouching = event->touchPointStates().testFlag(Qt::TouchPointPressed);
         _lastTouch = evalAverageTouchPoints(event->touchPoints());
@@ -156,6 +172,9 @@ void KeyboardMouseDevice::touchBeginEvent(const QTouchEvent* event) {
 }
 
 void KeyboardMouseDevice::touchEndEvent(const QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_PRESS).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::touchEndEvent" << _enableTouch;
+    }
     if (_enableTouch) {
         _isTouching = false;
         _lastTouch = evalAverageTouchPoints(event->touchPoints());
@@ -164,6 +183,9 @@ void KeyboardMouseDevice::touchEndEvent(const QTouchEvent* event) {
 }
 
 void KeyboardMouseDevice::touchUpdateEvent(const QTouchEvent* event) {
+    if (qApp->property(hifi::properties::TRACING_MOUSE_MOVE).toBool()) {
+        qDebug() << "mouse-trace KeyboardMouseDevice::touchUpdateEvent" << _enableTouch;
+    }
     if (_enableTouch) {
         auto currentPos = evalAverageTouchPoints(event->touchPoints());
         _lastTouchTime = _clock.now();
