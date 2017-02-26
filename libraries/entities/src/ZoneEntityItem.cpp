@@ -21,6 +21,7 @@
 #include "ZoneEntityItem.h"
 #include "PhysicsEngineTrackerInterface.h"
 #include "EntitySimulation.h"
+#include "EntityEditFilters.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
 bool ZoneEntityItem::_drawZoneBoundaries = false;
@@ -31,6 +32,7 @@ const QString ZoneEntityItem::DEFAULT_COMPOUND_SHAPE_URL = "";
 const bool ZoneEntityItem::DEFAULT_FLYING_ALLOWED = true;
 const bool ZoneEntityItem::DEFAULT_GHOSTING_ALLOWED = true;
 const bool ZoneEntityItem::DEFAULT_LOCALIZED_SIMULATION = false;
+const QString ZoneEntityItem::DEFAULT_FILTER_URL = "";
 
 EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
     EntityItemPointer entity { new ZoneEntityItem(entityID) };
@@ -64,6 +66,7 @@ EntityItemProperties ZoneEntityItem::getProperties(EntityPropertyFlags desiredPr
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(flyingAllowed, getFlyingAllowed);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(ghostingAllowed, getGhostingAllowed);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localizedSimulation, getLocalizedSimulation);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(filterURL, getFilterURL);
 
     return properties;
 }
@@ -82,6 +85,7 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(flyingAllowed, setFlyingAllowed);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(ghostingAllowed, setGhostingAllowed);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(localizedSimulation, setLocalizedSimulation);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(filterURL, setFilterURL);
 
     bool somethingChangedInSkybox = _skyboxProperties.setProperties(properties);
 
@@ -132,6 +136,7 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     READ_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, bool, setFlyingAllowed);
     READ_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
     READ_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, bool, setLocalizedSimulation);
+    READ_ENTITY_PROPERTY(PROP_FILTER_URL, QString, setFilterURL);
 
     return bytesRead;
 }
@@ -152,6 +157,7 @@ EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& p
     requestedProperties += PROP_FLYING_ALLOWED;
     requestedProperties += PROP_GHOSTING_ALLOWED;
     requestedProperties += PROP_LOCALIZED_SIMULATION;
+    requestedProperties += PROP_FILTER_URL;
 
     return requestedProperties;
 }
@@ -183,6 +189,7 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
     APPEND_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, getFlyingAllowed());
     APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, getGhostingAllowed());
     APPEND_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, getLocalizedSimulation());
+    APPEND_ENTITY_PROPERTY(PROP_FILTER_URL, getFilterURL());
 }
 
 void ZoneEntityItem::debugDump() const {
@@ -247,4 +254,13 @@ void ZoneEntityItem::setLocalizedSimulation(bool value) {
 
 bool ZoneEntityItem::isSimulationParent() {
     return _localizedSimulation;
+}
+
+void ZoneEntityItem::setFilterURL(QString url) {
+    _filterURL = url;
+    if (DependencyManager::isSet<EntityEditFilters>()) {
+        auto entityEditFilters = DependencyManager::get<EntityEditFilters>();
+        qCDebug(entities) << "adding filter " << url << "for zone" << getEntityItemID();
+        entityEditFilters->addFilter(getEntityItemID(), url);
+    }
 }

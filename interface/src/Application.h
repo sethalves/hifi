@@ -214,6 +214,11 @@ public:
     float getDesktopTabletScale() { return _desktopTabletScale.get(); }
     void setDesktopTabletScale(float desktopTabletScale);
 
+    bool getDesktopTabletBecomesToolbarSetting() { return _desktopTabletBecomesToolbarSetting.get(); }
+    void setDesktopTabletBecomesToolbarSetting(bool value);
+    bool getHmdTabletBecomesToolbarSetting() { return _hmdTabletBecomesToolbarSetting.get(); }
+    void setHmdTabletBecomesToolbarSetting(bool value);
+
     float getSettingConstrainToolbarPosition() { return _constrainToolbarPosition.get(); }
     void setSettingConstrainToolbarPosition(bool setting);
 
@@ -295,6 +300,9 @@ public:
     Q_INVOKABLE void sendHoverOverEntity(QUuid id, PointerEvent event);
     Q_INVOKABLE void sendHoverLeaveEntity(QUuid id, PointerEvent event);
 
+    OverlayID getTabletScreenID() const;
+    OverlayID getTabletHomeButtonID() const;
+
 signals:
     void svoImportRequested(const QString& url);
 
@@ -312,6 +320,7 @@ public slots:
     bool exportEntities(const QString& filename, float x, float y, float z, float scale);
     bool importEntities(const QString& url);
     void updateThreadPoolCount() const;
+    void updateSystemTabletMode();
 
     static void setLowVelocityFilter(bool lowVelocityFilter);
     Q_INVOKABLE void loadDialog();
@@ -383,8 +392,8 @@ public slots:
     void setKeyboardFocusEntity(QUuid id);
     void setKeyboardFocusEntity(EntityItemID entityItemID);
 
-    unsigned int getKeyboardFocusOverlay();
-    void setKeyboardFocusOverlay(unsigned int overlayID);
+    OverlayID getKeyboardFocusOverlay();
+    void setKeyboardFocusOverlay(OverlayID overlayID);
 
     void addAssetToWorldMessageClose();
 
@@ -551,6 +560,8 @@ private:
     Setting::Handle<float> _fieldOfView;
     Setting::Handle<float> _hmdTabletScale;
     Setting::Handle<float> _desktopTabletScale;
+    Setting::Handle<bool> _desktopTabletBecomesToolbarSetting;
+    Setting::Handle<bool> _hmdTabletBecomesToolbarSetting;
     Setting::Handle<bool> _constrainToolbarPosition;
 
     float _scaleMirror;
@@ -611,7 +622,7 @@ private:
     DialogsManagerScriptingInterface* _dialogsManagerScriptingInterface = new DialogsManagerScriptingInterface();
 
     ThreadSafeValueCache<EntityItemID> _keyboardFocusedEntity;
-    ThreadSafeValueCache<unsigned int> _keyboardFocusedOverlay;
+    ThreadSafeValueCache<OverlayID> _keyboardFocusedOverlay;
     quint64 _lastAcceptedKeyPress = 0;
     bool _isForeground = true; // starts out assumed to be in foreground
     bool _inPaint = false;
