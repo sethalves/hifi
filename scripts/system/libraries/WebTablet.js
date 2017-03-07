@@ -193,10 +193,16 @@ WebTablet = function (url, width, dpi, hand, clientOnly, location) {
             var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
             var onHomeScreen = tablet.onHomeScreen();
             if (onHomeScreen) {
-                HMD.closeTablet();
+                var isMessageOpen = tablet.isMessageDialogOpen();
+                if (isMessageOpen === false) {
+                    HMD.closeTablet();
+                }
             } else {
-                tablet.gotoHomeScreen();
-                _this.setHomeButtonTexture();
+                var isMessageOpen = tablet.isMessageDialogOpen();
+                if (isMessageOpen === false) {
+                    tablet.gotoHomeScreen();
+                    _this.setHomeButtonTexture();
+                }
             }
         }
     };
@@ -475,11 +481,16 @@ WebTablet.prototype.mousePressEvent = function (event) {
         if (overlayPickResults.intersects && overlayPickResults.overlayID === this.homeButtonID) {
             var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
             var onHomeScreen = tablet.onHomeScreen();
+            var isMessageOpen = tablet.isMessageDialogOpen();
             if (onHomeScreen) {
-                HMD.closeTablet();
+                if (isMessageOpen === false) {
+                    HMD.closeTablet();
+                }
             } else {
-                tablet.gotoHomeScreen();
-                this.setHomeButtonTexture();
+                if (isMessageOpen === false) {
+                    tablet.gotoHomeScreen();
+                    this.setHomeButtonTexture();
+                }
             }
         } else if (!HMD.active && (!overlayPickResults.intersects || overlayPickResults.overlayID !== this.webOverlayID)) {
             this.dragging = true;

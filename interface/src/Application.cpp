@@ -845,6 +845,9 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     connect(this, &QCoreApplication::aboutToQuit, addressManager.data(), &AddressManager::storeCurrentAddress);
 
     connect(this, &Application::activeDisplayPluginChanged, this, &Application::updateThreadPoolCount);
+    connect(this, &Application::activeDisplayPluginChanged, this, [](){
+        qApp->setProperty(hifi::properties::HMD, qApp->isHMDMode());
+    });
     connect(this, &Application::activeDisplayPluginChanged, this, &Application::updateSystemTabletMode);
 
     // Save avatar location immediately after a teleport.
@@ -1617,17 +1620,14 @@ QString Application::getUserAgent() {
     return userAgent;
 }
 
-// uint64_t lastTabletUIToggle { 0 };
-// const uint64_t toggleTabletUILockout { 500000 };
 void Application::toggleTabletUI() const {
-    // uint64_t now = usecTimestampNow();
-    // if (now - lastTabletUIToggle < toggleTabletUILockout) {
-    //     return;
-    // }
-    // lastTabletUIToggle = now;
-
-    auto HMD = DependencyManager::get<HMDScriptingInterface>();
-    HMD->toggleShouldShowTablet();
+    auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
+    TabletProxy* tablet = dynamic_cast<TabletProxy*>(tabletScriptingInterface->getTablet("com.highfidelity.interface.tablet.system"));
+    bool messageOpen = tablet->isMessageDialogOpen();
+    if (!messageOpen) {
+        auto HMD = DependencyManager::get<HMDScriptingInterface>();
+        HMD->toggleShouldShowTablet();
+    }
 }
 
 void Application::checkChangeCursor() {
@@ -1959,6 +1959,7 @@ void Application::initializeUi() {
     rootContext->setContextProperty("AddressManager", DependencyManager::get<AddressManager>().data());
     rootContext->setContextProperty("FrameTimings", &_frameTimingsScriptingInterface);
     rootContext->setContextProperty("Rates", new RatesScriptingInterface(this));
+    rootContext->setContextProperty("pathToFonts", "../../");
 
     rootContext->setContextProperty("TREE_SCALE", TREE_SCALE);
     rootContext->setContextProperty("Quat", new Quat());
@@ -5788,8 +5789,23 @@ bool Application::displayAvatarAttachmentConfirmationDialog(const QString& name)
 }
 
 void Application::toggleRunningScriptsWidget() const {
-    static const QUrl url("hifi/dialogs/RunningScripts.qml");
-    DependencyManager::get<OffscreenUi>()->show(url, "RunningScripts");
+    
+    auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
+    auto tablet = dynamic_cast<TabletProxy*>(tabletScriptingInterface->getTablet("com.highfidelity.interface.tablet.system"));
+    if (tablet->getToolbarMode()) {
+        static const QUrl url("hifi/dialogs/RunningScripts.qml");
+        DependencyManager::get<OffscreenUi>()->show(url, "RunningScripts");
+    } else {
+        QQuickItem* tabletRoot = tablet->getTabletRoot();
+        if (!tabletRoot && !isHMDMode()) {
+            static const QUrl url("hifi/dialogs/RunningScripts.qml");
+            DependencyManager::get<OffscreenUi>()->show(url, "RunningScripts");
+        } else {
+            static const QUrl url("../../hifi/dialogs/TabletRunningScripts.qml");
+            tablet->pushOntoStack(url);
+        }
+    }
+    //DependencyManager::get<OffscreenUi>()->show(url, "RunningScripts");
     //if (_runningScriptsWidget->isVisible()) {
     //    if (_runningScriptsWidget->hasFocus()) {
     //        _runningScriptsWidget->hide();
