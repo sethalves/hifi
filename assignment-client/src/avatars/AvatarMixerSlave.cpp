@@ -146,7 +146,7 @@ void AvatarMixerSlave::broadcastAvatarData(const SharedNodePointer& node) {
         // Define the minimum bubble size
         static const glm::vec3 minBubbleSize = glm::vec3(0.3f, 1.3f, 0.3f);
         // Define the scale of the box for the current node
-        glm::vec3 nodeBoxScale = (nodeData->getPosition() - nodeData->getGlobalBoundingBoxCorner()) * 2.0f;
+        glm::vec3 nodeBoxScale = (nodeData->getClientGlobalPosition() - nodeData->getGlobalBoundingBoxCorner()) * 2.0f;
         // Set up the bounding box for the current node
         AABox nodeBox(nodeData->getGlobalBoundingBoxCorner(), nodeBoxScale);
         // Clamp the size of the bounding box to a minimum scale
@@ -187,7 +187,7 @@ void AvatarMixerSlave::broadcastAvatarData(const SharedNodePointer& node) {
                 },
 
                 [&](AvatarSharedPointer avatar)->float{
-                    glm::vec3 nodeBoxHalfScale = (avatar->getPosition() - avatar->getGlobalBoundingBoxCorner());
+                    glm::vec3 nodeBoxHalfScale = (avatar->getClientGlobalPosition() - avatar->getGlobalBoundingBoxCorner());
                     return glm::max(nodeBoxHalfScale.x, glm::max(nodeBoxHalfScale.y, nodeBoxHalfScale.z));
                 },
 
@@ -226,7 +226,7 @@ void AvatarMixerSlave::broadcastAvatarData(const SharedNodePointer& node) {
                         if (node->isIgnoreRadiusEnabled() || (avatarNode->isIgnoreRadiusEnabled() && !getsAnyIgnored)) {
 
                             // Define the scale of the box for the current other node
-                            glm::vec3 otherNodeBoxScale = (avatarNodeData->getPosition() - avatarNodeData->getGlobalBoundingBoxCorner()) * 2.0f;
+                            glm::vec3 otherNodeBoxScale = (avatarNodeData->getClientGlobalPosition() - avatarNodeData->getGlobalBoundingBoxCorner()) * 2.0f;
                             // Set up the bounding box for the current other node
                             AABox otherNodeBox(avatarNodeData->getGlobalBoundingBoxCorner(), otherNodeBoxScale);
                             // Clamp the size of the bounding box to a minimum scale
