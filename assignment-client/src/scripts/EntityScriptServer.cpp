@@ -324,16 +324,8 @@ void EntityScriptServer::nodeActivated(SharedNodePointer activatedNode) {
 void EntityScriptServer::nodeKilled(SharedNodePointer killedNode) {
     switch (killedNode->getType()) {
         case NodeType::EntityServer: {
-            if (!_shuttingDown) {
-                if (_entitiesScriptEngine) {
-                    _entitiesScriptEngine->unloadAllEntityScripts();
-                    _entitiesScriptEngine->stop();
-                }
-
-                resetEntitiesScriptEngine();
-
-                _entityViewer.clear();
-            }
+            clear();
+            
             break;
         }
         case NodeType::Agent: {
@@ -402,7 +394,7 @@ void EntityScriptServer::selectAudioFormat(const QString& selectedCodecName) {
 }
 
 void EntityScriptServer::resetEntitiesScriptEngine() {
-    auto engineName = QString("Entities %1").arg(++_entitiesScriptEngineCount);
+    auto engineName = QString("about:Entities %1").arg(++_entitiesScriptEngineCount);
     auto newEngine = QSharedPointer<ScriptEngine>(new ScriptEngine(ScriptEngine::ENTITY_SERVER_SCRIPT, NO_SCRIPT, engineName));
 
     auto webSocketServerConstructorValue = newEngine->newFunction(WebSocketServerClass::constructor);
@@ -440,12 +432,12 @@ void EntityScriptServer::clear() {
         _entitiesScriptEngine->stop();
     }
 
+    _entityViewer.clear();
+
     // reset the engine
     if (!_shuttingDown) {
         resetEntitiesScriptEngine();
     }
-
-    _entityViewer.clear();
 }
 
 void EntityScriptServer::shutdownScriptEngine() {
@@ -485,7 +477,7 @@ void EntityScriptServer::checkAndCallPreload(const EntityItemID& entityID, const
             if (!scriptUrl.isEmpty()) {
                 scriptUrl = ResourceManager::normalizeURL(scriptUrl);
                 qCDebug(entity_script_server) << "Loading entity server script" << scriptUrl << "for" << entityID;
-                ScriptEngine::loadEntityScript(_entitiesScriptEngine, entityID, scriptUrl, reload);
+                _entitiesScriptEngine->loadEntityScript(entityID, scriptUrl, reload);
             }
         }
     }
