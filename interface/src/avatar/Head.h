@@ -142,6 +142,8 @@ private:
     // private methods
     void calculateMouthShapes();
     void applyEyelidOffset(glm::quat headOrientation);
+
+    void calculateEyeAreaShapes(float deltaTime);
 };
 
 #endif // hifi_Head_h
