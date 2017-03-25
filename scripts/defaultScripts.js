@@ -14,13 +14,17 @@
 var DEFAULT_SCRIPTS = [
     "system/progress.js",
     "system/away.js",
-    "system/users.js",
-    "system/mute.js",
-    "system/goto.js",
+    "system/audio.js",
     "system/hmd.js",
+    "system/menu.js",
+    "system/bubble.js",
+    "system/snapshot.js",
+    "system/help.js",
+    "system/pal.js", // "system/mod.js", // older UX, if you prefer
+    "system/goto.js",
     "system/marketplaces/marketplaces.js",
     "system/edit.js",
-    "system/pal.js", //"system/mod.js", // older UX, if you prefer
+    "system/tablet-users.js",
     "system/selectAudioDevice.js",
     "system/notifications.js",
     "system/controllers/controllerDisplayManager.js",
@@ -32,9 +36,7 @@ var DEFAULT_SCRIPTS = [
     "system/controllers/toggleAdvancedMovementForHandControllers.js",
     "system/dialTone.js",
     "system/firstPersonHMD.js",
-    "system/snapshot.js",
-    "system/help.js",
-    "system/bubble.js"
+    "system/tablet-ui/tabletUI.js"
 ];
 
 // add a menu item for debugging
@@ -51,9 +53,6 @@ if (previousSetting === '' || previousSetting === false || previousSetting === '
 if (previousSetting === true || previousSetting === 'true') {
     previousSetting = true;
 }
-
-
-
 
 if (Menu.menuExists(MENU_CATEGORY) && !Menu.menuItemExists(MENU_CATEGORY, MENU_ITEM)) {
     Menu.addMenuItem({
@@ -76,11 +75,11 @@ function runDefaultsSeparately() {
         Script.load(DEFAULT_SCRIPTS[i]);
     }
 }
+
 // start all scripts
 if (Menu.isOptionChecked(MENU_ITEM)) {
     // we're debugging individual default scripts
     // so we load each into its own ScriptEngine instance
-    debuggingDefaultScripts = true;
     runDefaultsSeparately();
 } else {
     // include all default scripts into this ScriptEngine
@@ -88,32 +87,14 @@ if (Menu.isOptionChecked(MENU_ITEM)) {
 }
 
 function menuItemEvent(menuItem) {
-    if (menuItem == MENU_ITEM) {
-
-        isChecked = Menu.isOptionChecked(MENU_ITEM);
+    if (menuItem === MENU_ITEM) {
+        var isChecked = Menu.isOptionChecked(MENU_ITEM);
         if (isChecked === true) {
             Settings.setValue(SETTINGS_KEY, true);
         } else if (isChecked === false) {
             Settings.setValue(SETTINGS_KEY, false);
         }
-         Window.alert('You must reload all scripts for this to take effect.')
-    }
-
-
-}
-
-
-
-function stopLoadedScripts() {
-        // remove debug script loads
-    var runningScripts = ScriptDiscoveryService.getRunning();
-    for (var i in runningScripts) {
-        var scriptName = runningScripts[i].name;
-        for (var j in DEFAULT_SCRIPTS) {
-            if (DEFAULT_SCRIPTS[j].slice(-scriptName.length) === scriptName) {
-                ScriptDiscoveryService.stopScript(runningScripts[i].url);
-            }
-        }
+        Menu.triggerOption("Reload All Scripts");
     }
 }
 
@@ -124,7 +105,6 @@ function removeMenuItem() {
 }
 
 Script.scriptEnding.connect(function() {
-    stopLoadedScripts();
     removeMenuItem();
 });
 

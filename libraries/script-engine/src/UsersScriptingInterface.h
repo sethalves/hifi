@@ -62,6 +62,23 @@ public slots:
     bool getPersonalMuteStatus(const QUuid& nodeID);
 
     /**jsdoc
+    * Sets an avatar's gain for you and you only.
+    * Units are Decibels (dB)
+    * @function Users.setAvatarGain
+    * @param {nodeID} nodeID The node or session ID of the user whose gain you want to modify.
+    * @param {float} gain The gain of the avatar you'd like to set. Units are dB.
+    */
+    void setAvatarGain(const QUuid& nodeID, float gain);
+
+    /**jsdoc
+    * Gets an avatar's gain for you and you only.
+    * @function Users.getAvatarGain
+    * @param {nodeID} nodeID The node or session ID of the user whose gain you want to get.
+    * @return {float} gain (in dB)
+    */
+    float getAvatarGain(const QUuid& nodeID);
+
+    /**jsdoc
     * Kick another user.
     * @function Users.kick
     * @param {nodeID} nodeID The node or session ID of the user you want to kick.
@@ -126,14 +143,21 @@ signals:
 
     /**jsdoc
     * Notifies scripts of the username and machine fingerprint associated with a UUID.
+    * Username and machineFingerprint will be their default constructor output if the requesting user isn't an admin.
     * @function Users.usernameFromIDReply
     */
-    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint);
+    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint, bool isAdmin);
+
+    /**jsdoc
+     * Notifies scripts that a user has disconnected from the domain
+     * @function Users.avatar.avatarDisconnected
+     * @param {nodeID} NodeID The session ID of the avatar that has disconnected
+     */
+    void avatarDisconnected(const QUuid& nodeID);
 
 private:
     bool getRequestsDomainListData();
     void setRequestsDomainListData(bool requests);
-    bool _requestsDomainListData;
 };
 
 

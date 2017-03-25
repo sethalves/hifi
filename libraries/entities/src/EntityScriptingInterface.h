@@ -210,6 +210,9 @@ public slots:
     /// order to return an accurate result
     Q_INVOKABLE RayToEntityIntersectionResult findRayIntersectionBlocking(const PickRay& ray, bool precisionPicking = false, const QScriptValue& entityIdsToInclude = QScriptValue(), const QScriptValue& entityIdsToDiscard = QScriptValue());
 
+    Q_INVOKABLE bool reloadServerScripts(QUuid entityID);
+    Q_INVOKABLE bool getServerScriptStatus(QUuid entityID, QScriptValue callback);
+
     Q_INVOKABLE void setLightsArePickable(bool value);
     Q_INVOKABLE bool getLightsArePickable() const;
 
@@ -220,6 +223,8 @@ public slots:
     Q_INVOKABLE bool getDrawZoneBoundaries() const;
 
     Q_INVOKABLE bool setVoxelSphere(QUuid entityID, const glm::vec3& center, float radius, int value);
+    Q_INVOKABLE bool setVoxelCapsule(QUuid entityID, const glm::vec3& start, const glm::vec3& end, float radius, int value);
+
     Q_INVOKABLE bool setVoxel(QUuid entityID, const glm::vec3& position, int value);
     Q_INVOKABLE bool setAllVoxels(QUuid entityID, int value);
     Q_INVOKABLE bool setVoxelsInCuboid(QUuid entityID, const glm::vec3& lowPosition,
@@ -281,6 +286,12 @@ public slots:
     Q_INVOKABLE bool wantsHandControllerPointerEvents(QUuid id);
 
     Q_INVOKABLE void emitScriptEvent(const EntityItemID& entityID, const QVariant& message);
+
+    Q_INVOKABLE QObject* getWebViewRoot(const QUuid& entityID);
+
+    Q_INVOKABLE bool AABoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
+                                            const glm::vec3& start, const glm::vec3& end, float radius);
+
 
 signals:
     void collisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);

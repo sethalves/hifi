@@ -63,9 +63,11 @@ public slots:
     virtual void nodeAdded(SharedNodePointer node) override;
     virtual void nodeKilled(SharedNodePointer node) override;
     void pruneDeletedEntities();
+    void entityFilterAdded(EntityItemID id, bool success);
 
 protected:
     virtual OctreePointer createTree() override;
+    virtual UniqueSendThread newSendThread(const SharedNodePointer& node) override;
 
 private slots:
     void handleEntityPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);

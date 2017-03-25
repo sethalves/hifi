@@ -660,6 +660,7 @@ bool OctreeServer::handleHTTPRequest(HTTPConnection* connection, const QUrl& url
         quint64 averageUpdateTime = _tree->getAverageUpdateTime();
         quint64 averageCreateTime = _tree->getAverageCreateTime();
         quint64 averageLoggingTime = _tree->getAverageLoggingTime();
+        quint64 averageFilterTime = _tree->getAverageFilterTime();
 
         int FLOAT_PRECISION = 3;
 
@@ -699,6 +700,8 @@ bool OctreeServer::handleHTTPRequest(HTTPConnection* connection, const QUrl& url
             .arg(locale.toString((uint)averageCreateTime).rightJustified(COLUMN_WIDTH, ' '));
         statsString += QString("            Average Logging Time: %1 usecs\r\n")
             .arg(locale.toString((uint)averageLoggingTime).rightJustified(COLUMN_WIDTH, ' '));
+        statsString += QString("            Average Filter Time: %1 usecs\r\n")
+            .arg(locale.toString((uint)averageFilterTime).rightJustified(COLUMN_WIDTH, ' '));
 
 
         int senderNumber = 0;
@@ -869,8 +872,12 @@ void OctreeServer::parsePayload() {
     }
 }
 
+OctreeServer::UniqueSendThread OctreeServer::newSendThread(const SharedNodePointer& node) {
+    return std::unique_ptr<OctreeSendThread>(new OctreeSendThread(this, node));
+}
+
 OctreeServer::UniqueSendThread OctreeServer::createSendThread(const SharedNodePointer& node) {
-    auto sendThread = std::unique_ptr<OctreeSendThread>(new OctreeSendThread(this, node));
+    auto sendThread = newSendThread(node);
     
     // we want to be notified when the thread finishes
     connect(sendThread.get(), &GenericThread::finished, this, &OctreeServer::removeSendThread);
@@ -1136,8 +1143,8 @@ void OctreeServer::domainSettingsRequestComplete() {
     auto nodeList = DependencyManager::get<NodeList>();
     
     // we need to ask the DS about agents so we can ping/reply with them
-    nodeList->addNodeTypeToInterestSet(NodeType::Agent);
-    
+    nodeList->addSetOfNodeTypesToNodeInterestSet({ NodeType::Agent, NodeType::EntityScriptServer });
+
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
     packetReceiver.registerListener(getMyQueryMessageType(), this, "handleOctreeQueryPacket");
     packetReceiver.registerListener(PacketType::OctreeDataNack, this, "handleOctreeDataNackPacket");

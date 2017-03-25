@@ -56,7 +56,7 @@ int main(int argc, const char* argv[]) {
     QCoreApplication::setOrganizationDomain(BuildInfo::ORGANIZATION_DOMAIN);
     QCoreApplication::setApplicationVersion(BuildInfo::VERSION);
 
-    QString applicationName = "High Fidelity Interface - " + qgetenv("USERNAME");
+    const QString& applicationName = getInterfaceSharedMemoryName();
 
     bool instanceMightBeRunning = true;
 
@@ -73,6 +73,11 @@ int main(int argc, const char* argv[]) {
     QSharedMemory sharedMemory { applicationName };
     instanceMightBeRunning = !sharedMemory.create(1, QSharedMemory::ReadOnly);
 #endif
+
+    // allow multiple interfaces to run if this environment variable is set.
+    if (QProcessEnvironment::systemEnvironment().contains("HIFI_ALLOW_MULTIPLE_INSTANCES")) {
+        instanceMightBeRunning = false;
+    }
 
     if (instanceMightBeRunning) {
         // Try to connect and send message to existing interface instance

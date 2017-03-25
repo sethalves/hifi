@@ -106,7 +106,14 @@ public:
         ViewFrustum,
         RequestsDomainListData,
         ExitingSpaceBubble,
-        LAST_PACKET_TYPE = ExitingSpaceBubble
+        PerAvatarGainSet,
+        EntityScriptGetStatus,
+        EntityScriptGetStatusReply,
+        ReloadEntityServerScript,
+        EntityPhysics,
+        EntityServerScriptLog,
+        AdjustAvatarSorting,
+        LAST_PACKET_TYPE = AdjustAvatarSorting
     };
 };
 
@@ -196,6 +203,14 @@ const PacketVersion VERSION_MODEL_ENTITIES_SUPPORT_SIMPLE_HULLS = 62;
 const PacketVersion VERSION_WEB_ENTITIES_SUPPORT_DPI = 63;
 const PacketVersion VERSION_ENTITIES_ARROW_ACTION = 64;
 const PacketVersion VERSION_ENTITIES_LAST_EDITED_BY = 65;
+const PacketVersion VERSION_ENTITIES_SERVER_SCRIPTS = 66;
+const PacketVersion VERSION_ENTITIES_PHYSICS_PACKET = 67;
+const PacketVersion VERSION_ENTITIES_ZONE_FILTERS = 68;
+
+enum class EntityQueryPacketVersion: PacketVersion {
+    JSONFilter = 18,
+    JSONFilterWithFamilyTree = 19
+};
 
 enum class AssetServerPacketVersion: PacketVersion {
     VegasCongestionControl = 19
@@ -210,7 +225,10 @@ enum class AvatarMixerPacketVersion : PacketVersion {
     HandControllerJoints,
     HasKillAvatarReason,
     SessionDisplayName,
-    Unignore
+    Unignore,
+    ImmediateSessionDisplayNameUpdates,
+    VariableAvatarData,
+    AvatarAsChildFixes
 };
 
 enum class DomainConnectRequestVersion : PacketVersion {
@@ -247,6 +265,10 @@ enum class AudioVersion : PacketVersion {
     SpaceBubbleChanges,
     HasPersonalMute,
     HighDynamicRangeVolume,
+};
+
+enum class MessageDataVersion : PacketVersion {
+    TextOrBinaryData = 18
 };
 
 #endif // hifi_PacketHeaders_h

@@ -76,9 +76,14 @@ signals:
 
     void messageBoxClosed(int id, int button);
 
+    // triggered when window size or position changes
+    void geometryChanged(QRect geometry);
+
 private:
     QString getPreviousBrowseLocation() const;
     void setPreviousBrowseLocation(const QString& location);
+
+    void ensureReticleVisible() const;
 
     int createMessageBox(QString title, QString text, int buttons, int defaultButton);
     QHash<int, QQuickItem*> _messageBoxes;

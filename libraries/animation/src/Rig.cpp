@@ -319,6 +319,39 @@ void Rig::clearIKJointLimitHistory() {
     }
 }
 
+void Rig::setMaxHipsOffsetLength(float maxLength) {
+    _maxHipsOffsetLength = maxLength;
+
+    if (_animNode) {
+        _animNode->traverse([&](AnimNode::Pointer node) {
+            auto ikNode = std::dynamic_pointer_cast<AnimInverseKinematics>(node);
+            if (ikNode) {
+                ikNode->setMaxHipsOffsetLength(_maxHipsOffsetLength);
+            }
+            return true;
+        });
+    }
+}
+
+float Rig::getMaxHipsOffsetLength() const {
+    return _maxHipsOffsetLength;
+}
+
+float Rig::getIKErrorOnLastSolve() const {
+    float result = 0.0f;
+
+    if (_animNode) {
+        _animNode->traverse([&](AnimNode::Pointer node) {
+            auto ikNode = std::dynamic_pointer_cast<AnimInverseKinematics>(node);
+            if (ikNode) {
+                result = ikNode->getMaxErrorOnLastSolve();
+            }
+            return true;
+        });
+    }
+    return result;
+}
+
 int Rig::getJointParentIndex(int childIndex) const {
     if (_animSkeleton && isIndexValid(childIndex)) {
         return _animSkeleton->getParentIndex(childIndex);
@@ -481,6 +514,10 @@ void Rig::calcAnimAlpha(float speed, const std::vector<float>& referenceSpeeds, 
 
 void Rig::setEnableInverseKinematics(bool enable) {
     _enableInverseKinematics = enable;
+}
+
+void Rig::setEnableAnimations(bool enable) {
+    _enabledAnimations = enable;
 }
 
 AnimPose Rig::getAbsoluteDefaultPose(int index) const {
@@ -907,7 +944,7 @@ void Rig::updateAnimations(float deltaTime, glm::mat4 rootTransform) {
 
     setModelOffset(rootTransform);
 
-    if (_animNode) {
+    if (_animNode && _enabledAnimations) {
         PerformanceTimer perfTimer("handleTriggers");
 
         updateAnimationStateHandlers();
@@ -1269,6 +1306,7 @@ void Rig::copyJointsIntoJointData(QVector<JointData>& jointDataVec) const {
 
 void Rig::copyJointsFromJointData(const QVector<JointData>& jointDataVec) {
     PerformanceTimer perfTimer("copyJoints");
+    PROFILE_RANGE(simulation_animation_detail, "copyJoints");
     if (_animSkeleton && jointDataVec.size() == (int)_internalPoseSet._relativePoses.size()) {
         // make a vector of rotations in absolute-geometry-frame
         const AnimPoseVec& absoluteDefaultPoses = _animSkeleton->getAbsoluteDefaultPoses();

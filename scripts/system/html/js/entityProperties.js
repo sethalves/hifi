@@ -590,7 +590,11 @@ function loaded() {
         var elLifetime = document.getElementById("property-lifetime");
         var elScriptURL = document.getElementById("property-script-url");
         var elScriptTimestamp = document.getElementById("property-script-timestamp");
-        var elReloadScriptButton = document.getElementById("reload-script-button");
+        var elReloadScriptsButton = document.getElementById("reload-script-button");
+        var elServerScripts = document.getElementById("property-server-scripts");
+        var elReloadServerScriptsButton = document.getElementById("reload-server-scripts-button");
+        var elServerScriptStatus = document.getElementById("server-script-status");
+        var elServerScriptError = document.getElementById("server-script-error");
         var elUserData = document.getElementById("property-user-data");
         var elClearUserData = document.getElementById("userdata-clear");
         var elSaveUserData = document.getElementById("userdata-save");
@@ -693,6 +697,7 @@ function loaded() {
 
         var elZoneFlyingAllowed = document.getElementById("property-zone-flying-allowed");
         var elZoneGhostingAllowed = document.getElementById("property-zone-ghosting-allowed");
+        var elZoneFilterURL = document.getElementById("property-zone-filter-url");
 
         var elPolyVoxSections = document.querySelectorAll(".poly-vox-section");
         allSections.push(elPolyVoxSections);
@@ -708,7 +713,25 @@ function loaded() {
             var properties;
             EventBridge.scriptEventReceived.connect(function(data) {
                 data = JSON.parse(data);
-                if (data.type == "update") {
+                if (data.type == "server_script_status") {
+                    elServerScriptError.value = data.errorInfo;
+                    elServerScriptError.style.display = data.errorInfo ? "block" : "none";
+                    if (data.statusRetrieved === false) {
+                        elServerScriptStatus.innerText = "Failed to retrieve status";
+                    } else if (data.isRunning) {
+                        var ENTITY_SCRIPT_STATUS = {
+                            pending: "Pending",
+                            loading: "Loading",
+                            error_loading_script: "Error loading script",
+                            error_running_script: "Error running script",
+                            running: "Running",
+                            unloaded: "Unloaded",
+                        };
+                        elServerScriptStatus.innerText = ENTITY_SCRIPT_STATUS[data.status] || data.status;
+                    } else {
+                        elServerScriptStatus.innerText = "Not running";
+                    }
+                } else if (data.type == "update") {
 
                     if (data.selections.length == 0) {
                         if (editor !== null && lastEntityID !== null) {
@@ -847,6 +870,7 @@ function loaded() {
                         elLifetime.value = properties.lifetime;
                         elScriptURL.value = properties.script;
                         elScriptTimestamp.value = properties.scriptTimestamp;
+                        elServerScripts.value = properties.serverScripts;
 
                         var json = null;
                         try {
@@ -1009,6 +1033,7 @@ function loaded() {
 
                             elZoneFlyingAllowed.checked = properties.flyingAllowed;
                             elZoneGhostingAllowed.checked = properties.ghostingAllowed;
+                            elZoneFilterURL.value = properties.filterURL;
 
                             showElements(document.getElementsByClassName('skybox-section'), elZoneBackgroundMode.value == 'skybox');
                         } else if (properties.type == "PolyVox") {
@@ -1143,6 +1168,11 @@ function loaded() {
         elLifetime.addEventListener('change', createEmitNumberPropertyUpdateFunction('lifetime'));
         elScriptURL.addEventListener('change', createEmitTextPropertyUpdateFunction('script'));
         elScriptTimestamp.addEventListener('change', createEmitNumberPropertyUpdateFunction('scriptTimestamp'));
+        elServerScripts.addEventListener('change', createEmitTextPropertyUpdateFunction('serverScripts'));
+        elServerScripts.addEventListener('change', function() {
+            // invalidate the current status (so that same-same updates can still be observed visually)
+            elServerScriptStatus.innerText = '[' + elServerScriptStatus.innerText + ']';
+        });
 
         elClearUserData.addEventListener("click", function() {
             deleteJSONEditor();
@@ -1359,7 +1389,8 @@ function loaded() {
 
         elZoneFlyingAllowed.addEventListener('change', createEmitCheckedPropertyUpdateFunction('flyingAllowed'));
         elZoneGhostingAllowed.addEventListener('change', createEmitCheckedPropertyUpdateFunction('ghostingAllowed'));
-
+        elZoneFilterURL.addEventListener('change', createEmitTextPropertyUpdateFunction('filterURL'));
+            
         var voxelVolumeSizeChangeFunction = createEmitVec3PropertyUpdateFunction(
             'voxelVolumeSize', elVoxelVolumeSizeX, elVoxelVolumeSizeY, elVoxelVolumeSizeZ);
         elVoxelVolumeSizeX.addEventListener('change', voxelVolumeSizeChangeFunction);
@@ -1392,15 +1423,24 @@ function loaded() {
             EventBridge.emitWebEvent(JSON.stringify({
                 type: "action",
                 action: "rescaleDimensions",
-                percentage: parseInt(elRescaleDimensionsPct.value),
+                percentage: parseFloat(elRescaleDimensionsPct.value),
             }));
         });
-        elReloadScriptButton.addEventListener("click", function() {
+        elReloadScriptsButton.addEventListener("click", function() {
             EventBridge.emitWebEvent(JSON.stringify({
                 type: "action",
-                action: "reloadScript"
+                action: "reloadClientScripts"
             }));
         });
+        elReloadServerScriptsButton.addEventListener("click", function() {
+            // invalidate the current status (so that same-same updates can still be observed visually)
+            elServerScriptStatus.innerText = '[' + elServerScriptStatus.innerText + ']';
+            EventBridge.emitWebEvent(JSON.stringify({
+                type: "action",
+                action: "reloadServerScripts"
+            }));
+        });
+
 
         window.onblur = function() {
             // Fake a change event

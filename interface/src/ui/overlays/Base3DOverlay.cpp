@@ -26,7 +26,8 @@ Base3DOverlay::Base3DOverlay() :
     _isSolid(DEFAULT_IS_SOLID),
     _isDashedLine(DEFAULT_IS_DASHED_LINE),
     _ignoreRayIntersection(false),
-    _drawInFront(false)
+    _drawInFront(false),
+    _isAA(true)
 {
 }
 
@@ -37,7 +38,9 @@ Base3DOverlay::Base3DOverlay(const Base3DOverlay* base3DOverlay) :
     _isSolid(base3DOverlay->_isSolid),
     _isDashedLine(base3DOverlay->_isDashedLine),
     _ignoreRayIntersection(base3DOverlay->_ignoreRayIntersection),
-    _drawInFront(base3DOverlay->_drawInFront)
+    _drawInFront(base3DOverlay->_drawInFront),
+    _isAA(base3DOverlay->_isAA),
+    _isGrabbable(base3DOverlay->_isGrabbable)
 {
     setTransform(base3DOverlay->getTransform());
 }
@@ -57,15 +60,19 @@ QVariantMap convertOverlayLocationFromScriptSemantics(const QVariantMap& propert
     } else if (result["position"].isValid()) {
         glm::vec3 localPosition = SpatiallyNestable::worldToLocal(vec3FromVariant(result["position"]),
                                                                   parentID, parentJointIndex, success);
-        result["position"] = vec3toVariant(localPosition);
+        if (success) {
+            result["position"] = vec3toVariant(localPosition);
+        }
     }
 
     if (result["localOrientation"].isValid()) {
         result["orientation"] = result["localOrientation"];
     } else if (result["orientation"].isValid()) {
         glm::quat localOrientation = SpatiallyNestable::worldToLocal(quatFromVariant(result["orientation"]),
-                                                                  parentID, parentJointIndex, success);
-        result["orientation"] = quatToVariant(localOrientation);
+                                                                     parentID, parentJointIndex, success);
+        if (success) {
+            result["orientation"] = quatToVariant(localOrientation);
+        }
     }
 
     return result;
@@ -123,6 +130,11 @@ void Base3DOverlay::setProperties(const QVariantMap& originalProperties) {
         needRenderItemUpdate = true;
     }
 
+    auto isGrabbable = properties["grabbable"];
+    if (isGrabbable.isValid()) {
+        setIsGrabbable(isGrabbable.toBool());
+    }
+
     if (properties["position"].isValid()) {
         setLocalPosition(vec3FromVariant(properties["position"]));
         needRenderItemUpdate = true;
@@ -175,6 +187,13 @@ void Base3DOverlay::setProperties(const QVariantMap& originalProperties) {
         needRenderItemUpdate = true;
     }
 
+    auto isAA = properties["isAA"];
+    if (isAA.isValid()) {
+        bool value = isAA.toBool();
+        setIsAA(value);
+        needRenderItemUpdate = true;
+    }
+
     // Communicate changes to the renderItem if needed
     if (needRenderItemUpdate) {
         auto itemID = getRenderItemID();
@@ -218,11 +237,17 @@ QVariant Base3DOverlay::getProperty(const QString& property) {
     if (property == "drawInFront") {
         return _drawInFront;
     }
+    if (property == "grabbable") {
+        return _isGrabbable;
+    }
     if (property == "parentID") {
         return getParentID();
     }
     if (property == "parentJointIndex") {
         return getParentJointIndex();
+    }
+    if (property == "isAA") {
+        return _isAA;
     }
 
     return Overlay::getProperty(property);
@@ -234,6 +259,8 @@ bool Base3DOverlay::findRayIntersection(const glm::vec3& origin, const glm::vec3
 }
 
 void Base3DOverlay::locationChanged(bool tellPhysics) {
+    SpatiallyNestable::locationChanged(tellPhysics);
+
     auto itemID = getRenderItemID();
     if (render::Item::isValidID(itemID)) {
         render::ScenePointer scene = qApp->getMain3DScene();
@@ -241,8 +268,6 @@ void Base3DOverlay::locationChanged(bool tellPhysics) {
         pendingChanges.updateItem(itemID);
         scene->enqueuePendingChanges(pendingChanges);
     }
-    // Overlays can't currently have children.
-    // SpatiallyNestable::locationChanged(tellPhysics); // tell all the children, also
 }
 
 void Base3DOverlay::parentDeleted() {

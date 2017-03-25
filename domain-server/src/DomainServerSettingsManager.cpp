@@ -21,7 +21,6 @@
 #include <QtCore/QStandardPaths>
 #include <QtCore/QUrl>
 #include <QtCore/QUrlQuery>
-#include <QTimeZone>
 
 #include <AccountManager.h>
 #include <Assignment.h>
@@ -30,7 +29,8 @@
 #include <NLPacketList.h>
 #include <NumericalConstants.h>
 #include <SettingHandle.h>
-
+#include <AvatarData.h> //for KillAvatarReason
+#include <FingerprintUtils.h>
 #include "DomainServerNodeData.h"
 
 const QString SETTINGS_DESCRIPTION_RELATIVE_PATH = "/resources/describe-settings.json";
@@ -270,11 +270,6 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
             _agentPermissions.clear();
         }
 
-        if (oldVersion < 1.5) {
-            // This was prior to operating hours, so add default hours
-            validateDescriptorsMap();
-        }
-
         if (oldVersion < 1.6) {
             unpackPermissions();
 
@@ -305,45 +300,16 @@ void DomainServerSettingsManager::setupConfigMap(const QStringList& argumentList
 }
 
 QVariantMap& DomainServerSettingsManager::getDescriptorsMap() {
-    validateDescriptorsMap();
 
     static const QString DESCRIPTORS{ "descriptors" };
+
+    auto& settingsMap = getSettingsMap();
+    if (!getSettingsMap().contains(DESCRIPTORS)) {
+        settingsMap.insert(DESCRIPTORS, QVariantMap());
+    }
+
     return *static_cast<QVariantMap*>(getSettingsMap()[DESCRIPTORS].data());
 }
-
-void DomainServerSettingsManager::validateDescriptorsMap() {
-    static const QString WEEKDAY_HOURS{ "descriptors.weekday_hours" };
-    static const QString WEEKEND_HOURS{ "descriptors.weekend_hours" };
-    static const QString UTC_OFFSET{ "descriptors.utc_offset" };
-
-    QVariant* weekdayHours = _configMap.valueForKeyPath(WEEKDAY_HOURS, true);
-    QVariant* weekendHours = _configMap.valueForKeyPath(WEEKEND_HOURS, true);
-    QVariant* utcOffset = _configMap.valueForKeyPath(UTC_OFFSET, true);
-
-    static const QString OPEN{ "open" };
-    static const QString CLOSE{ "close" };
-    static const QString DEFAULT_OPEN{ "00:00" };
-    static const QString DEFAULT_CLOSE{ "23:59" };
-    bool wasMalformed = false;
-    if (weekdayHours->isNull()) {
-        *weekdayHours = QVariantList{ QVariantMap{ { OPEN, QVariant(DEFAULT_OPEN) }, { CLOSE, QVariant(DEFAULT_CLOSE) } } };
-        wasMalformed = true;
-    }
-    if (weekendHours->isNull()) {
-        *weekendHours = QVariantList{ QVariantMap{ { OPEN, QVariant(DEFAULT_OPEN) }, { CLOSE, QVariant(DEFAULT_CLOSE) } } };
-        wasMalformed = true;
-    }
-    if (utcOffset->isNull()) {
-        *utcOffset = QVariant(QTimeZone::systemTimeZone().offsetFromUtc(QDateTime::currentDateTime()) / (float)SECS_PER_HOUR);
-        wasMalformed = true;
-    }
-
-    if (wasMalformed) {
-        // write the new settings to file
-        persistToFile();
-    }
-}
-
 
 void DomainServerSettingsManager::initializeGroupPermissions(NodePermissionsMap& permissionsRows,
                                                              QString groupName, NodePermissionsPointer perms) {
@@ -474,7 +440,7 @@ bool DomainServerSettingsManager::unpackPermissionsForKeypath(const QString& key
     foreach (QVariant permsHash, permissionsList) {
         NodePermissionsPointer perms { new NodePermissions(permsHash.toMap()) };
         QString id = perms->getID();
-        
+
         NodePermissionsKey idKey = perms->getKey();
 
         if (mapPointer->contains(idKey)) {
@@ -519,7 +485,7 @@ void DomainServerSettingsManager::unpackPermissions() {
             // make sure that this permission row is for a non-empty hardware
             if (perms->getKey().first.isEmpty()) {
                 _macPermissions.remove(perms->getKey());
-                
+
                 // we removed a row from the MAC permissions, we'll need a re-pack
                 needPack = true;
             }
@@ -590,7 +556,7 @@ void DomainServerSettingsManager::unpackPermissions() {
     QList<QHash<NodePermissionsKey, NodePermissionsPointer>> permissionsSets;
     permissionsSets << _standardAgentPermissions.get() << _agentPermissions.get()
                     << _groupPermissions.get() << _groupForbiddens.get()
-                    << _ipPermissions.get() << _macPermissions.get() 
+                    << _ipPermissions.get() << _macPermissions.get()
                     << _machineFingerprintPermissions.get();
 
     foreach (auto permissionSet, permissionsSets) {
@@ -703,56 +669,70 @@ void DomainServerSettingsManager::processNodeKickRequestPacket(QSharedPointer<Re
                     // ensure that the connect permission is clear
                     userPermissions->clear(NodePermissions::Permission::canConnectToDomain);
                 } else {
-                    // otherwise we apply the kick to the IP from active socket for this node and the MAC address
-
-                    // remove connect permissions for the IP (falling back to the public socket if not yet active)
-                    auto& kickAddress = matchingNode->getActiveSocket()
-                        ? matchingNode->getActiveSocket()->getAddress()
-                        : matchingNode->getPublicSocket().getAddress();
-
-                    NodePermissionsKey ipAddressKey(kickAddress.toString(), QUuid());
-
-                    // check if there were already permissions for the IP
-                    bool hadIPPermissions = hasPermissionsForIP(kickAddress);
-
-                    // grab or create permissions for the given IP address
-                    auto ipPermissions = _ipPermissions[ipAddressKey];
-
-                    if (!hadIPPermissions || ipPermissions->can(NodePermissions::Permission::canConnectToDomain)) {
-                        newPermissions = true;
-
-                        ipPermissions->clear(NodePermissions::Permission::canConnectToDomain);
-                    }
-
-                    // potentially remove connect permissions for the MAC address and machine fingerprint
-                    DomainServerNodeData* nodeData = reinterpret_cast<DomainServerNodeData*>(matchingNode->getLinkedData());
+                    // remove connect permissions for the machine fingerprint
+                    DomainServerNodeData* nodeData = static_cast<DomainServerNodeData*>(matchingNode->getLinkedData());
                     if (nodeData) {
-                        // mac address first
-                        NodePermissionsKey macAddressKey(nodeData->getHardwareAddress(), 0);
+                        // get this machine's fingerprint
+                        auto domainServerFingerprint = FingerprintUtils::getMachineFingerprint();
 
-                        bool hadMACPermissions = hasPermissionsForMAC(nodeData->getHardwareAddress());
-
-                        auto macPermissions = _macPermissions[macAddressKey];
-
-                        if (!hadMACPermissions || macPermissions->can(NodePermissions::Permission::canConnectToDomain)) {
-                            newPermissions = true;
-
-                            macPermissions->clear(NodePermissions::Permission::canConnectToDomain);
+                        if (nodeData->getMachineFingerprint() == domainServerFingerprint) {
+                            qWarning() << "attempt to kick node running on same machine as domain server (by fingerprint), ignoring KickRequest";
+                            return;
                         }
-
-                        // now for machine fingerprint
                         NodePermissionsKey machineFingerprintKey(nodeData->getMachineFingerprint().toString(), 0);
-                        
+
+                        // check if there were already permissions for the fingerprint
                         bool hadFingerprintPermissions = hasPermissionsForMachineFingerprint(nodeData->getMachineFingerprint());
-                        
+
+                        // grab or create permissions for the given fingerprint
                         auto fingerprintPermissions = _machineFingerprintPermissions[machineFingerprintKey];
-                        
+
+                        // write them
                         if (!hadFingerprintPermissions || fingerprintPermissions->can(NodePermissions::Permission::canConnectToDomain)) {
                             newPermissions = true;
                             fingerprintPermissions->clear(NodePermissions::Permission::canConnectToDomain);
                         }
+                    } else {
+                        // if no node data, all we can do is IP address
+                        auto& kickAddress = matchingNode->getActiveSocket()
+                            ? matchingNode->getActiveSocket()->getAddress()
+                            : matchingNode->getPublicSocket().getAddress();
+
+                        // probably isLoopback covers it, as whenever I try to ban an agent on same machine as the domain-server
+                        // it is always 127.0.0.1, but looking at the public and local addresses just to be sure
+                        // TODO: soon we will have feedback (in the form of a message to the client) after we kick.  When we
+                        // do, we will have a success flag, and perhaps a reason for failure.  For now, just don't do it.
+                        if (kickAddress == limitedNodeList->getPublicSockAddr().getAddress() ||
+                                kickAddress == limitedNodeList->getLocalSockAddr().getAddress() ||
+                                kickAddress.isLoopback() ) {
+                            qWarning() << "attempt to kick node running on same machine as domain server, ignoring KickRequest";
+                            return;
+                        }
+
+
+                        NodePermissionsKey ipAddressKey(kickAddress.toString(), QUuid());
+
+                        // check if there were already permissions for the IP
+                        bool hadIPPermissions = hasPermissionsForIP(kickAddress);
+
+                        // grab or create permissions for the given IP address
+                        auto ipPermissions = _ipPermissions[ipAddressKey];
+
+                        if (!hadIPPermissions || ipPermissions->can(NodePermissions::Permission::canConnectToDomain)) {
+                            newPermissions = true;
+
+                            ipPermissions->clear(NodePermissions::Permission::canConnectToDomain);
+                        }
                     }
                 }
+
+                // if we are here, then we kicked them, so send the KillAvatar message
+                auto packet = NLPacket::create(PacketType::KillAvatar, NUM_BYTES_RFC4122_UUID + sizeof(KillAvatarReason), true);
+                packet->write(nodeUUID.toRfc4122());
+                packet->writePrimitive(KillAvatarReason::NoReason);
+
+                // send to avatar mixer, it sends the kill to everyone else
+                limitedNodeList->broadcastToNodes(std::move(packet), NodeSet() << NodeType::AvatarMixer);
 
                 if (newPermissions) {
                     qDebug() << "Removing connect permission for node" << uuidStringWithoutCurlyBraces(matchingNode->getUUID())
@@ -760,9 +740,12 @@ void DomainServerSettingsManager::processNodeKickRequestPacket(QSharedPointer<Re
 
                     // we've changed permissions, time to store them to disk and emit our signal to say they have changed
                     packPermissions();
-                } else {
-                    emit updateNodePermissions();
                 }
+
+                // we emit this no matter what -- though if this isn't a new permission probably 2 people are racing to kick and this
+                // person lost the race.  No matter, just be sure this is called as otherwise it takes like 10s for the person being banned
+                // to go away
+                emit updateNodePermissions();
 
             } else {
                 qWarning() << "Node kick request received for unknown node. Refusing to process.";
@@ -780,45 +763,52 @@ void DomainServerSettingsManager::processNodeKickRequestPacket(QSharedPointer<Re
 
 // This function processes the "Get Username from ID" request.
 void DomainServerSettingsManager::processUsernameFromIDRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode) {
-    // Before we do any processing on this packet, make sure it comes from a node that is allowed to kick (is an admin)
-    if (sendingNode->getCanKick()) {
-        // From the packet, pull the UUID we're identifying
-        QUuid nodeUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
+    // From the packet, pull the UUID we're identifying
+    QUuid nodeUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
 
-        if (!nodeUUID.isNull()) {
-            // First, make sure we actually have a node with this UUID
-            auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
-            auto matchingNode = limitedNodeList->nodeWithUUID(nodeUUID);
+    if (!nodeUUID.isNull()) {
+        // First, make sure we actually have a node with this UUID
+        auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
+        auto matchingNode = limitedNodeList->nodeWithUUID(nodeUUID);
 
-            // If we do have a matching node...
-            if (matchingNode) {
+        // If we do have a matching node...
+        if (matchingNode) {
+            // Setup the packet
+            auto usernameFromIDReplyPacket = NLPacket::create(PacketType::UsernameFromIDReply);
+
+            QString verifiedUsername;
+            QUuid machineFingerprint;
+
+            // Write the UUID to the packet
+            usernameFromIDReplyPacket->write(nodeUUID.toRfc4122());
+
+            // Check if the sending node has permission to kick (is an admin)
+            // OR if the message is from a node whose UUID matches the one in the packet
+            if (sendingNode->getCanKick() || nodeUUID == sendingNode->getUUID()) {
                 // It's time to figure out the username
-                QString verifiedUsername = matchingNode->getPermissions().getVerifiedUserName();
-
-                // Setup the packet
-                auto usernameFromIDReplyPacket = NLPacket::create(PacketType::UsernameFromIDReply);
-                usernameFromIDReplyPacket->write(nodeUUID.toRfc4122());
+                verifiedUsername = matchingNode->getPermissions().getVerifiedUserName();
                 usernameFromIDReplyPacket->writeString(verifiedUsername);
 
                 // now put in the machine fingerprint
-                DomainServerNodeData* nodeData = reinterpret_cast<DomainServerNodeData*>(matchingNode->getLinkedData());
-                QUuid machineFingerprint = nodeData ? nodeData->getMachineFingerprint() : QUuid();
+                DomainServerNodeData* nodeData = static_cast<DomainServerNodeData*>(matchingNode->getLinkedData());
+                machineFingerprint = nodeData ? nodeData->getMachineFingerprint() : QUuid();
                 usernameFromIDReplyPacket->write(machineFingerprint.toRfc4122());
-                
-                qDebug() << "Sending username" << verifiedUsername << "and machine fingerprint" << machineFingerprint << "associated with node" << nodeUUID;
-
-                // Ship it!
-                limitedNodeList->sendPacket(std::move(usernameFromIDReplyPacket), *sendingNode);
             } else {
-                qWarning() << "Node username request received for unknown node. Refusing to process.";
+                usernameFromIDReplyPacket->writeString(verifiedUsername);
+                usernameFromIDReplyPacket->write(machineFingerprint.toRfc4122());
             }
-        } else {
-            qWarning() << "Node username request received for invalid node ID. Refusing to process.";
-        }
+            // Write whether or not the user is an admin
+            bool isAdmin = matchingNode->getCanKick();
+            usernameFromIDReplyPacket->writePrimitive(isAdmin);
 
+            qDebug() << "Sending username" << verifiedUsername << "and machine fingerprint" << machineFingerprint << "associated with node" << nodeUUID << ". Node admin status: " << isAdmin;
+            // Ship it!
+            limitedNodeList->sendPacket(std::move(usernameFromIDReplyPacket), *sendingNode);
+        } else {
+            qWarning() << "Node username request received for unknown node. Refusing to process.";
+        }
     } else {
-        qWarning() << "Refusing to process a username request packet from node" << uuidStringWithoutCurlyBraces(sendingNode->getUUID())
-            << "that does not have kick permissions.";
+        qWarning() << "Node username request received for invalid node ID. Refusing to process.";
     }
 }
 

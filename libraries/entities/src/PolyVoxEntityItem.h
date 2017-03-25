@@ -26,7 +26,7 @@ class PolyVoxEntityItem : public EntityItem {
     virtual EntityItemProperties getProperties(EntityPropertyFlags desiredProperties = EntityPropertyFlags()) const override;
     virtual bool setProperties(const EntityItemProperties& properties) override;
 
-    // TODO: eventually only include properties changed since the params.lastViewFrustumSent time
+    // TODO: eventually only include properties changed since the params.lastQuerySent time
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const override;
 
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
@@ -86,6 +86,8 @@ class PolyVoxEntityItem : public EntityItem {
 
     // coords are in world-space
     virtual bool setSphere(glm::vec3 center, float radius, uint8_t toValue) { return false; }
+    virtual bool setCapsule(glm::vec3 startWorldCoords, glm::vec3 endWorldCoords,
+                            float radiusWorldCoords, uint8_t toValue) { return false; }
     virtual bool setAll(uint8_t toValue) { return false; }
     virtual bool setCuboid(const glm::vec3& lowPosition, const glm::vec3& cuboidSize, int value) { return false; }
 

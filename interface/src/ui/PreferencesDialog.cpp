@@ -70,12 +70,43 @@ void setupPreferences() {
     }
 
     // UI
+    static const QString UI_CATEGORY { "UI" };
     {
         auto getter = []()->bool { return qApp->getSettingConstrainToolbarPosition(); };
         auto setter = [](bool value) { qApp->setSettingConstrainToolbarPosition(value); };
-        preferences->addPreference(new CheckPreference("UI", "Constrain Toolbar Position to Horizontal Center", getter, setter));
+        preferences->addPreference(new CheckPreference(UI_CATEGORY, "Constrain Toolbar Position to Horizontal Center", getter, setter));
     }
-
+    {
+        auto getter = []()->float { return qApp->getHMDTabletScale(); };
+        auto setter = [](float value) { qApp->setHMDTabletScale(value); };
+        auto preference = new SpinnerPreference(UI_CATEGORY, "HMD Tablet Scale %", getter, setter);
+        preference->setMin(20);
+        preference->setMax(500);
+        preferences->addPreference(preference);
+    }
+    {
+        auto getter = []()->float { return qApp->getDesktopTabletScale(); };
+        auto setter = [](float value) { qApp->setDesktopTabletScale(value); };
+        auto preference = new SpinnerPreference(UI_CATEGORY, "Desktop Tablet Scale %", getter, setter);
+        preference->setMin(20);
+        preference->setMax(500);
+        preferences->addPreference(preference);
+    }
+    {
+        auto getter = []()->bool { return qApp->getDesktopTabletBecomesToolbarSetting(); };
+        auto setter = [](bool value) { qApp->setDesktopTabletBecomesToolbarSetting(value); };
+        preferences->addPreference(new CheckPreference(UI_CATEGORY, "Desktop Tablet Becomes Toolbar", getter, setter));
+    }
+    {
+        auto getter = []()->bool { return qApp->getHmdTabletBecomesToolbarSetting(); };
+        auto setter = [](bool value) { qApp->setHmdTabletBecomesToolbarSetting(value); };
+        preferences->addPreference(new CheckPreference(UI_CATEGORY, "HMD Tablet Becomes Toolbar", getter, setter));
+    }
+    {
+        auto getter = []()->bool { return qApp->getTabletVisibleToOthersSetting(); };
+        auto setter = [](bool value) { qApp->setTabletVisibleToOthersSetting(value); };
+        preferences->addPreference(new CheckPreference(UI_CATEGORY, "Tablet Is Visible To Others", getter, setter));
+    }
     // Snapshots
     static const QString SNAPSHOTS { "Snapshots" };
     {
@@ -87,7 +118,7 @@ void setupPreferences() {
     {
         auto getter = []()->bool { return SnapshotAnimated::alsoTakeAnimatedSnapshot.get(); };
         auto setter = [](bool value) { SnapshotAnimated::alsoTakeAnimatedSnapshot.set(value); };
-        preferences->addPreference(new CheckPreference(SNAPSHOTS, "Take Animated GIF Snapshot with HUD Button", getter, setter));
+        preferences->addPreference(new CheckPreference(SNAPSHOTS, "Take Animated GIF Snapshot", getter, setter));
     }
     {
         auto getter = []()->float { return SnapshotAnimated::snapshotAnimatedDuration.get(); };
@@ -157,7 +188,7 @@ void setupPreferences() {
     }
     {
         auto getter = [=]()->float { return myAvatar->getUniformScale(); };
-        auto setter = [=](float value) { myAvatar->setTargetScaleVerbose(value); }; // The hell?
+        auto setter = [=](float value) { myAvatar->setTargetScale(value); };
         auto preference = new SpinnerPreference(AVATAR_TUNING, "Avatar scale (default is 1.0)", getter, setter);
         preference->setMin(0.01f);
         preference->setMax(99.9f);

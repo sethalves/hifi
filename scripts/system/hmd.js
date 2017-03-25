@@ -10,6 +10,8 @@
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
+/* globals HMD, Script, Menu, Tablet, Camera */
+/* eslint indent: ["error", 4, { "outerIIFEBody": 0 }] */
 
 (function() { // BEGIN LOCAL_SCOPE
 
@@ -35,32 +37,41 @@ function updateControllerDisplay() {
     }
 }
 
-var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
 var button;
+var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+
 // Independent and Entity mode make people sick. Third Person and Mirror have traps that we need to work through.
 // Disable them in hmd.
 var desktopOnlyViews = ['Mirror', 'Independent Mode', 'Entity Mode'];
+
 function onHmdChanged(isHmd) {
-    button.writeProperty('buttonState', isHmd ? 0 : 1);
-    button.writeProperty('defaultState', isHmd ? 0 : 1);
-    button.writeProperty('hoverState', isHmd ? 2 : 3);
+    if (isHmd) {
+        button.editProperties({
+            icon: "icons/tablet-icons/switch-desk-i.svg",
+            text: "DESKTOP"
+        });
+    } else {
+        button.editProperties({
+            icon: "icons/tablet-icons/switch-vr-i.svg",
+            text: "VR"
+        });
+    }
     desktopOnlyViews.forEach(function (view) {
         Menu.setMenuEnabled("View>" + view, !isHmd);
     });
     updateControllerDisplay();
 }
-function onClicked(){
+
+function onClicked() {
     var isDesktop = Menu.isOptionChecked(desktopMenuItemName);
     Menu.setIsOptionChecked(isDesktop ? headset : desktopMenuItemName, true);
 }
+
 if (headset) {
-    button = toolBar.addButton({
-        objectName: "hmdToggle",
-        imageURL: Script.resolvePath("assets/images/tools/switch.svg"),
-        visible: true,
-        hoverState: 2,
-        defaultState: 0,
-        alpha: 0.9
+    button = tablet.addButton({
+        icon: HMD.active ? "icons/tablet-icons/switch-desk-i.svg" : "icons/tablet-icons/switch-vr-i.svg",
+        text: HMD.active ? "DESKTOP" : "VR",
+        sortOrder: 2
     });
     onHmdChanged(HMD.active);
 
@@ -69,8 +80,10 @@ if (headset) {
     Camera.modeUpdated.connect(updateControllerDisplay);
 
     Script.scriptEnding.connect(function () {
-        toolBar.removeButton("hmdToggle");
         button.clicked.disconnect(onClicked);
+        if (tablet) {
+            tablet.removeButton(button);
+        }
         HMD.displayModeChanged.disconnect(onHmdChanged);
         Camera.modeUpdated.disconnect(updateControllerDisplay);
     });

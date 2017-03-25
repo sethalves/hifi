@@ -25,12 +25,16 @@ typedef std::shared_ptr<EntityTree> EntityTreePointer;
 #include "EntityTreeElement.h"
 #include "DeleteEntityOperator.h"
 
+class EntityEditFilters;
 class Model;
 using ModelPointer = std::shared_ptr<Model>;
 using ModelWeakPointer = std::weak_ptr<Model>;
 
 class EntitySimulation;
 
+namespace EntityQueryFilterSymbol {
+    static const QString NonDefault = "+";
+}
 
 class NewlyCreatedEntityHook {
 public:
@@ -57,6 +61,11 @@ public:
 class EntityTree : public Octree, public SpatialParentTree {
     Q_OBJECT
 public:
+    enum FilterType {
+        Add,
+        Edit,
+        Physics
+    };
     EntityTree(bool shouldReaverage = false);
     virtual ~EntityTree();
 
@@ -201,7 +210,8 @@ public:
 
     void entityChanged(EntityItemPointer entity);
 
-    void emitEntityScriptChanging(const EntityItemID& entityItemID, const bool reload);
+    void emitEntityScriptChanging(const EntityItemID& entityItemID, bool reload);
+    void emitEntityServerScriptChanging(const EntityItemID& entityItemID, bool reload);
 
     void setSimulation(EntitySimulationPointer simulation);
     EntitySimulationPointer getSimulation() const { return _simulation; }
@@ -235,6 +245,7 @@ public:
     virtual quint64 getAverageUpdateTime() const override { return _totalUpdates == 0 ? 0 : _totalUpdateTime / _totalUpdates; }
     virtual quint64 getAverageCreateTime() const override { return _totalCreates == 0 ? 0 : _totalCreateTime / _totalCreates; }
     virtual quint64 getAverageLoggingTime() const override { return _totalEditMessages == 0 ? 0 : _totalLoggingTime / _totalEditMessages; }
+    virtual quint64 getAverageFilterTime() const override { return _totalEditMessages == 0 ? 0 : _totalFilterTime / _totalEditMessages; }
 
     void trackIncomingEntityLastEdited(quint64 lastEditedTime, int bytesRead);
     quint64 getAverageEditDeltas() const
@@ -270,6 +281,7 @@ signals:
     void deletingEntity(const EntityItemID& entityID);
     void addingEntity(const EntityItemID& entityID);
     void entityScriptChanging(const EntityItemID& entityItemID, const bool reload);
+    void entityServerScriptChanging(const EntityItemID& entityItemID, const bool reload);
     void newCollisionSoundURL(const QUrl& url, const EntityItemID& entityID);
     void clearingEntities();
 
@@ -285,6 +297,7 @@ protected:
     static bool findInBoxOperation(OctreeElementPointer element, void* extraData);
     static bool findInFrustumOperation(OctreeElementPointer element, void* extraData);
     static bool sendEntitiesOperation(OctreeElementPointer element, void* extraData);
+    static void bumpTimestamp(EntityItemProperties& properties);
 
     void notifyNewlyCreatedEntity(const EntityItem& newEntity, const SharedNodePointer& senderNode);
 
@@ -327,6 +340,7 @@ protected:
     quint64 _totalUpdateTime = 0;
     quint64 _totalCreateTime = 0;
     quint64 _totalLoggingTime = 0;
+    quint64 _totalFilterTime = 0;
 
     // these performance statistics are only used in the client
     void resetClientEditStats();
@@ -346,6 +360,8 @@ protected:
 
     float _maxTmpEntityLifetime { DEFAULT_MAX_TMP_ENTITY_LIFETIME };
 
+    bool filterProperties(EntityItemPointer& existingEntity, EntityItemProperties& propertiesIn, EntityItemProperties& propertiesOut, bool& wasChanged, FilterType filterType);
+    bool _hasEntityEditFilter{ false };
     QStringList _entityScriptSourceWhitelist;
 };
 

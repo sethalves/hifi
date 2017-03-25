@@ -16,6 +16,8 @@
 
 #include <SettingHandle.h>
 
+#include <display-plugins/CompositorHelper.h>
+
 #include "Application.h"
 #include "DomainHandler.h"
 #include "MainWindow.h"
@@ -58,6 +60,8 @@ WindowScriptingInterface::WindowScriptingInterface() {
             OffscreenUi::warning("Import SVO Error", "You need to be running edit.js to import entities.");
         }
     });
+
+    connect(qApp->getWindow(), &MainWindow::windowGeometryChanged, this, &WindowScriptingInterface::geometryChanged);
 }
 
 WindowScriptingInterface::~WindowScriptingInterface() {
@@ -145,6 +149,15 @@ void WindowScriptingInterface::setPreviousBrowseLocation(const QString& location
     Setting::Handle<QVariant>(LAST_BROWSE_LOCATION_SETTING).set(location);
 }
 
+/// Makes sure that the reticle is visible, use this in blocking forms that require a reticle and
+/// might be in same thread as a script that sets the reticle to invisible
+void WindowScriptingInterface::ensureReticleVisible() const {
+    auto compositorHelper = DependencyManager::get<CompositorHelper>();
+    if (!compositorHelper->getReticleVisible()) {
+        compositorHelper->setReticleVisible(true);
+    }
+}
+
 /// Display an open file dialog.  If `directory` is an invalid file or directory the browser will start at the current
 /// working directory.
 /// \param const QString& title title of the window
@@ -152,6 +165,7 @@ void WindowScriptingInterface::setPreviousBrowseLocation(const QString& location
 /// \param const QString& nameFilter filter to filter filenames by - see `QFileDialog`
 /// \return QScriptValue file path as a string if one was selected, otherwise `QScriptValue::NullValue`
 QScriptValue WindowScriptingInterface::browse(const QString& title, const QString& directory, const QString& nameFilter) {
+    ensureReticleVisible();
     QString path = directory;
     if (path.isEmpty()) {
         path = getPreviousBrowseLocation();
@@ -173,6 +187,7 @@ QScriptValue WindowScriptingInterface::browse(const QString& title, const QStrin
 /// \param const QString& nameFilter filter to filter filenames by - see `QFileDialog`
 /// \return QScriptValue file path as a string if one was selected, otherwise `QScriptValue::NullValue`
 QScriptValue WindowScriptingInterface::save(const QString& title, const QString& directory, const QString& nameFilter) {
+    ensureReticleVisible();
     QString path = directory;
     if (path.isEmpty()) {
         path = getPreviousBrowseLocation();
@@ -253,6 +268,16 @@ int WindowScriptingInterface::createMessageBox(QString title, QString text, int 
 void WindowScriptingInterface::updateMessageBox(int id, QString title, QString text, int buttons, int defaultButton) {
     auto messageBox = _messageBoxes.value(id);
     if (messageBox) {
+        if (QThread::currentThread() != thread()) {
+            QMetaObject::invokeMethod(this, "updateMessageBox",
+                Q_ARG(int, id),
+                Q_ARG(QString, title),
+                Q_ARG(QString, text),
+                Q_ARG(int, buttons),
+                Q_ARG(int, defaultButton));
+            return;
+        }
+
         messageBox->setProperty("title", title);
         messageBox->setProperty("text", text);
         messageBox->setProperty("buttons", buttons);
@@ -263,6 +288,12 @@ void WindowScriptingInterface::updateMessageBox(int id, QString title, QString t
 void WindowScriptingInterface::closeMessageBox(int id) {
     auto messageBox = _messageBoxes.value(id);
     if (messageBox) {
+        if (QThread::currentThread() != thread()) {
+            QMetaObject::invokeMethod(this, "closeMessageBox",
+                Q_ARG(int, id));
+            return;
+        }
+
         disconnect(messageBox);
         messageBox->setVisible(false);
         messageBox->deleteLater();

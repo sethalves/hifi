@@ -68,7 +68,7 @@ public:
 
     void setAssignmentServerSocket(const HifiSockAddr& serverSocket) { _assignmentServerSocket = serverSocket; }
     void sendAssignment(Assignment& assignment);
-    
+
     void setIsShuttingDown(bool isShuttingDown) { _isShuttingDown = isShuttingDown; }
 
     void ignoreNodesInRadius(bool enabled = true);
@@ -82,12 +82,16 @@ public:
     bool isIgnoringNode(const QUuid& nodeID) const;
     void personalMuteNodeBySessionID(const QUuid& nodeID, bool muteEnabled);
     bool isPersonalMutingNode(const QUuid& nodeID) const;
+    void setAvatarGain(const QUuid& nodeID, float gain);
+    float getAvatarGain(const QUuid& nodeID);
 
     void kickNodeBySessionID(const QUuid& nodeID);
     void muteNodeBySessionID(const QUuid& nodeID);
     void requestUsernameFromSessionID(const QUuid& nodeID);
     bool getRequestsDomainListData() { return _requestsDomainListData; }
     void setRequestsDomainListData(bool isRequesting);
+
+    void removeFromIgnoreMuteSets(const QUuid& nodeID);
 
 public slots:
     void reset();
@@ -100,7 +104,7 @@ public slots:
     void processDomainServerPathResponse(QSharedPointer<ReceivedMessage> message);
 
     void processDomainServerConnectionTokenPacket(QSharedPointer<ReceivedMessage> message);
-    
+
     void processPingPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
     void processPingReplyPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
 
@@ -117,7 +121,7 @@ signals:
     void receivedDomainServerList();
     void ignoredNode(const QUuid& nodeID, bool enabled);
     void ignoreRadiusEnabledChanged(bool isIgnored);
-    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint);
+    void usernameFromIDReply(const QString& nodeID, const QString& username, const QString& machineFingerprint, bool isAdmin);
 
 private slots:
     void stopKeepalivePingTimer();
@@ -128,11 +132,11 @@ private slots:
     void handleNodePingTimeout();
 
     void pingPunchForDomainServer();
-    
+
     void sendKeepAlivePings();
 
     void maybeSendIgnoreSetToNode(SharedNodePointer node);
-    
+
 private:
     NodeList() : LimitedNodeList(INVALID_PORT, INVALID_PORT) { assert(false); } // Not implemented, needed for DependencyManager templates compile
     NodeList(char ownerType, int socketListenPort = INVALID_PORT, int dtlsListenPort = INVALID_PORT);
@@ -145,7 +149,7 @@ private:
     void timePingReply(ReceivedMessage& message, const SharedNodePointer& sendingNode);
 
     void sendDSPathQuery(const QString& newPath);
- 
+
     void parseNodeFromPacketStream(QDataStream& packetStream);
 
     void pingPunchForInactiveNode(const SharedNodePointer& node);
@@ -167,6 +171,8 @@ private:
     tbb::concurrent_unordered_set<QUuid, UUIDHasher> _ignoredNodeIDs;
     mutable QReadWriteLock _personalMutedSetLock;
     tbb::concurrent_unordered_set<QUuid, UUIDHasher> _personalMutedNodeIDs;
+    mutable QReadWriteLock _avatarGainMapLock;
+    tbb::concurrent_unordered_map<QUuid, float, UUIDHasher> _avatarGainMap;
 
     void sendIgnoreRadiusStateToNode(const SharedNodePointer& destinationNode);
     Setting::Handle<bool> _ignoreRadiusEnabled { "IgnoreRadiusEnabled", true };

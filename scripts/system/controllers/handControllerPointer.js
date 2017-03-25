@@ -436,18 +436,22 @@ clickMapping.from(function () { return wantsMenu; }).to(Controller.Actions.Conte
 clickMapping.from(Controller.Standard.RightSecondaryThumb).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2d(Controller.Standard.RightHand);
+        Messages.sendLocalMessage("toggleHand", Controller.Standard.RightHand);
     }
     wantsMenu = clicked;
 });
 clickMapping.from(Controller.Standard.LeftSecondaryThumb).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2d(Controller.Standard.LeftHand);
+        Messages.sendLocalMessage("toggleHand", Controller.Standard.LeftHand);
     }
     wantsMenu = clicked;
 });
 clickMapping.from(Controller.Standard.Start).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2dGamePad();
+        var noHands = -1;
+        Messages.sendLocalMessage("toggleHand", noHands);
       }
 
       wantsMenu = clicked;
@@ -459,6 +463,8 @@ clickMapping.from(Controller.Hardware.Keyboard.RightMouseClicked).peek().to(func
     // We don't want the system code to always do this for us, because, e.g., we do not want to get a mouseMove
     // after the Left/RightSecondaryThumb gives us a context menu. Only from the mouse.
     Script.setTimeout(function () {
+        var noHands = -1;
+        Messages.sendLocalMessage("toggleHand", noHands);
         Reticle.setPosition(Reticle.position);
     }, 0);
 });
@@ -474,6 +480,10 @@ var LASER_SEARCH_COLOR_XYZW = {x: 10 / 255, y: 10 / 255, z: 255 / 255, w: LASER_
 var LASER_TRIGGER_COLOR_XYZW = {x: 250 / 255, y: 10 / 255, z: 10 / 255, w: LASER_ALPHA};
 var SYSTEM_LASER_DIRECTION = {x: 0, y: 0, z: -1};
 var systemLaserOn = false;
+
+var HIFI_POINTER_DISABLE_MESSAGE_CHANNEL = "Hifi-Pointer-Disable";
+var isPointerEnabled = true;
+
 function clearSystemLaser() {
     if (!systemLaserOn) {
         return;
@@ -536,9 +546,8 @@ function update() {
         return off();
     }
 
-
     // If there's a HUD element at the (newly moved) reticle, just make it visible and bail.
-    if (isPointingAtOverlay(hudPoint2d)) {
+    if (isPointingAtOverlay(hudPoint2d) && isPointerEnabled) {
         if (HMD.active) {
             Reticle.depth = hudReticleDistance();
 
@@ -573,9 +582,25 @@ function checkSettings() {
 }
 checkSettings();
 
+// Enable/disable pointer.
+function handleMessages(channel, message, sender) {
+    if (sender === MyAvatar.sessionUUID && channel === HIFI_POINTER_DISABLE_MESSAGE_CHANNEL) {
+        var data = JSON.parse(message);
+        if (data.pointerEnabled !== undefined) {
+            print("pointerEnabled: " + data.pointerEnabled);
+            isPointerEnabled = data.pointerEnabled;
+        }
+    }
+}
+
+Messages.subscribe(HIFI_POINTER_DISABLE_MESSAGE_CHANNEL);
+Messages.messageReceived.connect(handleMessages);
+
 var settingsChecker = Script.setInterval(checkSettings, SETTINGS_CHANGE_RECHECK_INTERVAL);
 Script.update.connect(update);
 Script.scriptEnding.connect(function () {
+    Messages.unsubscribe(HIFI_POINTER_DISABLE_MESSAGE_CHANNEL);
+    Messages.messageReceived.disconnect(handleMessages);
     Script.clearInterval(settingsChecker);
     Script.update.disconnect(update);
     OffscreenFlags.navigationFocusDisabled = false;

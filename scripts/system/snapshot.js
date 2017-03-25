@@ -7,22 +7,25 @@
 // Distributed under the Apache License, Version 2.0
 // See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
+/* globals Tablet, Script, HMD, Settings, DialogsManager, Menu, Reticle, OverlayWebWindow, Desktop, Account, MyAvatar */
+/* eslint indent: ["error", 4, { "outerIIFEBody": 0 }] */
 
 (function() { // BEGIN LOCAL_SCOPE
 
 var SNAPSHOT_DELAY = 500; // 500ms
-var toolBar = Toolbars.getToolbar("com.highfidelity.interface.toolbar.system");
+var FINISH_SOUND_DELAY = 350;
 var resetOverlays;
 var reticleVisible;
 var clearOverlayWhenMoving;
-var button = toolBar.addButton({
-    objectName: "snapshot",
-    imageURL: Script.resolvePath("assets/images/tools/snap.svg"),
-    visible: true,
-    buttonState: 1,
-    defaultState: 1,
-    hoverState: 2,
-    alpha: 0.9,
+
+var buttonName = "SNAP";
+var buttonConnected = false;
+
+var tablet = Tablet.getTablet("com.highfidelity.interface.tablet.system");
+var button = tablet.addButton({
+    icon: "icons/tablet-icons/snap-i.svg",
+    text: buttonName,
+    sortOrder: 5
 });
 
 function shouldOpenFeedAfterShare() {
@@ -47,42 +50,42 @@ function confirmShare(data) {
         var isLoggedIn;
         var needsLogin = false;
         switch (message) {
-            case 'ready':
-                dialog.emitScriptEvent(data); // Send it.
-                outstanding = 0;
-                break;
-            case 'openSettings':
-                Desktop.show("hifi/dialogs/GeneralPreferencesDialog.qml", "GeneralPreferencesDialog");
-                break;
-            case 'setOpenFeedFalse':
-                Settings.setValue('openFeedAfterShare', false)
-                break;
-            case 'setOpenFeedTrue':
-                Settings.setValue('openFeedAfterShare', true)
-                break;
-            default:
-                dialog.webEventReceived.disconnect(onMessage);
-                dialog.close();
-                isLoggedIn = Account.isLoggedIn();
-                message.forEach(function (submessage) {
-                    if (submessage.share && !isLoggedIn) {
-                        needsLogin = true;
-                        submessage.share = false;
-                    }
-                    if (submessage.share) {
-                        print('sharing', submessage.localPath);
-                        outstanding++;
-                        Window.shareSnapshot(submessage.localPath, submessage.href);
-                    } else {
-                        print('not sharing', submessage.localPath);
-                    }
-                });
-                if (!outstanding && shouldOpenFeedAfterShare()) {
-                    showFeedWindow();
+        case 'ready':
+            dialog.emitScriptEvent(data); // Send it.
+            outstanding = 0;
+            break;
+        case 'openSettings':
+            Desktop.show("hifi/dialogs/GeneralPreferencesDialog.qml", "GeneralPreferencesDialog");
+            break;
+        case 'setOpenFeedFalse':
+            Settings.setValue('openFeedAfterShare', false);
+            break;
+        case 'setOpenFeedTrue':
+            Settings.setValue('openFeedAfterShare', true);
+            break;
+        default:
+            dialog.webEventReceived.disconnect(onMessage);
+            dialog.close();
+            isLoggedIn = Account.isLoggedIn();
+            message.forEach(function (submessage) {
+                if (submessage.share && !isLoggedIn) {
+                    needsLogin = true;
+                    submessage.share = false;
                 }
-                if (needsLogin) { // after the possible feed, so that the login is on top
-                    Account.checkAndSignalForAccessToken();
+                if (submessage.share) {
+                    print('sharing', submessage.localPath);
+                    outstanding++;
+                    Window.shareSnapshot(submessage.localPath, submessage.href);
+                } else {
+                    print('not sharing', submessage.localPath);
                 }
+            });
+            if (!outstanding && shouldOpenFeedAfterShare()) {
+                showFeedWindow();
+            }
+            if (needsLogin) { // after the possible feed, so that the login is on top
+                Account.checkAndSignalForAccessToken();
+            }
         }
     }
     dialog.webEventReceived.connect(onMessage);
@@ -116,23 +119,19 @@ function onClicked() {
     reticleVisible = Reticle.visible;
     Reticle.visible = false;
     Window.snapshotTaken.connect(resetButtons);
-    
-    button.writeProperty("buttonState", 0);
-    button.writeProperty("defaultState", 0);
-    button.writeProperty("hoverState", 2);
 
     // hide overlays if they are on
     if (resetOverlays) {
         Menu.setIsOptionChecked("Overlays", false);
     }
-    
-    // hide hud
-    toolBar.writeProperty("visible", false);
 
     // take snapshot (with no notification)
     Script.setTimeout(function () {
-        Window.takeSnapshot(false, true, 1.91);
-    }, SNAPSHOT_DELAY);
+        HMD.closeTablet();
+        Script.setTimeout(function () {
+            Window.takeSnapshot(false, true, 1.91);
+        }, SNAPSHOT_DELAY);
+    }, FINISH_SOUND_DELAY);
 }
 
 function isDomainOpen(id) {
@@ -147,7 +146,7 @@ function isDomainOpen(id) {
     var url = location.metaverseServerUrl + "/api/v1/user_stories?" + options.join('&');
     request.open("GET", url, false);
     request.send();
-    if (request.status != 200) {
+    if (request.status !== 200) {
         return false;
     }
     var response = JSON.parse(request.response); // Not parsed for us.
@@ -160,7 +159,7 @@ function resetButtons(pathStillSnapshot, pathAnimatedSnapshot, notify) {
     // If we ARE taking an animated snapshot, we've already re-enabled the HUD by this point.
     if (pathAnimatedSnapshot === "") {
         // show hud
-        toolBar.writeProperty("visible", true);
+
         Reticle.visible = reticleVisible;
         // show overlays if they were on
         if (resetOverlays) {
@@ -168,12 +167,11 @@ function resetButtons(pathStillSnapshot, pathAnimatedSnapshot, notify) {
         }
     } else {
         // Allow the user to click the snapshot HUD button again
-        button.clicked.connect(onClicked);
+        if (!buttonConnected) {
+            button.clicked.connect(onClicked);
+            buttonConnected = true;
+        }
     }
-    // update button states
-    button.writeProperty("buttonState", 1);
-    button.writeProperty("defaultState", 1);
-    button.writeProperty("hoverState", 3);
     Window.snapshotTaken.disconnect(resetButtons);
 
     // A Snapshot Review dialog might be left open indefinitely after taking the picture,
@@ -197,15 +195,10 @@ function resetButtons(pathStillSnapshot, pathAnimatedSnapshot, notify) {
 
 function processingGif() {
     // show hud
-    toolBar.writeProperty("visible", true);
     Reticle.visible = reticleVisible;
 
-    // update button states
-    button.writeProperty("buttonState", 0);
-    button.writeProperty("defaultState", 0);
-    button.writeProperty("hoverState", 2);
-    // Don't allow the user to click the snapshot button yet
     button.clicked.disconnect(onClicked);
+    buttonConnected = false;
     // show overlays if they were on
     if (resetOverlays) {
         Menu.setIsOptionChecked("Overlays", true);
@@ -213,12 +206,16 @@ function processingGif() {
 }
 
 button.clicked.connect(onClicked);
+buttonConnected = true;
 Window.snapshotShared.connect(snapshotShared);
 Window.processingGif.connect(processingGif);
 
 Script.scriptEnding.connect(function () {
-    toolBar.removeButton("snapshot");
     button.clicked.disconnect(onClicked);
+    buttonConnected = false;
+    if (tablet) {
+        tablet.removeButton(button);
+    }
     Window.snapshotShared.disconnect(snapshotShared);
     Window.processingGif.disconnect(processingGif);
 });

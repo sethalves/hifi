@@ -45,9 +45,10 @@ public:
     void renderSilent(int16_t* input, float* output, int index, float azimuth, float distance, float gain, int numFrames);
 
     //
-    // HRTF local gain adjustment
+    // HRTF local gain adjustment in amplitude (1.0 == unity)
     //
     void setGainAdjustment(float gain) { _gainAdjust = HRTF_GAIN * gain; };
+    float getGainAdjustment() { return _gainAdjust; }
 
 private:
     AudioHRTF(const AudioHRTF&) = delete;
