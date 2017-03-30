@@ -75,9 +75,6 @@ Menu::Menu() {
     // File > Help
     addActionToQMenuAndActionHash(fileMenu, MenuOption::Help, 0, qApp, SLOT(showHelp()));
 
-    // File > About
-    addActionToQMenuAndActionHash(fileMenu, MenuOption::AboutApp, 0, qApp, SLOT(aboutApp()), QAction::AboutRole);
-
     // File > Quit
     addActionToQMenuAndActionHash(fileMenu, MenuOption::Quit, Qt::CTRL | Qt::Key_Q, qApp, SLOT(quit()), QAction::QuitRole);
 
@@ -119,11 +116,6 @@ Menu::Menu() {
     // Edit > Reload All Scripts... [advanced]
     addActionToQMenuAndActionHash(editMenu, MenuOption::ReloadAllScripts, Qt::CTRL | Qt::Key_R,
         scriptEngines.data(), SLOT(reloadAllScripts()),
-        QAction::NoRole, UNSPECIFIED_POSITION, "Advanced");
-
-    // Edit > Scripts Editor... [advanced]
-    addActionToQMenuAndActionHash(editMenu, MenuOption::ScriptEditor, Qt::ALT | Qt::Key_S,
-        dialogsManager.data(), SLOT(showScriptEditor()),
         QAction::NoRole, UNSPECIFIED_POSITION, "Advanced");
 
     // Edit > Console... [advanced]
@@ -172,9 +164,9 @@ Menu::Menu() {
     // Avatar > Attachments...
     auto action = addActionToQMenuAndActionHash(avatarMenu, MenuOption::Attachments);
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->show(QString("hifi/dialogs/AttachmentsDialog.qml"), "AttachmentsDialog");
+        qApp->showDialog(QString("hifi/dialogs/AttachmentsDialog.qml"),
+            QString("../../hifi/tablet/TabletAttachmentsDialog.qml"), "AttachmentsDialog");
     });
-
 
     // Avatar > Size
     MenuWrapper* avatarSizeMenu = avatarMenu->addMenu("Size");
@@ -250,9 +242,6 @@ Menu::Menu() {
 
     viewMenu->addSeparator();
 
-    // View > Mini Mirror
-    addCheckableActionToQMenuAndActionHash(viewMenu, MenuOption::MiniMirror, 0, false);
-
     // View > Center Player In View
     addCheckableActionToQMenuAndActionHash(viewMenu, MenuOption::CenterPlayerInView,
         0, true, qApp, SLOT(rotationModeChanged()),
@@ -295,19 +284,22 @@ Menu::Menu() {
     // Settings > General...
     action = addActionToQMenuAndActionHash(settingsMenu, MenuOption::Preferences, Qt::CTRL | Qt::Key_Comma, nullptr, nullptr, QAction::PreferencesRole);
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GeneralPreferencesDialog.qml"), "GeneralPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/GeneralPreferencesDialog.qml"),
+            QString("../../hifi/tablet/TabletGeneralPreferences.qml"), "GeneralPreferencesDialog");
     });
 
     // Settings > Avatar...
     action = addActionToQMenuAndActionHash(settingsMenu, "Avatar...");
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AvatarPreferencesDialog.qml"), "AvatarPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/AvatarPreferencesDialog.qml"), 
+            QString("../../hifi/tablet/TabletAvatarPreferences.qml"), "AvatarPreferencesDialog");
     });
 
     // Settings > LOD...
     action = addActionToQMenuAndActionHash(settingsMenu, "LOD...");
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/LodPreferencesDialog.qml"), "LodPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/LodPreferencesDialog.qml"),
+            QString("../../hifi/tablet/TabletLodPreferences.qml"), "LodPreferencesDialog");
     });
 
     // Settings > Control with Speech [advanced]
@@ -328,7 +320,8 @@ Menu::Menu() {
     // Developer > Graphics...
     action = addActionToQMenuAndActionHash(developerMenu, "Graphics...");
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/GraphicsPreferencesDialog.qml"), "GraphicsPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/GraphicsPreferencesDialog.qml"),
+            QString("../../hifi/tablet/TabletGraphicsPreferences.qml"), "GraphicsPreferencesDialog");
     });
 
     // Developer > Render >>>
@@ -407,7 +400,8 @@ Menu::Menu() {
 
 
     // Developer > Render > LOD Tools
-    addActionToQMenuAndActionHash(renderOptionsMenu, MenuOption::LodTools, 0, dialogsManager.data(), SLOT(lodTools()));
+    addActionToQMenuAndActionHash(renderOptionsMenu, MenuOption::LodTools, 0,
+                                  qApp, SLOT(loadLODToolsDialog()));
 
     // HACK enable texture decimation
     {
@@ -418,6 +412,9 @@ Menu::Menu() {
     }
 
     // Developer > Assets >>>
+    // Menu item is not currently needed but code should be kept in case it proves useful again at some stage.
+//#define WANT_ASSET_MIGRATION
+#ifdef WANT_ASSET_MIGRATION
     MenuWrapper* assetDeveloperMenu = developerMenu->addMenu("Assets");
     auto& atpMigrator = ATPAssetMigrator::getInstance();
     atpMigrator.setDialogParent(this);
@@ -425,6 +422,7 @@ Menu::Menu() {
     addActionToQMenuAndActionHash(assetDeveloperMenu, MenuOption::AssetMigration,
         0, &atpMigrator,
         SLOT(loadEntityServerFile()));
+#endif
 
     // Developer > Avatar >>>
     MenuWrapper* avatarDebugMenu = developerMenu->addMenu("Avatar");
@@ -531,6 +529,8 @@ Menu::Menu() {
         avatar.get(), SLOT(setEnableInverseKinematics(bool)));
     addCheckableActionToQMenuAndActionHash(avatarDebugMenu, MenuOption::RenderSensorToWorldMatrix, 0, false,
         avatar.get(), SLOT(setEnableDebugDrawSensorToWorldMatrix(bool)));
+    addCheckableActionToQMenuAndActionHash(avatarDebugMenu, MenuOption::RenderIKTargets, 0, false,
+        avatar.get(), SLOT(setEnableDebugDrawIKTargets(bool)));
 
     addCheckableActionToQMenuAndActionHash(avatarDebugMenu, MenuOption::ActionMotorControl,
         Qt::CTRL | Qt::SHIFT | Qt::Key_K, true, avatar.get(), SLOT(updateMotionBehaviorFromMenu()),
@@ -556,32 +556,30 @@ Menu::Menu() {
 
     // Developer > Entities >>>
     MenuWrapper* entitiesOptionsMenu = developerMenu->addMenu("Entities");
+
     addActionToQMenuAndActionHash(entitiesOptionsMenu, MenuOption::OctreeStats, 0,
-        dialogsManager.data(), SLOT(octreeStatsDetails()));
+        qApp, SLOT(loadEntityStatisticsDialog()));
+
     addCheckableActionToQMenuAndActionHash(entitiesOptionsMenu, MenuOption::ShowRealtimeEntityStats);
 
     // Developer > Network >>>
     MenuWrapper* networkMenu = developerMenu->addMenu("Network");
     action = addActionToQMenuAndActionHash(networkMenu, MenuOption::Networking);
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QUrl("hifi/dialogs/NetworkingPreferencesDialog.qml"),
-                                                      "NetworkingPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/NetworkingPreferencesDialog.qml"),
+            QString("../../hifi/tablet/TabletNetworkingPreferences.qml"), "NetworkingPreferencesDialog");
     });
     addActionToQMenuAndActionHash(networkMenu, MenuOption::ReloadContent, 0, qApp, SLOT(reloadResourceCaches()));
+    addActionToQMenuAndActionHash(networkMenu, MenuOption::ClearDiskCache, 0,
+        DependencyManager::get<AssetClient>().data(), SLOT(clearCache()));
     addCheckableActionToQMenuAndActionHash(networkMenu,
         MenuOption::DisableActivityLogger,
         0,
         false,
         &UserActivityLogger::getInstance(),
         SLOT(disable(bool)));
-    addActionToQMenuAndActionHash(networkMenu, MenuOption::CachesSize, 0,
-        dialogsManager.data(), SLOT(cachesSizeDialog()));
-    addActionToQMenuAndActionHash(networkMenu, MenuOption::DiskCacheEditor, 0,
-        dialogsManager.data(), SLOT(toggleDiskCacheEditor()));
     addActionToQMenuAndActionHash(networkMenu, MenuOption::ShowDSConnectTable, 0,
-        dialogsManager.data(), SLOT(showDomainConnectionDialog()));
-    addActionToQMenuAndActionHash(networkMenu, MenuOption::BandwidthDetails, 0,
-        dialogsManager.data(), SLOT(bandwidthDetails()));
+        qApp, SLOT(loadDomainConnectionDialog()));
 
     #if (PR_BUILD || DEV_BUILD)
     addCheckableActionToQMenuAndActionHash(networkMenu, MenuOption::SendWrongProtocolVersion, 0, false,
@@ -591,7 +589,7 @@ Menu::Menu() {
                                            nodeList.data(), SLOT(toggleSendNewerDSConnectVersion(bool)));
     #endif
 
-    
+
     // Developer >> Tests >>>
     MenuWrapper* testMenu = developerMenu->addMenu("Tests");
     addActionToQMenuAndActionHash(testMenu, MenuOption::RunClientScriptTests, 0, dialogsManager.data(), SLOT(showTestingResults()));
@@ -628,7 +626,8 @@ Menu::Menu() {
 
     action = addActionToQMenuAndActionHash(audioDebugMenu, "Buffers...");
     connect(action, &QAction::triggered, [] {
-        DependencyManager::get<OffscreenUi>()->toggle(QString("hifi/dialogs/AudioPreferencesDialog.qml"), "AudioPreferencesDialog");
+        qApp->showDialog(QString("hifi/dialogs/AudioPreferencesDialog.qml"),
+            QString("../../hifi/tablet/TabletAudioPreferences.qml"), "AudioPreferencesDialog");
     });
 
     addCheckableActionToQMenuAndActionHash(audioDebugMenu, MenuOption::AudioNoiseReduction, 0, true,
@@ -642,9 +641,9 @@ Menu::Menu() {
 
     auto scope = DependencyManager::get<AudioScope>();
     MenuWrapper* audioScopeMenu = audioDebugMenu->addMenu("Audio Scope");
-    addCheckableActionToQMenuAndActionHash(audioScopeMenu, MenuOption::AudioScope, Qt::CTRL | Qt::Key_P, false,
+    addCheckableActionToQMenuAndActionHash(audioScopeMenu, MenuOption::AudioScope, Qt::CTRL | Qt::Key_F2, false,
         scope.data(), SLOT(toggle()));
-    addCheckableActionToQMenuAndActionHash(audioScopeMenu, MenuOption::AudioScopePause, Qt::CTRL | Qt::SHIFT | Qt::Key_P, false,
+    addCheckableActionToQMenuAndActionHash(audioScopeMenu, MenuOption::AudioScopePause, Qt::CTRL | Qt::SHIFT | Qt::Key_F2, false,
         scope.data(), SLOT(togglePause()));
 
     addDisabledActionAndSeparator(audioScopeMenu, "Display Frames");
@@ -725,14 +724,8 @@ Menu::Menu() {
     });
     essLogAction->setEnabled(nodeList->getThisNodeCanRez());
 
-    action = addActionToQMenuAndActionHash(developerMenu, "Script Log (HMD friendly)...");
-    connect(action, &QAction::triggered, [] {
-        auto scriptEngines = DependencyManager::get<ScriptEngines>();
-        QUrl defaultScriptsLoc = defaultScriptsLocation();
-        defaultScriptsLoc.setPath(defaultScriptsLoc.path() + "developer/debugging/debugWindow.js");
-        scriptEngines->loadScript(defaultScriptsLoc.toString());
-    });
-
+    action = addActionToQMenuAndActionHash(developerMenu, "Script Log (HMD friendly)...", Qt::NoButton,
+                                           qApp, SLOT(showScriptLogs()));
 
     // Developer > Stats
     addCheckableActionToQMenuAndActionHash(developerMenu, MenuOption::Stats);
