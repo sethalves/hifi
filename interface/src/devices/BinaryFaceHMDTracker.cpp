@@ -81,7 +81,7 @@ void BinaryFaceHMDTracker::init() {
 
 void BinaryFaceHMDTracker::openContext() {
     QString model_file_path = PathUtils::resourcesPath() + "binaryfacehmd/model.bfh";
-    QString cache_dir_path = PathUtils::getRootDataDirectory();
+    QString cache_dir_path = PathUtils::getAppLocalDataPath();
     //qCDebug(interfaceapp) << "BinaryFaceHMD Tracker: model_file_path: " << model_file_path;
     //qCDebug(interfaceapp) << "BinaryFaceHMD Tracker: cache_dir_path: " << cache_dir_path;
     binaryfacehmd_ret ret = binaryfacehmd_open_context(

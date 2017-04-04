@@ -433,7 +433,7 @@ Menu::Menu() {
         QActionGroup* faceTrackerGroup = new QActionGroup(avatarDebugMenu);
 
         bool defaultNoFaceTracking = true;
-#if defined(HAVE_DDE) || defined(HAVE_BINARYFACEHMD)
+#if defined(HAVE_DDE)
         defaultNoFaceTracking = false;
 #endif
         QAction* noFaceTracker = addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::NoFaceTracking,
