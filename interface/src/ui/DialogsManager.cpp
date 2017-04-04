@@ -19,17 +19,17 @@
 #include <PathUtils.h>
 
 #include "AddressBarDialog.h"
-#include "CachesSizeDialog.h"
 #include "ConnectionFailureDialog.h"
-#include "DiskCacheEditor.h"
 #include "DomainConnectionDialog.h"
 #include "HMDToolsDialog.h"
 #include "LodToolsDialog.h"
 #include "LoginDialog.h"
 #include "OctreeStatsDialog.h"
 #include "PreferencesDialog.h"
-#include "ScriptEditorWindow.h"
 #include "UpdateDialog.h"
+
+#include "TabletScriptingInterface.h"
+#include "scripting/HMDScriptingInterface.h"
 
 template<typename T>
 void DialogsManager::maybeCreateDialog(QPointer<T>& member) {
@@ -60,16 +60,26 @@ void DialogsManager::showFeed() {
 }
 
 void DialogsManager::setDomainConnectionFailureVisibility(bool visible) {
-    if (visible) {
-        ConnectionFailureDialog::show();
-    } else {
-        ConnectionFailureDialog::hide();
-    }
-}
+    qDebug() << "DialogsManager::setDomainConnectionFailureVisibility: visible" << visible;
+    auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
+    auto tablet = dynamic_cast<TabletProxy*>(tabletScriptingInterface->getTablet("com.highfidelity.interface.tablet.system"));
 
-void DialogsManager::toggleDiskCacheEditor() {
-    maybeCreateDialog(_diskCacheEditor);
-    _diskCacheEditor->toggle();
+    if (tablet->getToolbarMode()) {
+        if (visible) {
+            ConnectionFailureDialog::show();
+        } else {
+            ConnectionFailureDialog::hide();
+        }
+    } else {
+        static const QUrl url("../../dialogs/TabletConnectionFailureDialog.qml");
+        auto hmd = DependencyManager::get<HMDScriptingInterface>();
+        if (visible) {
+            tablet->initialScreen(url);
+            if (!hmd->getShouldShowTablet()) {
+                hmd->openTablet();
+            }
+        }
+    }
 }
 
 void DialogsManager::toggleLoginDialog() {
@@ -77,7 +87,7 @@ void DialogsManager::toggleLoginDialog() {
 }
 
 void DialogsManager::showLoginDialog() {
-    LoginDialog::show();
+    LoginDialog::showWithSelection();
 }
 
 void DialogsManager::showUpdateDialog() {
@@ -95,16 +105,6 @@ void DialogsManager::octreeStatsDetails() {
         _octreeStatsDialog->show();
     }
     _octreeStatsDialog->raise();
-}
-
-void DialogsManager::cachesSizeDialog() {
-    if (!_cachesSizeDialog) {
-        maybeCreateDialog(_cachesSizeDialog);
-
-        connect(_cachesSizeDialog, SIGNAL(closed()), _cachesSizeDialog, SLOT(deleteLater()));
-        _cachesSizeDialog->show();
-    }
-    _cachesSizeDialog->raise();
 }
 
 void DialogsManager::lodTools() {
@@ -135,12 +135,6 @@ void DialogsManager::hmdToolsClosed() {
     if (_hmdToolsDialog) {
         _hmdToolsDialog->hide();
     }
-}
-
-void DialogsManager::showScriptEditor() {
-    maybeCreateDialog(_scriptEditor);
-    _scriptEditor->show();
-    _scriptEditor->raise();
 }
 
 void DialogsManager::showTestingResults() {

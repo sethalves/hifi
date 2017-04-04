@@ -66,6 +66,7 @@ namespace render {
 
 class PhysicsEngine;
 using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+class MeshProxyList;
 
 
 /// EntityItem class this is the base class for all entity types. It handles the basic properties and functionality available
@@ -483,8 +484,10 @@ public:
 
     QUuid getLastEditedBy() const { return _lastEditedBy; }
     void setLastEditedBy(QUuid value) { _lastEditedBy = value; }
-    
+
     bool matchesJSONFilters(const QJsonObject& jsonFilters) const;
+
+    virtual bool getMeshes(MeshProxyList& result) { return true; }
 
 protected:
 

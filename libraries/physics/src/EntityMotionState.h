@@ -36,6 +36,7 @@ public:
     virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
 
     void updateServerPhysicsVariables();
+    void handleDeactivation();
     virtual void handleEasyChanges(uint32_t& flags) override;
     virtual bool handleHardAndEasyChanges(uint32_t& flags, PhysicsEngine* engine) override;
 

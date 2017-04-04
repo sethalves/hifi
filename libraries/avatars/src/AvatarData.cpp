@@ -47,9 +47,6 @@ quint64 DEFAULT_FILTERED_LOG_EXPIRY = 2 * USECS_PER_SECOND;
 
 using namespace std;
 
-const glm::vec3 DEFAULT_LOCAL_AABOX_CORNER(-0.5f);
-const glm::vec3 DEFAULT_LOCAL_AABOX_SCALE(1.0f);
-
 const QString AvatarData::FRAME_NAME = "com.highfidelity.recording.AvatarData";
 
 static const int TRANSLATION_COMPRESSION_RADIX = 12;
@@ -1498,6 +1495,9 @@ void AvatarData::processAvatarIdentity(const Identity& identity, bool& identityC
         setAvatarEntityData(identity.avatarEntityData);
         identityChanged = true;
     }
+    // flag this avatar as non-stale by updating _averageBytesReceived
+    const int BOGUS_NUM_BYTES = 1;
+    _averageBytesReceived.updateAverage(BOGUS_NUM_BYTES);
 }
 
 QByteArray AvatarData::identityByteArray() const {

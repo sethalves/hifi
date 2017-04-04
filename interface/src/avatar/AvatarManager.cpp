@@ -425,7 +425,7 @@ void AvatarManager::getObjectsToChange(VectorOfMotionStates& result) {
     }
 }
 
-void AvatarManager::handleOutgoingChanges(const VectorOfMotionStates& motionStates) {
+void AvatarManager::handleChangedMotionStates(const VectorOfMotionStates& motionStates) {
     // TODO: extract the MyAvatar results once we use a MotionState for it.
 }
 

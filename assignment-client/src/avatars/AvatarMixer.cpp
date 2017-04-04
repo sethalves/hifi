@@ -37,7 +37,6 @@ const QString AVATAR_MIXER_LOGGING_NAME = "avatar-mixer";
 
 // FIXME - what we'd actually like to do is send to users at ~50% of their present rate down to 30hz. Assume 90 for now.
 const int AVATAR_MIXER_BROADCAST_FRAMES_PER_SECOND = 45;
-const unsigned int AVATAR_DATA_SEND_INTERVAL_MSECS = (1.0f / (float) AVATAR_MIXER_BROADCAST_FRAMES_PER_SECOND) * 1000;
 
 AvatarMixer::AvatarMixer(ReceivedMessage& message) :
     ThreadedAssignment(message)
@@ -188,7 +187,7 @@ void AvatarMixer::start() {
 
 
 // NOTE: nodeData->getAvatar() might be side effected, must be called when access to node/nodeData
-// is guarenteed to not be accessed by other thread
+// is guaranteed to not be accessed by other thread
 void AvatarMixer::manageDisplayName(const SharedNodePointer& node) {
     AvatarMixerClientData* nodeData = reinterpret_cast<AvatarMixerClientData*>(node->getLinkedData());
     if (nodeData && nodeData->getAvatarSessionDisplayNameMustChange()) {
@@ -438,17 +437,20 @@ void AvatarMixer::handleNodeIgnoreRequestPacket(QSharedPointer<ReceivedMessage> 
     while (message->getBytesLeftToRead()) {
         // parse out the UUID being ignored from the packet
         QUuid ignoredUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
-        // Reset the lastBroadcastTime for the ignored avatar to 0
-        // so the AvatarMixer knows it'll have to send identity data about the ignored avatar
-        // to the ignorer if the ignorer unignores.
-        nodeData->setLastBroadcastTime(ignoredUUID, 0);
 
-        // Reset the lastBroadcastTime for the ignorer (FROM THE PERSPECTIVE OF THE IGNORED) to 0
-        // so the AvatarMixer knows it'll have to send identity data about the ignorer
-        // to the ignored if the ignorer unignores.
-        auto ignoredNode = nodeList->nodeWithUUID(ignoredUUID);
-        AvatarMixerClientData* ignoredNodeData = reinterpret_cast<AvatarMixerClientData*>(ignoredNode->getLinkedData());
-        ignoredNodeData->setLastBroadcastTime(senderNode->getUUID(), 0);
+        if (nodeList->nodeWithUUID(ignoredUUID)) {
+            // Reset the lastBroadcastTime for the ignored avatar to 0
+            // so the AvatarMixer knows it'll have to send identity data about the ignored avatar
+            // to the ignorer if the ignorer unignores.
+            nodeData->setLastBroadcastTime(ignoredUUID, 0);
+
+            // Reset the lastBroadcastTime for the ignorer (FROM THE PERSPECTIVE OF THE IGNORED) to 0
+            // so the AvatarMixer knows it'll have to send identity data about the ignorer
+            // to the ignored if the ignorer unignores.
+            auto ignoredNode = nodeList->nodeWithUUID(ignoredUUID);
+            AvatarMixerClientData* ignoredNodeData = reinterpret_cast<AvatarMixerClientData*>(ignoredNode->getLinkedData());
+            ignoredNodeData->setLastBroadcastTime(senderNode->getUUID(), 0);
+        }
 
         if (addToIgnore) {
             senderNode->addIgnoredNode(ignoredUUID);
