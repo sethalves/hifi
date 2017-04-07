@@ -78,7 +78,7 @@ StackView {
         toggleOrGo(true, targetString);
         clearAddressLineTimer.start();
     }
- 
+
     property bool isCursorVisible: false  // Override default cursor visibility.
 
 
@@ -88,7 +88,7 @@ StackView {
         property bool keyboardEnabled: false
         property bool keyboardRaised: false
         property bool punctuationMode: false
-        
+
         width: parent.width
         height: parent.height
 
@@ -239,7 +239,7 @@ StackView {
             anchors.leftMargin: 0
             anchors.topMargin: 0
             anchors.top: addressBar.bottom
-            
+
             Row {
                 id: thing
                 spacing: 5 * hifi.layout.spacing
@@ -264,7 +264,6 @@ StackView {
                     property string includeActions: 'concurrency';
                     selected: placeTab === selectedTab;
                     action: tabSelect;
-                    
                 }
 
                 TabletTextButton {
@@ -275,7 +274,6 @@ StackView {
                     action: tabSelect;
                 }
             }
-        
         }
 
         Rectangle {
@@ -294,7 +292,7 @@ StackView {
 
             ListView {
                 id: scroll
-                
+
                 property int stackedCardShadowHeight: 0;
                 clip: true
                 spacing: 14
@@ -354,7 +352,6 @@ StackView {
                 isCursorVisible = false;
             }
         }
-           
 
         HifiControls.Keyboard {
             id: keyboard
@@ -366,7 +363,6 @@ StackView {
                 right: parent.right
             }
         }
-        
     }
 
     function getRequest(url, cb) { // cb(error, responseOfCorrectContentType) of url. General for 'get' text/html/json, but without redirects.
@@ -559,13 +555,13 @@ StackView {
         if (addressLine.text !== "") {
             addressBarDialog.loadAddress(addressLine.text, fromSuggestions)
         }
-        
-        if (root.desktop) {
+
+        if (isDesktop) {
             tablet.gotoHomeScreen();
         } else {
             HMD.closeTablet();
         }
-            
+
         tabletRoot.shown = false;
     }
 
