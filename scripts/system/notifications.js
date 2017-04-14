@@ -427,21 +427,24 @@ function deleteNotification(index) {
     arrays.splice(index, 1);
 }
 
-//  wraps whole word to newline
-function stringDivider(str, slotWidth, spaceReplacer) {
-    var left, right;
 
-    if (str.length > slotWidth && slotWidth > 0) {
-        left = str.substring(0, slotWidth);
-        right = str.substring(slotWidth);
-        return left + spaceReplacer + stringDivider(right, slotWidth, spaceReplacer);
+// Trims extra whitespace and breaks into lines of length no more than MAX_LENGTH, breaking at spaces. Trims extra whitespace.
+var MAX_LENGTH = 42;
+function wordWrap(string) {
+    var finishedLines = [], currentLine = '';
+    string.split(/\s/).forEach(function (word) {
+        var tail = currentLine ? ' ' + word : word;
+        if ((currentLine.length + tail.length) <= MAX_LENGTH) {
+            currentLine += tail;
+        } else {
+            finishedLines.push(currentLine);
+            currentLine = word;
+        }
+    });
+    if (currentLine) {
+        finishedLines.push(currentLine);
     }
-    return str;
-}
-
-//  formats string to add newline every 43 chars
-function wordWrap(str) {
-    return stringDivider(str, 43.0, "\n");
+    return finishedLines.join('\n');
 }
 
 function update() {
@@ -529,7 +532,7 @@ function onNotify(msg) {
     createNotification(wordWrap(msg), NotificationType.UNKNOWN); // Needs a generic notification system for user feedback, thus using this
 }
 
-function onSnapshotTaken(pathStillSnapshot, pathAnimatedSnapshot, notify) {
+function onSnapshotTaken(pathStillSnapshot, notify) {
     if (notify) {
         var imageProperties = {
             path: "file:///" + pathStillSnapshot,
@@ -653,8 +656,8 @@ Script.update.connect(update);
 Script.scriptEnding.connect(scriptEnding);
 Menu.menuItemEvent.connect(menuItemEvent);
 Window.domainConnectionRefused.connect(onDomainConnectionRefused);
-Window.snapshotTaken.connect(onSnapshotTaken);
-Window.processingGif.connect(processingGif);
+Window.stillSnapshotTaken.connect(onSnapshotTaken);
+Window.processingGifStarted.connect(processingGif);
 Window.connectionAdded.connect(connectionAdded);
 Window.connectionError.connect(connectionError);
 Window.notifyEditError = onEditError;
