@@ -67,6 +67,9 @@ class Avatar : public AvatarData {
 
 public:
     static void setShowReceiveStats(bool receiveStats);
+    static void setShowLookAtVectors(bool showMine, bool showOthers);
+    static void setRenderCollisionShapes(bool render);
+    static void setShowNamesAboveHeads(bool show);
 
     explicit Avatar(QThread* thread, RigPointer rig = nullptr);
     ~Avatar();
@@ -239,6 +242,13 @@ public:
 
         return (lerpValue*(4.0f - 2.0f * lerpValue) - 1.0f);
     }
+    float getBoundingRadius() const;
+
+    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
+    void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
+    bool isInScene() const { return render::Item::isValidID(_renderItemID); }
+
+    void setMotionState(AvatarMotionState* motionState);
 
 public slots:
 
@@ -259,8 +269,6 @@ protected:
     virtual const QString& getSessionDisplayNameForTransport() const override { return _empty; } // Save a tiny bit of bandwidth. Mixer won't look at what we send.
     QString _empty{};
     virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) override { _sessionDisplayName = sessionDisplayName; } // don't use no-op setter!
-
-    void setMotionState(AvatarMotionState* motionState);
 
     SkeletonModelPointer _skeletonModel;
     glm::vec3 _skeletonOffset;
@@ -315,16 +323,13 @@ protected:
     ThreadSafeValueCache<glm::vec3> _rightPalmPositionCache { glm::vec3() };
     ThreadSafeValueCache<glm::quat> _rightPalmRotationCache { glm::quat() };
 
-    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
-    void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
-    bool isInScene() const { return render::Item::isValidID(_renderItemID); }
-
     // Some rate tracking support
     RateCounter<> _simulationRate;
     RateCounter<> _simulationInViewRate;
     RateCounter<> _skeletonModelSimulationRate;
     RateCounter<> _jointDataSimulationRate;
 
+<<<<<<< 4318cce04a59543d80a9364c86aab79408dcb50e
     // Smoothing data for blending from one position/orientation to another on remote agents.
     float _smoothPositionTime;
     float _smoothPositionTimer;
@@ -335,6 +340,8 @@ protected:
     glm::quat _smoothOrientationInitial;
     glm::quat _smoothOrientationTarget;
 
+=======
+>>>>>>> remove Menu dependency from Avatar class
 private:
     class AvatarEntityDataHash {
     public:
@@ -353,8 +360,6 @@ private:
     bool _initialized;
     bool _isLookAtTarget { false };
     bool _isAnimatingScale { false };
-
-    float getBoundingRadius() const;
 
     static int _jointConesID;
 
