@@ -198,6 +198,7 @@ void PhysicsEngine::removeObjects(const SetOfMotionStates& objects) {
             body->setMotionState(nullptr);
             delete body;
         }
+        object->clearIncomingDirtyFlags();
     }
 }
 

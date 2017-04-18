@@ -11,6 +11,7 @@
 #ifndef hifi_Avatar_h
 #define hifi_Avatar_h
 
+#include <functional>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -48,8 +49,9 @@ enum ScreenTintLayer {
     NUM_SCREEN_TINT_LAYERS
 };
 
-class AvatarMotionState;
 class Texture;
+
+using AvatarPhysicsCallback = std::function<void(uint32_t)>;
 
 class Avatar : public AvatarData {
     Q_OBJECT
@@ -189,7 +191,7 @@ public:
     virtual void computeShapeInfo(ShapeInfo& shapeInfo);
     void getCapsule(glm::vec3& start, glm::vec3& end, float& radius);
 
-    AvatarMotionState* getMotionState() { return _motionState; }
+    //AvatarMotionState* getMotionState() { return _motionState; }
 
     using SpatiallyNestable::setPosition;
     virtual void setPosition(const glm::vec3& position) override;
@@ -247,8 +249,12 @@ public:
     void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
     void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
     bool isInScene() const { return render::Item::isValidID(_renderItemID); }
+    bool isMoving() const { return _moving; }
 
-    void setMotionState(AvatarMotionState* motionState);
+    //void setMotionState(AvatarMotionState* motionState);
+    void setPhysicsCallback(AvatarPhysicsCallback cb);
+    void addPhysicsFlags(uint32_t flags);
+    bool isInPhysicsSimulation() const { return _physicsCallback != nullptr; }
 
 public slots:
 
@@ -365,7 +371,7 @@ private:
 
     int _voiceSphereID;
 
-    AvatarMotionState* _motionState = nullptr;
+    AvatarPhysicsCallback _physicsCallback { nullptr };
 };
 
 #endif // hifi_Avatar_h
