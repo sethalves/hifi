@@ -46,6 +46,7 @@ enum class Action {
     RIGHT_FOOT,
     HIPS,
     SPINE2,
+    HEAD,
 
     LEFT_HAND_CLICK,
     RIGHT_HAND_CLICK,

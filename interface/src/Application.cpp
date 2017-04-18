@@ -3955,8 +3955,9 @@ void Application::updateMyAvatarLookAtPosition() {
             lookAtPosition.x = -lookAtPosition.x;
         }
         if (isHMD) {
-            glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
-            glm::quat hmdRotation = glm::quat_cast(headPose);
+            // glm::mat4 headPose = getActiveDisplayPlugin()->getHeadPose();
+            controller::Pose headPose = myAvatar->getHeadControllerPoseInSensorFrame();
+            glm::quat hmdRotation = headPose.getRotation();
             lookAtSpot = _myCamera.getPosition() + myAvatar->getOrientation() * (hmdRotation * lookAtPosition);
         } else {
             lookAtSpot = myAvatar->getHead()->getEyePosition()
@@ -4398,6 +4399,9 @@ void Application::update(float deltaTime) {
     controller::Pose hipsPose = userInputMapper->getPoseState(controller::Action::HIPS);
     controller::Pose spine2Pose = userInputMapper->getPoseState(controller::Action::SPINE2);
     myAvatar->setSpineControllerPosesInSensorFrame(hipsPose.transform(avatarToSensorMatrix), spine2Pose.transform(avatarToSensorMatrix));
+
+    controller::Pose headPose = userInputMapper->getPoseState(controller::Action::HEAD);
+    myAvatar->setHeadControllerPoseInSensorFrame(headPose.transform(avatarToSensorMatrix));
 
     updateThreads(deltaTime); // If running non-threaded, then give the threads some time to process...
     updateDialogs(deltaTime); // update various stats dialogs if present
@@ -6821,7 +6825,10 @@ mat4 Application::getEyeOffset(int eye) const {
 
 mat4 Application::getHMDSensorPose() const {
     if (isHMDMode()) {
-        return getActiveDisplayPlugin()->getHeadPose();
+        // return getActiveDisplayPlugin()->getHeadPose();
+        glm::mat4 result;
+        controller::Pose headPose = getMyAvatar()->getHeadControllerPoseInSensorFrame();
+        return createMatFromQuatAndPos(headPose.getRotation(), headPose.getTranslation());
     }
     return mat4();
 }

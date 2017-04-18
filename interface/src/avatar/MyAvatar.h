@@ -461,6 +461,11 @@ public:
     controller::Pose getHipsControllerPoseInAvatarFrame() const;
     controller::Pose getSpine2ControllerPoseInAvatarFrame() const;
 
+    void setHeadControllerPoseInSensorFrame(const controller::Pose& headPose);
+    controller::Pose getHeadControllerPoseInSensorFrame() const;
+    controller::Pose getHeadControllerPoseInWorldFrame() const;
+    controller::Pose getHeadControllerPoseInAvatarFrame() const;
+
     bool hasDriveInput() const;
 
     Q_INVOKABLE void setCharacterControllerEnabled(bool enabled);
@@ -703,6 +708,7 @@ private:
     ThreadSafeValueCache<controller::Pose> _rightFootControllerPoseInSensorFrameCache{ controller::Pose() };
     ThreadSafeValueCache<controller::Pose> _hipsControllerPoseInSensorFrameCache{ controller::Pose() };
     ThreadSafeValueCache<controller::Pose> _spine2ControllerPoseInSensorFrameCache{ controller::Pose() };
+    ThreadSafeValueCache<controller::Pose> _headControllerPoseInSensorFrameCache{ controller::Pose() };
 
     bool _hmdLeanRecenterEnabled = true;
 
