@@ -335,7 +335,6 @@ protected:
     RateCounter<> _skeletonModelSimulationRate;
     RateCounter<> _jointDataSimulationRate;
 
-<<<<<<< 4318cce04a59543d80a9364c86aab79408dcb50e
     // Smoothing data for blending from one position/orientation to another on remote agents.
     float _smoothPositionTime;
     float _smoothPositionTimer;
@@ -346,8 +345,6 @@ protected:
     glm::quat _smoothOrientationInitial;
     glm::quat _smoothOrientationTarget;
 
-=======
->>>>>>> remove Menu dependency from Avatar class
 private:
     class AvatarEntityDataHash {
     public:
