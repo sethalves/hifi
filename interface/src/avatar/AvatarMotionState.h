@@ -100,6 +100,4 @@ protected:
     uint32_t _dirtyFlags;
 };
 
-typedef QSet<AvatarMotionState*> SetOfAvatarMotionStates;
-
 #endif // hifi_AvatarMotionState_h

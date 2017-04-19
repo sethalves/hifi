@@ -14,17 +14,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <QtCore/QScopedPointer>
 #include <QtCore/QUuid>
 
 #include <AvatarData.h>
 #include <ShapeInfo.h>
-
 #include <render/Scene.h>
+
 
 #include "Head.h"
 #include "SkeletonModel.h"
-#include "world.h"
 #include "Rig.h"
 #include <ThreadSafeValueCache.h>
 #include "EntitySimulation.h"
@@ -72,7 +70,7 @@ class Avatar : public AvatarData {
     Q_PROPERTY(glm::vec3 skeletonOffset READ getSkeletonOffset WRITE setSkeletonOffset)
 
 public:
-    explicit Avatar(RigPointer rig = nullptr);
+    explicit Avatar(QThread* thread, RigPointer rig = nullptr);
     ~Avatar();
 
     typedef render::Payload<AvatarData> Payload;
@@ -83,12 +81,12 @@ public:
     void simulate(float deltaTime, bool inView);
     virtual void simulateAttachments(float deltaTime);
 
-    virtual void render(RenderArgs* renderArgs, const glm::vec3& cameraPosition);
+    virtual void render(RenderArgs* renderArgs);
 
-    void addToScene(AvatarSharedPointer self, std::shared_ptr<render::Scene> scene,
+    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene,
                             render::Transaction& transaction);
 
-    void removeFromScene(AvatarSharedPointer self, std::shared_ptr<render::Scene> scene,
+    void removeFromScene(AvatarSharedPointer self, const render::ScenePointer& scene,
                                 render::Transaction& transaction);
 
     void updateRenderItem(render::Transaction& transaction);
@@ -237,6 +235,16 @@ public:
 
     bool hasNewJointData() const { return _hasNewJointData; }
 
+    inline float easeInOutQuad(float lerpValue) {
+        assert(!((lerpValue < 0.0f) || (lerpValue > 1.0f)));
+
+        if (lerpValue < 0.5f) {
+            return (2.0f * lerpValue * lerpValue);
+        }
+
+        return (lerpValue*(4.0f - 2.0f * lerpValue) - 1.0f);
+    }
+
 public slots:
 
     // FIXME - these should be migrated to use Pose data instead
@@ -250,6 +258,9 @@ public slots:
 
 protected:
     friend class AvatarManager;
+
+    const float SMOOTH_TIME_POSITION = 0.125f;
+    const float SMOOTH_TIME_ORIENTATION = 0.075f;
 
     virtual const QString& getSessionDisplayNameForTransport() const override { return _empty; } // Save a tiny bit of bandwidth. Mixer won't look at what we send.
     QString _empty{};
@@ -299,7 +310,7 @@ protected:
     Transform calculateDisplayNameTransform(const ViewFrustum& view, const glm::vec3& textPosition) const;
     void renderDisplayName(gpu::Batch& batch, const ViewFrustum& view, const glm::vec3& textPosition) const;
     virtual bool shouldRenderHead(const RenderArgs* renderArgs) const;
-    virtual void fixupModelsInScene();
+    virtual void fixupModelsInScene(const render::ScenePointer& scene);
 
     virtual void updatePalms();
 
@@ -310,8 +321,8 @@ protected:
     ThreadSafeValueCache<glm::vec3> _rightPalmPositionCache { glm::vec3() };
     ThreadSafeValueCache<glm::quat> _rightPalmRotationCache { glm::quat() };
 
-    void addToScene(AvatarSharedPointer self);
-    void ensureInScene(AvatarSharedPointer self);
+    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
+    void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
     bool isInScene() const { return render::Item::isValidID(_renderItemID); }
 
     // Some rate tracking support
@@ -321,6 +332,16 @@ protected:
     RateCounter<> _jointDataSimulationRate;
 
     virtual void locationChanged(bool tellPhysics = true) override;
+
+    // Smoothing data for blending from one position/orientation to another on remote agents.
+    float _smoothPositionTime;
+    float _smoothPositionTimer;
+    float _smoothOrientationTime;
+    float _smoothOrientationTimer;
+    glm::vec3 _smoothPositionInitial;
+    glm::vec3 _smoothPositionTarget;
+    glm::quat _smoothOrientationInitial;
+    glm::quat _smoothOrientationTarget;
 
 private:
     class AvatarEntityDataHash {
