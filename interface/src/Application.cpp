@@ -6825,10 +6825,9 @@ mat4 Application::getEyeOffset(int eye) const {
 
 mat4 Application::getHMDSensorPose() const {
     if (isHMDMode()) {
-        // return getActiveDisplayPlugin()->getHeadPose();
-        glm::mat4 result;
-        controller::Pose headPose = getMyAvatar()->getHeadControllerPoseInSensorFrame();
-        return createMatFromQuatAndPos(headPose.getRotation(), headPose.getTranslation());
+        return getActiveDisplayPlugin()->getHeadPose();
+        // controller::Pose headPose = getMyAvatar()->getHeadControllerPoseInSensorFrame();
+        // return createMatFromQuatAndPos(headPose.getRotation(), headPose.getTranslation());
     }
     return mat4();
 }
