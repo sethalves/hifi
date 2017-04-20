@@ -9,8 +9,12 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 #include "Context.h"
+
+#include <shared/GlobalAppProperties.h>
+
 #include "Frame.h"
 #include "GPULogging.h"
+
 using namespace gpu;
 
 
@@ -53,7 +57,7 @@ void Context::beginFrame(const glm::mat4& renderPose) {
     _currentFrame->pose = renderPose;
 
     if (!_frameRangeTimer) {
-        _frameRangeTimer = std::make_shared<RangeTimer>();
+        _frameRangeTimer = std::make_shared<RangeTimer>("gpu::Context::Frame");
     }
 }
 
@@ -77,6 +81,7 @@ FramePointer Context::endFrame() {
 }
 
 void Context::executeBatch(Batch& batch) const {
+    PROFILE_RANGE(render_gpu, __FUNCTION__);
     batch.flush();
     _backend->render(batch);
 }
@@ -90,6 +95,8 @@ void Context::consumeFrameUpdates(const FramePointer& frame) const {
 }
 
 void Context::executeFrame(const FramePointer& frame) const {
+    PROFILE_RANGE(render_gpu, __FUNCTION__);
+
     // Grab the stats at the around the frame and delta to have a consistent sampling
     ContextStats beginStats;
     getStats(beginStats);
@@ -118,6 +125,12 @@ void Context::executeFrame(const FramePointer& frame) const {
 }
 
 bool Context::makeProgram(Shader& shader, const Shader::BindingSet& bindings) {
+    // If we're running in another DLL context, we need to fetch the program callback out of the application
+    // FIXME find a way to do this without reliance on Qt app properties
+    if (!_makeProgramCallback) {
+        void* rawCallback = qApp->property(hifi::properties::gl::MAKE_PROGRAM_CALLBACK).value<void*>();
+        _makeProgramCallback = reinterpret_cast<Context::MakeProgram>(rawCallback);
+    }
     if (shader.isProgram() && _makeProgramCallback) {
         return _makeProgramCallback(shader, bindings);
     }
@@ -228,6 +241,7 @@ std::atomic<Buffer::Size> Context::_bufferGPUMemoryUsage { 0 };
 
 std::atomic<uint32_t> Context::_textureGPUCount{ 0 };
 std::atomic<uint32_t> Context::_textureGPUSparseCount { 0 };
+std::atomic<Texture::Size> Context::_textureTransferPendingSize { 0 };
 std::atomic<Texture::Size> Context::_textureGPUMemoryUsage { 0 };
 std::atomic<Texture::Size> Context::_textureGPUVirtualMemoryUsage { 0 };
 std::atomic<Texture::Size> Context::_textureGPUFramebufferMemoryUsage { 0 };
@@ -251,7 +265,7 @@ void Context::incrementBufferGPUCount() {
     auto total = ++_bufferGPUCount;
     if (total > max.load()) {
         max = total;
-        qCDebug(gpulogging) << "New max GPU buffers " << total;
+       // qCDebug(gpulogging) << "New max GPU buffers " << total;
     }
 }
 void Context::decrementBufferGPUCount() {
@@ -285,7 +299,7 @@ void Context::incrementTextureGPUCount() {
     auto total = ++_textureGPUCount;
     if (total > max.load()) {
         max = total;
-        qCDebug(gpulogging) << "New max GPU textures " << total;
+       // qCDebug(gpulogging) << "New max GPU textures " << total;
     }
 }
 void Context::decrementTextureGPUCount() {
@@ -297,11 +311,22 @@ void Context::incrementTextureGPUSparseCount() {
     auto total = ++_textureGPUSparseCount;
     if (total > max.load()) {
         max = total;
-        qCDebug(gpulogging) << "New max GPU textures " << total;
+       // qCDebug(gpulogging) << "New max GPU textures " << total;
     }
 }
 void Context::decrementTextureGPUSparseCount() {
     --_textureGPUSparseCount;
+}
+
+void Context::updateTextureTransferPendingSize(Size prevObjectSize, Size newObjectSize) {
+    if (prevObjectSize == newObjectSize) {
+        return;
+    }
+    if (newObjectSize > prevObjectSize) {
+        _textureTransferPendingSize.fetch_add(newObjectSize - prevObjectSize);
+    } else {
+        _textureTransferPendingSize.fetch_sub(prevObjectSize - newObjectSize);
+    }
 }
 
 void Context::updateTextureGPUMemoryUsage(Size prevObjectSize, Size newObjectSize) {
@@ -353,7 +378,7 @@ void Context::incrementTextureGPUTransferCount() {
     auto total = ++_textureGPUTransferCount;
     if (total > max.load()) {
         max = total;
-        qCDebug(gpulogging) << "New max GPU textures transfers" << total;
+     // qCDebug(gpulogging) << "New max GPU textures transfers" << total;
     }
 }
 
@@ -375,6 +400,10 @@ uint32_t Context::getTextureGPUCount() {
 
 uint32_t Context::getTextureGPUSparseCount() {
     return _textureGPUSparseCount.load();
+}
+
+Context::Size Context::getTextureTransferPendingSize() {
+    return _textureTransferPendingSize.load();
 }
 
 Context::Size Context::getTextureGPUMemoryUsage() {
@@ -406,6 +435,7 @@ void Backend::incrementTextureGPUCount() { Context::incrementTextureGPUCount(); 
 void Backend::decrementTextureGPUCount() { Context::decrementTextureGPUCount(); }
 void Backend::incrementTextureGPUSparseCount() { Context::incrementTextureGPUSparseCount(); }
 void Backend::decrementTextureGPUSparseCount() { Context::decrementTextureGPUSparseCount(); }
+void Backend::updateTextureTransferPendingSize(Resource::Size prevObjectSize, Resource::Size newObjectSize) { Context::updateTextureTransferPendingSize(prevObjectSize, newObjectSize); }
 void Backend::updateTextureGPUMemoryUsage(Resource::Size prevObjectSize, Resource::Size newObjectSize) { Context::updateTextureGPUMemoryUsage(prevObjectSize, newObjectSize); }
 void Backend::updateTextureGPUVirtualMemoryUsage(Resource::Size prevObjectSize, Resource::Size newObjectSize) { Context::updateTextureGPUVirtualMemoryUsage(prevObjectSize, newObjectSize); }
 void Backend::updateTextureGPUFramebufferMemoryUsage(Resource::Size prevObjectSize, Resource::Size newObjectSize) { Context::updateTextureGPUFramebufferMemoryUsage(prevObjectSize, newObjectSize); }

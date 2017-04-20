@@ -32,11 +32,15 @@
 #include <AccountManager.h>
 #include <NetworkAccessManager.h>
 #include <GLMHelpers.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "OffscreenGLCanvas.h"
 #include "GLHelpers.h"
 #include "GLLogging.h"
 #include "Context.h"
+
+Q_LOGGING_CATEGORY(trace_render_qml, "trace.render.qml")
+Q_LOGGING_CATEGORY(trace_render_qml_gl, "trace.render.qml.gl")
 
 struct TextureSet {
     // The number of surfaces with this size
@@ -100,11 +104,14 @@ public:
     }
 
     void report() {
-        uint64_t now = usecTimestampNow();
-        if ((now - _lastReport) > USECS_PER_SECOND * 5) {
-            _lastReport = now;
-            qCDebug(glLogging) << "Current offscreen texture count " << _allTextureCount;
-            qCDebug(glLogging) << "Current offscreen active texture count " << _activeTextureCount;
+        if (randFloat() < 0.01f) {
+            PROFILE_COUNTER(render_qml_gl, "offscreenTextures", {
+                { "total", QVariant::fromValue(_allTextureCount.load()) },
+                { "active", QVariant::fromValue(_activeTextureCount.load()) },
+            });
+            PROFILE_COUNTER(render_qml_gl, "offscreenTextureMemory", {
+                { "value", QVariant::fromValue(_totalTextureUsage) }
+            });
         }
     }
 
@@ -186,7 +193,6 @@ private:
     std::unordered_map<GLuint, uvec2> _textureSizes;
     Mutex _mutex;
     std::list<OffscreenQmlSurface::TextureAndFence> _returnedTextures;
-    uint64_t _lastReport { 0 };
     size_t _totalTextureUsage { 0 };
 } offscreenTextures;
 
@@ -272,10 +278,14 @@ void OffscreenQmlSurface::cleanup() {
 }
 
 void OffscreenQmlSurface::render() {
+#ifdef HIFI_ENABLE_NSIGHT_DEBUG
+    return;
+#endif
     if (_paused) {
         return;
     }
 
+    PROFILE_RANGE(render_qml_gl, __FUNCTION__)
     _canvas->makeCurrent();
 
     _renderControl->sync();
@@ -284,7 +294,6 @@ void OffscreenQmlSurface::render() {
     GLuint texture = offscreenTextures.getNextTexture(_size);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
     glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0);
-    PROFILE_RANGE("qml_render->rendercontrol")
     _renderControl->render();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -421,12 +430,14 @@ void OffscreenQmlSurface::create(QOpenGLContext* shareContext) {
     // a timer with a small interval is used to get better performance.
     QObject::connect(&_updateTimer, &QTimer::timeout, this, &OffscreenQmlSurface::updateQuick);
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, this, &OffscreenQmlSurface::onAboutToQuit);
-    _updateTimer.setInterval(MIN_TIMER_MS);
+    _updateTimer.setTimerType(Qt::PreciseTimer);
+    _updateTimer.setInterval(MIN_TIMER_MS); // 5ms, Qt::PreciseTimer required
     _updateTimer.start();
 
     auto rootContext = getRootContext();
     rootContext->setContextProperty("urlHandler", new UrlHandler());
     rootContext->setContextProperty("resourceDirectoryUrl", QUrl::fromLocalFile(PathUtils::resourcesPath()));
+    rootContext->setContextProperty("pathToFonts", "../../");
 }
 
 static uvec2 clampSize(const uvec2& size, uint32_t maxDimension) {
@@ -467,40 +478,41 @@ void OffscreenQmlSurface::resize(const QSize& newSize_, bool forceResize) {
     }
 
     qCDebug(glLogging) << "Offscreen UI resizing to " << newSize.width() << "x" << newSize.height();
+    gl::withSavedContext([&] {
+        _canvas->makeCurrent();
 
-    _canvas->makeCurrent();
-
-    // Release hold on the textures of the old size
-    if (uvec2() != _size) {
-        // If the most recent texture was unused, we can directly recycle it
-        if (_latestTextureAndFence.first) {
-            offscreenTextures.releaseTexture(_latestTextureAndFence);
-            _latestTextureAndFence = { 0, 0 };
+        // Release hold on the textures of the old size
+        if (uvec2() != _size) {
+            // If the most recent texture was unused, we can directly recycle it
+            if (_latestTextureAndFence.first) {
+                offscreenTextures.releaseTexture(_latestTextureAndFence);
+                _latestTextureAndFence = { 0, 0 };
+            }
+            offscreenTextures.releaseSize(_size);
         }
-        offscreenTextures.releaseSize(_size);
-    }
 
-    _size = newOffscreenSize;
+        _size = newOffscreenSize;
 
-    // Acquire the new texture size
-    if (uvec2() != _size) {
-        offscreenTextures.acquireSize(_size);
-        if (_depthStencil) {
-            glDeleteRenderbuffers(1, &_depthStencil);
-            _depthStencil = 0;
+        // Acquire the new texture size
+        if (uvec2() != _size) {
+            offscreenTextures.acquireSize(_size);
+            if (_depthStencil) {
+                glDeleteRenderbuffers(1, &_depthStencil);
+                _depthStencil = 0;
+            }
+            glGenRenderbuffers(1, &_depthStencil);
+            glBindRenderbuffer(GL_RENDERBUFFER, _depthStencil);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _size.x, _size.y);
+            if (!_fbo) {
+                glGenFramebuffers(1, &_fbo);
+            }
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthStencil);
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         }
-        glGenRenderbuffers(1, &_depthStencil);
-        glBindRenderbuffer(GL_RENDERBUFFER, _depthStencil);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _size.x, _size.y);
-        if (!_fbo) {
-            glGenFramebuffers(1, &_fbo);
-        }
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _fbo);
-        glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthStencil);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    }
 
-    _canvas->doneCurrent();
+        _canvas->doneCurrent();
+    });
 }
 
 QQuickItem* OffscreenQmlSurface::getRootItem() {
@@ -567,7 +579,9 @@ QObject* OffscreenQmlSurface::finishQmlLoad(std::function<void(QQmlContext*, QOb
         return nullptr;
     }
 
+    _qmlEngine->setObjectOwnership(this, QQmlEngine::CppOwnership);
     newObject->setProperty("eventBridge", QVariant::fromValue(this));
+
     newContext->setContextProperty("eventBridgeJavaScriptToInject", QVariant(javaScriptToInject));
 
     f(newContext, newObject);
@@ -597,6 +611,9 @@ QObject* OffscreenQmlSurface::finishQmlLoad(std::function<void(QQmlContext*, QOb
         qFatal("Could not load object as root item");
         return nullptr;
     }
+
+    connect(newItem, SIGNAL(sendToScript(QVariant)), this, SIGNAL(fromQml(QVariant)));
+
     // The root item is ready. Associate it with the window.
     _rootItem = newItem;
     _rootItem->setParentItem(_quickWindow->contentItem());
@@ -616,12 +633,12 @@ void OffscreenQmlSurface::updateQuick() {
     }
 
     if (_polish) {
+        PROFILE_RANGE(render_qml, "OffscreenQML polish")
         _renderControl->polishItems();
         _polish = false;
     }
 
     if (_render) {
-        PROFILE_RANGE(__FUNCTION__);
         render();
         _render = false;
     }
@@ -742,8 +759,12 @@ void OffscreenQmlSurface::resume() {
     _paused = false;
     _render = true;
 
-    getRootItem()->setProperty("eventBridge", QVariant::fromValue(this));
-    getRootContext()->setContextProperty("webEntity", this);
+    if (getRootItem()) {
+        getRootItem()->setProperty("eventBridge", QVariant::fromValue(this));
+    }
+    if (getRootContext()) {
+        getRootContext()->setContextProperty("webEntity", this);
+    }
 }
 
 bool OffscreenQmlSurface::isPaused() const {
@@ -897,20 +918,23 @@ void OffscreenQmlSurface::setKeyboardRaised(QObject* object, bool raised, bool n
         return;
     }
 
-    QQuickItem* item = dynamic_cast<QQuickItem*>(object);
-    while (item) {
-        // Numeric value may be set in parameter from HTML UI; for QML UI, detect numeric fields here.
-        numeric = numeric || QString(item->metaObject()->className()).left(7) == "SpinBox";
+    // if HMD is being worn, allow keyboard to open.  allow it to close, HMD or not.
+    if (!raised || qApp->property(hifi::properties::HMD).toBool()) {
+        QQuickItem* item = dynamic_cast<QQuickItem*>(object);
+        while (item) {
+            // Numeric value may be set in parameter from HTML UI; for QML UI, detect numeric fields here.
+            numeric = numeric || QString(item->metaObject()->className()).left(7) == "SpinBox";
 
-        if (item->property("keyboardRaised").isValid()) {
-            // FIXME - HMD only: Possibly set value of "keyboardEnabled" per isHMDMode() for use in WebView.qml.
-            if (item->property("punctuationMode").isValid()) {
-                item->setProperty("punctuationMode", QVariant(numeric));
+            if (item->property("keyboardRaised").isValid()) {
+                // FIXME - HMD only: Possibly set value of "keyboardEnabled" per isHMDMode() for use in WebView.qml.
+                if (item->property("punctuationMode").isValid()) {
+                    item->setProperty("punctuationMode", QVariant(numeric));
+                }
+                item->setProperty("keyboardRaised", QVariant(raised));
+                return;
             }
-            item->setProperty("keyboardRaised", QVariant(raised));
-            return;
+            item = dynamic_cast<QQuickItem*>(item->parentItem());
         }
-        item = dynamic_cast<QQuickItem*>(item->parentItem());
     }
 }
 
@@ -938,6 +962,15 @@ void OffscreenQmlSurface::emitWebEvent(const QVariant& message) {
         } else {
             emit webEventReceived(message);
         }
+    }
+}
+
+void OffscreenQmlSurface::sendToQml(const QVariant& message) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "emitQmlEvent", Qt::QueuedConnection, Q_ARG(QVariant, message));
+    } else if (_rootItem) {
+        // call fromScript method on qml root
+        QMetaObject::invokeMethod(_rootItem, "fromScript", Qt::QueuedConnection, Q_ARG(QVariant, message));
     }
 }
 

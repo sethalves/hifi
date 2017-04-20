@@ -34,6 +34,7 @@
 #include <tbb/concurrent_unordered_map.h>
 
 #include <DependencyManager.h>
+#include <SharedUtil.h>
 
 #include "DomainHandler.h"
 #include "Node.h"
@@ -103,8 +104,7 @@ public:
         ReceiveFirstAudioPacket
     };
 
-    Q_ENUMS(ConnectionStep);
-
+    Q_ENUM(ConnectionStep);
     const QUuid& getSessionUUID() const { return _sessionUUID; }
     void setSessionUUID(const QUuid& sessionUUID);
 
@@ -162,7 +162,7 @@ public:
     unsigned int broadcastToNodes(std::unique_ptr<NLPacket> packet, const NodeSet& destinationNodeTypes);
     SharedNodePointer soloNodeOfType(NodeType_t nodeType);
 
-    void getPacketStats(float &packetsPerSecond, float &bytesPerSecond);
+    void getPacketStats(float& packetsInPerSecond, float& bytesInPerSecond, float& packetsOutPerSecond, float& bytesOutPerSecond);
     void resetPacketStats();
 
     std::unique_ptr<NLPacket> constructPingPacket(PingType_t pingType = PingType::Agnostic);
@@ -174,7 +174,44 @@ public:
     void sendPeerQueryToIceServer(const HifiSockAddr& iceServerSockAddr, const QUuid& clientID, const QUuid& peerID);
 
     SharedNodePointer findNodeWithAddr(const HifiSockAddr& addr);
-    
+
+    using value_type = SharedNodePointer;
+    using const_iterator = std::vector<value_type>::const_iterator;
+
+    // Cede control of iteration under a single read lock (e.g. for use by thread pools)
+    // Use this for nested loops instead of taking nested read locks!
+    //   This allows multiple threads (i.e. a thread pool) to share a lock
+    //   without deadlocking when a dying node attempts to acquire a write lock
+    template<typename NestedNodeLambda>
+    void nestedEach(NestedNodeLambda functor, 
+                    int* lockWaitOut = nullptr, 
+                    int* nodeTransformOut = nullptr, 
+                    int* functorOut = nullptr) {
+        auto start = usecTimestampNow();
+        {
+            QReadLocker readLock(&_nodeMutex);
+            auto endLock = usecTimestampNow();
+            if (lockWaitOut) {
+                *lockWaitOut = (endLock - start);
+            }
+
+            std::vector<SharedNodePointer> nodes(_nodeHash.size());
+            std::transform(_nodeHash.cbegin(), _nodeHash.cend(), nodes.begin(), [](const NodeHash::value_type& it) {
+                return it.second;
+            });
+            auto endTransform = usecTimestampNow();
+            if (nodeTransformOut) {
+                *nodeTransformOut = (endTransform - endLock);
+            }
+
+            functor(nodes.cbegin(), nodes.cend());
+            auto endFunctor = usecTimestampNow();
+            if (functorOut) {
+                *functorOut = (endFunctor - endTransform);
+            }
+        }
+    }
+
     template<typename NodeLambda>
     void eachNode(NodeLambda functor) {
         QReadLocker readLock(&_nodeMutex);
@@ -280,7 +317,7 @@ signals:
 protected slots:
     void connectedForLocalSocketTest();
     void errorTestingLocalSocket();
-    
+
     void clientConnectionToSockAddrReset(const HifiSockAddr& sockAddr);
 
 protected:
@@ -347,7 +384,7 @@ protected:
             functor(it);
         }
     }
-    
+
 private slots:
     void flagTimeForConnectionStep(ConnectionStep connectionStep, quint64 timestamp);
     void possiblyTimeoutSTUNAddressLookup();

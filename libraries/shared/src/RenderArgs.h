@@ -23,6 +23,10 @@
 
 class AABox;
 class OctreeRenderer;
+namespace render {
+    class Scene;
+    using ScenePointer = std::shared_ptr<Scene>;
+}
 
 namespace gpu {
 class Batch;
@@ -122,8 +126,12 @@ public:
     gpu::Batch* _batch = nullptr;
 
     std::shared_ptr<gpu::Texture> _whiteTexture;
+    uint32_t _globalShapeKey { 0 };
+    bool _enableTexturing { true };
 
     RenderDetails _details;
+    render::ScenePointer _scene; // HACK
+    int8_t _cameraMode { -1 }; // HACK
 };
 
 #endif // hifi_RenderArgs_h

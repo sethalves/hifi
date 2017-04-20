@@ -98,18 +98,7 @@ void Camera::setMode(CameraMode mode) {
     emit modeUpdated(modeToString(mode));
 }
 
-QUuid Camera::getCameraEntity() const {
-    if (_cameraEntity != nullptr) {
-        return _cameraEntity->getID();
-    }
-    return QUuid();
-};
-
-void Camera::setCameraEntity(QUuid entityID) {
-    _cameraEntity = qApp->getEntities()->getTree()->findEntityByID(entityID);
-}
-
-void Camera::setProjection(const glm::mat4& projection) { 
+void Camera::setProjection(const glm::mat4& projection) {
     _projection = projection;
 }
 
@@ -119,7 +108,7 @@ PickRay Camera::computePickRay(float x, float y) {
 
 void Camera::setModeString(const QString& mode) {
     CameraMode targetMode = stringToMode(mode);
-        
+
     switch (targetMode) {
         case CAMERA_MODE_FIRST_PERSON:
             Menu::getInstance()->setIsOptionChecked(MenuOption::FirstPerson, true);
@@ -139,7 +128,7 @@ void Camera::setModeString(const QString& mode) {
         default:
             break;
     }
-    
+
     qApp->cameraMenuChanged();
     
     if (_mode != targetMode) {
@@ -177,12 +166,6 @@ void Camera::loadViewFrustum(ViewFrustum& frustum) const {
     frustum.calculate();
 }
 
-ViewFrustum Camera::toViewFrustum() const {
-    ViewFrustum result;
-    loadViewFrustum(result);
-    return result;
-}
-
 QVariantMap Camera::getViewFrustum() {
     ViewFrustum frustum;
     loadViewFrustum(frustum);
@@ -192,6 +175,8 @@ QVariantMap Camera::getViewFrustum() {
     result["orientation"].setValue(frustum.getOrientation());
     result["projection"].setValue(frustum.getProjection());
     result["centerRadius"].setValue(frustum.getCenterRadius());
+    result["fieldOfView"].setValue(frustum.getFieldOfView());
+    result["aspectRatio"].setValue(frustum.getAspectRatio());
 
     return result;
 }

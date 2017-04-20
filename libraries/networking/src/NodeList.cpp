@@ -26,11 +26,14 @@
 #include "AccountManager.h"
 #include "AddressManager.h"
 #include "Assignment.h"
+#include "AudioHelpers.h"
 #include "HifiSockAddr.h"
+#include "FingerprintUtils.h"
 
 #include "NetworkLogging.h"
 #include "udt/PacketHeaders.h"
 #include "SharedUtil.h"
+#include <Trace.h>
 
 const int KEEPALIVE_PING_INTERVAL_MS = 1000;
 
@@ -46,7 +49,7 @@ NodeList::NodeList(char newOwnerType, int socketListenPort, int dtlsListenPort) 
     setCustomDeleter([](Dependency* dependency){
         static_cast<NodeList*>(dependency)->deleteLater();
     });
-    
+
     auto addressManager = DependencyManager::get<AddressManager>();
 
     // handle domain change signals from AddressManager
@@ -82,8 +85,8 @@ NodeList::NodeList(char newOwnerType, int socketListenPort, int dtlsListenPort) 
     connect(&_domainHandler, &DomainHandler::icePeerSocketsReceived, this, &NodeList::pingPunchForDomainServer);
 
     auto accountManager = DependencyManager::get<AccountManager>();
-    
-    // assume that we may need to send a new DS check in anytime a new keypair is generated 
+
+    // assume that we may need to send a new DS check in anytime a new keypair is generated
     connect(accountManager.data(), &AccountManager::newKeypair, this, &NodeList::sendDomainServerCheckIn);
 
     // clear out NodeList when login is finished
@@ -98,9 +101,9 @@ NodeList::NodeList(char newOwnerType, int socketListenPort, int dtlsListenPort) 
 
     // anytime we get a new node we may need to re-send our set of ignored node IDs to it
     connect(this, &LimitedNodeList::nodeActivated, this, &NodeList::maybeSendIgnoreSetToNode);
-    
+
     // setup our timer to send keepalive pings (it's started and stopped on domain connect/disconnect)
-    _keepAlivePingTimer.setInterval(KEEPALIVE_PING_INTERVAL_MS);
+    _keepAlivePingTimer.setInterval(KEEPALIVE_PING_INTERVAL_MS); // 1s, Qt::CoarseTimer acceptable
     connect(&_keepAlivePingTimer, &QTimer::timeout, this, &NodeList::sendKeepAlivePings);
     connect(&_domainHandler, SIGNAL(connectedToDomain(QString)), &_keepAlivePingTimer, SLOT(start()));
     connect(&_domainHandler, &DomainHandler::disconnectedFromDomain, &_keepAlivePingTimer, &QTimer::stop);
@@ -126,6 +129,7 @@ NodeList::NodeList(char newOwnerType, int socketListenPort, int dtlsListenPort) 
     packetReceiver.registerListener(PacketType::ICEPingReply, &_domainHandler, "processICEPingReplyPacket");
     packetReceiver.registerListener(PacketType::DomainServerPathResponse, this, "processDomainServerPathResponse");
     packetReceiver.registerListener(PacketType::DomainServerRemovedNode, this, "processDomainServerRemovedNode");
+    packetReceiver.registerListener(PacketType::UsernameFromIDReply, this, "processUsernameFromIDReply");
 }
 
 qint64 NodeList::sendStats(QJsonObject statsObject, HifiSockAddr destination) {
@@ -157,11 +161,11 @@ qint64 NodeList::sendStatsToDomainServer(QJsonObject statsObject) {
 
 void NodeList::timePingReply(ReceivedMessage& message, const SharedNodePointer& sendingNode) {
     PingType_t pingType;
-    
+
     quint64 ourOriginalTime, othersReplyTime;
-    
+
     message.seek(0);
-    
+
     message.readPrimitive(&pingType);
     message.readPrimitive(&ourOriginalTime);
     message.readPrimitive(&othersReplyTime);
@@ -195,7 +199,7 @@ void NodeList::timePingReply(ReceivedMessage& message, const SharedNodePointer& 
 }
 
 void NodeList::processPingPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode) {
-    
+
     // send back a reply
     auto replyPacket = constructPingReplyPacket(*message);
     const HifiSockAddr& senderSockAddr = message->getSenderSockAddr();
@@ -235,10 +239,23 @@ void NodeList::reset() {
 
     _numNoReplyDomainCheckIns = 0;
 
+    // lock and clear our set of radius ignored IDs
+    _radiusIgnoredSetLock.lockForWrite();
+    _radiusIgnoredNodeIDs.clear();
+    _radiusIgnoredSetLock.unlock();
     // lock and clear our set of ignored IDs
     _ignoredSetLock.lockForWrite();
     _ignoredNodeIDs.clear();
     _ignoredSetLock.unlock();
+    // lock and clear our set of personally muted IDs
+    _personalMutedSetLock.lockForWrite();
+    _personalMutedNodeIDs.clear();
+    _personalMutedSetLock.unlock();
+
+    // lock and clear out set of avatarGains
+    _avatarGainMapLock.lockForWrite();
+    _avatarGainMap.clear();
+    _avatarGainMapLock.unlock();
 
     // refresh the owner UUID to the NULL UUID
     setSessionUUID(QUuid());
@@ -317,7 +334,7 @@ void NodeList::sendDomainServerCheckIn() {
         }
 
         auto domainPacket = NLPacket::create(domainPacketType);
-        
+
         QDataStream packetStream(domainPacket.get());
 
         if (domainPacketType == PacketType::DomainConnectRequest) {
@@ -369,6 +386,10 @@ void NodeList::sendDomainServerCheckIn() {
             }
 
             packetStream << hardwareAddress;
+
+            // now add the machine fingerprint - a null UUID if logged in, real one if not logged in
+            auto accountManager = DependencyManager::get<AccountManager>();
+            packetStream << (accountManager->isLoggedIn() ? QUuid() : FingerprintUtils::getMachineFingerprint());
         }
 
         // pack our data to send to the domain-server including
@@ -394,7 +415,7 @@ void NodeList::sendDomainServerCheckIn() {
         if (_numNoReplyDomainCheckIns >= MAX_SILENT_DOMAIN_SERVER_CHECK_INS) {
             // we haven't heard back from DS in MAX_SILENT_DOMAIN_SERVER_CHECK_INS
             // so emit our signal that says that
-            qDebug() << "Limit of silent domain checkins reached";
+            qCDebug(networking) << "Limit of silent domain checkins reached";
             emit limitOfSilentDomainCheckInsReached();
         }
 
@@ -472,7 +493,7 @@ void NodeList::processDomainServerPathResponse(QSharedPointer<ReceivedMessage> m
         qCDebug(networking) << "Could not read query path from DomainServerPathQueryResponse. Bailing.";
         return;
     }
-    
+
     QString pathQuery = QString::fromUtf8(message->getRawMessage() + message->getPosition(), numPathBytes);
     message->seek(message->getPosition() + numPathBytes);
 
@@ -484,10 +505,10 @@ void NodeList::processDomainServerPathResponse(QSharedPointer<ReceivedMessage> m
         qCDebug(networking) << "Could not read resulting viewpoint from DomainServerPathQueryReponse. Bailing";
         return;
     }
-    
+
     // pull the viewpoint from the packet
     QString viewpoint = QString::fromUtf8(message->getRawMessage() + message->getPosition(), numViewpointBytes);
-    
+
     // Hand it off to the AddressManager so it can handle it as a relative viewpoint
     if (DependencyManager::get<AddressManager>()->goToViewpointForPath(viewpoint, pathQuery)) {
         qCDebug(networking) << "Going to viewpoint" << viewpoint << "which was the lookup result for path" << pathQuery;
@@ -622,7 +643,7 @@ void NodeList::processDomainServerAddedNode(QSharedPointer<ReceivedMessage> mess
 void NodeList::processDomainServerRemovedNode(QSharedPointer<ReceivedMessage> message) {
     // read the UUID from the packet, remove it if it exists
     QUuid nodeUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
-    qDebug() << "Received packet from domain-server to remove node with UUID" << uuidStringWithoutCurlyBraces(nodeUUID);
+    qCDebug(networking) << "Received packet from domain-server to remove node with UUID" << uuidStringWithoutCurlyBraces(nodeUUID);
     killNodeWithUUID(nodeUUID);
 }
 
@@ -648,16 +669,16 @@ void NodeList::parseNodeFromPacketStream(QDataStream& packetStream) {
 }
 
 void NodeList::sendAssignment(Assignment& assignment) {
- 
+
     PacketType assignmentPacketType = assignment.getCommand() == Assignment::CreateCommand
         ? PacketType::CreateAssignment
         : PacketType::RequestAssignment;
 
     auto assignmentPacket = NLPacket::create(assignmentPacketType);
-    
+
     QDataStream packetStream(assignmentPacket.get());
     packetStream << assignment;
-    
+
     sendPacket(std::move(assignmentPacket), _assignmentServerSocket);
 }
 
@@ -750,25 +771,43 @@ bool NodeList::sockAddrBelongsToDomainOrNode(const HifiSockAddr& sockAddr) {
     return _domainHandler.getSockAddr() == sockAddr || LimitedNodeList::sockAddrBelongsToNode(sockAddr);
 }
 
-void NodeList::ignoreNodesInRadius(float radiusToIgnore, bool enabled) {
+void NodeList::ignoreNodesInRadius(bool enabled) {
+    bool isEnabledChange = _ignoreRadiusEnabled.get() != enabled;
     _ignoreRadiusEnabled.set(enabled);
-    _ignoreRadius.set(radiusToIgnore);
 
     eachMatchingNode([](const SharedNodePointer& node)->bool {
         return (node->getType() == NodeType::AudioMixer || node->getType() == NodeType::AvatarMixer);
     }, [this](const SharedNodePointer& destinationNode) {
         sendIgnoreRadiusStateToNode(destinationNode);
     });
+    if (isEnabledChange) {
+        emit ignoreRadiusEnabledChanged(enabled);
+    }
 }
 
 void NodeList::sendIgnoreRadiusStateToNode(const SharedNodePointer& destinationNode) {
     auto ignorePacket = NLPacket::create(PacketType::RadiusIgnoreRequest, sizeof(bool) + sizeof(float), true);
     ignorePacket->writePrimitive(_ignoreRadiusEnabled.get());
-    ignorePacket->writePrimitive(_ignoreRadius.get());
     sendPacket(std::move(ignorePacket), *destinationNode);
 }
 
-void NodeList::ignoreNodeBySessionID(const QUuid& nodeID) {
+void NodeList::radiusIgnoreNodeBySessionID(const QUuid& nodeID, bool radiusIgnoreEnabled) {
+    if (radiusIgnoreEnabled) {
+        QReadLocker radiusIgnoredSetLocker{ &_radiusIgnoredSetLock }; // read lock for insert
+        // add this nodeID to our set of ignored IDs
+        _radiusIgnoredNodeIDs.insert(nodeID);
+    } else {
+        QWriteLocker radiusIgnoredSetLocker{ &_radiusIgnoredSetLock }; // write lock for unsafe_erase
+        _radiusIgnoredNodeIDs.unsafe_erase(nodeID);
+    }
+}
+
+bool NodeList::isRadiusIgnoringNode(const QUuid& nodeID) const {
+    QReadLocker radiusIgnoredSetLocker{ &_radiusIgnoredSetLock }; // read lock for reading
+    return _radiusIgnoredNodeIDs.find(nodeID) != _radiusIgnoredNodeIDs.cend();
+}
+
+void NodeList::ignoreNodeBySessionID(const QUuid& nodeID, bool ignoreEnabled) {
     // enumerate the nodes to send a reliable ignore packet to each that can leverage it
     if (!nodeID.isNull() && _sessionUUID != nodeID) {
         eachMatchingNode([&nodeID](const SharedNodePointer& node)->bool {
@@ -777,46 +816,152 @@ void NodeList::ignoreNodeBySessionID(const QUuid& nodeID) {
             } else {
                 return false;
             }
-        }, [&nodeID, this](const SharedNodePointer& destinationNode) {
+        }, [&nodeID, ignoreEnabled, this](const SharedNodePointer& destinationNode) {
             // create a reliable NLPacket with space for the ignore UUID
-            auto ignorePacket = NLPacket::create(PacketType::NodeIgnoreRequest, NUM_BYTES_RFC4122_UUID, true);
+            auto ignorePacket = NLPacket::create(PacketType::NodeIgnoreRequest, NUM_BYTES_RFC4122_UUID + sizeof(bool), true);
 
+            ignorePacket->writePrimitive(ignoreEnabled);
             // write the node ID to the packet
             ignorePacket->write(nodeID.toRfc4122());
 
-            qDebug() << "Sending packet to ignore node" << uuidStringWithoutCurlyBraces(nodeID);
+            qCDebug(networking) << "Sending packet to" << (destinationNode->getType() == NodeType::AudioMixer ? "AudioMixer" : "AvatarMixer") << "to"
+                << (ignoreEnabled ? "ignore" : "unignore") << "node" << uuidStringWithoutCurlyBraces(nodeID);
 
             // send off this ignore packet reliably to the matching node
             sendPacket(std::move(ignorePacket), *destinationNode);
         });
 
-        QReadLocker setLocker { &_ignoredSetLock };
-
-        // add this nodeID to our set of ignored IDs
-        _ignoredNodeIDs.insert(nodeID);
-
-        emit ignoredNode(nodeID);
+        if (ignoreEnabled) {
+            {
+                QReadLocker ignoredSetLocker{ &_ignoredSetLock }; // read lock for insert
+                // add this nodeID to our set of ignored IDs
+                _ignoredNodeIDs.insert(nodeID);
+            }
+            {
+                QReadLocker personalMutedSetLocker{ &_personalMutedSetLock }; // read lock for insert
+                // add this nodeID to our set of personal muted IDs
+                _personalMutedNodeIDs.insert(nodeID);
+            }
+            emit ignoredNode(nodeID, true);
+        } else {
+            {
+                QWriteLocker ignoredSetLocker{ &_ignoredSetLock }; // write lock for unsafe_erase
+                _ignoredNodeIDs.unsafe_erase(nodeID);
+            }
+            {
+                QWriteLocker personalMutedSetLocker{ &_personalMutedSetLock }; // write lock for unsafe_erase
+                _personalMutedNodeIDs.unsafe_erase(nodeID);
+            }
+            emit ignoredNode(nodeID, false);
+        }
 
     } else {
         qWarning() << "NodeList::ignoreNodeBySessionID called with an invalid ID or an ID which matches the current session ID.";
     }
 }
 
+void NodeList::removeFromIgnoreMuteSets(const QUuid& nodeID) {
+    // don't remove yourself, or nobody
+    if (!nodeID.isNull() && _sessionUUID != nodeID) {
+        {
+            QWriteLocker ignoredSetLocker{ &_ignoredSetLock };
+            _ignoredNodeIDs.unsafe_erase(nodeID);
+        }
+        {
+            QWriteLocker personalMutedSetLocker{ &_personalMutedSetLock };
+            _personalMutedNodeIDs.unsafe_erase(nodeID);
+        }
+    }
+}
+
 bool NodeList::isIgnoringNode(const QUuid& nodeID) const {
-    QReadLocker setLocker { &_ignoredSetLock };
+    QReadLocker ignoredSetLocker{ &_ignoredSetLock };
     return _ignoredNodeIDs.find(nodeID) != _ignoredNodeIDs.cend();
 }
 
+void NodeList::personalMuteNodeBySessionID(const QUuid& nodeID, bool muteEnabled) {
+    // cannot personal mute yourself, or nobody
+    if (!nodeID.isNull() && _sessionUUID != nodeID) {
+        auto audioMixer = soloNodeOfType(NodeType::AudioMixer);
+        if (audioMixer) {
+            if (isIgnoringNode(nodeID)) {
+                qCDebug(networking) << "You can't personally mute or unmute a node you're already ignoring.";
+            }
+            else {
+                // setup the packet
+                auto personalMutePacket = NLPacket::create(PacketType::NodeIgnoreRequest, NUM_BYTES_RFC4122_UUID + sizeof(bool), true);
+
+                personalMutePacket->writePrimitive(muteEnabled);
+                // write the node ID to the packet
+                personalMutePacket->write(nodeID.toRfc4122());
+
+                qCDebug(networking) << "Sending Personal Mute Packet to" << (muteEnabled ? "mute" : "unmute") << "node" << uuidStringWithoutCurlyBraces(nodeID);
+
+                sendPacket(std::move(personalMutePacket), *audioMixer);
+
+
+                if (muteEnabled) {
+                    QReadLocker personalMutedSetLocker{ &_personalMutedSetLock }; // read lock for insert
+                    // add this nodeID to our set of personal muted IDs
+                    _personalMutedNodeIDs.insert(nodeID);
+                } else {
+                    QWriteLocker personalMutedSetLocker{ &_personalMutedSetLock }; // write lock for unsafe_erase
+                    _personalMutedNodeIDs.unsafe_erase(nodeID);
+                }
+            }
+        } else {
+            qWarning() << "Couldn't find audio mixer to send node personal mute request";
+        }
+    } else {
+        qWarning() << "NodeList::personalMuteNodeBySessionID called with an invalid ID or an ID which matches the current session ID.";
+    }
+}
+
+bool NodeList::isPersonalMutingNode(const QUuid& nodeID) const {
+    QReadLocker personalMutedSetLocker{ &_personalMutedSetLock };
+    return _personalMutedNodeIDs.find(nodeID) != _personalMutedNodeIDs.cend();
+}
+
 void NodeList::maybeSendIgnoreSetToNode(SharedNodePointer newNode) {
-    if (newNode->getType() == NodeType::AudioMixer || newNode->getType() == NodeType::AvatarMixer) {
+    if (newNode->getType() == NodeType::AudioMixer) {
         // this is a mixer that we just added - it's unlikely it knows who we were previously ignoring in this session,
         // so send that list along now (assuming it isn't empty)
 
-        QReadLocker setLocker { &_ignoredSetLock };
+        QReadLocker personalMutedSetLocker{ &_personalMutedSetLock };
+
+        if (_personalMutedNodeIDs.size() > 0) {
+            // setup a packet list so we can send the stream of ignore IDs
+            auto personalMutePacketList = NLPacketList::create(PacketType::NodeIgnoreRequest, QByteArray(), true);
+
+            // Force the "enabled" flag in this packet to true
+            personalMutePacketList->writePrimitive(true);
+
+            // enumerate the ignored IDs and write them to the packet list
+            auto it = _personalMutedNodeIDs.cbegin();
+            while (it != _personalMutedNodeIDs.end()) {
+                personalMutePacketList->write(it->toRfc4122());
+                ++it;
+            }
+
+            // send this NLPacketList to the new node
+            sendPacketList(std::move(personalMutePacketList), *newNode);
+        }
+
+        // also send them the current ignore radius state.
+        sendIgnoreRadiusStateToNode(newNode);
+    }
+    if (newNode->getType() == NodeType::AvatarMixer) {
+        // this is a mixer that we just added - it's unlikely it knows who we were previously ignoring in this session,
+        // so send that list along now (assuming it isn't empty)
+
+        QReadLocker ignoredSetLocker{ &_ignoredSetLock };
 
         if (_ignoredNodeIDs.size() > 0) {
             // setup a packet list so we can send the stream of ignore IDs
             auto ignorePacketList = NLPacketList::create(PacketType::NodeIgnoreRequest, QByteArray(), true);
+
+            // Force the "enabled" flag in this packet to true
+            ignorePacketList->writePrimitive(true);
 
             // enumerate the ignored IDs and write them to the packet list
             auto it = _ignoredNodeIDs.cbegin();
@@ -834,6 +979,42 @@ void NodeList::maybeSendIgnoreSetToNode(SharedNodePointer newNode) {
     }
 }
 
+void NodeList::setAvatarGain(const QUuid& nodeID, float gain) {
+    // cannot set gain of yourself or nobody
+    if (!nodeID.isNull() && _sessionUUID != nodeID) {
+        auto audioMixer = soloNodeOfType(NodeType::AudioMixer);
+        if (audioMixer) {
+            // setup the packet
+            auto setAvatarGainPacket = NLPacket::create(PacketType::PerAvatarGainSet, NUM_BYTES_RFC4122_UUID + sizeof(float), true);
+
+            // write the node ID to the packet
+            setAvatarGainPacket->write(nodeID.toRfc4122());
+            // We need to convert the gain in dB (from the script) to an amplitude before packing it.
+            setAvatarGainPacket->writePrimitive(packFloatGainToByte(fastExp2f(gain / 6.0206f)));
+
+            qCDebug(networking) << "Sending Set Avatar Gain packet UUID: " << uuidStringWithoutCurlyBraces(nodeID) << "Gain:" << gain;
+
+            sendPacket(std::move(setAvatarGainPacket), *audioMixer);
+            QWriteLocker{ &_avatarGainMapLock };
+            _avatarGainMap[nodeID] = gain;
+
+        } else {
+            qWarning() << "Couldn't find audio mixer to send set gain request";
+        }
+    } else {
+        qWarning() << "NodeList::setAvatarGain called with an invalid ID or an ID which matches the current session ID:" << nodeID;
+    }
+}
+
+float NodeList::getAvatarGain(const QUuid& nodeID) {
+    QReadLocker{ &_avatarGainMapLock };
+    auto it = _avatarGainMap.find(nodeID);
+    if (it != _avatarGainMap.cend()) {
+        return it->second;
+    }
+    return 0.0f;
+}
+
 void NodeList::kickNodeBySessionID(const QUuid& nodeID) {
     // send a request to domain-server to kick the node with the given session ID
     // the domain-server will handle the persistence of the kick (via username or IP)
@@ -846,7 +1027,7 @@ void NodeList::kickNodeBySessionID(const QUuid& nodeID) {
             // write the node ID to the packet
             kickPacket->write(nodeID.toRfc4122());
 
-            qDebug() << "Sending packet to kick node" << uuidStringWithoutCurlyBraces(nodeID);
+            qCDebug(networking) << "Sending packet to kick node" << uuidStringWithoutCurlyBraces(nodeID);
 
             sendPacket(std::move(kickPacket), _domainHandler.getSockAddr());
         } else {
@@ -871,8 +1052,8 @@ void NodeList::muteNodeBySessionID(const QUuid& nodeID) {
                 // write the node ID to the packet
                 mutePacket->write(nodeID.toRfc4122());
 
-                qDebug() << "Sending packet to mute node" << uuidStringWithoutCurlyBraces(nodeID);
-            
+                qCDebug(networking) << "Sending packet to mute node" << uuidStringWithoutCurlyBraces(nodeID);
+
                 sendPacket(std::move(mutePacket), *audioMixer);
             } else {
                 qWarning() << "Couldn't find audio mixer to send node mute request";
@@ -885,4 +1066,52 @@ void NodeList::muteNodeBySessionID(const QUuid& nodeID) {
         qWarning() << "NodeList::muteNodeBySessionID called with an invalid ID or an ID which matches the current session ID.";
 
     }
+}
+
+void NodeList::requestUsernameFromSessionID(const QUuid& nodeID) {
+    // send a request to domain-server to get the username/machine fingerprint/admin status associated with the given session ID
+    // If the requesting user isn't an admin, the username and machine fingerprint will return "".
+    auto usernameFromIDRequestPacket = NLPacket::create(PacketType::UsernameFromIDRequest, NUM_BYTES_RFC4122_UUID, true);
+
+    // write the node ID to the packet
+    if (nodeID.isNull()) {
+        usernameFromIDRequestPacket->write(getSessionUUID().toRfc4122());
+    } else {
+        usernameFromIDRequestPacket->write(nodeID.toRfc4122());
+    }
+
+    qCDebug(networking) << "Sending packet to get username/fingerprint/admin status of node" << uuidStringWithoutCurlyBraces(nodeID);
+
+    sendPacket(std::move(usernameFromIDRequestPacket), _domainHandler.getSockAddr());
+}
+
+void NodeList::processUsernameFromIDReply(QSharedPointer<ReceivedMessage> message) {
+    // read the UUID from the packet
+    QString nodeUUIDString = (QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID))).toString();
+    // read the username from the packet
+    QString username = message->readString();
+    // read the machine fingerprint from the packet
+    QString machineFingerprintString = (QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID))).toString();
+    bool isAdmin;
+    message->readPrimitive(&isAdmin);
+
+    qCDebug(networking) << "Got username" << username << "and machine fingerprint"
+        << machineFingerprintString << "for node" << nodeUUIDString << ". isAdmin:" << isAdmin;
+
+    emit usernameFromIDReply(nodeUUIDString, username, machineFingerprintString, isAdmin);
+}
+
+void NodeList::setRequestsDomainListData(bool isRequesting) {
+    // Tell the avatar mixer and audio mixer whether I want to receive any additional data to which I might be entitled
+    if (_requestsDomainListData == isRequesting) {
+        return;
+    }
+    eachMatchingNode([](const SharedNodePointer& node)->bool {
+        return (node->getType() == NodeType::AudioMixer || node->getType() == NodeType::AvatarMixer);
+    }, [this, isRequesting](const SharedNodePointer& destinationNode) {
+        auto packet = NLPacket::create(PacketType::RequestsDomainListData, sizeof(bool), true); // reliable
+        packet->writePrimitive(isRequesting);
+        sendPacket(std::move(packet), *destinationNode);
+    });
+    _requestsDomainListData = isRequesting;
 }

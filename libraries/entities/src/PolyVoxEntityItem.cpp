@@ -71,29 +71,29 @@ void PolyVoxEntityItem::setVoxelVolumeSize(glm::vec3 voxelVolumeSize) {
 
         _voxelVolumeSize = glm::vec3(roundf(voxelVolumeSize.x), roundf(voxelVolumeSize.y), roundf(voxelVolumeSize.z));
         if (_voxelVolumeSize.x < 1) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping x of" << _voxelVolumeSize.x << "to 1";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping x of" << _voxelVolumeSize.x << "to 1";
             _voxelVolumeSize.x = 1;
         }
         if (_voxelVolumeSize.x > MAX_VOXEL_DIMENSION) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping x of" << _voxelVolumeSize.x << "to max";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping x of" << _voxelVolumeSize.x << "to max";
             _voxelVolumeSize.x = MAX_VOXEL_DIMENSION;
         }
 
         if (_voxelVolumeSize.y < 1) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping y of" << _voxelVolumeSize.y << "to 1";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping y of" << _voxelVolumeSize.y << "to 1";
             _voxelVolumeSize.y = 1;
         }
         if (_voxelVolumeSize.y > MAX_VOXEL_DIMENSION) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping y of" << _voxelVolumeSize.y << "to max";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping y of" << _voxelVolumeSize.y << "to max";
             _voxelVolumeSize.y = MAX_VOXEL_DIMENSION;
         }
 
         if (_voxelVolumeSize.z < 1) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping z of" << _voxelVolumeSize.z << "to 1";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping z of" << _voxelVolumeSize.z << "to 1";
             _voxelVolumeSize.z = 1;
         }
         if (_voxelVolumeSize.z > MAX_VOXEL_DIMENSION) {
-            qDebug() << "PolyVoxEntityItem::setVoxelVolumeSize clamping z of" << _voxelVolumeSize.z << "to max";
+            qCDebug(entities) << "PolyVoxEntityItem::setVoxelVolumeSize clamping z of" << _voxelVolumeSize.z << "to max";
             _voxelVolumeSize.z = MAX_VOXEL_DIMENSION;
         }
     });
@@ -179,7 +179,7 @@ int PolyVoxEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* dat
 }
 
 
-// TODO: eventually only include properties changed since the params.lastViewFrustumSent time
+// TODO: eventually only include properties changed since the params.nodeData->getLastTimeBagEmpty() time
 EntityPropertyFlags PolyVoxEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
     requestedProperties += PROP_VOXEL_VOLUME_SIZE;
@@ -198,7 +198,7 @@ EntityPropertyFlags PolyVoxEntityItem::getEntityProperties(EncodeBitstreamParams
 }
 
 void PolyVoxEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
-                                           EntityTreeElementExtraEncodeData* modelTreeElementExtraEncodeData,
+                                           EntityTreeElementExtraEncodeDataPointer modelTreeElementExtraEncodeData,
                                            EntityPropertyFlags& requestedProperties,
                                            EntityPropertyFlags& propertyFlags,
                                            EntityPropertyFlags& propertiesDidntFit,
@@ -241,4 +241,130 @@ const QByteArray PolyVoxEntityItem::getVoxelData() const {
         voxelDataCopy = _voxelData;
     });
     return voxelDataCopy;
+}
+
+
+void PolyVoxEntityItem::setXTextureURL(const QString& xTextureURL) { 
+    withWriteLock([&] {
+        _xTextureURL = xTextureURL;
+    });
+}
+
+QString PolyVoxEntityItem::getXTextureURL() const { 
+    QString result;
+    withReadLock([&] {
+        result = _xTextureURL;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setYTextureURL(const QString& yTextureURL) {
+    withWriteLock([&] {
+        _yTextureURL = yTextureURL;
+    });
+}
+
+QString PolyVoxEntityItem::getYTextureURL() const { 
+    QString result;
+    withReadLock([&] {
+        result = _yTextureURL;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setZTextureURL(const QString& zTextureURL) {
+    withWriteLock([&] {
+        _zTextureURL = zTextureURL;
+    });
+}
+QString PolyVoxEntityItem::getZTextureURL() const { 
+    QString result;
+    withReadLock([&] {
+        result = _zTextureURL;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setXNNeighborID(const EntityItemID& xNNeighborID) { 
+    withWriteLock([&] {
+        _xNNeighborID = xNNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getXNNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _xNNeighborID;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setYNNeighborID(const EntityItemID& yNNeighborID) { 
+    withWriteLock([&] {
+        _yNNeighborID = yNNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getYNNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _yNNeighborID;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setZNNeighborID(const EntityItemID& zNNeighborID) { 
+    withWriteLock([&] {
+        _zNNeighborID = zNNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getZNNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _zNNeighborID;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setXPNeighborID(const EntityItemID& xPNeighborID) { 
+    withWriteLock([&] {
+        _xPNeighborID = xPNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getXPNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _xPNeighborID;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setYPNeighborID(const EntityItemID& yPNeighborID) { 
+    withWriteLock([&] {
+        _yPNeighborID = yPNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getYPNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _yPNeighborID;
+    });
+    return result;
+}
+
+void PolyVoxEntityItem::setZPNeighborID(const EntityItemID& zPNeighborID) { 
+    withWriteLock([&] {
+        _zPNeighborID = zPNeighborID;
+    });
+}
+
+EntityItemID PolyVoxEntityItem::getZPNeighborID() const { 
+    EntityItemID result;
+    withReadLock([&] {
+        result = _zPNeighborID;
+    });
+    return result;
 }

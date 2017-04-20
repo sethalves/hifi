@@ -22,7 +22,6 @@
 #include <QString>
 
 #include <AACube.h>
-#include <FBXReader.h> // for SittingPoint
 #include <NumericalConstants.h>
 #include <PropertyFlags.h>
 #include <OctreeConstants.h>
@@ -73,7 +72,7 @@ public:
     EntityTypes::EntityType getType() const { return _type; }
     void setType(EntityTypes::EntityType type) { _type = type; }
 
-    virtual QScriptValue copyToScriptValue(QScriptEngine* engine, bool skipDefaults) const;
+    virtual QScriptValue copyToScriptValue(QScriptEngine* engine, bool skipDefaults, bool allowUnknownCreateTime = false, bool strictSemantics = false) const;
     virtual void copyFromScriptValue(const QScriptValue& object, bool honorReadOnly);
 
     static QScriptValue entityPropertyFlagsToScriptValue(QScriptEngine* engine, const EntityPropertyFlags& flags);
@@ -93,6 +92,8 @@ public:
 
     void debugDump() const;
     void setLastEdited(quint64 usecTime);
+    EntityPropertyFlags getDesiredProperties() { return _desiredProperties; }
+    void setDesiredProperties(EntityPropertyFlags properties) {  _desiredProperties = properties; }
 
     // Note:  DEFINE_PROPERTY(PROP_FOO, Foo, foo, type, value) creates the following methods and variables:
     // type getFoo() const;
@@ -213,6 +214,7 @@ public:
 
     DEFINE_PROPERTY(PROP_FLYING_ALLOWED, FlyingAllowed, flyingAllowed, bool, ZoneEntityItem::DEFAULT_FLYING_ALLOWED);
     DEFINE_PROPERTY(PROP_GHOSTING_ALLOWED, GhostingAllowed, ghostingAllowed, bool, ZoneEntityItem::DEFAULT_GHOSTING_ALLOWED);
+    DEFINE_PROPERTY(PROP_FILTER_URL, FilterURL, filterURL, QString, ZoneEntityItem::DEFAULT_FILTER_URL);
 
     DEFINE_PROPERTY(PROP_CLIENT_ONLY, ClientOnly, clientOnly, bool, false);
     DEFINE_PROPERTY_REF(PROP_OWNING_AVATAR_ID, OwningAvatarID, owningAvatarID, QUuid, UNKNOWN_ENTITY_ID);
@@ -220,6 +222,8 @@ public:
     DEFINE_PROPERTY_REF(PROP_DPI, DPI, dpi, uint16_t, ENTITY_ITEM_DEFAULT_DPI);
 
     DEFINE_PROPERTY_REF(PROP_LAST_EDITED_BY, LastEditedBy, lastEditedBy, QUuid, ENTITY_ITEM_DEFAULT_LAST_EDITED_BY);
+
+    DEFINE_PROPERTY_REF(PROP_SERVER_SCRIPTS, ServerScripts, serverScripts, QString, ENTITY_ITEM_DEFAULT_SERVER_SCRIPTS);
 
     DEFINE_PROPERTY_REF(PROP_CAS_UNIQUE, CasUnique, casUnique, quint64, 0);
 
@@ -251,8 +255,6 @@ public:
 
     void clearID() { _id = UNKNOWN_ENTITY_ID; _idSet = false; }
     void markAllChanged();
-
-    void setSittingPoints(const QVector<SittingPoint>& sittingPoints);
 
     const glm::vec3& getNaturalDimensions() const { return _naturalDimensions; }
     void setNaturalDimensions(const glm::vec3& value) { _naturalDimensions = value; }
@@ -319,11 +321,10 @@ private:
     float _localRenderAlpha;
     bool _localRenderAlphaChanged;
     bool _defaultSettings;
-    bool _dimensionsInitialized = true; // Only false if creating an entity localy with no dimensions properties
+    bool _dimensionsInitialized = true; // Only false if creating an entity locally with no dimensions properties
 
     // NOTE: The following are pseudo client only properties. They are only used in clients which can access
     // properties of model geometry. But these properties are not serialized like other properties.
-    QVector<SittingPoint> _sittingPoints;
     QVariantMap _textureNames;
     glm::vec3 _naturalDimensions;
     glm::vec3 _naturalPosition;
@@ -457,6 +458,7 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, FlyingAllowed, flyingAllowed, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, GhostingAllowed, ghostingAllowed, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, FilterURL, filterURL, "");
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, ClientOnly, clientOnly, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, OwningAvatarID, owningAvatarID, "");
@@ -464,10 +466,6 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, LastEditedBy, lastEditedBy, "");
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, CasUnique, casUnique, "");
-
-    properties.getAnimation().debugDump();
-    properties.getSkybox().debugDump();
-    properties.getStage().debugDump();
 
     debug << "  last edited:" << properties.getLastEdited() << "\n";
     debug << "  edited ago:" << properties.getEditedAgo() << "\n";

@@ -18,6 +18,7 @@
 #include <display-plugins/CompositorHelper.h>
 #include <OffscreenUi.h>
 #include <plugins/PluginUtils.h>
+#include <QUuid>
 
 #include "Application.h"
 
@@ -49,12 +50,17 @@ glm::vec2 HMDScriptingInterface::overlayToSpherical(const glm::vec2 & position) 
     return qApp->getApplicationCompositor().overlayToSpherical(position);
 }
 
-bool HMDScriptingInterface::isHMDAvailable() {
-    return PluginUtils::isHMDAvailable();
+bool HMDScriptingInterface::isHMDAvailable(const QString& name) {
+    return PluginUtils::isHMDAvailable(name);
 }
 
-bool HMDScriptingInterface::isHandControllerAvailable() {
-    return PluginUtils::isHandControllerAvailable();
+bool HMDScriptingInterface::isHandControllerAvailable(const QString& name) {
+    return PluginUtils::isHandControllerAvailable(name);
+}
+
+
+bool HMDScriptingInterface::isSubdeviceContainingNameAvailable(const QString& name) {
+    return PluginUtils::isSubdeviceContainingNameAvailable(name);
 }
 
 void HMDScriptingInterface::requestShowHandControllers() {
@@ -69,6 +75,14 @@ void HMDScriptingInterface::requestHideHandControllers() {
 
 bool HMDScriptingInterface::shouldShowHandControllers() const {
     return _showHandControllersCount > 0;
+}
+
+void  HMDScriptingInterface::closeTablet() {
+    _showTablet = false;
+}
+
+void HMDScriptingInterface::openTablet() {
+    _showTablet = true;
 }
 
 QScriptValue HMDScriptingInterface::getHUDLookAtPosition2D(QScriptContext* context, QScriptEngine* engine) {
@@ -91,9 +105,9 @@ QScriptValue HMDScriptingInterface::getHUDLookAtPosition3D(QScriptContext* conte
 }
 
 bool HMDScriptingInterface::getHUDLookAtPosition3D(glm::vec3& result) const {
-    Camera* camera = qApp->getCamera();
-    glm::vec3 position = camera->getPosition();
-    glm::quat orientation = camera->getOrientation();
+    const Camera& camera = qApp->getCamera();
+    glm::vec3 position = camera.getPosition();
+    glm::quat orientation = camera.getOrientation();
 
     glm::vec3 direction = orientation * glm::vec3(0.0f, 0.0f, -1.0f);
 
@@ -121,7 +135,7 @@ glm::quat HMDScriptingInterface::getOrientation() const {
     return glm::quat();
 }
 
-bool HMDScriptingInterface::isMounted() const{
+bool HMDScriptingInterface::isMounted() const {
     auto displayPlugin = qApp->getActiveDisplayPlugin();
     return (displayPlugin->isHmd() && displayPlugin->isDisplayVisible());
 }

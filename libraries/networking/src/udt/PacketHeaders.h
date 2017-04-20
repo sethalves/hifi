@@ -101,7 +101,19 @@ public:
         NodeKickRequest,
         NodeMuteRequest,
         RadiusIgnoreRequest,
-        LAST_PACKET_TYPE = RadiusIgnoreRequest
+        UsernameFromIDRequest,
+        UsernameFromIDReply,
+        ViewFrustum,
+        RequestsDomainListData,
+        ExitingSpaceBubble,
+        PerAvatarGainSet,
+        EntityScriptGetStatus,
+        EntityScriptGetStatusReply,
+        ReloadEntityServerScript,
+        EntityPhysics,
+        EntityServerScriptLog,
+        AdjustAvatarSorting,
+        LAST_PACKET_TYPE = AdjustAvatarSorting
     };
 };
 
@@ -191,7 +203,15 @@ const PacketVersion VERSION_MODEL_ENTITIES_SUPPORT_SIMPLE_HULLS = 62;
 const PacketVersion VERSION_WEB_ENTITIES_SUPPORT_DPI = 63;
 const PacketVersion VERSION_ENTITIES_ARROW_ACTION = 64;
 const PacketVersion VERSION_ENTITIES_LAST_EDITED_BY = 65;
-const PacketVersion VERSION_ENTITIES_CAS = 66;
+const PacketVersion VERSION_ENTITIES_SERVER_SCRIPTS = 66;
+const PacketVersion VERSION_ENTITIES_PHYSICS_PACKET = 67;
+const PacketVersion VERSION_ENTITIES_ZONE_FILTERS = 68;
+const PacketVersion VERSION_ENTITIES_CAS = 69;
+
+enum class EntityQueryPacketVersion: PacketVersion {
+    JSONFilter = 18,
+    JSONFilterWithFamilyTree = 19
+};
 
 enum class AssetServerPacketVersion: PacketVersion {
     VegasCongestionControl = 19
@@ -203,14 +223,22 @@ enum class AvatarMixerPacketVersion : PacketVersion {
     AvatarEntities,
     AbsoluteSixByteRotations,
     SensorToWorldMat,
-    HandControllerJoints
+    HandControllerJoints,
+    HasKillAvatarReason,
+    SessionDisplayName,
+    Unignore,
+    ImmediateSessionDisplayNameUpdates,
+    VariableAvatarData,
+    AvatarAsChildFixes,
+    StickAndBallDefaultAvatar
 };
 
 enum class DomainConnectRequestVersion : PacketVersion {
     NoHostname = 17,
     HasHostname,
     HasProtocolVersions,
-    HasMACAddress
+    HasMACAddress,
+    HasMachineFingerprint
 };
 
 enum class DomainConnectionDeniedVersion : PacketVersion {
@@ -226,7 +254,9 @@ enum class DomainServerAddedNodeVersion : PacketVersion {
 
 enum class DomainListVersion : PacketVersion {
     PrePermissionsGrid = 18,
-    PermissionsGrid
+    PermissionsGrid,
+    GetUsernameFromUUIDSupport,
+    GetMachineFingerprintFromUUIDSupport
 };
 
 enum class AudioVersion : PacketVersion {
@@ -234,6 +264,13 @@ enum class AudioVersion : PacketVersion {
     CodecNameInAudioPackets,
     Exactly10msAudioPackets,
     TerminatingStreamStats,
+    SpaceBubbleChanges,
+    HasPersonalMute,
+    HighDynamicRangeVolume,
+};
+
+enum class MessageDataVersion : PacketVersion {
+    TextOrBinaryData = 18
 };
 
 #endif // hifi_PacketHeaders_h

@@ -2,6 +2,7 @@ import QtQuick 2.5
 import QtQuick.Controls 1.2
 import QtWebChannel 1.0
 import QtWebEngine 1.2
+import FileTypeProfile 1.0
 
 import "controls-uit"
 import "styles" as HifiStyles
@@ -23,12 +24,18 @@ ScrollingWindow {
 
     property alias eventBridge: eventBridgeWrapper.eventBridge
 
+    signal loadingChanged(int status)
+
     x: 100
     y: 100
 
     Component.onCompleted: {
         shown = true
         addressBar.text = webview.url
+    }
+
+    function setProfile(profile) {
+        webview.profile = profile;
     }
 
     function showPermissionsBar(){
@@ -42,6 +49,10 @@ ScrollingWindow {
     function allowPermissions(){
         webview.grantFeaturePermission(permissionsBar.securityOrigin, permissionsBar.feature, true);
         hidePermissionsBar();
+    }
+
+    function setAutoAdd(auto) {
+        desktop.setAutoAdd(auto);
     }
 
     Item {
@@ -197,7 +208,7 @@ ScrollingWindow {
 
         WebView {
             id: webview
-            url: "https://highfidelity.com"
+            url: "https://highfidelity.com/"
 
             property alias eventBridgeWrapper: eventBridgeWrapper
 
@@ -205,6 +216,11 @@ ScrollingWindow {
                 id: eventBridgeWrapper
                 WebChannel.id: "eventBridgeWrapper"
                 property var eventBridge;
+            }
+            
+            profile: FileTypeProfile {
+                id: webviewProfile
+                storageName: "qmlWebEngine"
             }
 
             webChannel.registeredObjects: [eventBridgeWrapper]
@@ -243,6 +259,7 @@ ScrollingWindow {
                 if (loadRequest.status === WebEngineView.LoadSucceededStatus) {
                     addressBar.text = loadRequest.url
                 }
+                root.loadingChanged(loadRequest.status);
             }
 
             onIconChanged: {
@@ -254,7 +271,7 @@ ScrollingWindow {
             }
 
             Component.onCompleted: {
-                desktop.initWebviewProfileHandlers(webview.profile)
+                desktop.initWebviewProfileHandlers(webview.profile);
             }
         }
 

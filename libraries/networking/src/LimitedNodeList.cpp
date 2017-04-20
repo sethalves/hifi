@@ -37,6 +37,7 @@
 #include "HifiSockAddr.h"
 #include "NetworkLogging.h"
 #include "udt/Packet.h"
+#include <Trace.h>
 
 static Setting::Handle<quint16> LIMITED_NODELIST_LOCAL_PORT("LimitedNodeList.LocalPort", 0);
 
@@ -576,7 +577,7 @@ SharedNodePointer LimitedNodeList::addOrUpdateNode(const QUuid& uuid, NodeType_t
 
     if (it != _nodeHash.end()) {
         SharedNodePointer& matchingNode = it->second;
-        
+
         matchingNode->setPublicSocket(publicSocket);
         matchingNode->setLocalSocket(localSocket);
         matchingNode->setPermissions(permissions);
@@ -716,14 +717,20 @@ SharedNodePointer LimitedNodeList::soloNodeOfType(NodeType_t nodeType) {
     });
 }
 
-void LimitedNodeList::getPacketStats(float& packetsPerSecond, float& bytesPerSecond) {
-    packetsPerSecond = (float) _numCollectedPackets / ((float) _packetStatTimer.elapsed() / 1000.0f);
-    bytesPerSecond = (float) _numCollectedBytes / ((float) _packetStatTimer.elapsed() / 1000.0f);
+void LimitedNodeList::getPacketStats(float& packetsInPerSecond, float& bytesInPerSecond, float& packetsOutPerSecond, float& bytesOutPerSecond) {
+    packetsInPerSecond = (float) getPacketReceiver().getInPacketCount() / ((float) _packetStatTimer.elapsed() / 1000.0f);
+    bytesInPerSecond = (float) getPacketReceiver().getInByteCount() / ((float) _packetStatTimer.elapsed() / 1000.0f);
+
+    packetsOutPerSecond = (float) _numCollectedPackets / ((float) _packetStatTimer.elapsed() / 1000.0f);
+    bytesOutPerSecond = (float) _numCollectedBytes / ((float) _packetStatTimer.elapsed() / 1000.0f);
 }
 
 void LimitedNodeList::resetPacketStats() {
+    getPacketReceiver().resetCounters();
+
     _numCollectedPackets = 0;
     _numCollectedBytes = 0;
+
     _packetStatTimer.restart();
 }
 
@@ -901,7 +908,7 @@ void LimitedNodeList::startSTUNPublicSocketUpdate() {
         connect(_initialSTUNTimer.data(), &QTimer::timeout, this, &LimitedNodeList::sendSTUNRequest);
 
         const int STUN_INITIAL_UPDATE_INTERVAL_MSECS = 250;
-        _initialSTUNTimer->setInterval(STUN_INITIAL_UPDATE_INTERVAL_MSECS);
+        _initialSTUNTimer->setInterval(STUN_INITIAL_UPDATE_INTERVAL_MSECS); // 250ms, Qt::CoarseTimer acceptable
 
         // if we don't know the STUN IP yet we need to wait until it is known to start STUN requests
         if (_stunSockAddr.getAddress().isNull()) {
@@ -1116,7 +1123,6 @@ void LimitedNodeList::flagTimeForConnectionStep(ConnectionStep connectionStep) {
 }
 
 void LimitedNodeList::flagTimeForConnectionStep(ConnectionStep connectionStep, quint64 timestamp) {
-
     if (connectionStep == ConnectionStep::LookupAddress) {
         QWriteLocker writeLock(&_connectionTimeLock);
 

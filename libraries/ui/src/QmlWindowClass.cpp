@@ -122,12 +122,15 @@ void QmlWindowClass::initQml(QVariantMap properties) {
             object->setProperty(OFFSCREEN_VISIBILITY_PROPERTY, visible);
             object->setProperty(SOURCE_PROPERTY, _source);
 
+            const QMetaObject *metaObject = _qmlWindow->metaObject();
             // Forward messages received from QML on to the script
             connect(_qmlWindow, SIGNAL(sendToScript(QVariant)), this, SLOT(qmlToScript(const QVariant&)), Qt::QueuedConnection);
             connect(_qmlWindow, SIGNAL(visibleChanged()), this, SIGNAL(visibleChanged()), Qt::QueuedConnection);
 
-            connect(_qmlWindow, SIGNAL(resized(QSizeF)), this, SIGNAL(resized(QSizeF)), Qt::QueuedConnection);
-            connect(_qmlWindow, SIGNAL(moved(QVector2D)), this, SLOT(hasMoved(QVector2D)), Qt::QueuedConnection);
+            if (metaObject->indexOfSignal("resized") >= 0)
+                connect(_qmlWindow, SIGNAL(resized(QSizeF)), this, SIGNAL(resized(QSizeF)), Qt::QueuedConnection);
+            if (metaObject->indexOfSignal("moved") >= 0)
+                connect(_qmlWindow, SIGNAL(moved(QVector2D)), this, SLOT(hasMoved(QVector2D)), Qt::QueuedConnection);
             connect(_qmlWindow, SIGNAL(windowClosed()), this, SLOT(hasClosed()), Qt::QueuedConnection);
         });
     }
@@ -148,6 +151,52 @@ void QmlWindowClass::qmlToScript(const QVariant& message) {
 void QmlWindowClass::sendToQml(const QVariant& message) {
     // Forward messages received from the script on to QML
     QMetaObject::invokeMethod(asQuickItem(), "fromScript", Qt::QueuedConnection, Q_ARG(QVariant, message));
+}
+
+
+void QmlWindowClass::emitScriptEvent(const QVariant& scriptMessage) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "emitScriptEvent", Qt::QueuedConnection, Q_ARG(QVariant, scriptMessage));
+    } else {
+        emit scriptEventReceived(scriptMessage);
+    }
+}
+
+void QmlWindowClass::emitWebEvent(const QVariant& webMessage) {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "emitWebEvent", Qt::QueuedConnection, Q_ARG(QVariant, webMessage));
+    } else {
+        // Special case to handle raising and lowering the virtual keyboard.
+        const QString RAISE_KEYBOARD = "_RAISE_KEYBOARD";
+        const QString RAISE_KEYBOARD_NUMERIC = "_RAISE_KEYBOARD_NUMERIC";
+        const QString LOWER_KEYBOARD = "_LOWER_KEYBOARD";
+        QString messageString = webMessage.type() == QVariant::String ? webMessage.toString() : "";
+        if (messageString.left(RAISE_KEYBOARD.length()) == RAISE_KEYBOARD) {
+            setKeyboardRaised(asQuickItem(), true, messageString == RAISE_KEYBOARD_NUMERIC);
+        } else if (messageString == LOWER_KEYBOARD) {
+            setKeyboardRaised(asQuickItem(), false);
+        } else {
+            emit webEventReceived(webMessage);
+        }
+    }
+}
+
+void QmlWindowClass::setKeyboardRaised(QObject* object, bool raised, bool numeric) {
+    if (!object) {
+        return;
+    }
+
+    QQuickItem* item = dynamic_cast<QQuickItem*>(object);
+    while (item) {
+        if (item->property("keyboardRaised").isValid()) {
+            if (item->property("punctuationMode").isValid()) {
+                item->setProperty("punctuationMode", QVariant(numeric));
+            }
+            item->setProperty("keyboardRaised", QVariant(raised));
+            return;
+        }
+        item = dynamic_cast<QQuickItem*>(item->parentItem());
+    }
 }
 
 QmlWindowClass::~QmlWindowClass() {

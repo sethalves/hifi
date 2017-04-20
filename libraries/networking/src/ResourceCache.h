@@ -73,6 +73,7 @@ public:
     uint32_t getPendingRequestsCount() const;
     QList<QSharedPointer<Resource>> getLoadingRequests();
     QSharedPointer<Resource> getHighestPendingRequest();
+    uint32_t getLoadingRequestsCount() const;
 
 private:
     ResourceCacheSharedItems() = default;
@@ -85,7 +86,7 @@ private:
 /// Wrapper to expose resources to JS/QML
 class ScriptableResource : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QUrl url READ getUrl)
+    Q_PROPERTY(QUrl url READ getURL)
     Q_PROPERTY(int state READ getState NOTIFY stateChanged)
 
     /**jsdoc
@@ -124,7 +125,7 @@ public:
      */
     Q_INVOKABLE void release();
 
-    const QUrl& getUrl() const { return _url; }
+    const QUrl& getURL() const { return _url; }
     int getState() const { return (int)_state; }
     const QSharedPointer<Resource>& getResource() const { return _resource; }
 
@@ -241,11 +242,14 @@ public:
 
     static int getPendingRequestCount();
 
+    static int getLoadingRequestCount();
+
     ResourceCache(QObject* parent = nullptr);
     virtual ~ResourceCache();
     
     void refreshAll();
     void refresh(const QUrl& url);
+    void clearUnusedResources();
 
 signals:
     void dirty();
@@ -291,11 +295,11 @@ protected:
 
     /// Creates a new resource.
     virtual QSharedPointer<Resource> createResource(const QUrl& url, const QSharedPointer<Resource>& fallback,
-        const void* extra) = 0;
-    
+                                                    const void* extra) = 0;
+
     void addUnusedResource(const QSharedPointer<Resource>& resource);
     void removeUnusedResource(const QSharedPointer<Resource>& resource);
-    
+
     /// Attempt to load a resource if requests are below the limit, otherwise queue the resource for loading
     /// \return true if the resource began loading, otherwise false if the resource is in the pending queue
     static bool attemptRequest(QSharedPointer<Resource> resource);
@@ -306,7 +310,6 @@ private:
     friend class Resource;
 
     void reserveUnusedResource(qint64 resourceSize);
-    void clearUnusedResource();
     void resetResourceCounters();
     void removeResource(const QUrl& url, qint64 size = 0);
 
@@ -342,6 +345,8 @@ public:
     
     Resource(const QUrl& url);
     ~Resource();
+
+    virtual QString getType() const { return "Resource"; }
     
     /// Returns the key last used to identify this resource in the unused map.
     int getLRUKey() const { return _lruKey; }
@@ -461,6 +466,7 @@ private:
     bool isInScript() const { return _isInScript; }
     void setInScript(bool isInScript) { _isInScript = isInScript; }
     
+    int _requestID;
     ResourceRequest* _request{ nullptr };
     int _lruKey{ 0 };
     QTimer* _replyTimer{ nullptr };

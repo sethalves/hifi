@@ -14,17 +14,15 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <QtCore/QScopedPointer>
 #include <QtCore/QUuid>
 
 #include <AvatarData.h>
 #include <ShapeInfo.h>
-
 #include <render/Scene.h>
+
 
 #include "Head.h"
 #include "SkeletonModel.h"
-#include "world.h"
 #include "Rig.h"
 #include <ThreadSafeValueCache.h>
 
@@ -32,6 +30,7 @@ namespace render {
     template <> const ItemKey payloadGetKey(const AvatarSharedPointer& avatar);
     template <> const Item::Bound payloadGetBound(const AvatarSharedPointer& avatar);
     template <> void payloadRender(const AvatarSharedPointer& avatar, RenderArgs* args);
+    template <> uint32_t metaFetchMetaSubItems(const AvatarSharedPointer& avatar, ItemIDs& subItems);
 }
 
 static const float SCALING_RATIO = .05f;
@@ -54,10 +53,20 @@ class Texture;
 
 class Avatar : public AvatarData {
     Q_OBJECT
+
+    /**jsdoc
+     * An avatar is representation of yourself or another user. The Avatar API can be used to query or manipulate the avatar of a user.
+     * NOTE: Avatar extends AvatarData, see those namespace for more properties/methods.
+     *
+     * @namespace Avatar
+     * @augments AvatarData
+     *
+     * @property skeletonOffset {Vec3} can be used to apply a translation offset between the avatar's position and the registration point of the 3d model.
+     */
     Q_PROPERTY(glm::vec3 skeletonOffset READ getSkeletonOffset WRITE setSkeletonOffset)
 
 public:
-    explicit Avatar(RigPointer rig = nullptr);
+    explicit Avatar(QThread* thread, RigPointer rig = nullptr);
     ~Avatar();
 
     typedef render::Payload<AvatarData> Payload;
@@ -65,18 +74,18 @@ public:
 
     void init();
     void updateAvatarEntities();
-    void simulate(float deltaTime);
+    void simulate(float deltaTime, bool inView);
     virtual void simulateAttachments(float deltaTime);
 
-    virtual void render(RenderArgs* renderArgs, const glm::vec3& cameraPosition);
+    virtual void render(RenderArgs* renderArgs);
 
-    bool addToScene(AvatarSharedPointer self, std::shared_ptr<render::Scene> scene,
-                            render::PendingChanges& pendingChanges);
+    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene,
+                            render::Transaction& transaction);
 
-    void removeFromScene(AvatarSharedPointer self, std::shared_ptr<render::Scene> scene,
-                                render::PendingChanges& pendingChanges);
+    void removeFromScene(AvatarSharedPointer self, const render::ScenePointer& scene,
+                                render::Transaction& transaction);
 
-    void updateRenderItem(render::PendingChanges& pendingChanges);
+    void updateRenderItem(render::Transaction& transaction);
 
     virtual void postUpdate(float deltaTime);
 
@@ -110,6 +119,26 @@ public:
     Q_INVOKABLE virtual glm::quat getDefaultJointRotation(int index) const;
     Q_INVOKABLE virtual glm::vec3 getDefaultJointTranslation(int index) const;
 
+    /**jsdoc
+     * Provides read only access to the default joint rotations in avatar coordinates.
+     * The default pose of the avatar is defined by the position and orientation of all bones
+     * in the avatar's model file.  Typically this is a t-pose.
+     * @function Avatar.getAbsoluteDefaultJointRotationInObjectFrame
+     * @param index {number} index number
+     * @returns {Quat} The rotation of this joint in avatar coordinates.
+     */
+    Q_INVOKABLE virtual glm::quat getAbsoluteDefaultJointRotationInObjectFrame(int index) const;
+
+    /**jsdoc
+     * Provides read only access to the default joint translations in avatar coordinates.
+     * The default pose of the avatar is defined by the position and orientation of all bones
+     * in the avatar's model file.  Typically this is a t-pose.
+     * @function Avatar.getAbsoluteDefaultJointTranslationInObjectFrame
+     * @param index {number} index number
+     * @returns {Vec3} The position of this joint in avatar coordinates.
+     */
+    Q_INVOKABLE virtual glm::vec3 getAbsoluteDefaultJointTranslationInObjectFrame(int index) const;
+
     virtual glm::quat getAbsoluteJointRotationInObjectFrame(int index) const override;
     virtual glm::vec3 getAbsoluteJointTranslationInObjectFrame(int index) const override;
     virtual bool setAbsoluteJointRotationInObjectFrame(int index, const glm::quat& rotation) override { return false; }
@@ -119,6 +148,7 @@ public:
     virtual void setAttachmentData(const QVector<AttachmentData>& attachmentData) override;
 
     void setShowDisplayName(bool showDisplayName);
+    virtual void setSessionDisplayName(const QString& sessionDisplayName) override { }; // no-op
 
     virtual int parseDataFromBuffer(const QByteArray& buffer) override;
 
@@ -136,8 +166,6 @@ public:
     Q_INVOKABLE glm::vec3 getNeckPosition() const;
 
     Q_INVOKABLE glm::vec3 getAcceleration() const { return _acceleration; }
-
-    Q_INVOKABLE bool getShouldRender() const { return !_shouldSkipRender; }
 
     /// Scales a world space position vector relative to the avatar position and scale
     /// \param vector position to be scaled. Will store the result
@@ -169,11 +197,46 @@ public:
     Q_INVOKABLE virtual quint16 getParentJointIndex() const override { return SpatiallyNestable::getParentJointIndex(); }
     Q_INVOKABLE virtual void setParentJointIndex(quint16 parentJointIndex) override;
 
+    /**jsdoc
+     * Information about a single joint in an Avatar's skeleton hierarchy.
+     * @typedef Avatar.SkeletonJoint
+     * @property {string} name - name of joint
+     * @property {number} index - joint index
+     * @property {number} parentIndex - index of this joint's parent (-1 if no parent)
+     */
+
+    /**jsdoc
+     * Returns an array of joints, where each joint is an object containing name, index and parentIndex fields.
+     * @function Avatar.getSkeleton
+     * @returns {Avatar.SkeletonJoint[]} returns a list of information about each joint in this avatar's skeleton.
+     */
+    Q_INVOKABLE QList<QVariant> getSkeleton();
+
     // NOT thread safe, must be called on main thread.
     glm::vec3 getUncachedLeftPalmPosition() const;
     glm::quat getUncachedLeftPalmRotation() const;
     glm::vec3 getUncachedRightPalmPosition() const;
     glm::quat getUncachedRightPalmRotation() const;
+
+    uint64_t getLastRenderUpdateTime() const { return _lastRenderUpdateTime; }
+    void setLastRenderUpdateTime(uint64_t time) { _lastRenderUpdateTime = time; }
+
+    void animateScaleChanges(float deltaTime);
+    void setTargetScale(float targetScale) override;
+
+    Q_INVOKABLE float getSimulationRate(const QString& rateName = QString("")) const;
+
+    bool hasNewJointData() const { return _hasNewJointData; }
+
+    inline float easeInOutQuad(float lerpValue) {
+        assert(!((lerpValue < 0.0f) || (lerpValue > 1.0f)));
+
+        if (lerpValue < 0.5f) {
+            return (2.0f * lerpValue * lerpValue);
+        }
+
+        return (lerpValue*(4.0f - 2.0f * lerpValue) - 1.0f);
+    }
 
 public slots:
 
@@ -188,6 +251,13 @@ public slots:
 
 protected:
     friend class AvatarManager;
+
+    const float SMOOTH_TIME_POSITION = 0.125f;
+    const float SMOOTH_TIME_ORIENTATION = 0.075f;
+
+    virtual const QString& getSessionDisplayNameForTransport() const override { return _empty; } // Save a tiny bit of bandwidth. Mixer won't look at what we send.
+    QString _empty{};
+    virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) override { _sessionDisplayName = sessionDisplayName; } // don't use no-op setter!
 
     void setMotionState(AvatarMotionState* motionState);
 
@@ -220,11 +290,8 @@ protected:
     // protected methods...
     bool isLookingAtMe(AvatarSharedPointer avatar) const;
 
-    virtual void animateScaleChanges(float deltaTime);
-
     glm::vec3 getBodyRightDirection() const { return getOrientation() * IDENTITY_RIGHT; }
     glm::vec3 getBodyUpDirection() const { return getOrientation() * IDENTITY_UP; }
-    glm::vec3 getBodyFrontDirection() const { return getOrientation() * IDENTITY_FRONT; }
     glm::quat computeRotationFromBodyToWorldUp(float proportion = 1.0f) const;
     void measureMotionDerivatives(float deltaTime);
 
@@ -236,7 +303,7 @@ protected:
     Transform calculateDisplayNameTransform(const ViewFrustum& view, const glm::vec3& textPosition) const;
     void renderDisplayName(gpu::Batch& batch, const ViewFrustum& view, const glm::vec3& textPosition) const;
     virtual bool shouldRenderHead(const RenderArgs* renderArgs) const;
-    virtual void fixupModelsInScene();
+    virtual void fixupModelsInScene(const render::ScenePointer& scene);
 
     virtual void updatePalms();
 
@@ -247,14 +314,44 @@ protected:
     ThreadSafeValueCache<glm::vec3> _rightPalmPositionCache { glm::vec3() };
     ThreadSafeValueCache<glm::quat> _rightPalmRotationCache { glm::quat() };
 
+    void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
+    void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
+    bool isInScene() const { return render::Item::isValidID(_renderItemID); }
+
+    // Some rate tracking support
+    RateCounter<> _simulationRate;
+    RateCounter<> _simulationInViewRate;
+    RateCounter<> _skeletonModelSimulationRate;
+    RateCounter<> _jointDataSimulationRate;
+
+    // Smoothing data for blending from one position/orientation to another on remote agents.
+    float _smoothPositionTime;
+    float _smoothPositionTimer;
+    float _smoothOrientationTime;
+    float _smoothOrientationTimer;
+    glm::vec3 _smoothPositionInitial;
+    glm::vec3 _smoothPositionTarget;
+    glm::quat _smoothOrientationInitial;
+    glm::quat _smoothOrientationTarget;
+
 private:
+    class AvatarEntityDataHash {
+    public:
+        AvatarEntityDataHash(uint32_t h) : hash(h) {};
+        uint32_t hash { 0 };
+        bool success { false };
+    };
+
+    using MapOfAvatarEntityDataHashes = QMap<QUuid, AvatarEntityDataHash>;
+    MapOfAvatarEntityDataHashes _avatarEntityDataHashes;
+
+    uint64_t _lastRenderUpdateTime { 0 };
     int _leftPointerGeometryID { 0 };
     int _rightPointerGeometryID { 0 };
     int _nameRectGeometryID { 0 };
     bool _initialized;
-    bool _shouldAnimate { true };
-    bool _shouldSkipRender { false };
     bool _isLookAtTarget { false };
+    bool _isAnimatingScale { false };
 
     float getBoundingRadius() const;
 

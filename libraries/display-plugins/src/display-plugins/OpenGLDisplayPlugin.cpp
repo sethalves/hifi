@@ -16,7 +16,6 @@
 
 #include <QtOpenGL/QGLWidget>
 #include <QtGui/QImage>
-
 #if defined(Q_OS_MAC)
 #include <OpenGL/CGLCurrent.h>
 #endif
@@ -44,6 +43,7 @@
 #include <CursorManager.h>
 
 #include "CompositorHelper.h"
+#include "Logging.h"
 
 const char* SRGB_TO_LINEAR_FRAG = R"SCRIBE(
 
@@ -96,7 +96,7 @@ public:
             Lock lock(_mutex);
             _shutdown = true;
             _condition.wait(lock, [&] { return !_shutdown;  });
-            qDebug() << "Present thread shutdown";
+            qCDebug(displayPlugins) << "Present thread shutdown";
         }
     }
 
@@ -118,6 +118,8 @@ public:
 
 
     virtual void run() override {
+        PROFILE_SET_THREAD_NAME("Present Thread");
+
         // FIXME determine the best priority balance between this and the main thread...
         // It may be dependent on the display plugin being used, since VR plugins should 
         // have higher priority on rendering (although we could say that the Oculus plugin
@@ -129,7 +131,7 @@ public:
         _context->makeCurrent();
         while (!_shutdown) {
             if (_pendingMainThreadOperation) {
-                PROFILE_RANGE("MainThreadOp") 
+                PROFILE_RANGE(render, "MainThreadOp")
                 {
                     Lock lock(_mutex);
                     _context->doneCurrent();
@@ -165,6 +167,7 @@ public:
 
                         if (newPlugin) {
                             bool hasVsync = true;
+                            QThread::setPriority(newPlugin->getPresentPriority());
                             bool wantVsync = newPlugin->wantVsync();
                             _context->makeCurrent();
 #if defined(Q_OS_WIN)
@@ -203,7 +206,7 @@ public:
             // Execute the frame and present it to the display device.
             _context->makeCurrent();
             {
-                PROFILE_RANGE("PluginPresent")
+                PROFILE_RANGE(render, "PluginPresent")
                 currentPlugin->present();
                 CHECK_GL_ERROR();
             }
@@ -352,15 +355,17 @@ void OpenGLDisplayPlugin::customizeContext() {
             if ((image.width() > 0) && (image.height() > 0)) {
 
                 cursorData.texture.reset(
-                    gpu::Texture::create2D(
-                        gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA), 
-                        image.width(), image.height(), 
-                        gpu::Sampler(gpu::Sampler::FILTER_MIN_MAG_MIP_LINEAR)));
+                    gpu::Texture::createStrict(
+                    gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA),
+                    image.width(), image.height(),
+                    gpu::Texture::MAX_NUM_MIPS,
+                    gpu::Sampler(gpu::Sampler::FILTER_MIN_MAG_MIP_LINEAR)));
                 cursorData.texture->setSource("cursor texture");
                 auto usage = gpu::Texture::Usage::Builder().withColor().withAlpha();
                 cursorData.texture->setUsage(usage.build());
-                cursorData.texture->assignStoredMip(0, gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA), image.byteCount(), image.constBits());
-                cursorData.texture->autoGenerateMips(-1);
+                cursorData.texture->setStoredMipFormat(gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA));
+                cursorData.texture->assignStoredMip(0, image.byteCount(), image.constBits());
+                cursorData.texture->setAutoGenerateMips(true);
             }
         }
     }
@@ -482,6 +487,7 @@ void OpenGLDisplayPlugin::submitFrame(const gpu::FramePointer& newFrame) {
 }
 
 void OpenGLDisplayPlugin::updateFrameData() {
+    PROFILE_RANGE(render, __FUNCTION__)
     if (_lockCurrentTexture) {
         return;
     }
@@ -561,22 +567,27 @@ void OpenGLDisplayPlugin::compositeLayers() {
     updateCompositeFramebuffer();
 
     {
-        PROFILE_RANGE_EX("compositeScene", 0xff0077ff, (uint64_t)presentCount())
+        PROFILE_RANGE_EX(render_detail, "compositeScene", 0xff0077ff, (uint64_t)presentCount())
         compositeScene();
     }
 
+
+#ifdef HIFI_ENABLE_NSIGHT_DEBUG
+    if (false) // do not compositeoverlay if running nsight debug
+#endif
     {
-        PROFILE_RANGE_EX("compositeOverlay", 0xff0077ff, (uint64_t)presentCount())
+        PROFILE_RANGE_EX(render_detail, "compositeOverlay", 0xff0077ff, (uint64_t)presentCount())
         compositeOverlay();
     }
+
     auto compositorHelper = DependencyManager::get<CompositorHelper>();
     if (compositorHelper->getReticleVisible()) {
-        PROFILE_RANGE_EX("compositePointer", 0xff0077ff, (uint64_t)presentCount())
+        PROFILE_RANGE_EX(render_detail, "compositePointer", 0xff0077ff, (uint64_t)presentCount())
         compositePointer();
     }
 
     {
-        PROFILE_RANGE_EX("compositeExtra", 0xff0077ff, (uint64_t)presentCount())
+        PROFILE_RANGE_EX(render_detail, "compositeExtra", 0xff0077ff, (uint64_t)presentCount())
         compositeExtra();
     }
 }
@@ -596,12 +607,16 @@ void OpenGLDisplayPlugin::internalPresent() {
 }
 
 void OpenGLDisplayPlugin::present() {
-    PROFILE_RANGE_EX(__FUNCTION__, 0xffffff00, (uint64_t)presentCount())
-    updateFrameData();
+    auto frameId = (uint64_t)presentCount();
+    PROFILE_RANGE_EX(render, __FUNCTION__, 0xffffff00, frameId)
+    {
+        PROFILE_RANGE_EX(render, "updateFrameData", 0xff00ff00, frameId)
+        updateFrameData();
+    }
     incrementPresentCount();
 
     {
-        PROFILE_RANGE_EX("recycle", 0xff00ff00, (uint64_t)presentCount())
+        PROFILE_RANGE_EX(render, "recycle", 0xff00ff00, frameId)
         _gpuContext->recycle();
     }
 
@@ -615,19 +630,19 @@ void OpenGLDisplayPlugin::present() {
                 _lastFrame = _currentFrame.get();
             });
             // Execute the frame rendering commands
-            PROFILE_RANGE_EX("execute", 0xff00ff00, (uint64_t)presentCount())
+            PROFILE_RANGE_EX(render, "execute", 0xff00ff00, frameId)
             _gpuContext->executeFrame(_currentFrame);
         }
 
         // Write all layers to a local framebuffer
         {
-            PROFILE_RANGE_EX("composite", 0xff00ffff, (uint64_t)presentCount())
+            PROFILE_RANGE_EX(render, "composite", 0xff00ffff, frameId)
             compositeLayers();
         }
 
         // Take the composite framebuffer and send it to the output device
         {
-            PROFILE_RANGE_EX("internalPresent", 0xff00ffff, (uint64_t)presentCount())
+            PROFILE_RANGE_EX(render, "internalPresent", 0xff00ffff, frameId)
             internalPresent();
         }
 
@@ -645,6 +660,11 @@ float OpenGLDisplayPlugin::droppedFrameRate() const {
 
 float OpenGLDisplayPlugin::presentRate() const {
     return _presentRate.rate();
+}
+
+void OpenGLDisplayPlugin::resetPresentRate() {
+    // FIXME
+    // _presentRate = RateCounter<100>();
 }
 
 float OpenGLDisplayPlugin::renderRate() const { 

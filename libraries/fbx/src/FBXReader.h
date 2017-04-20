@@ -13,6 +13,7 @@
 #define hifi_FBXReader_h
 
 #include <QMetaType>
+#include <QSet>
 #include <QUrl>
 #include <QVarLengthArray>
 #include <QVariant>
@@ -88,16 +89,24 @@ public:
     QString name;
     bool isSkeletonJoint;
     bool bindTransformFoundInCluster;
+
+    // geometric offset is applied in local space but does NOT affect children.
+    bool hasGeometricOffset;
+    glm::vec3 geometricTranslation;
+    glm::quat geometricRotation;
+    glm::vec3 geometricScaling;
 };
 
 
 /// A single binding to a joint in an FBX document.
 class FBXCluster {
 public:
-    
+
     int jointIndex;
     glm::mat4 inverseBindMatrix;
 };
+
+const int MAX_NUM_PIXELS_FOR_FBX_TEXTURE = 2048 * 2048;
 
 /// A texture map in an FBX document.
 class FBXTexture {
@@ -105,11 +114,12 @@ public:
     QString name;
     QByteArray filename;
     QByteArray content;
-    
+
     Transform transform;
+    int maxNumPixels { MAX_NUM_PIXELS_FOR_FBX_TEXTURE };
     int texcoordSet;
     QString texcoordSetName;
-    
+
     bool isBumpmap{ false };
 
     bool isNull() const { return name.isEmpty() && filename.isEmpty() && content.isEmpty(); }
@@ -136,6 +146,9 @@ public:
         emissiveColor(emissiveColor),
         shininess(shininess),
         opacity(opacity)  {}
+
+    void getTextureNames(QSet<QString>& textureList) const;
+    void setMaxNumPixelsPerTexture(int maxNumPixels);
 
     glm::vec3 diffuseColor{ 1.0f };
     float diffuseFactor{ 1.0f };
@@ -189,7 +202,7 @@ public:
 /// A single mesh (with optional blendshapes) extracted from an FBX document.
 class FBXMesh {
 public:
-    
+
     QVector<FBXMeshPart> parts;
     
     QVector<glm::vec3> vertices;
@@ -198,16 +211,14 @@ public:
     QVector<glm::vec3> colors;
     QVector<glm::vec2> texCoords;
     QVector<glm::vec2> texCoords1;
-    QVector<glm::vec4> clusterIndices;
-    QVector<glm::vec4> clusterWeights;
-    
+    QVector<uint16_t> clusterIndices;
+    QVector<uint8_t> clusterWeights;
+
     QVector<FBXCluster> clusters;
 
     Extents meshExtents;
     glm::mat4 modelTransform;
 
-    bool isEye;
-    
     QVector<FBXBlendshape> blendshapes;
 
     unsigned int meshIndex; // the order the meshes appeared in the object file
@@ -252,29 +263,12 @@ public:
 Q_DECLARE_METATYPE(FBXAnimationFrame)
 Q_DECLARE_METATYPE(QVector<FBXAnimationFrame>)
 
-/// A point where an avatar can sit
-class SittingPoint {
-public:
-    QString name;
-    glm::vec3 position; // relative postion
-    glm::quat rotation; // relative orientation
-};
-
-inline bool operator==(const SittingPoint& lhs, const SittingPoint& rhs)
-{
-    return (lhs.name == rhs.name) && (lhs.position == rhs.position) && (lhs.rotation == rhs.rotation);
-}
-
-inline bool operator!=(const SittingPoint& lhs, const SittingPoint& rhs)
-{
-    return (lhs.name != rhs.name) || (lhs.position != rhs.position) || (lhs.rotation != rhs.rotation);
-}
-
 /// A set of meshes extracted from an FBX document.
 class FBXGeometry {
 public:
     using Pointer = std::shared_ptr<FBXGeometry>;
 
+    QString originalURL;
     QString author;
     QString applicationName; ///< the name of the application that generated the model
 
@@ -286,7 +280,7 @@ public:
 
     QHash<QString, FBXMaterial> materials;
 
-    glm::mat4 offset;
+    glm::mat4 offset; // This includes offset, rotation, and scale as specified by the FST file
     
     int leftEyeJointIndex = -1;
     int rightEyeJointIndex = -1;
@@ -305,8 +299,6 @@ public:
     QVector<int> humanIKJointIndices;
     
     glm::vec3 palmDirection;
-    
-    QVector<SittingPoint> sittingPoints;
     
     glm::vec3 neckPivot;
     

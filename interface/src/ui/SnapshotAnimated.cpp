@@ -55,10 +55,6 @@ void SnapshotAnimated::saveSnapshotAnimated(QString pathStill, float aspectRatio
         // Start the snapshotAnimatedTimer QTimer - argument for this is in milliseconds
         SnapshotAnimated::snapshotAnimatedTimerRunning = true;
         SnapshotAnimated::snapshotAnimatedTimer->start(SNAPSNOT_ANIMATED_FRAME_DELAY_MSEC);
-    // If we're already in the middle of capturing an animated snapshot...
-    } else {
-        // Just tell the dependency manager that the capture of the still snapshot has taken place.
-        emit dm->snapshotTaken(pathStill, "", false);
     }
 }
 
@@ -88,9 +84,10 @@ void SnapshotAnimated::captureFrames() {
             // If that was the last frame...
             if ((SnapshotAnimated::snapshotAnimatedTimestamp - SnapshotAnimated::snapshotAnimatedFirstFrameTimestamp) >= (SnapshotAnimated::snapshotAnimatedDuration.get() * MSECS_PER_SECOND)) {
                 SnapshotAnimated::snapshotAnimatedTimerRunning = false;
-                // Reset the current frame timestamp
-                SnapshotAnimated::snapshotAnimatedTimestamp = 0;
-                SnapshotAnimated::snapshotAnimatedFirstFrameTimestamp = 0;
+
+                // Notify the user that we're processing the snapshot
+                // This also pops up the "Share" dialog. The unprocessed GIF will be visualized as a loading icon until processingGifCompleted() is called.
+                emit SnapshotAnimated::snapshotAnimatedDM->processingGifStarted(SnapshotAnimated::snapshotStillPath);
 
                 // Kick off the thread that'll pack the frames into the GIF
                 QtConcurrent::run(processFrames);
@@ -133,7 +130,10 @@ void SnapshotAnimated::processFrames() {
     SnapshotAnimated::snapshotAnimatedFrameVector.squeeze();
     SnapshotAnimated::snapshotAnimatedFrameDelayVector.clear();
     SnapshotAnimated::snapshotAnimatedFrameDelayVector.squeeze();
-
-    // Let the dependency manager know that the snapshots have been taken.
-    emit SnapshotAnimated::snapshotAnimatedDM->snapshotTaken(SnapshotAnimated::snapshotStillPath, SnapshotAnimated::snapshotAnimatedPath, false);
+    // Reset the current frame timestamp
+    SnapshotAnimated::snapshotAnimatedTimestamp = 0;
+    SnapshotAnimated::snapshotAnimatedFirstFrameTimestamp = 0;
+    
+    // Update the "Share" dialog with the processed GIF.
+    emit SnapshotAnimated::snapshotAnimatedDM->processingGifCompleted(SnapshotAnimated::snapshotAnimatedPath);
 }

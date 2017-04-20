@@ -23,6 +23,7 @@
 #include "SettingHandle.h"
 
 #include "Context.h"
+#include "Logging.h"
 
 #include "gpu/Batch.h"
 #include <PerfStat.h>
@@ -44,8 +45,9 @@ public:
     }
     template <class T> Varying(const T& data) : _concept(std::make_shared<Model<T>>(data)) {}
 
-    template <class T> T& edit() { return std::static_pointer_cast<Model<T>>(_concept)->_data; }
+    template <class T> bool canCast() const { return !!std::dynamic_pointer_cast<Model<T>>(_concept); }
     template <class T> const T& get() const { return std::static_pointer_cast<const Model<T>>(_concept)->_data; }
+    template <class T> T& edit() { return std::static_pointer_cast<Model<T>>(_concept)->_data; }
 
 
     // access potential sub varyings contained in this one.
@@ -254,6 +256,40 @@ public:
     Varying hasVarying() const { return Varying((*this)); }
 };
 
+template <class T0, class T1, class T2, class T3, class T4, class T5, class T6>
+class VaryingSet7 : public std::tuple<Varying, Varying, Varying, Varying, Varying, Varying, Varying>{
+public:
+    using Parent = std::tuple<Varying, Varying, Varying, Varying, Varying, Varying, Varying>;
+    
+    VaryingSet7() : Parent(Varying(T0()), Varying(T1()), Varying(T2()), Varying(T3()), Varying(T4()), Varying(T5()), Varying(T6())) {}
+    VaryingSet7(const VaryingSet7& src) : Parent(std::get<0>(src), std::get<1>(src), std::get<2>(src), std::get<3>(src), std::get<4>(src), std::get<5>(src), std::get<6>(src)) {}
+    VaryingSet7(const Varying& first, const Varying& second, const Varying& third, const Varying& fourth, const Varying& fifth, const Varying& sixth, const Varying& seventh) : Parent(first, second, third, fourth, fifth, sixth, seventh) {}
+    
+    const T0& get0() const { return std::get<0>((*this)).template get<T0>(); }
+    T0& edit0() { return std::get<0>((*this)).template edit<T0>(); }
+    
+    const T1& get1() const { return std::get<1>((*this)).template get<T1>(); }
+    T1& edit1() { return std::get<1>((*this)).template edit<T1>(); }
+    
+    const T2& get2() const { return std::get<2>((*this)).template get<T2>(); }
+    T2& edit2() { return std::get<2>((*this)).template edit<T2>(); }
+    
+    const T3& get3() const { return std::get<3>((*this)).template get<T3>(); }
+    T3& edit3() { return std::get<3>((*this)).template edit<T3>(); }
+    
+    const T4& get4() const { return std::get<4>((*this)).template get<T4>(); }
+    T4& edit4() { return std::get<4>((*this)).template edit<T4>(); }
+    
+    const T5& get5() const { return std::get<5>((*this)).template get<T5>(); }
+    T5& edit5() { return std::get<5>((*this)).template edit<T5>(); }
+    
+    const T6& get6() const { return std::get<6>((*this)).template get<T6>(); }
+    T6& edit6() { return std::get<6>((*this)).template edit<T6>(); }
+    
+    Varying hasVarying() const { return Varying((*this)); }
+};
+
+    
 template < class T, int NUM >
 class VaryingArray : public std::array<Varying, NUM> {
 public:
@@ -265,6 +301,7 @@ public:
 };
 
 class Job;
+class JobConcept;
 class Task;
 class JobNoIO {};
 
@@ -335,6 +372,7 @@ protected:
 class JobConfig : public QObject {
     Q_OBJECT
     Q_PROPERTY(double cpuRunTime READ getCPURunTime NOTIFY newStats()) //ms
+    Q_PROPERTY(bool enabled READ isEnabled WRITE setEnabled)
 
     double _msCPURunTime{ 0.0 };
 public:
@@ -344,7 +382,7 @@ public:
     JobConfig(bool enabled) : alwaysEnabled{ false }, enabled{ enabled } {}
 
     bool isEnabled() { return alwaysEnabled || enabled; }
-    void setEnabled(bool enable) { enabled = enable; }
+    void setEnabled(bool enable) { enabled = alwaysEnabled || enable; }
 
     bool alwaysEnabled{ true };
     bool enabled{ true };
@@ -378,6 +416,8 @@ signals:
 class TaskConfig : public JobConfig {
     Q_OBJECT
 public:
+    using QConfigPointer = std::shared_ptr<QObject>;
+
     using Persistent = PersistentConfig<TaskConfig>;
 
     TaskConfig() = default ;
@@ -391,12 +431,15 @@ public:
         return findChild<typename T::Config*>(name);
     }
 
+    void connectChildConfig(QConfigPointer childConfig, const std::string& name);
+    void transferChildrenConfigs(QConfigPointer source);
+
 public slots:
     void refresh();
 
 private:
-    friend class Task;
-    Task* _task;
+    friend Task;
+    JobConcept* _task;
 };
 
 template <class T, class C> void jobConfigure(T& data, const C& configuration) {
@@ -404,6 +447,9 @@ template <class T, class C> void jobConfigure(T& data, const C& configuration) {
 }
 template<class T> void jobConfigure(T&, const JobConfig&) {
     // nop, as the default JobConfig was used, so the data does not need a configure method
+}
+template<class T> void jobConfigure(T&, const TaskConfig&) {
+    // nop, as the default TaskConfig was used, so the data does not need a configure method
 }
 template <class T> void jobRun(T& data, const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext, const JobNoIO& input, JobNoIO& output) {
     data.run(sceneContext, renderContext);
@@ -418,6 +464,242 @@ template <class T, class I, class O> void jobRun(T& data, const SceneContextPoin
     data.run(sceneContext, renderContext, input, output);
 }
 
+// The guts of a job
+class JobConcept {
+public:
+    using Config = JobConfig;
+    using QConfigPointer = std::shared_ptr<QObject>;
+
+    JobConcept(QConfigPointer config) : _config(config) {}
+    virtual ~JobConcept() = default;
+
+    virtual const Varying getInput() const { return Varying(); }
+    virtual const Varying getOutput() const { return Varying(); }
+
+    virtual QConfigPointer& getConfiguration() { return _config; }
+    virtual void applyConfiguration() = 0;
+
+    virtual void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) = 0;
+
+protected:
+    void setCPURunTime(double mstime) { std::static_pointer_cast<Config>(_config)->setCPURunTime(mstime); }
+
+    QConfigPointer _config;
+
+    friend class Job;
+};
+
+class Job {
+public:
+    using Concept = JobConcept;
+    using Config = JobConfig;
+    using QConfigPointer = std::shared_ptr<QObject>;
+    using None = JobNoIO;
+    using ConceptPointer = std::shared_ptr<Concept>;
+
+    template <class T, class C = Config, class I = None, class O = None> class Model : public Concept {
+    public:
+        using Data = T;
+        using Input = I;
+        using Output = O;
+
+        Data _data;
+        Varying _input;
+        Varying _output;
+
+        const Varying getInput() const override { return _input; }
+        const Varying getOutput() const override { return _output; }
+
+        template <class... A>
+        Model(const Varying& input, QConfigPointer config, A&&... args) :
+            Concept(config),
+            _data(Data(std::forward<A>(args)...)),
+            _input(input),
+            _output(Output()) {
+            applyConfiguration();
+        }
+
+        template <class... A>
+        static std::shared_ptr<Model> create(const Varying& input, A&&... args) {
+            return std::make_shared<Model>(input, std::make_shared<C>(), std::forward<A>(args)...);
+        }
+
+
+        void applyConfiguration() override {
+            jobConfigure(_data, *std::static_pointer_cast<C>(_config));
+        }
+
+        void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) override {
+            renderContext->jobConfig = std::static_pointer_cast<Config>(_config);
+            if (renderContext->jobConfig->alwaysEnabled || renderContext->jobConfig->isEnabled()) {
+                jobRun(_data, sceneContext, renderContext, _input.get<I>(), _output.edit<O>());
+            }
+            renderContext->jobConfig.reset();
+        }
+    };
+    template <class T, class I, class C = Config> using ModelI = Model<T, C, I, None>;
+    template <class T, class O, class C = Config> using ModelO = Model<T, C, None, O>;
+    template <class T, class I, class O, class C = Config> using ModelIO = Model<T, C, I, O>;
+
+    Job(std::string name, ConceptPointer concept) : _concept(concept), _name(name) {}
+
+    const Varying getInput() const { return _concept->getInput(); }
+    const Varying getOutput() const { return _concept->getOutput(); }
+    QConfigPointer& getConfiguration() const { return _concept->getConfiguration(); }
+    void applyConfiguration() { return _concept->applyConfiguration(); }
+
+    template <class T> T& edit() {
+        auto concept = std::static_pointer_cast<typename T::JobModel>(_concept);
+        assert(concept);
+        return concept->_data;
+    }
+
+    void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) {
+        PerformanceTimer perfTimer(_name.c_str());
+        PROFILE_RANGE(render, _name.c_str());
+        auto start = usecTimestampNow();
+
+        _concept->run(sceneContext, renderContext);
+
+        _concept->setCPURunTime((double)(usecTimestampNow() - start) / 1000.0);
+    }
+
+protected:
+    ConceptPointer _concept;
+    std::string _name = "";
+};
+
+// A task is a specialized job to run a collection of other jobs
+// It can be created on any type T by aliasing the type JobModel in the class T
+// using JobModel = Task::Model<T>
+// The class T is expected to have a "build" method acting as a constructor.
+// The build method is where child Jobs can be added internally to the task 
+// where the input of the task can be setup to feed the child jobs
+// and where the output of the task is defined
+class Task : public Job {
+public:
+    using Config = TaskConfig;
+    using QConfigPointer = Job::QConfigPointer;
+    using None = Job::None;
+    using Concept = Job::Concept;
+    using Jobs = std::vector<Job>;
+
+    Task(std::string name, ConceptPointer concept) : Job(name, concept) {}
+
+    class TaskConcept : public Concept {
+    public:
+        Varying _input;
+        Varying _output;
+        Jobs _jobs;
+
+        const Varying getInput() const override { return _input; }
+        const Varying getOutput() const override { return _output; }
+
+        TaskConcept(const Varying& input, QConfigPointer config) : Concept(config), _input(input) {}
+
+        // Create a new job in the container's queue; returns the job's output
+        template <class NT, class... NA> const Varying addJob(std::string name, const Varying& input, NA&&... args) {
+            _jobs.emplace_back(name, (NT::JobModel::create(input, std::forward<NA>(args)...)));
+
+            // Conect the child config to this task's config
+            std::static_pointer_cast<TaskConfig>(getConfiguration())->connectChildConfig(_jobs.back().getConfiguration(), name);
+
+            return _jobs.back().getOutput();
+        }
+        template <class NT, class... NA> const Varying addJob(std::string name, NA&&... args) {
+            const auto input = Varying(typename NT::JobModel::Input());
+            return addJob<NT>(name, input, std::forward<NA>(args)...);
+        }
+    };
+
+    template <class T, class C = Config, class I = None, class O = None> class TaskModel : public TaskConcept {
+    public:
+        using Data = T;
+        using Input = I;
+        using Output = O;
+
+        Data _data;
+
+        TaskModel(const Varying& input, QConfigPointer config) :
+            TaskConcept(input, config),
+            _data(Data()) {}
+
+        template <class... A>
+        static std::shared_ptr<TaskModel> create(const Varying& input, A&&... args) {
+            auto model = std::make_shared<TaskModel>(input, std::make_shared<C>());
+          //  std::static_pointer_cast<C>(model->_config)->_task = model.get();
+
+            model->_data.build(*(model), model->_input, model->_output, std::forward<A>(args)...);
+
+            // Recreate the Config to use the templated type
+            model->createConfiguration();
+            model->applyConfiguration();
+
+            return model;
+        }
+
+        template <class... A>
+        static std::shared_ptr<TaskModel> create(A&&... args) {
+            const auto input = Varying(Input());
+            return create(input, std::forward<A>(args)...);
+        }
+
+        void createConfiguration() {
+            // A brand new config
+            auto config = std::make_shared<C>();
+            // Make sure we transfer the former children configs to the new config
+            config->transferChildrenConfigs(_config);
+            // swap
+            _config = config;
+            // Capture this
+            std::static_pointer_cast<C>(_config)->_task = this;
+        }
+
+        QConfigPointer& getConfiguration() override {
+            if (!_config) {
+                createConfiguration();
+            }
+            return _config;
+        }
+
+        void applyConfiguration() override {
+            jobConfigure(_data, *std::static_pointer_cast<C>(_config));
+            for (auto& job : _jobs) {
+                job.applyConfiguration();
+            }
+        }
+
+        void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) override {
+            auto config = std::static_pointer_cast<C>(_config);
+            if (config->alwaysEnabled || config->enabled) {
+                for (auto job : _jobs) {
+                    job.run(sceneContext, renderContext);
+                }
+            }
+        }
+    };
+    template <class T, class C = Config> using Model = TaskModel<T, C, None, None>;
+    template <class T, class I, class C = Config> using ModelI = TaskModel<T, C, I, None>;
+    template <class T, class O, class C = Config> using ModelO = TaskModel<T, C, None, O>;
+    template <class T, class I, class O, class C = Config> using ModelIO = TaskModel<T, C, I, O>;
+
+    // Create a new job in the Task's queue; returns the job's output
+    template <class T, class... A> const Varying addJob(std::string name, const Varying& input, A&&... args) {
+        return std::static_pointer_cast<TaskConcept>( _concept)->addJob<T>(name, input, std::forward<A>(args)...);
+    }
+    template <class T, class... A> const Varying addJob(std::string name, A&&... args) {
+        const auto input = Varying(typename T::JobModel::Input());
+        return std::static_pointer_cast<TaskConcept>( _concept)->addJob<T>(name, input, std::forward<A>(args)...);
+    }
+
+    std::shared_ptr<Config> getConfiguration() {
+        return std::static_pointer_cast<Config>(_concept->getConfiguration());
+    }
+
+protected:
+};
+
+// Versions of the COnfig integrating a gpu & batch timer
 class GPUJobConfig : public JobConfig {
     Q_OBJECT
     Q_PROPERTY(double gpuRunTime READ getGPURunTime)
@@ -456,208 +738,6 @@ public:
     void setGPUBatchRunTime(double msGpuTime, double msBatchTime) { _msGPURunTime = msGpuTime; _msBatchRunTime = msBatchTime; }
     double getGPURunTime() const { return _msGPURunTime; }
     double getBatchRunTime() const { return _msBatchRunTime; }
-};
-
-class Job {
-public:
-    using Config = JobConfig;
-    using QConfigPointer = std::shared_ptr<QObject>;
-    using None = JobNoIO;
-
-    // The guts of a job
-    class Concept {
-    public:
-        Concept(QConfigPointer config) : _config(config) {}
-        virtual ~Concept() = default;
-
-        virtual const Varying getInput() const { return Varying(); }
-        virtual const Varying getOutput() const { return Varying(); }
-
-        virtual QConfigPointer& getConfiguration() { return _config; }
-        virtual void applyConfiguration() = 0;
-
-        virtual void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) = 0;
-
-    protected:
-        void setCPURunTime(double mstime) { std::static_pointer_cast<Config>(_config)->setCPURunTime(mstime); }
-
-        QConfigPointer _config;
-
-        friend class Job;
-    };
-    using ConceptPointer = std::shared_ptr<Concept>;
-
-    template <class T, class C = Config, class I = None, class O = None> class Model : public Concept {
-    public:
-        using Data = T;
-        using Input = I;
-        using Output = O;
-
-        Data _data;
-        Varying _input;
-        Varying _output;
-
-        const Varying getInput() const override { return _input; }
-        const Varying getOutput() const override { return _output; }
-
-        template <class... A>
-        Model(const Varying& input, A&&... args) :
-            Concept(std::make_shared<C>()), _data(Data(std::forward<A>(args)...)), _input(input), _output(Output()) {
-            applyConfiguration();
-        }
-
-        void applyConfiguration() override {
-            jobConfigure(_data, *std::static_pointer_cast<C>(_config));
-        }
-
-        void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) override {
-            renderContext->jobConfig = std::static_pointer_cast<Config>(_config);
-            if (renderContext->jobConfig->alwaysEnabled || renderContext->jobConfig->isEnabled()) {
-                jobRun(_data, sceneContext, renderContext, _input.get<I>(), _output.edit<O>());
-            }
-            renderContext->jobConfig.reset();
-        }
-    };
-    template <class T, class I, class C = Config> using ModelI = Model<T, C, I, None>;
-    template <class T, class O, class C = Config> using ModelO = Model<T, C, None, O>;
-    template <class T, class I, class O, class C = Config> using ModelIO = Model<T, C, I, O>;
-
-    Job(std::string name, ConceptPointer concept) : _concept(concept), _name(name) {}
-
-    const Varying getInput() const { return _concept->getInput(); }
-    const Varying getOutput() const { return _concept->getOutput(); }
-    QConfigPointer& getConfiguration() const { return _concept->getConfiguration(); }
-    void applyConfiguration() { return _concept->applyConfiguration(); }
-
-    template <class T> T& edit() {
-        auto concept = std::static_pointer_cast<typename T::JobModel>(_concept);
-        assert(concept);
-        return concept->_data;
-    }
-
-    void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) {
-        PerformanceTimer perfTimer(_name.c_str());
-        PROFILE_RANGE(_name.c_str());
-        auto start = usecTimestampNow();
-
-        _concept->run(sceneContext, renderContext);
-
-        _concept->setCPURunTime((double)(usecTimestampNow() - start) / 1000.0);
-    }
-
-    protected:
-    ConceptPointer _concept;
-    std::string _name = "";
-};
-
-// A task is a specialized job to run a collection of other jobs
-// It is defined with JobModel = Task::Model<T>
-class Task {
-public:
-    using Config = TaskConfig;
-    using QConfigPointer = Job::QConfigPointer;
-    using None = Job::None;
-
-    template <class T, class C = Config, class I = None, class O = None> class Model : public Job::Concept {
-    public:
-        using Data = T;
-        using Input = I;
-        using Output = O;
-
-        Data _data;
-        Varying _input;
-        Varying _output;
-
-        const Varying getInput() const override { return _input; }
-        const Varying getOutput() const override { return _output; }
-
-        template <class... A>
-        Model(const Varying& input, A&&... args) :
-            Concept(nullptr), _data(Data(std::forward<A>(args)...)), _input(input), _output(Output()) {
-            // Recreate the Config to use the templated type
-            _data.template createConfiguration<C>();
-            _config = _data.getConfiguration();
-            applyConfiguration();
-        }
-
-        void applyConfiguration() override {
-            jobConfigure(_data, *std::static_pointer_cast<C>(_config));
-        }
-
-        void run(const SceneContextPointer& sceneContext, const RenderContextPointer& renderContext) override {
-            renderContext->jobConfig = std::static_pointer_cast<Config>(_config);
-            if (renderContext->jobConfig->alwaysEnabled || renderContext->jobConfig->enabled) {
-                jobRun(_data, sceneContext, renderContext, _input.get<I>(), _output.edit<O>());
-            }
-            renderContext->jobConfig.reset();
-        }
-    };
-    template <class T, class I, class C = Config> using ModelI = Model<T, C, I, None>;
-    template <class T, class O, class C = Config> using ModelO = Model<T, C, None, O>;
-    template <class T, class I, class O, class C = Config> using ModelIO = Model<T, C, I, O>;
-
-    using Jobs = std::vector<Job>;
-
-    // Create a new job in the container's queue; returns the job's output
-    template <class T, class... A> const Varying addJob(std::string name, const Varying& input, A&&... args) {
-        _jobs.emplace_back(name, std::make_shared<typename T::JobModel>(input, std::forward<A>(args)...));
-        QConfigPointer config = _jobs.back().getConfiguration();
-        config->setParent(getConfiguration().get());
-        config->setObjectName(name.c_str());
-
-        // Connect loaded->refresh
-        QObject::connect(config.get(), SIGNAL(loaded()), getConfiguration().get(), SLOT(refresh()));
-        static const char* DIRTY_SIGNAL = "dirty()";
-        if (config->metaObject()->indexOfSignal(DIRTY_SIGNAL) != -1) {
-            // Connect dirty->refresh if defined
-            QObject::connect(config.get(), SIGNAL(dirty()), getConfiguration().get(), SLOT(refresh()));
-        }
-
-        return _jobs.back().getOutput();
-    }
-    template <class T, class... A> const Varying addJob(std::string name, A&&... args) {
-        const auto input = Varying(typename T::JobModel::Input());
-        return addJob<T>(name, input, std::forward<A>(args)...);
-    }
-
-    template <class C> void createConfiguration() {
-        auto config = std::make_shared<C>();
-        if (_config) {
-            // Transfer children to the new configuration
-            auto children = _config->children();
-            for (auto& child : children) {
-                child->setParent(config.get());
-                QObject::connect(child, SIGNAL(loaded()), config.get(), SLOT(refresh()));
-                static const char* DIRTY_SIGNAL = "dirty()";
-                if (child->metaObject()->indexOfSignal(DIRTY_SIGNAL) != -1) {
-                    // Connect dirty->refresh if defined
-                    QObject::connect(child, SIGNAL(dirty()), config.get(), SLOT(refresh()));
-                }
-            }
-        }
-        _config = config;
-        std::static_pointer_cast<Config>(_config)->_task = this;
-    }
-
-    std::shared_ptr<Config> getConfiguration() {
-        if (!_config) {
-            createConfiguration<Config>();
-        }
-        return std::static_pointer_cast<Config>(_config);
-    }
-
-    void configure(const QObject& configuration) {
-        for (auto& job : _jobs) {
-            job.applyConfiguration();
-
-        }
-    }
-
-protected:
-    template <class T, class C, class I, class O> friend class Model;
-
-    QConfigPointer _config;
-    Jobs _jobs;
 };
 
 }

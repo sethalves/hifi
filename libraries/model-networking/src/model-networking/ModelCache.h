@@ -44,6 +44,8 @@ public:
     // Mutable, but must retain structure of vector
     using NetworkMaterials = std::vector<std::shared_ptr<NetworkMaterial>>;
 
+    bool isGeometryLoaded() const { return (bool)_fbxGeometry; }
+
     const FBXGeometry& getFBXGeometry() const { return *_fbxGeometry; }
     const GeometryMeshes& getMeshes() const { return *_meshes; }
     const std::shared_ptr<const NetworkMaterial> getShapeMaterial(int shapeID) const;
@@ -134,13 +136,18 @@ class ModelCache : public ResourceCache, public Dependency {
 
 public:
     GeometryResource::Pointer getGeometryResource(const QUrl& url,
-        const QVariantHash& mapping = QVariantHash(), const QUrl& textureBaseUrl = QUrl());
+                                                  const QVariantHash& mapping = QVariantHash(),
+                                                  const QUrl& textureBaseUrl = QUrl());
+
+    GeometryResource::Pointer getCollisionGeometryResource(const QUrl& url,
+                                                           const QVariantHash& mapping = QVariantHash(),
+                                                           const QUrl& textureBaseUrl = QUrl());
 
 protected:
     friend class GeometryMappingResource;
 
     virtual QSharedPointer<Resource> createResource(const QUrl& url, const QSharedPointer<Resource>& fallback,
-        const void* extra) override;
+                                                    const void* extra) override;
 
 private:
     ModelCache();
@@ -159,7 +166,7 @@ protected:
     class Texture {
     public:
         QString name;
-        QSharedPointer<NetworkTexture> texture;
+        NetworkTexturePointer texture;
     };
     using Textures = std::vector<Texture>;
 

@@ -20,6 +20,7 @@
 #include <GeometryUtil.h>
 #include <NumericalConstants.h>
 #include <DebugDraw.h>
+#include <PerfStat.h>
 #include <ScriptValueUtils.h>
 #include <shared/NsightHelpers.h>
 
@@ -160,6 +161,7 @@ void Rig::destroyAnimGraph() {
     _internalPoseSet._absolutePoses.clear();
     _internalPoseSet._overridePoses.clear();
     _internalPoseSet._overrideFlags.clear();
+    _numOverrides = 0;
 }
 
 void Rig::initJointStates(const FBXGeometry& geometry, const glm::mat4& modelOffset) {
@@ -179,6 +181,7 @@ void Rig::initJointStates(const FBXGeometry& geometry, const glm::mat4& modelOff
 
     _internalPoseSet._overrideFlags.clear();
     _internalPoseSet._overrideFlags.resize(_animSkeleton->getNumJoints(), false);
+    _numOverrides = 0;
 
     buildAbsoluteRigPoses(_animSkeleton->getRelativeDefaultPoses(), _absoluteDefaultPoses);
 
@@ -206,6 +209,7 @@ void Rig::reset(const FBXGeometry& geometry) {
 
     _internalPoseSet._overrideFlags.clear();
     _internalPoseSet._overrideFlags.resize(_animSkeleton->getNumJoints(), false);
+    _numOverrides = 0;
 
     buildAbsoluteRigPoses(_animSkeleton->getRelativeDefaultPoses(), _absoluteDefaultPoses);
 
@@ -258,9 +262,9 @@ QString Rig::nameOfJoint(int jointIndex) const {
 
 void Rig::setModelOffset(const glm::mat4& modelOffsetMat) {
     AnimPose newModelOffset = AnimPose(modelOffsetMat);
-    if (!isEqual(_modelOffset.trans, newModelOffset.trans) ||
-        !isEqual(_modelOffset.rot, newModelOffset.rot) ||
-        !isEqual(_modelOffset.scale, newModelOffset.scale)) {
+    if (!isEqual(_modelOffset.trans(), newModelOffset.trans()) ||
+        !isEqual(_modelOffset.rot(), newModelOffset.rot()) ||
+        !isEqual(_modelOffset.scale(), newModelOffset.scale())) {
 
         _modelOffset = newModelOffset;
 
@@ -275,13 +279,17 @@ void Rig::setModelOffset(const glm::mat4& modelOffsetMat) {
 
 void Rig::clearJointState(int index) {
     if (isIndexValid(index)) {
-        _internalPoseSet._overrideFlags[index] = false;
+        if (_internalPoseSet._overrideFlags[index]) {
+            _internalPoseSet._overrideFlags[index] = false;
+            --_numOverrides;
+        }
         _internalPoseSet._overridePoses[index] = _animSkeleton->getRelativeDefaultPose(index);
     }
 }
 
 void Rig::clearJointStates() {
     _internalPoseSet._overrideFlags.clear();
+    _numOverrides = 0;
     if (_animSkeleton) {
         _internalPoseSet._overrideFlags.resize(_animSkeleton->getNumJoints());
         _internalPoseSet._overridePoses = _animSkeleton->getRelativeDefaultPoses();
@@ -290,7 +298,10 @@ void Rig::clearJointStates() {
 
 void Rig::clearJointAnimationPriority(int index) {
     if (isIndexValid(index)) {
-        _internalPoseSet._overrideFlags[index] = false;
+        if (_internalPoseSet._overrideFlags[index]) {
+            _internalPoseSet._overrideFlags[index] = false;
+            --_numOverrides;
+        }
         _internalPoseSet._overridePoses[index] = _animSkeleton->getRelativeDefaultPose(index);
     }
 }
@@ -308,6 +319,39 @@ void Rig::clearIKJointLimitHistory() {
     }
 }
 
+void Rig::setMaxHipsOffsetLength(float maxLength) {
+    _maxHipsOffsetLength = maxLength;
+
+    if (_animNode) {
+        _animNode->traverse([&](AnimNode::Pointer node) {
+            auto ikNode = std::dynamic_pointer_cast<AnimInverseKinematics>(node);
+            if (ikNode) {
+                ikNode->setMaxHipsOffsetLength(_maxHipsOffsetLength);
+            }
+            return true;
+        });
+    }
+}
+
+float Rig::getMaxHipsOffsetLength() const {
+    return _maxHipsOffsetLength;
+}
+
+float Rig::getIKErrorOnLastSolve() const {
+    float result = 0.0f;
+
+    if (_animNode) {
+        _animNode->traverse([&](AnimNode::Pointer node) {
+            auto ikNode = std::dynamic_pointer_cast<AnimInverseKinematics>(node);
+            if (ikNode) {
+                result = ikNode->getMaxErrorOnLastSolve();
+            }
+            return true;
+        });
+    }
+    return result;
+}
+
 int Rig::getJointParentIndex(int childIndex) const {
     if (_animSkeleton && isIndexValid(childIndex)) {
         return _animSkeleton->getParentIndex(childIndex);
@@ -319,8 +363,11 @@ void Rig::setJointTranslation(int index, bool valid, const glm::vec3& translatio
     if (isIndexValid(index)) {
         if (valid) {
             assert(_internalPoseSet._overrideFlags.size() == _internalPoseSet._overridePoses.size());
-            _internalPoseSet._overrideFlags[index] = true;
-            _internalPoseSet._overridePoses[index].trans = translation;
+            if (!_internalPoseSet._overrideFlags[index]) {
+                _internalPoseSet._overrideFlags[index] = true;
+                ++_numOverrides;
+            }
+            _internalPoseSet._overridePoses[index].trans() = translation;
         }
     }
 }
@@ -328,9 +375,12 @@ void Rig::setJointTranslation(int index, bool valid, const glm::vec3& translatio
 void Rig::setJointState(int index, bool valid, const glm::quat& rotation, const glm::vec3& translation, float priority) {
     if (isIndexValid(index)) {
         assert(_internalPoseSet._overrideFlags.size() == _internalPoseSet._overridePoses.size());
-        _internalPoseSet._overrideFlags[index] = true;
-        _internalPoseSet._overridePoses[index].rot = rotation;
-        _internalPoseSet._overridePoses[index].trans = translation;
+        if (!_internalPoseSet._overrideFlags[index]) {
+            _internalPoseSet._overrideFlags[index] = true;
+            ++_numOverrides;
+        }
+        _internalPoseSet._overridePoses[index].rot() = rotation;
+        _internalPoseSet._overridePoses[index].trans() = translation;
     }
 }
 
@@ -338,8 +388,11 @@ void Rig::setJointRotation(int index, bool valid, const glm::quat& rotation, flo
     if (isIndexValid(index)) {
         if (valid) {
             ASSERT(_internalPoseSet._overrideFlags.size() == _internalPoseSet._overridePoses.size());
-            _internalPoseSet._overrideFlags[index] = true;
-            _internalPoseSet._overridePoses[index].rot = rotation;
+            if (!_internalPoseSet._overrideFlags[index]) {
+                _internalPoseSet._overrideFlags[index] = true;
+                ++_numOverrides;
+            }
+            _internalPoseSet._overridePoses[index].rot() = rotation;
         }
     }
 }
@@ -356,7 +409,7 @@ void Rig::restoreJointTranslation(int index, float fraction, float priority) {
 
 bool Rig::getJointPositionInWorldFrame(int jointIndex, glm::vec3& position, glm::vec3 translation, glm::quat rotation) const {
     if (isIndexValid(jointIndex)) {
-        position = (rotation * _internalPoseSet._absolutePoses[jointIndex].trans) + translation;
+        position = (rotation * _internalPoseSet._absolutePoses[jointIndex].trans()) + translation;
         return true;
     } else {
         return false;
@@ -365,7 +418,7 @@ bool Rig::getJointPositionInWorldFrame(int jointIndex, glm::vec3& position, glm:
 
 bool Rig::getJointPosition(int jointIndex, glm::vec3& position) const {
     if (isIndexValid(jointIndex)) {
-        position = _internalPoseSet._absolutePoses[jointIndex].trans;
+        position = _internalPoseSet._absolutePoses[jointIndex].trans();
         return true;
     } else {
         return false;
@@ -374,7 +427,7 @@ bool Rig::getJointPosition(int jointIndex, glm::vec3& position) const {
 
 bool Rig::getJointRotationInWorldFrame(int jointIndex, glm::quat& result, const glm::quat& rotation) const {
     if (isIndexValid(jointIndex)) {
-        result = rotation * _internalPoseSet._absolutePoses[jointIndex].rot;
+        result = rotation * _internalPoseSet._absolutePoses[jointIndex].rot();
         return true;
     } else {
         return false;
@@ -384,7 +437,7 @@ bool Rig::getJointRotationInWorldFrame(int jointIndex, glm::quat& result, const 
 bool Rig::getJointRotation(int jointIndex, glm::quat& rotation) const {
     QReadLocker readLock(&_externalPoseSetLock);
     if (jointIndex >= 0 && jointIndex < (int)_externalPoseSet._relativePoses.size()) {
-        rotation = _externalPoseSet._relativePoses[jointIndex].rot;
+        rotation = _externalPoseSet._relativePoses[jointIndex].rot();
         return true;
     } else {
         return false;
@@ -394,7 +447,7 @@ bool Rig::getJointRotation(int jointIndex, glm::quat& rotation) const {
 bool Rig::getAbsoluteJointRotationInRigFrame(int jointIndex, glm::quat& rotation) const {
     QReadLocker readLock(&_externalPoseSetLock);
     if (jointIndex >= 0 && jointIndex < (int)_externalPoseSet._absolutePoses.size()) {
-        rotation = _externalPoseSet._absolutePoses[jointIndex].rot;
+        rotation = _externalPoseSet._absolutePoses[jointIndex].rot();
         return true;
     } else {
         return false;
@@ -404,7 +457,7 @@ bool Rig::getAbsoluteJointRotationInRigFrame(int jointIndex, glm::quat& rotation
 bool Rig::getJointTranslation(int jointIndex, glm::vec3& translation) const {
     QReadLocker readLock(&_externalPoseSetLock);
     if (jointIndex >= 0 && jointIndex < (int)_externalPoseSet._relativePoses.size()) {
-        translation = _externalPoseSet._relativePoses[jointIndex].trans;
+        translation = _externalPoseSet._relativePoses[jointIndex].trans();
         return true;
     } else {
         return false;
@@ -414,7 +467,7 @@ bool Rig::getJointTranslation(int jointIndex, glm::vec3& translation) const {
 bool Rig::getAbsoluteJointTranslationInRigFrame(int jointIndex, glm::vec3& translation) const {
     QReadLocker readLock(&_externalPoseSetLock);
     if (jointIndex >= 0 && jointIndex < (int)_externalPoseSet._absolutePoses.size()) {
-        translation = _externalPoseSet._absolutePoses[jointIndex].trans;
+        translation = _externalPoseSet._absolutePoses[jointIndex].trans();
         return true;
     } else {
         return false;
@@ -463,6 +516,10 @@ void Rig::setEnableInverseKinematics(bool enable) {
     _enableInverseKinematics = enable;
 }
 
+void Rig::setEnableAnimations(bool enable) {
+    _enabledAnimations = enable;
+}
+
 AnimPose Rig::getAbsoluteDefaultPose(int index) const {
     if (_animSkeleton && index >= 0 && index < _animSkeleton->getNumJoints()) {
         return _absoluteDefaultPoses[index];
@@ -478,7 +535,7 @@ const AnimPoseVec& Rig::getAbsoluteDefaultPoses() const {
 
 bool Rig::getRelativeDefaultJointRotation(int index, glm::quat& rotationOut) const {
     if (_animSkeleton && index >= 0 && index < _animSkeleton->getNumJoints()) {
-        rotationOut = _animSkeleton->getRelativeDefaultPose(index).rot;
+        rotationOut = _animSkeleton->getRelativeDefaultPose(index).rot();
         return true;
     } else {
         return false;
@@ -487,7 +544,7 @@ bool Rig::getRelativeDefaultJointRotation(int index, glm::quat& rotationOut) con
 
 bool Rig::getRelativeDefaultJointTranslation(int index, glm::vec3& translationOut) const {
     if (_animSkeleton && index >= 0 && index < _animSkeleton->getNumJoints()) {
-        translationOut = _animSkeleton->getRelativeDefaultPose(index).trans;
+        translationOut = _animSkeleton->getRelativeDefaultPose(index).trans();
         return true;
     } else {
         return false;
@@ -501,15 +558,15 @@ static const std::vector<float> LATERAL_SPEEDS = { 0.2f, 0.65f }; // m/s
 
 void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPosition, const glm::vec3& worldVelocity, const glm::quat& worldRotation, CharacterControllerState ccState) {
 
-    glm::vec3 front = worldRotation * IDENTITY_FRONT;
+    glm::vec3 forward = worldRotation * IDENTITY_FORWARD;
     glm::vec3 workingVelocity = worldVelocity;
 
     {
         glm::vec3 localVel = glm::inverse(worldRotation) * workingVelocity;
 
-        float forwardSpeed = glm::dot(localVel, IDENTITY_FRONT);
+        float forwardSpeed = glm::dot(localVel, IDENTITY_FORWARD);
         float lateralSpeed = glm::dot(localVel, IDENTITY_RIGHT);
-        float turningSpeed = glm::orientedAngle(front, _lastFront, IDENTITY_UP) / deltaTime;
+        float turningSpeed = glm::orientedAngle(forward, _lastForward, IDENTITY_UP) / deltaTime;
 
         // filter speeds using a simple moving average.
         _averageForwardSpeed.updateAverage(forwardSpeed);
@@ -517,7 +574,7 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
 
         // sine wave LFO var for testing.
         static float t = 0.0f;
-        _animVars.set("sine", 2.0f * static_cast<float>(0.5 * sin(t) + 0.5));
+        _animVars.set("sine", 2.0f * 0.5f * sinf(t) + 0.5f);
 
         float moveForwardAlpha = 0.0f;
         float moveBackwardAlpha = 0.0f;
@@ -795,7 +852,7 @@ void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPos
         _lastEnableInverseKinematics = _enableInverseKinematics;
     }
 
-    _lastFront = front;
+    _lastForward = forward;
     _lastPosition = worldPosition;
     _lastVelocity = workingVelocity;
 }
@@ -882,18 +939,22 @@ void Rig::updateAnimationStateHandlers() { // called on avatar update thread (wh
 
 void Rig::updateAnimations(float deltaTime, glm::mat4 rootTransform) {
 
-    PROFILE_RANGE_EX(__FUNCTION__, 0xffff00ff, 0);
+    PROFILE_RANGE_EX(simulation_animation_detail, __FUNCTION__, 0xffff00ff, 0);
+    PerformanceTimer perfTimer("updateAnimations");
 
     setModelOffset(rootTransform);
 
-    if (_animNode) {
+    if (_animNode && _enabledAnimations) {
+        PerformanceTimer perfTimer("handleTriggers");
 
         updateAnimationStateHandlers();
         _animVars.setRigToGeometryTransform(_rigToGeometryTransform);
 
+        AnimContext context(_enableDebugDrawIKTargets, getGeometryToRigTransform());
+
         // evaluate the animation
         AnimNode::Triggers triggersOut;
-        _internalPoseSet._relativePoses = _animNode->evaluate(_animVars, deltaTime, triggersOut);
+        _internalPoseSet._relativePoses = _animNode->evaluate(_animVars, context, deltaTime, triggersOut);
         if ((int)_internalPoseSet._relativePoses.size() != _animSkeleton->getNumJoints()) {
             // animations haven't fully loaded yet.
             _internalPoseSet._relativePoses = _animSkeleton->getRelativeDefaultPoses();
@@ -903,7 +964,6 @@ void Rig::updateAnimations(float deltaTime, glm::mat4 rootTransform) {
             _animVars.setTrigger(trigger);
         }
     }
-
     applyOverridePoses();
     buildAbsoluteRigPoses(_internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);
 
@@ -973,16 +1033,12 @@ void Rig::updateFromEyeParameters(const EyeParameters& params) {
                    params.worldHeadOrientation, params.eyeLookAt, params.eyeSaccade);
 }
 
-static const glm::vec3 X_AXIS(1.0f, 0.0f, 0.0f);
-static const glm::vec3 Y_AXIS(0.0f, 1.0f, 0.0f);
-static const glm::vec3 Z_AXIS(0.0f, 0.0f, 1.0f);
-
 void Rig::computeHeadNeckAnimVars(const AnimPose& hmdPose, glm::vec3& headPositionOut, glm::quat& headOrientationOut,
                                   glm::vec3& neckPositionOut, glm::quat& neckOrientationOut) const {
 
     // the input hmd values are in avatar/rig space
-    const glm::vec3 hmdPosition = hmdPose.trans;
-    const glm::quat hmdOrientation = hmdPose.rot;
+    const glm::vec3& hmdPosition = hmdPose.trans();
+    const glm::quat& hmdOrientation = hmdPose.rot();
 
     // TODO: cache jointIndices
     int rightEyeIndex = indexOfJoint("RightEye");
@@ -990,10 +1046,10 @@ void Rig::computeHeadNeckAnimVars(const AnimPose& hmdPose, glm::vec3& headPositi
     int headIndex = indexOfJoint("Head");
     int neckIndex = indexOfJoint("Neck");
 
-    glm::vec3 absRightEyePos = rightEyeIndex != -1 ? getAbsoluteDefaultPose(rightEyeIndex).trans : DEFAULT_RIGHT_EYE_POS;
-    glm::vec3 absLeftEyePos = leftEyeIndex != -1 ? getAbsoluteDefaultPose(leftEyeIndex).trans : DEFAULT_LEFT_EYE_POS;
-    glm::vec3 absHeadPos = headIndex != -1 ? getAbsoluteDefaultPose(headIndex).trans : DEFAULT_HEAD_POS;
-    glm::vec3 absNeckPos = neckIndex != -1 ? getAbsoluteDefaultPose(neckIndex).trans : DEFAULT_NECK_POS;
+    glm::vec3 absRightEyePos = rightEyeIndex != -1 ? getAbsoluteDefaultPose(rightEyeIndex).trans() : DEFAULT_RIGHT_EYE_POS;
+    glm::vec3 absLeftEyePos = leftEyeIndex != -1 ? getAbsoluteDefaultPose(leftEyeIndex).trans() : DEFAULT_LEFT_EYE_POS;
+    glm::vec3 absHeadPos = headIndex != -1 ? getAbsoluteDefaultPose(headIndex).trans() : DEFAULT_HEAD_POS;
+    glm::vec3 absNeckPos = neckIndex != -1 ? getAbsoluteDefaultPose(neckIndex).trans() : DEFAULT_NECK_POS;
 
     glm::vec3 absCenterEyePos = (absRightEyePos + absLeftEyePos) / 2.0f;
     glm::vec3 eyeOffset = absCenterEyePos - absHeadPos;
@@ -1009,7 +1065,7 @@ void Rig::computeHeadNeckAnimVars(const AnimPose& hmdPose, glm::vec3& headPositi
     neckPositionOut = hmdPosition - hmdOrientation * (headOffset + eyeOffset);
 
     // slerp between default orientation and hmdOrientation
-    neckOrientationOut = safeMix(hmdOrientation, _animSkeleton->getRelativeDefaultPose(neckIndex).rot, 0.5f);
+    neckOrientationOut = safeMix(hmdOrientation, _animSkeleton->getRelativeDefaultPose(neckIndex).rot(), 0.5f);
 }
 
 void Rig::updateNeckJoint(int index, const HeadParameters& params) {
@@ -1060,14 +1116,14 @@ void Rig::updateEyeJoint(int index, const glm::vec3& modelTranslation, const glm
     // TODO: does not properly handle avatar scale.
 
     if (isIndexValid(index)) {
-        glm::mat4 rigToWorld = createMatFromQuatAndPos(modelRotation, modelTranslation);
-        glm::mat4 worldToRig = glm::inverse(rigToWorld);
-        glm::vec3 lookAtVector = glm::normalize(transformPoint(worldToRig, lookAtSpot) - _internalPoseSet._absolutePoses[index].trans);
+        const glm::mat4 rigToWorld = createMatFromQuatAndPos(modelRotation, modelTranslation);
+        const glm::mat4 worldToRig = glm::inverse(rigToWorld);
+        const glm::vec3 lookAtVector = glm::normalize(transformPoint(worldToRig, lookAtSpot) - _internalPoseSet._absolutePoses[index].trans());
 
         int headIndex = indexOfJoint("Head");
         glm::quat headQuat;
         if (headIndex >= 0) {
-            headQuat = _internalPoseSet._absolutePoses[headIndex].rot;
+            headQuat = _internalPoseSet._absolutePoses[headIndex].rot();
         }
 
         glm::vec3 headUp = headQuat * Vectors::UNIT_Y;
@@ -1086,18 +1142,17 @@ void Rig::updateEyeJoint(int index, const glm::vec3& modelTranslation, const glm
         }
 
         // directly set absolutePose rotation
-        _internalPoseSet._absolutePoses[index].rot = deltaQuat * headQuat;
+        _internalPoseSet._absolutePoses[index].rot() = deltaQuat * headQuat;
     }
 }
 
-void Rig::updateFromHandParameters(const HandParameters& params, float dt) {
+void Rig::updateFromHandAndFeetParameters(const HandAndFeetParameters& params, float dt) {
     if (_animSkeleton && _animNode) {
-
         const float HAND_RADIUS = 0.05f;
         int hipsIndex = indexOfJoint("Hips");
         glm::vec3 hipsTrans;
         if (hipsIndex >= 0) {
-            hipsTrans = _internalPoseSet._absolutePoses[hipsIndex].trans;
+            hipsTrans = _internalPoseSet._absolutePoses[hipsIndex].trans();
         }
 
         // Use this capsule to represent the avatar body.
@@ -1141,6 +1196,27 @@ void Rig::updateFromHandParameters(const HandParameters& params, float dt) {
             _animVars.unset("rightHandRotation");
             _animVars.set("rightHandType", (int)IKTarget::Type::HipsRelativeRotationAndPosition);
         }
+
+        if (params.isLeftFootEnabled) {
+            _animVars.set("leftFootPosition", params.leftFootPosition);
+            _animVars.set("leftFootRotation", params.leftFootOrientation);
+            _animVars.set("leftFootType", (int)IKTarget::Type::RotationAndPosition);
+        } else {
+            _animVars.unset("leftFootPosition");
+            _animVars.unset("leftFootRotation");
+            _animVars.set("leftFootType", (int)IKTarget::Type::RotationAndPosition);
+        }
+
+        if (params.isRightFootEnabled) {
+            _animVars.set("rightFootPosition", params.rightFootPosition);
+            _animVars.set("rightFootRotation", params.rightFootOrientation);
+            _animVars.set("rightFootType", (int)IKTarget::Type::RotationAndPosition);
+        } else {
+            _animVars.unset("rightFootPosition");
+            _animVars.unset("rightFootRotation");
+            _animVars.set("rightFootType", (int)IKTarget::Type::RotationAndPosition);
+        }
+
     }
 }
 
@@ -1171,7 +1247,7 @@ void Rig::initAnimGraph(const QUrl& url) {
 
 bool Rig::getModelRegistrationPoint(glm::vec3& modelRegistrationPointOut) const {
     if (_animSkeleton && _rootJointIndex >= 0) {
-        modelRegistrationPointOut = _geometryOffset * -_animSkeleton->getAbsoluteDefaultPose(_rootJointIndex).trans;
+        modelRegistrationPointOut = _geometryOffset * -_animSkeleton->getAbsoluteDefaultPose(_rootJointIndex).trans();
         return true;
     } else {
         return false;
@@ -1179,7 +1255,8 @@ bool Rig::getModelRegistrationPoint(glm::vec3& modelRegistrationPointOut) const 
 }
 
 void Rig::applyOverridePoses() {
-    if (!_animSkeleton) {
+    PerformanceTimer perfTimer("override");
+    if (_numOverrides == 0 || !_animSkeleton) {
         return;
     }
 
@@ -1195,35 +1272,32 @@ void Rig::applyOverridePoses() {
 }
 
 void Rig::buildAbsoluteRigPoses(const AnimPoseVec& relativePoses, AnimPoseVec& absolutePosesOut) {
+    PerformanceTimer perfTimer("buildAbsolute");
     if (!_animSkeleton) {
         return;
     }
 
     ASSERT(_animSkeleton->getNumJoints() == (int)relativePoses.size());
 
-    // flatten all poses out so they are absolute not relative
     absolutePosesOut.resize(relativePoses.size());
+    AnimPose geometryToRigTransform(_geometryToRigTransform);
     for (int i = 0; i < (int)relativePoses.size(); i++) {
         int parentIndex = _animSkeleton->getParentIndex(i);
         if (parentIndex == -1) {
-            absolutePosesOut[i] = relativePoses[i];
+            // transform all root absolute poses into rig space
+            absolutePosesOut[i] = geometryToRigTransform * relativePoses[i];
         } else {
             absolutePosesOut[i] = absolutePosesOut[parentIndex] * relativePoses[i];
         }
     }
-
-    // transform all absolute poses into rig space.
-    AnimPose geometryToRigTransform(_geometryToRigTransform);
-    for (int i = 0; i < (int)absolutePosesOut.size(); i++) {
-        absolutePosesOut[i] = geometryToRigTransform * absolutePosesOut[i];
-    }
 }
 
 glm::mat4 Rig::getJointTransform(int jointIndex) const {
+    static const glm::mat4 IDENTITY;
     if (isIndexValid(jointIndex)) {
         return _internalPoseSet._absolutePoses[jointIndex];
     } else {
-        return glm::mat4();
+        return IDENTITY;
     }
 }
 
@@ -1236,14 +1310,14 @@ void Rig::copyJointsIntoJointData(QVector<JointData>& jointDataVec) const {
         JointData& data = jointDataVec[i];
         if (isIndexValid(i)) {
             // rotations are in absolute rig frame.
-            glm::quat defaultAbsRot = geometryToRigPose.rot * _animSkeleton->getAbsoluteDefaultPose(i).rot;
-            data.rotation = _internalPoseSet._absolutePoses[i].rot;
+            glm::quat defaultAbsRot = geometryToRigPose.rot() * _animSkeleton->getAbsoluteDefaultPose(i).rot();
+            data.rotation = _internalPoseSet._absolutePoses[i].rot();
             data.rotationSet = !isEqual(data.rotation, defaultAbsRot);
 
             // translations are in relative frame but scaled so that they are in meters,
             // instead of geometry units.
-            glm::vec3 defaultRelTrans = _geometryOffset.scale * _animSkeleton->getRelativeDefaultPose(i).trans;
-            data.translation = _geometryOffset.scale * _internalPoseSet._relativePoses[i].trans;
+            glm::vec3 defaultRelTrans = _geometryOffset.scale() * _animSkeleton->getRelativeDefaultPose(i).trans();
+            data.translation = _geometryOffset.scale() * _internalPoseSet._relativePoses[i].trans();
             data.translationSet = !isEqual(data.translation, defaultRelTrans);
         } else {
             data.translationSet = false;
@@ -1253,65 +1327,61 @@ void Rig::copyJointsIntoJointData(QVector<JointData>& jointDataVec) const {
 }
 
 void Rig::copyJointsFromJointData(const QVector<JointData>& jointDataVec) {
-    if (_animSkeleton && jointDataVec.size() == (int)_internalPoseSet._overrideFlags.size()) {
+    PerformanceTimer perfTimer("copyJoints");
+    PROFILE_RANGE(simulation_animation_detail, "copyJoints");
+    if (!_animSkeleton) {
+        return;
+    }
+    int numJoints = jointDataVec.size();
+    const AnimPoseVec& absoluteDefaultPoses = _animSkeleton->getAbsoluteDefaultPoses();
+    if (numJoints != (int)absoluteDefaultPoses.size()) {
+        // jointData is incompatible
+        return;
+    }
 
-        // transform all the default poses into rig space.
-        const AnimPose geometryToRigPose(_geometryToRigTransform);
-        std::vector<bool> overrideFlags(_internalPoseSet._overridePoses.size(), false);
-
-        // start with the default rotations in absolute rig frame
-        std::vector<glm::quat> rotations;
-        rotations.reserve(_animSkeleton->getAbsoluteDefaultPoses().size());
-        for (auto& pose : _animSkeleton->getAbsoluteDefaultPoses()) {
-            rotations.push_back(geometryToRigPose.rot * pose.rot);
-        }
-
-        // start translations in relative frame but scaled to meters.
-        std::vector<glm::vec3> translations;
-        translations.reserve(_animSkeleton->getRelativeDefaultPoses().size());
-        for (auto& pose : _animSkeleton->getRelativeDefaultPoses()) {
-            translations.push_back(_geometryOffset.scale * pose.trans);
-        }
-
-        ASSERT(overrideFlags.size() == rotations.size());
-
-        // copy over rotations from the jointDataVec, which is also in absolute rig frame
-        for (int i = 0; i < jointDataVec.size(); i++) {
-            if (isIndexValid(i)) {
-                const JointData& data = jointDataVec.at(i);
-                if (data.rotationSet) {
-                    overrideFlags[i] = true;
-                    rotations[i] = data.rotation;
-                }
-                if (data.translationSet) {
-                    overrideFlags[i] = true;
-                    translations[i] = data.translation;
-                }
-            }
-        }
-
-        ASSERT(_internalPoseSet._overrideFlags.size() == _internalPoseSet._overridePoses.size());
-
-        // convert resulting rotations into geometry space.
-        const glm::quat rigToGeometryRot(glmExtractRotation(_rigToGeometryTransform));
-        for (auto& rot : rotations) {
-            rot = rigToGeometryRot * rot;
-        }
-
-        // convert all rotations from absolute to parent relative.
-        _animSkeleton->convertAbsoluteRotationsToRelative(rotations);
-
-        // copy the geometry space parent relative poses into _overridePoses
-        for (int i = 0; i < jointDataVec.size(); i++) {
-            if (overrideFlags[i]) {
-                _internalPoseSet._overrideFlags[i] = true;
-                _internalPoseSet._overridePoses[i].scale = Vectors::ONE;
-                _internalPoseSet._overridePoses[i].rot = rotations[i];
-                // scale translations from meters back into geometry units.
-                _internalPoseSet._overridePoses[i].trans = _invGeometryOffset.scale * translations[i];
-            }
+    // make a vector of rotations in absolute-geometry-frame
+    std::vector<glm::quat> rotations;
+    rotations.reserve(numJoints);
+    const glm::quat rigToGeometryRot(glmExtractRotation(_rigToGeometryTransform));
+    for (int i = 0; i < numJoints; i++) {
+        const JointData& data = jointDataVec.at(i);
+        if (data.rotationSet) {
+            // JointData rotations are in absolute rig-frame so we rotate them to absolute geometry-frame
+            rotations.push_back(rigToGeometryRot * data.rotation);
+        } else {
+            rotations.push_back(absoluteDefaultPoses[i].rot());
         }
     }
+
+    // convert rotations from absolute to parent relative.
+    _animSkeleton->convertAbsoluteRotationsToRelative(rotations);
+
+    // store new relative poses
+    if (numJoints != (int)_internalPoseSet._relativePoses.size()) {
+        _internalPoseSet._relativePoses = _animSkeleton->getRelativeDefaultPoses();
+    }
+    const AnimPoseVec& relativeDefaultPoses = _animSkeleton->getRelativeDefaultPoses();
+    for (int i = 0; i < numJoints; i++) {
+        const JointData& data = jointDataVec.at(i);
+        _internalPoseSet._relativePoses[i].scale() = Vectors::ONE;
+        _internalPoseSet._relativePoses[i].rot() = rotations[i];
+        if (data.translationSet) {
+            // JointData translations are in scaled relative-frame so we scale back to regular relative-frame
+            _internalPoseSet._relativePoses[i].trans() = _invGeometryOffset.scale() * data.translation;
+        } else {
+            _internalPoseSet._relativePoses[i].trans() = relativeDefaultPoses[i].trans();
+        }
+    }
+}
+
+void Rig::computeExternalPoses(const glm::mat4& modelOffsetMat) {
+    _modelOffset = AnimPose(modelOffsetMat);
+    _geometryToRigTransform = _modelOffset * _geometryOffset;
+    _rigToGeometryTransform = glm::inverse(_geometryToRigTransform);
+
+    buildAbsoluteRigPoses(_internalPoseSet._relativePoses, _internalPoseSet._absolutePoses);
+    QWriteLocker writeLock(&_externalPoseSetLock);
+    _externalPoseSet = _internalPoseSet;
 }
 
 void Rig::computeAvatarBoundingCapsule(
@@ -1357,10 +1427,10 @@ void Rig::computeAvatarBoundingCapsule(
     }
     AnimVariantMap animVars;
     glm::quat handRotation = glm::angleAxis(PI, Vectors::UNIT_X);
-    animVars.set("leftHandPosition", hips.trans);
+    animVars.set("leftHandPosition", hips.trans());
     animVars.set("leftHandRotation", handRotation);
     animVars.set("leftHandType", (int)IKTarget::Type::RotationAndPosition);
-    animVars.set("rightHandPosition", hips.trans);
+    animVars.set("rightHandPosition", hips.trans());
     animVars.set("rightHandRotation", handRotation);
     animVars.set("rightHandType", (int)IKTarget::Type::RotationAndPosition);
 
@@ -1379,9 +1449,10 @@ void Rig::computeAvatarBoundingCapsule(
 
     // call overlay twice: once to verify AnimPoseVec joints and again to do the IK
     AnimNode::Triggers triggersOut;
+    AnimContext context(false, glm::mat4());
     float dt = 1.0f; // the value of this does not matter
-    ikNode.overlay(animVars, dt, triggersOut, _animSkeleton->getRelativeBindPoses());
-    AnimPoseVec finalPoses =  ikNode.overlay(animVars, dt, triggersOut, _animSkeleton->getRelativeBindPoses());
+    ikNode.overlay(animVars, context, dt, triggersOut, _animSkeleton->getRelativeBindPoses());
+    AnimPoseVec finalPoses =  ikNode.overlay(animVars, context, dt, triggersOut, _animSkeleton->getRelativeBindPoses());
 
     // convert relative poses to absolute
     _animSkeleton->convertRelativePosesToAbsolute(finalPoses);
@@ -1416,7 +1487,7 @@ void Rig::computeAvatarBoundingCapsule(
     radiusOut = 0.5f * sqrtf(0.5f * (diagonal.x * diagonal.x + diagonal.z * diagonal.z));
     heightOut = diagonal.y - 2.0f * radiusOut;
 
-    glm::vec3 rootPosition = finalPoses[geometry.rootJointIndex].trans;
+    glm::vec3 rootPosition = finalPoses[geometry.rootJointIndex].trans();
     glm::vec3 rigCenter = (geometryToRig * (0.5f * (totalExtents.maximum + totalExtents.minimum)));
     localOffsetOut = rigCenter - (geometryToRig * rootPosition);
 }

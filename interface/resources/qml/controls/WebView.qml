@@ -6,7 +6,11 @@ import HFWebEngineProfile 1.0
 
 Item {
     property alias url: root.url
+    property alias scriptURL: root.userScriptUrl
     property alias eventBridge: eventBridgeWrapper.eventBridge
+    property alias canGoBack: root.canGoBack;
+    property var goBack: root.goBack;
+    property alias urlTag: root.urlTag
     property bool keyboardEnabled: true  // FIXME - Keyboard HMD only: Default to false
     property bool keyboardRaised: false
     property bool punctuationMode: false
@@ -24,6 +28,8 @@ Item {
         WebChannel.id: "eventBridgeWrapper"
         property var eventBridge;
     }
+    
+    property alias viewProfile: root.profile
 
     WebEngineView {
         id: root
@@ -37,6 +43,8 @@ Item {
             id: webviewProfile
             storageName: "qmlWebEngine"
         }
+
+        property string userScriptUrl: ""
 
         // creates a global EventBridge object.
         WebEngineScript {
@@ -54,7 +62,17 @@ Item {
             worldId: WebEngineScript.MainWorld
         }
 
-        userScripts: [ createGlobalEventBridge, raiseAndLowerKeyboard ]
+        // User script.
+        WebEngineScript {
+            id: userScript
+            sourceUrl: root.userScriptUrl
+            injectionPoint: WebEngineScript.DocumentReady  // DOM ready but page load may not be finished.
+            worldId: WebEngineScript.MainWorld
+        }
+        
+        property string urlTag: "noDownload=false";
+
+        userScripts: [ createGlobalEventBridge, raiseAndLowerKeyboard, userScript ]
 
         property string newUrl: ""
 
@@ -81,6 +99,7 @@ Item {
             // Required to support clicking on "hifi://" links
             if (WebEngineView.LoadStartedStatus == loadRequest.status) {
                 var url = loadRequest.url.toString();
+                url = (url.indexOf("?") >= 0) ? url + urlTag : url + "?" + urlTag;
                 if (urlHandler.canHandleUrl(url)) {
                     if (urlHandler.handleUrl(url)) {
                         root.stop();
@@ -90,11 +109,11 @@ Item {
         }
 
         onNewViewRequested:{
-            // desktop is not defined for web-entities
-            if (desktop) {
-                var component = Qt.createComponent("../Browser.qml");
-                var newWindow = component.createObject(desktop);
-                request.openIn(newWindow.webView);
+            // desktop is not defined for web-entities or tablet
+            if (typeof desktop !== "undefined") {
+                desktop.openBrowserWindow(request, profile);
+            } else {
+                console.log("onNewViewRequested: desktop not defined");
             }
         }
     }

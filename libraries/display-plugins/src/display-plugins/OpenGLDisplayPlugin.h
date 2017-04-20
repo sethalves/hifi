@@ -14,6 +14,7 @@
 #include <memory>
 #include <queue>
 
+#include <QtCore/QThread>
 #include <QtCore/QTimer>
 #include <QtGui/QImage>
 
@@ -58,6 +59,8 @@ public:
 
     float presentRate() const override;
 
+    void resetPresentRate() override;
+
     float newFramePresentRate() const override;
 
     float droppedFrameRate() const override;
@@ -80,6 +83,7 @@ protected:
 
     void updateCompositeFramebuffer();
 
+    virtual QThread::Priority getPresentPriority() { return QThread::HighPriority; }
     virtual void compositeLayers();
     virtual void compositeScene();
     virtual void compositeOverlay();
@@ -112,10 +116,10 @@ protected:
     bool _vsyncEnabled { true };
     QThread* _presentThread{ nullptr };
     std::queue<gpu::FramePointer> _newFrameQueue;
-    RateCounter<> _droppedFrameRate;
-    RateCounter<> _newFrameRate;
-    RateCounter<> _presentRate;
-    RateCounter<> _renderRate;
+    RateCounter<100> _droppedFrameRate;
+    RateCounter<100> _newFrameRate;
+    RateCounter<100> _presentRate;
+    RateCounter<100> _renderRate;
 
     gpu::FramePointer _currentFrame;
     gpu::Frame* _lastFrame { nullptr };

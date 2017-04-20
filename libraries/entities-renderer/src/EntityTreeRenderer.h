@@ -77,7 +77,7 @@ public:
     void reloadEntityScripts();
 
     /// if a renderable entity item needs a model, we will allocate it for them
-    Q_INVOKABLE ModelPointer allocateModel(const QString& url, float loadingPriority = 0.0f);
+    Q_INVOKABLE ModelPointer allocateModel(const QString& url, float loadingPriority = 0.0f, SpatiallyNestable* spatiallyNestableOverride = nullptr);
 
     /// if a renderable entity item needs to update the URL of a model, we will handle that for the entity
     Q_INVOKABLE ModelPointer updateModel(ModelPointer original, const QString& newUrl);
@@ -90,6 +90,7 @@ public:
     // event handles which may generate entity related events
     void mouseReleaseEvent(QMouseEvent* event);
     void mousePressEvent(QMouseEvent* event);
+    void mouseDoublePressEvent(QMouseEvent* event);
     void mouseMoveEvent(QMouseEvent* event);
 
     /// connect our signals to anEntityScriptingInterface for firing of events related clicking,
@@ -103,9 +104,11 @@ public:
 
 signals:
     void mousePressOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
+    void mouseDoublePressOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
     void mouseMoveOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
     void mouseReleaseOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
     void mousePressOffEntity();
+    void mouseDoublePressOffEntity();
 
     void clickDownOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
     void holdingClickOnEntity(const EntityItemID& entityItemID, const PointerEvent& event);
@@ -122,7 +125,7 @@ signals:
 public slots:
     void addingEntity(const EntityItemID& entityID);
     void deletingEntity(const EntityItemID& entityID);
-    void entitySciptChanging(const EntityItemID& entityID, const bool reload);
+    void entityScriptChanging(const EntityItemID& entityID, const bool reload);
     void entityCollisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);
     void updateEntityRenderStatus(bool shouldRenderEntities);
     void updateZone(const EntityItemID& id);
@@ -147,8 +150,9 @@ private:
     bool applyZoneAndHasSkybox(const std::shared_ptr<ZoneEntityItem>& zone);
     bool layerZoneAndHasSkybox(const std::shared_ptr<ZoneEntityItem>& zone);
     bool applySkyboxAndHasAmbient();
+    bool applyLayeredZones();
 
-    void checkAndCallPreload(const EntityItemID& entityID, const bool reload = false);
+    void checkAndCallPreload(const EntityItemID& entityID, const bool reload = false, const bool unloadFirst = false);
 
     QList<ModelPointer> _releasedModels;
     RayToEntityIntersectionResult findRayIntersectionWorker(const PickRay& ray, Octree::lockType lockType,
@@ -170,11 +174,7 @@ private:
     bool _wantScripts;
     QSharedPointer<ScriptEngine> _entitiesScriptEngine;
 
-    bool isCollisionOwner(const QUuid& myNodeID, EntityTreePointer entityTree,
-                          const EntityItemID& id, const Collision& collision);
-
-    void playEntityCollisionSound(const QUuid& myNodeID, EntityTreePointer entityTree,
-                                  const EntityItemID& id, const Collision& collision);
+    static void playEntityCollisionSound(EntityItemPointer entity, const Collision& collision);
 
     bool _lastPointerEventValid;
     PointerEvent _lastPointerEvent;

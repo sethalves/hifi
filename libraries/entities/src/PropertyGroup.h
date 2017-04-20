@@ -14,39 +14,17 @@
 
 #include <QtScript/QScriptEngine>
 
-//#include "EntityItemProperties.h"
+#include <OctreeElement.h>
+
 #include "EntityPropertyFlags.h"
+
 
 class EntityItemProperties;
 class EncodeBitstreamParams;
 class OctreePacketData;
 class EntityTreeElementExtraEncodeData;
 class ReadBitstreamToTreeParams;
-
-#include <OctreeElement.h>
-
-/*
-#include <stdint.h>
-
-#include <glm/glm.hpp>
-#include <glm/gtx/extented_min_max.hpp>
-
-#include <QtCore/QObject>
-#include <QVector>
-#include <QString>
-
-#include <AACube.h>
-#include <FBXReader.h> // for SittingPoint
-#include <PropertyFlags.h>
-#include <OctreeConstants.h>
-#include <ShapeInfo.h>
-
-#include "EntityItemID.h"
-#include "PropertyGroupMacros.h"
-#include "EntityTypes.h"
-*/
-
-//typedef PropertyFlags<EntityPropertyList> EntityPropertyFlags;
+using EntityTreeElementExtraEncodeDataPointer = std::shared_ptr<EntityTreeElementExtraEncodeData>;
 
 
 class PropertyGroup {
@@ -84,7 +62,7 @@ public:
     virtual EntityPropertyFlags getEntityProperties(EncodeBitstreamParams& params) const = 0;
         
     virtual void appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params, 
-                                    EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
+                                    EntityTreeElementExtraEncodeDataPointer entityTreeElementExtraEncodeData,
                                     EntityPropertyFlags& requestedProperties,
                                     EntityPropertyFlags& propertyFlags,
                                     EntityPropertyFlags& propertiesDidntFit,

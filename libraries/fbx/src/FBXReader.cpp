@@ -202,6 +202,11 @@ public:
 
     glm::vec3 rotationMin;  // radians
     glm::vec3 rotationMax;  // radians
+
+    bool hasGeometricOffset;
+    glm::vec3 geometricTranslation;
+    glm::quat geometricRotation;
+    glm::vec3 geometricScaling;
 };
 
 glm::mat4 getGlobalTransform(const QMultiMap<QString, QString>& _connectionParentMap,
@@ -532,6 +537,8 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
     FBXGeometry* geometryPtr = new FBXGeometry;
     FBXGeometry& geometry = *geometryPtr;
 
+    geometry.originalURL = url;
+
     float unitScaleFactor = 1.0f;
     glm::vec3 ambientColor;
     QString hifiGlobalNodeID;
@@ -550,8 +557,9 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                             }
                         } else if (subobject.name == "Properties70") {
                             foreach (const FBXNode& subsubobject, subobject.children) {
+                                static const QVariant APPLICATION_NAME = QVariant(QByteArray("Original|ApplicationName"));
                                 if (subsubobject.name == "P" && subsubobject.properties.size() >= 5 &&
-                                        subsubobject.properties.at(0) == "Original|ApplicationName") {
+                                        subsubobject.properties.at(0) == APPLICATION_NAME) {
                                     geometry.applicationName = subsubobject.properties.at(4).toString();
                                 }
                             }
@@ -566,10 +574,12 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                     int index = 4;
                     foreach (const FBXNode& subobject, object.children) {
                         if (subobject.name == propertyName) {
-                            QString subpropName = subobject.properties.at(0).toString();
-                            if (subpropName == "UnitScaleFactor") {
+                            static const QVariant UNIT_SCALE_FACTOR = QByteArray("UnitScaleFactor");
+                            static const QVariant AMBIENT_COLOR = QByteArray("AmbientColor");
+                            const auto& subpropName = subobject.properties.at(0);
+                            if (subpropName == UNIT_SCALE_FACTOR) {
                                 unitScaleFactor = subobject.properties.at(index).toFloat();
-                            } else if (subpropName == "AmbientColor") {
+                            } else if (subpropName == AMBIENT_COLOR) {
                                 ambientColor = getVec3(subobject.properties, index);
                             }
                         }
@@ -639,9 +649,17 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                     glm::vec3 scalePivot, rotationPivot, scaleOffset;
                     bool rotationMinX = false, rotationMinY = false, rotationMinZ = false;
                     bool rotationMaxX = false, rotationMaxY = false, rotationMaxZ = false;
+
+                    // local offset transforms from 3ds max
+                    bool hasGeometricOffset = false;
+                    glm::vec3 geometricTranslation;
+                    glm::vec3 geometricScaling(1.0f, 1.0f, 1.0f);
+                    glm::vec3 geometricRotation;
+
                     glm::vec3 rotationMin, rotationMax;
                     FBXModel model = { name, -1, glm::vec3(), glm::mat4(), glm::quat(), glm::quat(), glm::quat(),
-                                       glm::mat4(), glm::vec3(), glm::vec3()};
+                                       glm::mat4(), glm::vec3(), glm::vec3(),
+                                       false, glm::vec3(), glm::quat(), glm::vec3(1.0f) };
                     ExtractedMesh* mesh = NULL;
                     QVector<ExtractedBlendshape> blendshapes;
                     foreach (const FBXNode& subobject, object.children) {
@@ -659,59 +677,89 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                             index = 4;
                         }
                         if (properties) {
-                            foreach (const FBXNode& property, subobject.children) {
+                            static const QVariant GEOMETRIC_TRANSLATION = QByteArray("GeometricTranslation");
+                            static const QVariant GEOMETRIC_ROTATION = QByteArray("GeometricRotation");
+                            static const QVariant GEOMETRIC_SCALING = QByteArray("GeometricScaling");
+                            static const QVariant LCL_TRANSLATION = QByteArray("Lcl Translation");
+                            static const QVariant LCL_ROTATION = QByteArray("Lcl Rotation");
+                            static const QVariant LCL_SCALING = QByteArray("Lcl Scaling");
+                            static const QVariant ROTATION_MAX = QByteArray("RotationMax");
+                            static const QVariant ROTATION_MAX_X = QByteArray("RotationMaxX");
+                            static const QVariant ROTATION_MAX_Y = QByteArray("RotationMaxY");
+                            static const QVariant ROTATION_MAX_Z = QByteArray("RotationMaxZ");
+                            static const QVariant ROTATION_MIN = QByteArray("RotationMin");
+                            static const QVariant ROTATION_MIN_X = QByteArray("RotationMinX");
+                            static const QVariant ROTATION_MIN_Y = QByteArray("RotationMinY");
+                            static const QVariant ROTATION_MIN_Z = QByteArray("RotationMinZ");
+                            static const QVariant ROTATION_OFFSET = QByteArray("RotationOffset");
+                            static const QVariant ROTATION_PIVOT = QByteArray("RotationPivot");
+                            static const QVariant SCALING_OFFSET = QByteArray("ScalingOffset");
+                            static const QVariant SCALING_PIVOT = QByteArray("ScalingPivot");
+                            static const QVariant PRE_ROTATION = QByteArray("PreRotation");
+                            static const QVariant POST_ROTATION = QByteArray("PostRotation");
+                            foreach(const FBXNode& property, subobject.children) {
+                                const auto& childProperty = property.properties.at(0);
                                 if (property.name == propertyName) {
-                                    if (property.properties.at(0) == "Lcl Translation") {
+                                    if (childProperty == LCL_TRANSLATION) {
                                         translation = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "RotationOffset") {
+                                    } else if (childProperty == ROTATION_OFFSET) {
                                         rotationOffset = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "RotationPivot") {
+                                    } else if (childProperty == ROTATION_PIVOT) {
                                         rotationPivot = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "PreRotation") {
+                                    } else if (childProperty == PRE_ROTATION) {
                                         preRotation = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "Lcl Rotation") {
+                                    } else if (childProperty == LCL_ROTATION) {
                                         rotation = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "PostRotation") {
+                                    } else if (childProperty == POST_ROTATION) {
                                         postRotation = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "ScalingPivot") {
+                                    } else if (childProperty == SCALING_PIVOT) {
                                         scalePivot = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "Lcl Scaling") {
+                                    } else if (childProperty == LCL_SCALING) {
                                         scale = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "ScalingOffset") {
+                                    } else if (childProperty == SCALING_OFFSET) {
                                         scaleOffset = getVec3(property.properties, index);
 
                                     // NOTE: these rotation limits are stored in degrees (NOT radians)
-                                    } else if (property.properties.at(0) == "RotationMin") {
+                                    } else if (childProperty == ROTATION_MIN) {
                                         rotationMin = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "RotationMax") {
+                                    } else if (childProperty == ROTATION_MAX) {
                                         rotationMax = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "RotationMinX") {
+                                    } else if (childProperty == ROTATION_MIN_X) {
                                         rotationMinX = property.properties.at(index).toBool();
 
-                                    } else if (property.properties.at(0) == "RotationMinY") {
+                                    } else if (childProperty == ROTATION_MIN_Y) {
                                         rotationMinY = property.properties.at(index).toBool();
 
-                                    } else if (property.properties.at(0) == "RotationMinZ") {
+                                    } else if (childProperty == ROTATION_MIN_Z) {
                                         rotationMinZ = property.properties.at(index).toBool();
 
-                                    } else if (property.properties.at(0) == "RotationMaxX") {
+                                    } else if (childProperty == ROTATION_MAX_X) {
                                         rotationMaxX = property.properties.at(index).toBool();
 
-                                    } else if (property.properties.at(0) == "RotationMaxY") {
+                                    } else if (childProperty == ROTATION_MAX_Y) {
                                         rotationMaxY = property.properties.at(index).toBool();
 
-                                    } else if (property.properties.at(0) == "RotationMaxZ") {
+                                    } else if (childProperty == ROTATION_MAX_Z) {
                                         rotationMaxZ = property.properties.at(index).toBool();
+                                    } else if (childProperty == GEOMETRIC_TRANSLATION) {
+                                        geometricTranslation = getVec3(property.properties, index);
+                                        hasGeometricOffset = true;
+                                    } else if (childProperty == GEOMETRIC_ROTATION) {
+                                        geometricRotation = getVec3(property.properties, index);
+                                        hasGeometricOffset = true;
+                                    } else if (childProperty == GEOMETRIC_SCALING) {
+                                        geometricScaling = getVec3(property.properties, index);
+                                        hasGeometricOffset = true;
                                     }
                                 }
                             }
@@ -768,8 +816,13 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                         rotationMinY ? rotationMin.y : -180.0f, rotationMinZ ? rotationMin.z : -180.0f));
                     model.rotationMax = glm::radians(glm::vec3(rotationMaxX ? rotationMax.x : 180.0f,
                         rotationMaxY ? rotationMax.y : 180.0f, rotationMaxZ ? rotationMax.z : 180.0f));
-                    models.insert(getID(object.properties), model);
 
+                    model.hasGeometricOffset = hasGeometricOffset;
+                    model.geometricTranslation = geometricTranslation;
+                    model.geometricRotation = glm::quat(glm::radians(geometricRotation));
+                    model.geometricScaling = geometricScaling;
+
+                    models.insert(getID(object.properties), model);
                 } else if (object.name == "Texture") {
                     TextureParam tex;
                     foreach (const FBXNode& subobject, object.children) {
@@ -815,20 +868,26 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                                 propertyName = "P";
                                 index = 4;
                                 foreach (const FBXNode& property, subobject.children) {
+                                    static const QVariant UV_SET = QByteArray("UVSet");
+                                    static const QVariant CURRENT_TEXTURE_BLEND_MODE = QByteArray("CurrentTextureBlendMode");
+                                    static const QVariant USE_MATERIAL = QByteArray("UseMaterial");
+                                    static const QVariant TRANSLATION = QByteArray("Translation");
+                                    static const QVariant ROTATION = QByteArray("Rotation");
+                                    static const QVariant SCALING = QByteArray("Scaling");
                                     if (property.name == propertyName) {
                                         QString v = property.properties.at(0).toString();
-                                        if (property.properties.at(0) == "UVSet") {
+                                        if (property.properties.at(0) == UV_SET) {
                                             std::string uvName = property.properties.at(index).toString().toStdString();
                                             tex.assign(tex.UVSet, property.properties.at(index).toString());
-                                        } else if (property.properties.at(0) == "CurrentTextureBlendMode") {
+                                        } else if (property.properties.at(0) == CURRENT_TEXTURE_BLEND_MODE) {
                                             tex.assign<uint8_t>(tex.currentTextureBlendMode, property.properties.at(index).value<int>());
-                                        } else if (property.properties.at(0) == "UseMaterial") {
+                                        } else if (property.properties.at(0) == USE_MATERIAL) {
                                             tex.assign<bool>(tex.useMaterial, property.properties.at(index).value<int>());
-                                        } else if (property.properties.at(0) == "Translation") {
+                                        } else if (property.properties.at(0) == TRANSLATION) {
                                             tex.assign(tex.translation, getVec3(property.properties, index));
-                                        } else if (property.properties.at(0) == "Rotation") {
+                                        } else if (property.properties.at(0) == ROTATION) {
                                             tex.assign(tex.rotation, getVec3(property.properties, index));
-                                        } else if (property.properties.at(0) == "Scaling") {
+                                        } else if (property.properties.at(0) == SCALING) {
                                             tex.assign(tex.scaling, getVec3(property.properties, index));
                                             if (tex.scaling.x == 0.0f) {
                                                 tex.scaling.x = 1.0f;
@@ -904,87 +963,114 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 
                         if (properties) {
                             std::vector<std::string> unknowns;
+                            static const QVariant DIFFUSE_COLOR = QByteArray("DiffuseColor");
+                            static const QVariant DIFFUSE_FACTOR = QByteArray("DiffuseFactor");
+                            static const QVariant DIFFUSE = QByteArray("Diffuse");
+                            static const QVariant SPECULAR_COLOR = QByteArray("SpecularColor");
+                            static const QVariant SPECULAR_FACTOR = QByteArray("SpecularFactor");
+                            static const QVariant SPECULAR = QByteArray("Specular");
+                            static const QVariant EMISSIVE_COLOR = QByteArray("EmissiveColor");
+                            static const QVariant EMISSIVE_FACTOR = QByteArray("EmissiveFactor");
+                            static const QVariant EMISSIVE = QByteArray("Emissive");
+                            static const QVariant AMBIENT_FACTOR = QByteArray("AmbientFactor");
+                            static const QVariant SHININESS = QByteArray("Shininess");
+                            static const QVariant OPACITY = QByteArray("Opacity");
+                            static const QVariant MAYA_USE_NORMAL_MAP = QByteArray("Maya|use_normal_map");
+                            static const QVariant MAYA_BASE_COLOR = QByteArray("Maya|base_color");
+                            static const QVariant MAYA_USE_COLOR_MAP = QByteArray("Maya|use_color_map");
+                            static const QVariant MAYA_ROUGHNESS = QByteArray("Maya|roughness");
+                            static const QVariant MAYA_USE_ROUGHNESS_MAP = QByteArray("Maya|use_roughness_map");
+                            static const QVariant MAYA_METALLIC = QByteArray("Maya|metallic");
+                            static const QVariant MAYA_USE_METALLIC_MAP = QByteArray("Maya|use_metallic_map");
+                            static const QVariant MAYA_EMISSIVE = QByteArray("Maya|emissive");
+                            static const QVariant MAYA_EMISSIVE_INTENSITY = QByteArray("Maya|emissive_intensity");
+                            static const QVariant MAYA_USE_EMISSIVE_MAP = QByteArray("Maya|use_emissive_map");
+                            static const QVariant MAYA_USE_AO_MAP = QByteArray("Maya|use_ao_map");
+
+
+
+
                             foreach(const FBXNode& property, subobject.children) {
                                 if (property.name == propertyName) {
-                                    if (property.properties.at(0) == "DiffuseColor") {
+                                    if (property.properties.at(0) == DIFFUSE_COLOR) {
                                         material.diffuseColor = getVec3(property.properties, index);
-                                    } else if (property.properties.at(0) == "DiffuseFactor") {
+                                    } else if (property.properties.at(0) == DIFFUSE_FACTOR) {
                                         material.diffuseFactor = property.properties.at(index).value<double>();
-                                    } else if (property.properties.at(0) == "Diffuse") {
+                                    } else if (property.properties.at(0) == DIFFUSE) {
                                         // NOTE: this is uneeded but keep it for now for debug
                                         //  material.diffuseColor = getVec3(property.properties, index);
                                         //  material.diffuseFactor = 1.0;
 
-                                    } else if (property.properties.at(0) == "SpecularColor") {
+                                    } else if (property.properties.at(0) == SPECULAR_COLOR) {
                                         material.specularColor = getVec3(property.properties, index);
-                                    } else if (property.properties.at(0) == "SpecularFactor") {
+                                    } else if (property.properties.at(0) == SPECULAR_FACTOR) {
                                         material.specularFactor = property.properties.at(index).value<double>();
-                                    } else if (property.properties.at(0) == "Specular") {
+                                    } else if (property.properties.at(0) == SPECULAR) {
                                         // NOTE: this is uneeded but keep it for now for debug
                                         //  material.specularColor = getVec3(property.properties, index);
                                         //  material.specularFactor = 1.0;
 
-                                    } else if (property.properties.at(0) == "EmissiveColor") {
+                                    } else if (property.properties.at(0) == EMISSIVE_COLOR) {
                                         material.emissiveColor = getVec3(property.properties, index);
-                                    } else if (property.properties.at(0) == "EmissiveFactor") {
+                                    } else if (property.properties.at(0) == EMISSIVE_FACTOR) {
                                         material.emissiveFactor = property.properties.at(index).value<double>();
-                                    } else if (property.properties.at(0) == "Emissive") {
+                                    } else if (property.properties.at(0) == EMISSIVE) {
                                         // NOTE: this is uneeded but keep it for now for debug
                                         //  material.emissiveColor = getVec3(property.properties, index);
                                         //  material.emissiveFactor = 1.0;
 
-                                    } else if (property.properties.at(0) == "AmbientFactor") {
+                                    } else if (property.properties.at(0) == AMBIENT_FACTOR) {
                                         material.ambientFactor = property.properties.at(index).value<double>();
                                         // Detected just for BLender AO vs lightmap
-                                    } else if (property.properties.at(0) == "Shininess") {
+                                    } else if (property.properties.at(0) == SHININESS) {
                                         material.shininess = property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Opacity") {
+                                    } else if (property.properties.at(0) == OPACITY) {
                                         material.opacity = property.properties.at(index).value<double>();
                                     }
 
                                     // Sting Ray Material Properties!!!!
-                                    else if (property.properties.at(0) == "Maya|use_normal_map") {
+                                    else if (property.properties.at(0) == MAYA_USE_NORMAL_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useNormalMap = (bool)property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|base_color") {
+                                    } else if (property.properties.at(0) == MAYA_BASE_COLOR) {
                                         material.isPBSMaterial = true;
                                         material.diffuseColor = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "Maya|use_color_map") {
+                                    } else if (property.properties.at(0) == MAYA_USE_COLOR_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useAlbedoMap = (bool) property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|roughness") {
+                                    } else if (property.properties.at(0) == MAYA_ROUGHNESS) {
                                         material.isPBSMaterial = true;
                                         material.roughness = property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|use_roughness_map") {
+                                    } else if (property.properties.at(0) == MAYA_USE_ROUGHNESS_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useRoughnessMap = (bool)property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|metallic") {
+                                    } else if (property.properties.at(0) == MAYA_METALLIC) {
                                         material.isPBSMaterial = true;
                                         material.metallic = property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|use_metallic_map") {
+                                    } else if (property.properties.at(0) == MAYA_USE_METALLIC_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useMetallicMap = (bool)property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|emissive") {
+                                    } else if (property.properties.at(0) == MAYA_EMISSIVE) {
                                         material.isPBSMaterial = true;
                                         material.emissiveColor = getVec3(property.properties, index);
 
-                                    } else if (property.properties.at(0) == "Maya|emissive_intensity") {
+                                    } else if (property.properties.at(0) == MAYA_EMISSIVE_INTENSITY) {
                                         material.isPBSMaterial = true;
                                         material.emissiveIntensity = property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|use_emissive_map") {
+                                    } else if (property.properties.at(0) == MAYA_USE_EMISSIVE_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useEmissiveMap = (bool)property.properties.at(index).value<double>();
 
-                                    } else if (property.properties.at(0) == "Maya|use_ao_map") {
+                                    } else if (property.properties.at(0) == MAYA_USE_AO_MAP) {
                                         material.isPBSMaterial = true;
                                         material.useOcclusionMap = (bool)property.properties.at(index).value<double>();
 
@@ -1089,9 +1175,11 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 #endif
             }
         } else if (child.name == "Connections") {
+            static const QVariant OO = QByteArray("OO");
+            static const QVariant OP = QByteArray("OP");
             foreach (const FBXNode& connection, child.children) {
                 if (connection.name == "C" || connection.name == "Connect") {
-                    if (connection.properties.at(0) == "OO") {
+                    if (connection.properties.at(0) == OO) {
                         QString childID = getID(connection.properties, 1);
                         QString parentID = getID(connection.properties, 2);
                         ooChildToParent.insert(childID, parentID);
@@ -1105,8 +1193,7 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                                 _lightmapOffset = glm::clamp((*lightIt).second.color.x, 0.f, 1.f);
                             }
                         }
-                    }
-                    if (connection.properties.at(0) == "OP") {
+                    } else if (connection.properties.at(0) == OP) {
                         int counter = 0;
                         QByteArray type = connection.properties.at(3).toByteArray().toLower();
                         if (type.contains("DiffuseFactor")) {
@@ -1286,7 +1373,14 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         joint.postTransform = model.postTransform;
         joint.rotationMin = model.rotationMin;
         joint.rotationMax = model.rotationMax;
+
+        joint.hasGeometricOffset = model.hasGeometricOffset;
+        joint.geometricTranslation = model.geometricTranslation;
+        joint.geometricRotation = model.geometricRotation;
+        joint.geometricScaling = model.geometricScaling;
+
         glm::quat combinedRotation = joint.preRotation * joint.rotation * joint.postRotation;
+
         if (joint.parentIndex == -1) {
             joint.transform = geometry.offset * glm::translate(joint.translation) * joint.preTransform *
                 glm::mat4_cast(combinedRotation) * joint.postTransform;
@@ -1373,6 +1467,38 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 
     // Create the Material Library
     consolidateFBXMaterials(mapping);
+
+    // We can't allow the scaling of a given image to different sizes, because the hash used for the KTX cache is based on the original image
+    // Allowing scaling of the same image to different sizes would cause different KTX files to target the same cache key
+#if 0
+    // HACK: until we get proper LOD management we're going to cap model textures
+    // according to how many unique textures the model uses:
+    //   1 - 8 textures --> 2048
+    //   8 - 32 textures --> 1024
+    //   33 - 128 textures --> 512
+    // etc...
+    QSet<QString> uniqueTextures;
+    for (auto& material : _fbxMaterials) {
+        material.getTextureNames(uniqueTextures);
+    }
+    int numTextures = uniqueTextures.size();
+    const int MAX_NUM_TEXTURES_AT_MAX_RESOLUTION = 8;
+    int maxWidth = sqrt(MAX_NUM_PIXELS_FOR_FBX_TEXTURE);
+
+    if (numTextures > MAX_NUM_TEXTURES_AT_MAX_RESOLUTION) {
+        int numTextureThreshold = MAX_NUM_TEXTURES_AT_MAX_RESOLUTION;
+        const int MIN_MIP_TEXTURE_WIDTH = 64;
+        do {
+            maxWidth /= 2;
+            numTextureThreshold *= 4;
+        } while (numTextureThreshold < numTextures && maxWidth > MIN_MIP_TEXTURE_WIDTH);
+
+        qCDebug(modelformat) << "Capped square texture width =" << maxWidth << "for model" << url << "with" << numTextures << "textures";
+        for (auto& material : _fbxMaterials) {
+            material.setMaxNumPixelsPerTexture(maxWidth * maxWidth);
+        }
+    }
+#endif
     geometry.materials = _fbxMaterials;
 
     // see if any materials have texture children
@@ -1505,13 +1631,15 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 
         // whether we're skinned depends on how many clusters are attached
         const FBXCluster& firstFBXCluster = extracted.mesh.clusters.at(0);
-        int maxJointIndex = firstFBXCluster.jointIndex;
         glm::mat4 inverseModelTransform = glm::inverse(modelTransform);
         if (clusterIDs.size() > 1) {
             // this is a multi-mesh joint
-            extracted.mesh.clusterIndices.resize(extracted.mesh.vertices.size());
-            extracted.mesh.clusterWeights.resize(extracted.mesh.vertices.size());
-            float maxWeight = 0.0f;
+            const int WEIGHTS_PER_VERTEX = 4;
+            int numClusterIndices = extracted.mesh.vertices.size() * WEIGHTS_PER_VERTEX;
+            extracted.mesh.clusterIndices.fill(0, numClusterIndices);
+            QVector<float> weightAccumulators;
+            weightAccumulators.fill(0.0f, numClusterIndices);
+
             for (int i = 0; i < clusterIDs.size(); i++) {
                 QString clusterID = clusterIDs.at(i);
                 const Cluster& cluster = clusters[clusterID];
@@ -1536,61 +1664,69 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                 glm::mat4 meshToJoint = glm::inverse(joint.bindTransform) * modelTransform;
                 ShapeVertices& points = shapeVertices.at(jointIndex);
 
-                float totalWeight = 0.0f;
                 for (int j = 0; j < cluster.indices.size(); j++) {
                     int oldIndex = cluster.indices.at(j);
                     float weight = cluster.weights.at(j);
-                    totalWeight += weight;
                     for (QMultiHash<int, int>::const_iterator it = extracted.newIndices.constFind(oldIndex);
                             it != extracted.newIndices.end() && it.key() == oldIndex; it++) {
+                        int newIndex = it.value();
 
                         // remember vertices with at least 1/4 weight
                         const float EXPANSION_WEIGHT_THRESHOLD = 0.99f;
                         if (weight > EXPANSION_WEIGHT_THRESHOLD) {
                             // transform to joint-frame and save for later
-                            const glm::mat4 vertexTransform = meshToJoint * glm::translate(extracted.mesh.vertices.at(it.value()));
+                            const glm::mat4 vertexTransform = meshToJoint * glm::translate(extracted.mesh.vertices.at(newIndex));
                             points.push_back(extractTranslation(vertexTransform) * clusterScale);
                         }
 
                         // look for an unused slot in the weights vector
-                        glm::vec4& weights = extracted.mesh.clusterWeights[it.value()];
+                        int weightIndex = newIndex * WEIGHTS_PER_VERTEX;
                         int lowestIndex = -1;
                         float lowestWeight = FLT_MAX;
                         int k = 0;
-                        for (; k < 4; k++) {
-                            if (weights[k] == 0.0f) {
-                                extracted.mesh.clusterIndices[it.value()][k] = i;
-                                weights[k] = weight;
+                        for (; k < WEIGHTS_PER_VERTEX; k++) {
+                            if (weightAccumulators[weightIndex + k] == 0.0f) {
+                                extracted.mesh.clusterIndices[weightIndex + k] = i;
+                                weightAccumulators[weightIndex + k] = weight;
                                 break;
                             }
-                            if (weights[k] < lowestWeight) {
+                            if (weightAccumulators[weightIndex + k] < lowestWeight) {
                                 lowestIndex = k;
-                                lowestWeight = weights[k];
+                                lowestWeight = weightAccumulators[weightIndex + k];
                             }
                         }
-                        if (k == 4 && weight > lowestWeight) {
+                        if (k == WEIGHTS_PER_VERTEX && weight > lowestWeight) {
                             // no space for an additional weight; we must replace the lowest
-                            weights[lowestIndex] = weight;
-                            extracted.mesh.clusterIndices[it.value()][lowestIndex] = i;
+                            weightAccumulators[weightIndex + lowestIndex] = weight;
+                            extracted.mesh.clusterIndices[weightIndex + lowestIndex] = i;
                         }
                     }
                 }
-                if (totalWeight > maxWeight) {
-                    maxWeight = totalWeight;
-                    maxJointIndex = jointIndex;
-                }
             }
-            // normalize the weights if they don't add up to one
-            for (int i = 0; i < extracted.mesh.clusterWeights.size(); i++) {
-                glm::vec4& weights = extracted.mesh.clusterWeights[i];
-                float total = weights.x + weights.y + weights.z + weights.w;
-                if (total != 1.0f && total != 0.0f) {
-                    weights /= total;
+
+            // now that we've accumulated the most relevant weights for each vertex
+            // normalize and compress to 8-bits
+            extracted.mesh.clusterWeights.fill(0, numClusterIndices);
+            int numVertices = extracted.mesh.vertices.size();
+            for (int i = 0; i < numVertices; ++i) {
+                int j = i * WEIGHTS_PER_VERTEX;
+
+                // normalize weights into uint8_t
+                float totalWeight = weightAccumulators[j];
+                for (int k = j + 1; k < j + WEIGHTS_PER_VERTEX; ++k) {
+                    totalWeight += weightAccumulators[k];
+                }
+                if (totalWeight > 0.0f) {
+                    const float ALMOST_HALF = 0.499f;
+                    float weightScalingFactor = (float)(UINT8_MAX) / totalWeight;
+                    for (int k = j; k < j + WEIGHTS_PER_VERTEX; ++k) {
+                        extracted.mesh.clusterWeights[k] = (uint8_t)(weightScalingFactor * weightAccumulators[k] + ALMOST_HALF);
+                    }
                 }
             }
         } else {
             // this is a single-mesh joint
-            int jointIndex = maxJointIndex;
+            int jointIndex = firstFBXCluster.jointIndex;
             FBXJoint& joint = geometry.joints[jointIndex];
 
             // transform cluster vertices to joint-frame and save for later
@@ -1602,18 +1738,15 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                 points.push_back(extractTranslation(vertexTransform) * clusterScale);
             }
 
-        }
-        extracted.mesh.isEye = (maxJointIndex == geometry.leftEyeJointIndex || maxJointIndex == geometry.rightEyeJointIndex);
-
-        buildModelMesh(extracted.mesh, url);
-
-        if (extracted.mesh.isEye) {
-            if (maxJointIndex == geometry.leftEyeJointIndex) {
-                geometry.leftEyeSize = extracted.mesh.meshExtents.largestDimension() * offsetScale;
-            } else {
-                geometry.rightEyeSize = extracted.mesh.meshExtents.largestDimension() * offsetScale;
+            // Apply geometric offset, if present, by transforming the vertices directly
+            if (joint.hasGeometricOffset) {
+                glm::mat4 geometricOffset = createMatFromScaleQuatAndPos(joint.geometricScaling, joint.geometricRotation, joint.geometricTranslation);
+                for (int i = 0; i < extracted.mesh.vertices.size(); i++) {
+                    extracted.mesh.vertices[i] = transformPoint(geometricOffset, extracted.mesh.vertices[i]);
+                }
             }
         }
+        buildModelMesh(extracted.mesh, url);
 
         geometry.meshes.append(extracted.mesh);
         int meshIndex = geometry.meshes.size() - 1;
@@ -1665,19 +1798,6 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         }
     }
     geometry.palmDirection = parseVec3(mapping.value("palmDirection", "0, -1, 0").toString());
-
-    // Add sitting points
-    QVariantHash sittingPoints = mapping.value("sit").toHash();
-    for (QVariantHash::const_iterator it = sittingPoints.constBegin(); it != sittingPoints.constEnd(); it++) {
-        SittingPoint sittingPoint;
-        sittingPoint.name = it.key();
-
-        QVariantList properties = it->toList();
-        sittingPoint.position = parseVec3(properties.at(0).toString());
-        sittingPoint.rotation = glm::quat(glm::radians(parseVec3(properties.at(1).toString())));
-
-        geometry.sittingPoints.append(sittingPoint);
-    }
 
     // attempt to map any meshes to a named model
     for (QHash<QString, int>::const_iterator m = meshIDsToMeshIndices.constBegin();

@@ -11,23 +11,26 @@
 #include <atomic>
 
 #include <Windows.h>
-#include <QtCore/QLoggingCategory>
 #include <QtCore/QFile>
 #include <QtCore/QDir>
 #include <QtCore/QProcessEnvironment>
 
+#define OVRPL_DISABLED
+#include <OVR_Platform.h>
+
 #include <controllers/Input.h>
 #include <controllers/Pose.h>
+#include <shared/GlobalAppProperties.h>
 #include <NumericalConstants.h>
 
-using Mutex = std::mutex;
-using Lock = std::unique_lock<Mutex>;
-
-Q_DECLARE_LOGGING_CATEGORY(oculus)
-Q_LOGGING_CATEGORY(oculus, "hifi.plugins.oculus")
+Q_LOGGING_CATEGORY(displayplugins, "hifi.plugins.display")
+Q_LOGGING_CATEGORY(oculus, "hifi.plugins.display.oculus")
 
 static std::atomic<uint32_t> refCount { 0 };
 static ovrSession session { nullptr };
+
+static bool _quitRequested { false };
+static bool _reorientRequested { false };
 
 inline ovrErrorInfo getError() {
     ovrErrorInfo error;
@@ -85,10 +88,26 @@ ovrSession acquireOculusSession() {
     }
 
     if (!session) {
-        if (!OVR_SUCCESS(ovr_Initialize(nullptr))) {
+    	ovrInitParams initParams {
+            ovrInit_RequestVersion | ovrInit_MixedRendering, OVR_MINOR_VERSION, nullptr, 0, 0
+        };
+
+        if (!OVR_SUCCESS(ovr_Initialize(&initParams))) {
             logWarning("Failed to initialize Oculus SDK");
             return session;
         }
+
+#ifdef OCULUS_APP_ID
+        if (qApp->property(hifi::properties::OCULUS_STORE).toBool()) {
+            if (ovr_PlatformInitializeWindows(OCULUS_APP_ID) != ovrPlatformInitialize_Success) {
+                // we were unable to initialize the platform for entitlement check - fail the check
+                _quitRequested = true;
+            } else {
+                qCDebug(oculus) << "Performing Oculus Platform entitlement check";
+                ovr_Entitlement_GetIsViewerEntitled();
+            }
+        }
+#endif
 
         Q_ASSERT(0 == refCount);
         ovrGraphicsLuid luid;
@@ -116,6 +135,55 @@ void releaseOculusSession() {
 #endif
 }
 
+void handleOVREvents() {
+    if (!session) {
+        return;
+    }
+
+    ovrSessionStatus status;
+    if (!OVR_SUCCESS(ovr_GetSessionStatus(session, &status))) {
+        return;
+    }
+
+    _quitRequested = status.ShouldQuit;
+    _reorientRequested = status.ShouldRecenter;
+
+ #ifdef OCULUS_APP_ID
+
+    if (qApp->property(hifi::properties::OCULUS_STORE).toBool()) {
+        // pop messages to see if we got a return for an entitlement check
+        ovrMessageHandle message = ovr_PopMessage();
+
+        while (message) {
+            switch (ovr_Message_GetType(message)) {
+                case ovrMessage_Entitlement_GetIsViewerEntitled: {
+                    if (!ovr_Message_IsError(message)) {
+                        // this viewer is entitled, no need to flag anything
+                        qCDebug(oculus) << "Oculus Platform entitlement check succeeded, proceeding normally";
+                    } else {
+                        // we failed the entitlement check, set our flag so the app can stop
+                        qCDebug(oculus) << "Oculus Platform entitlement check failed, app will now quit" << OCULUS_APP_ID;
+                        _quitRequested = true;
+                    }
+                }
+            }
+
+            // free the message handle to cleanup and not leak
+            ovr_FreeMessage(message);
+
+            // pop the next message to check, if there is one
+            message = ovr_PopMessage();
+        }
+    }
+#endif
+}
+
+bool quitRequested() {
+    return _quitRequested;
+}
+bool reorientRequested() {
+    return _reorientRequested;
+}
 
 controller::Pose ovrControllerPoseToHandPose(
     ovrHandType hand,
@@ -174,15 +242,14 @@ controller::Pose ovrControllerPoseToHandPose(
 
     static const glm::quat leftQuarterZ = glm::angleAxis(-PI_OVER_TWO, Vectors::UNIT_Z);
     static const glm::quat rightQuarterZ = glm::angleAxis(PI_OVER_TWO, Vectors::UNIT_Z);
-    static const glm::quat eighthX = glm::angleAxis(PI / 4.0f, Vectors::UNIT_X);
 
-    static const glm::quat leftRotationOffset = glm::inverse(leftQuarterZ * eighthX) * touchToHand;
-    static const glm::quat rightRotationOffset = glm::inverse(rightQuarterZ * eighthX) * touchToHand;
+    static const glm::quat leftRotationOffset = glm::inverse(leftQuarterZ) * touchToHand;
+    static const glm::quat rightRotationOffset = glm::inverse(rightQuarterZ) * touchToHand;
 
     static const float CONTROLLER_LENGTH_OFFSET = 0.0762f;  // three inches
     static const glm::vec3 CONTROLLER_OFFSET = glm::vec3(CONTROLLER_LENGTH_OFFSET / 2.0f,
-        CONTROLLER_LENGTH_OFFSET / 2.0f,
-        CONTROLLER_LENGTH_OFFSET * 2.0f);
+        -CONTROLLER_LENGTH_OFFSET / 2.0f,
+        CONTROLLER_LENGTH_OFFSET * 1.5f);
     static const glm::vec3 leftTranslationOffset = glm::vec3(-1.0f, 1.0f, 1.0f) * CONTROLLER_OFFSET;
     static const glm::vec3 rightTranslationOffset = CONTROLLER_OFFSET;
 
@@ -197,6 +264,40 @@ controller::Pose ovrControllerPoseToHandPose(
     pose.rotation = rotation * rotationOffset;
     pose.angularVelocity = toGlm(handPose.AngularVelocity);
     pose.velocity = toGlm(handPose.LinearVelocity);
+    pose.valid = true;
+    return pose;
+}
+
+controller::Pose ovrControllerRotationToHandRotation(ovrHandType hand, const ovrPoseStatef& handPose,
+                                                    const ovrPoseStatef& lastHandPose) {
+    static const glm::quat yFlip = glm::angleAxis(PI, Vectors::UNIT_Y);
+    static const glm::quat quarterX = glm::angleAxis(PI_OVER_TWO, Vectors::UNIT_X);
+    static const glm::quat touchToHand = yFlip * quarterX;
+    
+    static const glm::quat leftQuarterZ = glm::angleAxis(-PI_OVER_TWO, Vectors::UNIT_Z);
+    static const glm::quat rightQuarterZ = glm::angleAxis(PI_OVER_TWO, Vectors::UNIT_Z);
+
+    static const glm::quat leftRotationOffset = glm::inverse(leftQuarterZ) * touchToHand;
+    static const glm::quat rightRotationOffset = glm::inverse(rightQuarterZ) * touchToHand;
+
+    static const float CONTROLLER_LENGTH_OFFSET = 0.0762f;  // three inches
+    static const glm::vec3 CONTROLLER_OFFSET = glm::vec3(CONTROLLER_LENGTH_OFFSET / 2.0f,
+        -CONTROLLER_LENGTH_OFFSET / 2.0f,
+        CONTROLLER_LENGTH_OFFSET * 1.5f);
+    static const glm::vec3 leftTranslationOffset = glm::vec3(-1.0f, 1.0f, 1.0f) * CONTROLLER_OFFSET;
+    static const glm::vec3 rightTranslationOffset = CONTROLLER_OFFSET;
+
+    auto translationOffset = (hand == ovrHand_Left ? leftTranslationOffset : rightTranslationOffset);
+    auto rotationOffset = (hand == ovrHand_Left ? leftRotationOffset : rightRotationOffset);
+
+    glm::quat rotation = toGlm(handPose.ThePose.Orientation);
+
+    controller::Pose pose;
+    pose.translation = toGlm(lastHandPose.ThePose.Position);
+    pose.translation += rotation * translationOffset;
+    pose.rotation = rotation * rotationOffset;
+    pose.angularVelocity = toGlm(lastHandPose.AngularVelocity);
+    pose.velocity = toGlm(lastHandPose.LinearVelocity);
     pose.valid = true;
     return pose;
 }

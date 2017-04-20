@@ -18,6 +18,7 @@
 #include <QtCore/QPointer>
 #include <QtCore/QSet>
 #include <QtCore/QStringList>
+#include <QtQuick/QQuickItem>
 
 #include <QtGui/QImage>
 
@@ -28,6 +29,7 @@
 #include <AbstractViewStateInterface.h>
 #include <EntityEditPacketSender.h>
 #include <EntityTreeRenderer.h>
+#include <FileScriptingInterface.h>
 #include <input-plugins/KeyboardMouseDevice.h>
 #include <input-plugins/TouchscreenDevice.h>
 #include <OctreeQuery.h>
@@ -49,8 +51,8 @@
 #include <RunningMarker.h>
 
 #include "avatar/MyAvatar.h"
-#include "Bookmarks.h"
-#include "Camera.h"
+#include "BandwidthRecorder.h"
+#include "FancyCamera.h"
 #include "ConnectionMonitor.h"
 #include "gpu/Context.h"
 #include "Menu.h"
@@ -59,7 +61,7 @@
 #include "scripting/ControllerScriptingInterface.h"
 #include "scripting/DialogsManagerScriptingInterface.h"
 #include "ui/ApplicationOverlay.h"
-#include "ui/BandwidthDialog.h"
+#include "ui/EntityScriptServerLogDialog.h"
 #include "ui/LodToolsDialog.h"
 #include "ui/LogDialog.h"
 #include "ui/OctreeStatsDialog.h"
@@ -69,6 +71,8 @@
 
 #include <procedural/ProceduralSkybox.h>
 #include <model/Skybox.h>
+#include <ModelScriptingInterface.h>
+
 
 class OffscreenGLCanvas;
 class GLCanvas;
@@ -170,8 +174,8 @@ public:
 
     bool isThrottleRendering() const;
 
-    Camera* getCamera() { return &_myCamera; }
-    const Camera* getCamera() const { return &_myCamera; }
+    Camera& getCamera() { return _myCamera; }
+    const Camera& getCamera() const { return _myCamera; }
     // Represents the current view frustum of the avatar.
     void copyViewFrustum(ViewFrustum& viewOut) const;
     // Represents the view frustum of the current rendering pass,
@@ -205,6 +209,18 @@ public:
 
     float getFieldOfView() { return _fieldOfView.get(); }
     void setFieldOfView(float fov);
+
+    float getHMDTabletScale() { return _hmdTabletScale.get(); }
+    void setHMDTabletScale(float hmdTabletScale);
+    float getDesktopTabletScale() { return _desktopTabletScale.get(); }
+    void setDesktopTabletScale(float desktopTabletScale);
+
+    bool getDesktopTabletBecomesToolbarSetting() { return _desktopTabletBecomesToolbarSetting.get(); }
+    void setDesktopTabletBecomesToolbarSetting(bool value);
+    bool getHmdTabletBecomesToolbarSetting() { return _hmdTabletBecomesToolbarSetting.get(); }
+    void setHmdTabletBecomesToolbarSetting(bool value);
+    bool getPreferAvatarFingerOverStylus() { return _preferAvatarFingerOverStylusSetting.get(); }
+    void setPreferAvatarFingerOverStylus(bool value);
 
     float getSettingConstrainToolbarPosition() { return _constrainToolbarPosition.get(); }
     void setSettingConstrainToolbarPosition(bool setting);
@@ -244,7 +260,6 @@ public:
     glm::mat4 getEyeProjection(int eye) const;
 
     QRect getDesirableApplicationGeometry() const;
-    Bookmarks* getBookmarks() const { return _bookmarks; }
 
     virtual bool canAcceptURL(const QString& url) const override;
     virtual bool acceptURL(const QString& url, bool defaultUpload = false) override;
@@ -253,21 +268,19 @@ public:
     int getMaxOctreePacketsPerSecond() const;
 
     render::ScenePointer getMain3DScene() override { return _main3DScene; }
-    render::ScenePointer getMain3DScene() const { return _main3DScene; }
+    const render::ScenePointer& getMain3DScene() const { return _main3DScene; }
     render::EnginePointer getRenderEngine() override { return _renderEngine; }
     gpu::ContextPointer getGPUContext() const { return _gpuContext; }
 
     virtual void pushPostUpdateLambda(void* key, std::function<void()> func) override;
 
-    const QRect& getMirrorViewRect() const { return _mirrorViewRect; }
-
     void updateMyAvatarLookAtPosition();
 
     float getAvatarSimrate() const { return _avatarSimCounter.rate(); }
     float getAverageSimsPerSecond() const { return _simCounter.rate(); }
-    
+
     void takeSnapshot(bool notify, bool includeAnimated = false, float aspectRatio = 0.0f);
-    void shareSnapshot(const QString& filename);
+    void shareSnapshot(const QString& filename, const QUrl& href = QUrl(""));
 
     model::SkyboxPointer getDefaultSkybox() const { return _defaultSkybox; }
     gpu::TexturePointer getDefaultSkyboxTexture() const { return _defaultSkyboxTexture;  }
@@ -284,6 +297,10 @@ public:
     Q_INVOKABLE void sendHoverEnterEntity(QUuid id, PointerEvent event);
     Q_INVOKABLE void sendHoverOverEntity(QUuid id, PointerEvent event);
     Q_INVOKABLE void sendHoverLeaveEntity(QUuid id, PointerEvent event);
+
+    OverlayID getTabletScreenID() const;
+    OverlayID getTabletHomeButtonID() const;
+    QUuid getTabletFrameID() const; // may be an entity or an overlay
 
 signals:
     void svoImportRequested(const QString& url);
@@ -302,13 +319,32 @@ public slots:
     bool exportEntities(const QString& filename, float x, float y, float z, float scale);
     bool importEntities(const QString& url);
     void updateThreadPoolCount() const;
+    void updateSystemTabletMode();
 
     static void setLowVelocityFilter(bool lowVelocityFilter);
     Q_INVOKABLE void loadDialog();
     Q_INVOKABLE void loadScriptURLDialog() const;
     void toggleLogDialog();
+    void toggleEntityScriptServerLogDialog();
     void toggleRunningScriptsWidget() const;
     Q_INVOKABLE void showAssetServerWidget(QString filePath = "");
+    Q_INVOKABLE void loadAddAvatarBookmarkDialog() const;
+
+    void showDialog(const QString& desktopURL, const QString& tabletURL, const QString& name) const;
+
+    // FIXME: Move addAssetToWorld* methods to own class?
+    void addAssetToWorldFromURL(QString url);
+    void addAssetToWorldFromURLRequestFinished();
+    void addAssetToWorld(QString filePath);
+    void addAssetToWorldUnzipFailure(QString filePath);
+    void addAssetToWorldWithNewMapping(QString filePath, QString mapping, int copy);
+    void addAssetToWorldUpload(QString filePath, QString mapping);
+    void addAssetToWorldSetMapping(QString filePath, QString mapping, QString hash);
+    void addAssetToWorldAddEntity(QString filePath, QString mapping);
+
+    void handleUnzip(QString sourceFile, QString destinationFile, bool autoAdd);
+
+    FileScriptingInterface* getFileDownloadInterface() { return _fileDownload; }
 
     void handleLocalServerConnection() const;
     void readArgumentsFromLocalSocket() const;
@@ -331,7 +367,6 @@ public slots:
     void calibrateEyeTracker5Points();
 #endif
 
-    void aboutApp();
     static void showHelp();
 
     void cycleCamera();
@@ -352,9 +387,22 @@ public slots:
 
     static void runTests();
 
+    void setKeyboardFocusHighlight(const glm::vec3& position, const glm::quat& rotation, const glm::vec3& dimensions);
+
     QUuid getKeyboardFocusEntity() const;  // thread-safe
     void setKeyboardFocusEntity(QUuid id);
     void setKeyboardFocusEntity(EntityItemID entityItemID);
+
+    OverlayID getKeyboardFocusOverlay();
+    void setKeyboardFocusOverlay(OverlayID overlayID);
+
+    void addAssetToWorldMessageClose();
+
+    Q_INVOKABLE void toggleMuteAudio();
+    void loadLODToolsDialog();
+    void loadEntityStatisticsDialog();
+    void loadDomainConnectionDialog();
+    void showScriptLogs();
 
 private slots:
     void showDesktop();
@@ -367,6 +415,7 @@ private slots:
     void faceTrackerMuteToggled();
 
     void activeChanged(Qt::ApplicationState state);
+    void windowMinimizedChanged(bool minimized);
 
     void notifyPacketVersionMismatch();
 
@@ -392,6 +441,12 @@ private slots:
     void updateDisplayMode();
     void domainConnectionRefused(const QString& reasonMessage, int reason, const QString& extraInfo);
 
+    void addAssetToWorldCheckModelSize();
+
+    void onAssetToWorldMessageBoxClosed();
+    void addAssetToWorldInfoTimeout();
+    void addAssetToWorldErrorTimeout();
+
 private:
     static void initDisplay();
     void init();
@@ -408,13 +463,13 @@ private:
     void updateDialogs(float deltaTime) const;
 
     void queryOctree(NodeType_t serverType, PacketType packetType, NodeToJurisdictionMap& jurisdictions, bool forceResend = false);
-    static void loadViewFrustum(Camera& camera, ViewFrustum& viewFrustum);
 
     glm::vec3 getSunDirection() const;
 
     void renderRearViewMirror(RenderArgs* renderArgs, const QRect& region, bool isZoomed);
 
     int sendNackPackets();
+    void sendAvatarViewFrustum();
 
     std::shared_ptr<MyAvatar> getMyAvatar() const;
 
@@ -441,7 +496,7 @@ private:
 
     void mouseMoveEvent(QMouseEvent* event);
     void mousePressEvent(QMouseEvent* event);
-    void mouseDoublePressEvent(QMouseEvent* event) const;
+    void mouseDoublePressEvent(QMouseEvent* event);
     void mouseReleaseEvent(QMouseEvent* event);
 
     void touchBeginEvent(QTouchEvent* event);
@@ -454,7 +509,7 @@ private:
     static void dragEnterEvent(QDragEnterEvent* event);
 
     void maybeToggleMenuVisible(QMouseEvent* event) const;
-    void toggleMenuUnderReticle() const;
+    void toggleTabletUI() const;
 
     MainWindow* _window;
     QElapsedTimer& _sessionRunTimer;
@@ -503,12 +558,15 @@ private:
     SimpleMovingAverage _avatarSimsPerSecond {10};
     int _avatarSimsPerSecondReport {0};
     quint64 _lastAvatarSimsPerSecondUpdate {0};
-    Camera _myCamera;                            // My view onto the world
-    Camera _mirrorCamera;                        // Camera for mirror view
-    QRect _mirrorViewRect;
+    FancyCamera _myCamera;                            // My view onto the world
 
     Setting::Handle<QString> _previousScriptLocation;
     Setting::Handle<float> _fieldOfView;
+    Setting::Handle<float> _hmdTabletScale;
+    Setting::Handle<float> _desktopTabletScale;
+    Setting::Handle<bool> _desktopTabletBecomesToolbarSetting;
+    Setting::Handle<bool> _hmdTabletBecomesToolbarSetting;
+    Setting::Handle<bool> _preferAvatarFingerOverStylusSetting;
     Setting::Handle<bool> _constrainToolbarPosition;
 
     float _scaleMirror;
@@ -529,6 +587,7 @@ private:
     NodeToOctreeSceneStats _octreeServerSceneStats;
     ControllerScriptingInterface* _controllerScriptingInterface{ nullptr };
     QPointer<LogDialog> _logDialog;
+    QPointer<EntityScriptServerLogDialog> _entityScriptServerLogDialog;
 
     FileLogger* _logger;
 
@@ -538,8 +597,6 @@ private:
     quint64 _lastSendDownstreamAudioStats;
 
     bool _aboutToQuit;
-
-    Bookmarks* _bookmarks;
 
     bool _notifiedPacketVersionMismatchThisDomain;
 
@@ -567,7 +624,8 @@ private:
 
     DialogsManagerScriptingInterface* _dialogsManagerScriptingInterface = new DialogsManagerScriptingInterface();
 
-    ThreadSafeValueCache<EntityItemID> _keyboardFocusedItem;
+    ThreadSafeValueCache<EntityItemID> _keyboardFocusedEntity;
+    ThreadSafeValueCache<OverlayID> _keyboardFocusedOverlay;
     quint64 _lastAcceptedKeyPress = 0;
     bool _isForeground = true; // starts out assumed to be in foreground
     bool _inPaint = false;
@@ -609,6 +667,22 @@ private:
     model::SkyboxPointer _defaultSkybox { new ProceduralSkybox() } ;
     gpu::TexturePointer _defaultSkyboxTexture;
     gpu::TexturePointer _defaultSkyboxAmbientTexture;
+
+    QTimer _addAssetToWorldResizeTimer;
+    QHash<QUuid, int> _addAssetToWorldResizeList;
+
+    void addAssetToWorldInfo(QString modelName, QString infoText);
+    void addAssetToWorldInfoClear(QString modelName);
+    void addAssetToWorldInfoDone(QString modelName);
+    void addAssetToWorldError(QString modelName, QString errorText);
+
+    QQuickItem* _addAssetToWorldMessageBox{ nullptr };
+    QStringList _addAssetToWorldInfoKeys;  // Model name
+    QStringList _addAssetToWorldInfoMessages;  // Info message
+    QTimer _addAssetToWorldInfoTimer;
+    QTimer _addAssetToWorldErrorTimer;
+
+    FileScriptingInterface* _fileDownload;
 };
 
 

@@ -22,11 +22,11 @@ AnimManipulator::~AnimManipulator() {
 
 }
 
-const AnimPoseVec& AnimManipulator::evaluate(const AnimVariantMap& animVars, float dt, Triggers& triggersOut) {
-    return overlay(animVars, dt, triggersOut, _skeleton->getRelativeBindPoses());
+const AnimPoseVec& AnimManipulator::evaluate(const AnimVariantMap& animVars, const AnimContext& context, float dt, Triggers& triggersOut) {
+    return overlay(animVars, context, dt, triggersOut, _skeleton->getRelativeBindPoses());
 }
 
-const AnimPoseVec& AnimManipulator::overlay(const AnimVariantMap& animVars, float dt, Triggers& triggersOut, const AnimPoseVec& underPoses) {
+const AnimPoseVec& AnimManipulator::overlay(const AnimVariantMap& animVars, const AnimContext& context, float dt, Triggers& triggersOut, const AnimPoseVec& underPoses) {
     _alpha = animVars.lookup(_alphaVar, _alpha);
 
     _poses = underPoses;
@@ -103,9 +103,9 @@ AnimPose AnimManipulator::computeRelativePoseFromJointVar(const AnimVariantMap& 
     if (jointVar.type == JointVar::Type::AbsoluteRotation || jointVar.type == JointVar::Type::AbsolutePosition) {
 
         if (jointVar.type == JointVar::Type::AbsoluteRotation) {
-            defaultAbsPose.rot = animVars.lookupRigToGeometry(jointVar.var, defaultAbsPose.rot);
+            defaultAbsPose.rot() = animVars.lookupRigToGeometry(jointVar.var, defaultAbsPose.rot());
         } else if (jointVar.type == JointVar::Type::AbsolutePosition) {
-            defaultAbsPose.trans = animVars.lookupRigToGeometry(jointVar.var, defaultAbsPose.trans);
+            defaultAbsPose.trans() = animVars.lookupRigToGeometry(jointVar.var, defaultAbsPose.trans());
         }
 
         // because jointVar is absolute, we must use an absolute parent frame to convert into a relative pose.
@@ -123,9 +123,9 @@ AnimPose AnimManipulator::computeRelativePoseFromJointVar(const AnimVariantMap& 
         // override the default rel pose
         AnimPose relPose = defaultRelPose;
         if (jointVar.type == JointVar::Type::RelativeRotation) {
-            relPose.rot = animVars.lookupRigToGeometry(jointVar.var, defaultRelPose.rot);
+            relPose.rot() = animVars.lookupRigToGeometry(jointVar.var, defaultRelPose.rot());
         } else if (jointVar.type == JointVar::Type::RelativePosition) {
-            relPose.trans = animVars.lookupRigToGeometry(jointVar.var, defaultRelPose.trans);
+            relPose.trans() = animVars.lookupRigToGeometry(jointVar.var, defaultRelPose.trans());
         }
 
         return relPose;

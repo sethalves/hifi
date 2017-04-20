@@ -14,16 +14,27 @@
 
 #include "Item.h"
 #include "SpatialTree.h"
+#include "Selection.h"
 
 namespace render {
 
 class Engine;
 
-class PendingChanges {
+// Transaction is the mechanism to make any change to the scene.
+// Whenever a new item need to be reset,
+// or when an item changes its position or its size
+// or when an item's payload has to be be updated with new states (coming from outside the scene knowledge)
+// or when an item is destroyed
+// These changes must be expressed through the corresponding command from the Transaction
+// THe Transaction is then queued on the Scene so all the pending transactions can be consolidated and processed at the time
+// of updating the scene before it s rendered.
+// 
+class Transaction {
 public:
-    PendingChanges() {}
-    ~PendingChanges() {}
+    Transaction() {}
+    ~Transaction() {}
 
+    // Item transactions
     void resetItem(ItemID id, const PayloadPointer& payload);
     void removeItem(ItemID id);
 
@@ -34,7 +45,13 @@ public:
     void updateItem(ItemID id, const UpdateFunctorPointer& functor);
     void updateItem(ItemID id) { updateItem(id, nullptr); }
 
-    void merge(PendingChanges& changes);
+    // Selection transactions
+    void resetSelection(const Selection& selection);
+
+    void merge(const Transaction& transaction);
+
+    // Checkers if there is work to do when processing the transaction
+    bool touchTransactions() const { return !_resetSelections.empty(); }
 
     ItemIDs _resetItems; 
     Payloads _resetPayloads;
@@ -42,14 +59,16 @@ public:
     ItemIDs _updatedItems;
     UpdateFunctors _updateFunctors;
 
+    Selections _resetSelections;
+
 protected:
 };
-typedef std::queue<PendingChanges> PendingChangesQueue;
+typedef std::queue<Transaction> TransactionQueue;
 
 
 // Scene is a container for Items
-// Items are introduced, modified or erased in the scene through PendingChanges
-// Once per Frame, the PendingChanges are all flushed
+// Items are introduced, modified or erased in the scene through Transaction
+// Once per Frame, the Transaction are all flushed
 // During the flush the standard buckets are updated
 // Items are notified accordingly on any update message happening
 class Scene {
@@ -61,22 +80,29 @@ public:
     ItemID allocateID();
 
     // Check that the ID is valid and allocated for this scene, this a threadsafe call
-    bool isAllocatedID(const ItemID& id);
+    bool isAllocatedID(const ItemID& id) const;
 
     // THis is the total number of allocated items, this a threadsafe call
     size_t getNumItems() const { return _numAllocatedItems.load(); }
 
-    // Enqueue change batch to the scene
-    void enqueuePendingChanges(const PendingChanges& pendingChanges);
+    // Enqueue transaction to the scene
+    void enqueueTransaction(const Transaction& transaction);
 
-    // Process the penging changes equeued
-    void processPendingChangesQueue();
+    // Process the pending transactions queued
+    void processTransactionQueue();
+
+    // Access a particular selection (empty if doesn't exist)
+    // Thread safe
+    Selection getSelection(const Selection::Name& name) const;
 
     // This next call are  NOT threadsafe, you have to call them from the correct thread to avoid any potential issues
 
     // Access a particular item form its ID
     // WARNING, There is No check on the validity of the ID, so this could return a bad Item
     const Item& getItem(const ItemID& id) const { return _items[id]; }
+
+    // Same as getItem, checking if the id is valid
+    const Item getItemSafe(const ItemID& id) const { if (isAllocatedID(id)) { return _items[id]; } else { return Item(); } }
 
     // Access the spatialized items
     const ItemSpatialTree& getSpatialTree() const { return _masterSpatialTree; }
@@ -88,8 +114,8 @@ protected:
     // Thread safe elements that can be accessed from anywhere
     std::atomic<unsigned int> _IDAllocator{ 1 }; // first valid itemID will be One
     std::atomic<unsigned int> _numAllocatedItems{ 1 }; // num of allocated items, matching the _items.size()
-    std::mutex _changeQueueMutex;
-    PendingChangesQueue _changeQueue;
+    std::mutex _transactionQueueMutex;
+    TransactionQueue _transactionQueue;
 
     // The actual database
     // database of items is protected for editing by a mutex
@@ -101,6 +127,17 @@ protected:
     void resetItems(const ItemIDs& ids, Payloads& payloads);
     void removeItems(const ItemIDs& ids);
     void updateItems(const ItemIDs& ids, UpdateFunctors& functors);
+
+
+    // The Selection map
+    mutable std::mutex _selectionsMutex; // mutable so it can be used in the thread safe getSelection const method
+    SelectionMap _selections;
+
+    void resetSelections(const Selections& selections);
+  // More actions coming to selections soon:
+  //  void removeFromSelection(const Selection& selection);
+  //  void appendToSelection(const Selection& selection);
+  //  void mergeWithSelection(const Selection& selection);
 
     friend class Engine;
 };

@@ -160,7 +160,7 @@ int ModelEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data,
     return bytesRead;
 }
 
-// TODO: eventually only include properties changed since the params.lastViewFrustumSent time
+// TODO: eventually only include properties changed since the params.nodeData->getLastTimeBagEmpty() time
 EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
@@ -179,7 +179,7 @@ EntityPropertyFlags ModelEntityItem::getEntityProperties(EncodeBitstreamParams& 
 
 
 void ModelEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
-                                EntityTreeElementExtraEncodeData* entityTreeElementExtraEncodeData,
+                                EntityTreeElementExtraEncodeDataPointer entityTreeElementExtraEncodeData,
                                 EntityPropertyFlags& requestedProperties,
                                 EntityPropertyFlags& propertyFlags,
                                 EntityPropertyFlags& propertiesDidntFit,
@@ -429,7 +429,7 @@ void ModelEntityItem::setJointTranslations(const QVector<glm::vec3>& translation
         for (int index = 0; index < translations.size(); index++) {
             if (_localJointTranslationsSet[index]) {
                 _localJointTranslations[index] = translations[index];
-                _localJointTranslationsSet[index] = true;
+                _localJointTranslationsDirty[index] = true;
             }
         }
     });

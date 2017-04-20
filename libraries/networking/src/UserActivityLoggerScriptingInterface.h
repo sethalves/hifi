@@ -21,11 +21,15 @@ class UserActivityLoggerScriptingInterface : public QObject, public Dependency {
     Q_OBJECT
 public:
     Q_INVOKABLE void enabledEdit();
+    Q_INVOKABLE void openedTablet(bool visibleToOthers);
+    Q_INVOKABLE void closedTablet();
     Q_INVOKABLE void openedMarketplace();
     Q_INVOKABLE void toggledAway(bool isAway);
     Q_INVOKABLE void tutorialProgress(QString stepName, int stepNumber, float secondsToComplete,
-        float tutorialElapsedTime, QString tutorialRunID = "", int tutorialVersion = 0);
-
+        float tutorialElapsedTime, QString tutorialRunID = "", int tutorialVersion = 0, QString controllerType = "");
+    Q_INVOKABLE void palAction(QString action, QString target);
+    Q_INVOKABLE void palOpened(float secondsOpen);
+    Q_INVOKABLE void makeUserConnection(QString otherUser, bool success, QString details="");
 private:
     void logAction(QString action, QJsonObject details = {});
 };

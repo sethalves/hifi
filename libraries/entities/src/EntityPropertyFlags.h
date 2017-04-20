@@ -183,8 +183,11 @@ enum EntityPropertyList {
 
     PROP_LAST_EDITED_BY,
 
-    PROP_CAS_UNIQUE, // compare-and-swap / check-and-set ID
+    PROP_SERVER_SCRIPTS,
 
+    PROP_FILTER_URL,
+
+    PROP_CAS_UNIQUE, // compare-and-swap / check-and-set ID
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line

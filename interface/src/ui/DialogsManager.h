@@ -17,15 +17,15 @@
 #include <DependencyManager.h>
 
 #include "HMDToolsDialog.h"
+#include "TestingDialog.h"
 
 class AnimationsDialog;
 class AttachmentsDialog;
-class BandwidthDialog;
 class CachesSizeDialog;
-class DiskCacheEditor;
 class LodToolsDialog;
 class OctreeStatsDialog;
 class ScriptEditorWindow;
+class TestingDialog;
 class QMessageBox;
 class DomainConnectionDialog;
 
@@ -34,33 +34,29 @@ class DialogsManager : public QObject, public Dependency {
     SINGLETON_DEPENDENCY
 
 public:
-    QPointer<BandwidthDialog> getBandwidthDialog() const { return _bandwidthDialog; }
     QPointer<HMDToolsDialog> getHMDToolsDialog() const { return _hmdToolsDialog; }
     QPointer<LodToolsDialog> getLodToolsDialog() const { return _lodToolsDialog; }
     QPointer<OctreeStatsDialog> getOctreeStatsDialog() const { return _octreeStatsDialog; }
+    QPointer<TestingDialog> getTestingDialog() const { return _testingDialog; }
     void emitAddressBarShown(bool visible) { emit addressBarShown(visible); }
 
 public slots:
-    void toggleAddressBar();
     void showAddressBar();
+    void hideAddressBar();
     void showFeed();
     void setDomainConnectionFailureVisibility(bool visible);
-    void toggleDiskCacheEditor();
     void toggleLoginDialog();
     void showLoginDialog();
     void octreeStatsDetails();
-    void cachesSizeDialog();
-    void bandwidthDetails();
     void lodTools();
     void hmdTools(bool showTools);
-    void showScriptEditor();
     void showDomainConnectionDialog();
+    void showTestingResults();
     
     // Application Update
     void showUpdateDialog();
 
 signals:
-    void addressBarToggled();
     void addressBarShown(bool visible);
     void setUseFeed(bool useFeed);
 
@@ -75,15 +71,14 @@ private:
 
     QPointer<AnimationsDialog> _animationsDialog;
     QPointer<AttachmentsDialog> _attachmentsDialog;
-    QPointer<BandwidthDialog> _bandwidthDialog;
     QPointer<CachesSizeDialog> _cachesSizeDialog;
-    QPointer<DiskCacheEditor> _diskCacheEditor;
     QPointer<QMessageBox> _ircInfoBox;
     QPointer<HMDToolsDialog> _hmdToolsDialog;
     QPointer<LodToolsDialog> _lodToolsDialog;
     QPointer<OctreeStatsDialog> _octreeStatsDialog;
-    QPointer<ScriptEditorWindow> _scriptEditor;
+    QPointer<TestingDialog> _testingDialog;
     QPointer<DomainConnectionDialog> _domainConnectionDialog;
+    bool _closeAddressBar { false };
 };
 
 #endif // hifi_DialogsManager_h

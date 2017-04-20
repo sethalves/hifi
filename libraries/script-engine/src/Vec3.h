@@ -37,6 +37,15 @@
  * @property {float} z Z-coordinate of the vector.
  */
 
+/**jsdoc
+ * A 4-dimensional vector.
+ *
+ * @typedef Vec4
+ * @property {float} x X-coordinate of the vector.
+ * @property {float} y Y-coordinate of the vector.
+ * @property {float} z Z-coordinate of the vector.
+ * @property {float} w W-coordinate of the vector.
+ */
 
 /// Scriptable interface a Vec3ernion helper class object. Used exclusively in the JavaScript API
 class Vec3 : public QObject {
@@ -83,6 +92,7 @@ public slots:
     glm::vec3 toPolar(const glm::vec3& v);
     glm::vec3 fromPolar(const glm::vec3& polar);
     glm::vec3 fromPolar(float elevation, float azimuth);
+    float getAngle(const glm::vec3& v1, const glm::vec3& v2);
 
 private:
     const glm::vec3& UNIT_X() { return Vectors::UNIT_X; }

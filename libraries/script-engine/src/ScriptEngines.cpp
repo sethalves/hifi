@@ -27,13 +27,36 @@
 
 static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 
+static const bool HIFI_SCRIPT_DEBUGGABLES { true };
+
 ScriptsModel& getScriptsModel() {
     static ScriptsModel scriptsModel;
     return scriptsModel;
 }
 
-ScriptEngines::ScriptEngines()
-    : _scriptsLocationHandle("scriptsLocation", DESKTOP_LOCATION)
+void ScriptEngines::onPrintedMessage(const QString& message, const QString& scriptName) {
+    emit printedMessage(message, scriptName);
+}
+
+void ScriptEngines::onErrorMessage(const QString& message, const QString& scriptName) {
+    emit errorMessage(message, scriptName);
+}
+
+void ScriptEngines::onWarningMessage(const QString& message, const QString& scriptName) {
+    emit warningMessage(message, scriptName);
+}
+
+void ScriptEngines::onInfoMessage(const QString& message, const QString& scriptName) {
+    emit infoMessage(message, scriptName);
+}
+
+void ScriptEngines::onErrorLoadingScript(const QString& url) {
+    emit errorLoadingScript(url);
+}
+
+ScriptEngines::ScriptEngines(ScriptEngine::Context context)
+    : _context(context),
+      _scriptsLocationHandle("scriptsLocation", DESKTOP_LOCATION)
 {
     _scriptsModelFilter.setSourceModel(&_scriptsModel);
     _scriptsModelFilter.sort(0, Qt::AscendingOrder);
@@ -283,43 +306,6 @@ void ScriptEngines::loadScripts() {
 
     // loads all saved scripts
     Settings settings;
-
-
-    // START of backward compatibility code
-    // This following if statement is only meant to update the settings file still using the old setting key.
-    // If you read that comment and it has been more than a couple months since it was merged,
-    // then by all means, feel free to remove it.
-    if (!settings.childGroups().contains(SETTINGS_KEY)) {
-        qWarning() << "Detected old script settings config, loading from previous location";
-        const QString oldKey = "Settings";
-
-        // Load old scripts array from settings
-        int size = settings.beginReadArray(oldKey);
-        for (int i = 0; i < size; ++i) {
-            settings.setArrayIndex(i);
-            QString string = settings.value("script").toString();
-            if (!string.isEmpty()) {
-                loadScript(string);
-            }
-        }
-        settings.endArray();
-
-        // Cleanup old scripts array from settings
-        settings.beginWriteArray(oldKey);
-        for (int i = 0; i < size; ++i) {
-            settings.setArrayIndex(i);
-            settings.remove("");
-        }
-        settings.endArray();
-        settings.beginGroup(oldKey);
-        settings.remove("size");
-        settings.endGroup();
-
-        return;
-    }
-    // END of backward compatibility code
-
-
     int size = settings.beginReadArray(SETTINGS_KEY);
     for (int i = 0; i < size; ++i) {
         settings.setArrayIndex(i);
@@ -368,25 +354,43 @@ QStringList ScriptEngines::getRunningScripts() {
 }
 
 void ScriptEngines::stopAllScripts(bool restart) {
+    QVector<QString> toReload;
     QReadLocker lock(&_scriptEnginesHashLock);
     for (QHash<QUrl, ScriptEngine*>::const_iterator it = _scriptEnginesHash.constBegin();
         it != _scriptEnginesHash.constEnd(); it++) {
+        ScriptEngine *scriptEngine = it.value();
         // skip already stopped scripts
-        if (it.value()->isFinished() || it.value()->isStopping()) {
+        if (scriptEngine->isFinished() || scriptEngine->isStopping()) {
             continue;
         }
 
         // queue user scripts if restarting
-        if (restart && it.value()->isUserLoaded()) {
-            connect(it.value(), &ScriptEngine::finished, this, [this](QString scriptName, ScriptEngine* engine) {
-                reloadScript(scriptName);
-            });
+        if (restart && scriptEngine->isUserLoaded()) {
+            toReload << it.key().toString();
         }
 
         // stop all scripts
-        it.value()->stop(true);
         qCDebug(scriptengine) << "stopping script..." << it.key();
+        scriptEngine->stop();
     }
+    // wait for engines to stop (ie: providing time for .scriptEnding cleanup handlers to run) before
+    // triggering reload of any Client scripts / Entity scripts
+    QTimer::singleShot(500, this, [=]() {
+        for(const auto &scriptName : toReload) {
+            auto scriptEngine = getScriptEngine(scriptName);
+            if (scriptEngine && !scriptEngine->isFinished()) {
+                qCDebug(scriptengine) << "waiting on script:" << scriptName;
+                scriptEngine->waitTillDoneRunning();
+                qCDebug(scriptengine) << "done waiting on script:" << scriptName;
+            }
+            qCDebug(scriptengine) << "reloading script..." << scriptName;
+            reloadScript(scriptName);
+        }
+        if (restart) {
+            qCDebug(scriptengine) << "stopAllScripts -- emitting scriptsReloading";
+            emit scriptsReloading();
+        }
+    });
 }
 
 bool ScriptEngines::stopScript(const QString& rawScriptURL, bool restart) {
@@ -425,9 +429,10 @@ void ScriptEngines::setScriptsLocation(const QString& scriptsLocation) {
 }
 
 void ScriptEngines::reloadAllScripts() {
+    qCDebug(scriptengine) << "reloadAllScripts -- clearing caches";
     DependencyManager::get<ScriptCache>()->clearCache();
     DependencyManager::get<OffscreenUi>()->clearCache();
-    emit scriptsReloading();
+    qCDebug(scriptengine) << "reloadAllScripts -- stopping all scripts";
     stopAllScripts(true);
 }
 
@@ -460,7 +465,7 @@ ScriptEngine* ScriptEngines::loadScript(const QUrl& scriptFilename, bool isUserL
         return scriptEngine;
     }
 
-    scriptEngine = new ScriptEngine(NO_SCRIPT, "");
+    scriptEngine = new ScriptEngine(_context, NO_SCRIPT, "about:" + scriptFilename.fileName());
     scriptEngine->setUserLoaded(isUserLoaded);
     connect(scriptEngine, &ScriptEngine::doneRunning, this, [scriptEngine] {
         scriptEngine->deleteLater();
@@ -523,8 +528,9 @@ void ScriptEngines::launchScriptEngine(ScriptEngine* scriptEngine) {
     for (auto initializer : _scriptInitializers) {
         initializer(scriptEngine);
     }
-    
-    if (scriptEngine->isDebuggable() || (qApp->queryKeyboardModifiers() & Qt::ShiftModifier)) {
+
+    auto const wantDebug = scriptEngine->isDebuggable() || (qApp->queryKeyboardModifiers() & Qt::ShiftModifier);
+    if (HIFI_SCRIPT_DEBUGGABLES && wantDebug) {
         scriptEngine->runDebuggable();
     } else {
         scriptEngine->runInThread();

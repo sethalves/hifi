@@ -20,6 +20,10 @@
 // When partially squeezing over a HUD element, a laser or the reticle is shown where the active hand
 // controller beam intersects the HUD.
 
+var activeTrigger;
+function isLaserOn() {
+    return activeTrigger.partial();
+}
 Script.include("../libraries/controllers.js");
 
 // UTILITIES -------------
@@ -170,7 +174,7 @@ function calculateRayUICollisionPoint(position, direction) {
     // interect HUD plane, 1m in front of camera, using formula:
     //   scale = hudNormal dot (hudPoint - position) / hudNormal dot direction
     //   intersection = postion + scale*direction
-    var hudNormal = Quat.getFront(Camera.getOrientation());
+    var hudNormal = Quat.getForward(Camera.getOrientation());
     var hudPoint = Vec3.sum(Camera.getPosition(), hudNormal); // must also scale if PLANAR_PERPENDICULAR_HUD_DISTANCE!=1
     var denominator = Vec3.dot(hudNormal, direction);
     if (denominator === 0) {
@@ -275,11 +279,8 @@ function isShakingMouse() { // True if the person is waving the mouse around try
 var NON_LINEAR_DIVISOR = 2;
 var MINIMUM_SEEK_DISTANCE = 0.1;
 function updateSeeking(doNotStartSeeking) {
-    if (!doNotStartSeeking && (!Reticle.visible || isShakingMouse())) {
-        if (!isSeeking) {
-            print('Start seeking mouse.');
-            isSeeking = true;
-        }
+    if (!doNotStartSeeking && !isLaserOn() && (!Reticle.visible || isShakingMouse())) {
+        isSeeking = true;
     } // e.g., if we're about to turn it on with first movement.
     if (!isSeeking) {
         return;
@@ -287,7 +288,6 @@ function updateSeeking(doNotStartSeeking) {
     averageMouseVelocity = lastIntegration = 0;
     var lookAt2D = HMD.getHUDLookAtPosition2D();
     if (!lookAt2D) { // If this happens, something has gone terribly wrong.
-        print('Cannot seek without lookAt position');
         isSeeking = false;
         return; // E.g., if parallel to location in HUD
     }
@@ -303,7 +303,6 @@ function updateSeeking(doNotStartSeeking) {
     }
     var okX = !updateDimension('x'), okY = !updateDimension('y'); // Evaluate both. Don't short-circuit.
     if (okX && okY) {
-        print('Finished seeking mouse');
         isSeeking = false;
     } else {
         Reticle.setPosition(copy); // Not setReticlePosition
@@ -374,7 +373,7 @@ setupHandler(Controller.mouseDoublePressEvent, onMouseClick);
 
 var leftTrigger = new Trigger('left');
 var rightTrigger = new Trigger('right');
-var activeTrigger = rightTrigger;
+activeTrigger = rightTrigger;
 var activeHand = Controller.Standard.RightHand;
 var LEFT_HUD_LASER = 1;
 var RIGHT_HUD_LASER = 2;
@@ -437,18 +436,22 @@ clickMapping.from(function () { return wantsMenu; }).to(Controller.Actions.Conte
 clickMapping.from(Controller.Standard.RightSecondaryThumb).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2d(Controller.Standard.RightHand);
+        Messages.sendLocalMessage("toggleHand", Controller.Standard.RightHand);
     }
     wantsMenu = clicked;
 });
 clickMapping.from(Controller.Standard.LeftSecondaryThumb).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2d(Controller.Standard.LeftHand);
+        Messages.sendLocalMessage("toggleHand", Controller.Standard.LeftHand);
     }
     wantsMenu = clicked;
 });
 clickMapping.from(Controller.Standard.Start).peek().to(function (clicked) {
     if (clicked) {
         activeHudPoint2dGamePad();
+        var noHands = -1;
+        Messages.sendLocalMessage("toggleHand", noHands);
       }
 
       wantsMenu = clicked;
@@ -460,6 +463,8 @@ clickMapping.from(Controller.Hardware.Keyboard.RightMouseClicked).peek().to(func
     // We don't want the system code to always do this for us, because, e.g., we do not want to get a mouseMove
     // after the Left/RightSecondaryThumb gives us a context menu. Only from the mouse.
     Script.setTimeout(function () {
+        var noHands = -1;
+        Messages.sendLocalMessage("toggleHand", noHands);
         Reticle.setPosition(Reticle.position);
     }, 0);
 });
@@ -475,6 +480,10 @@ var LASER_SEARCH_COLOR_XYZW = {x: 10 / 255, y: 10 / 255, z: 255 / 255, w: LASER_
 var LASER_TRIGGER_COLOR_XYZW = {x: 250 / 255, y: 10 / 255, z: 10 / 255, w: LASER_ALPHA};
 var SYSTEM_LASER_DIRECTION = {x: 0, y: 0, z: -1};
 var systemLaserOn = false;
+
+var HIFI_POINTER_DISABLE_MESSAGE_CHANNEL = "Hifi-Pointer-Disable";
+var isPointerEnabled = true;
+
 function clearSystemLaser() {
     if (!systemLaserOn) {
         return;
@@ -483,15 +492,16 @@ function clearSystemLaser() {
     HMD.disableExtraLaser();
     systemLaserOn = false;
     weMovedReticle = true;
-    Reticle.position = { x: -1, y: -1 };
 }
 function setColoredLaser() { // answer trigger state if lasers supported, else falsey.
     var color = (activeTrigger.state === 'full') ? LASER_TRIGGER_COLOR_XYZW : LASER_SEARCH_COLOR_XYZW;
 
     if (!HMD.isHandControllerAvailable()) {
-        var position = MyAvatar.getHeadPosition();
-        var direction = Quat.getUp(Quat.multiply(MyAvatar.headOrientation, Quat.angleAxis(-90, { x: 1, y: 0, z: 0 })));
-        return HMD.setExtraLaser(position, true, color, direction);
+        // NOTE: keep this offset in sync with scripts/system/librarires/controllers.js:57
+        var VERTICAL_HEAD_LASER_OFFSET = 0.1;
+        var position = Vec3.sum(HMD.position, Vec3.multiplyQbyV(HMD.orientation, {x: 0, y: VERTICAL_HEAD_LASER_OFFSET, z: 0}));
+        var orientation = Quat.multiply(HMD.orientation, Quat.angleAxis(-90, { x: 1, y: 0, z: 0 }));
+        return HMD.setExtraLaser(position, true, color, Quat.getUp(orientation));
     }
 
     return HMD.setHandLasers(activeHudLaser, true, color, SYSTEM_LASER_DIRECTION) && activeTrigger.state;
@@ -509,10 +519,6 @@ function update() {
     updateSeeking(true);
     if (!handControllerLockOut.expired(now)) {
         return off(); // Let them use mouse in peace.
-    }
-
-    if (!Menu.isOptionChecked("First Person")) {
-        return off(); // What to do? menus can be behind hand!
     }
 
     if ((!Window.hasFocus() && !HMD.active) || !Reticle.allowMouseCapture) {
@@ -540,9 +546,8 @@ function update() {
         return off();
     }
 
-
     // If there's a HUD element at the (newly moved) reticle, just make it visible and bail.
-    if (isPointingAtOverlay(hudPoint2d)) {
+    if (isPointingAtOverlay(hudPoint2d) && isPointerEnabled) {
         if (HMD.active) {
             Reticle.depth = hudReticleDistance();
 
@@ -569,12 +574,6 @@ function update() {
     Reticle.visible = false;
 }
 
-var BASIC_TIMER_INTERVAL = 20; // 20ms = 50hz good enough
-var updateIntervalTimer = Script.setInterval(function(){
-    update();
-}, BASIC_TIMER_INTERVAL);
-
-
 // Check periodically for changes to setup.
 var SETTINGS_CHANGE_RECHECK_INTERVAL = 10 * 1000; // 10 seconds
 function checkSettings() {
@@ -583,10 +582,27 @@ function checkSettings() {
 }
 checkSettings();
 
+// Enable/disable pointer.
+function handleMessages(channel, message, sender) {
+    if (sender === MyAvatar.sessionUUID && channel === HIFI_POINTER_DISABLE_MESSAGE_CHANNEL) {
+        var data = JSON.parse(message);
+        if (data.pointerEnabled !== undefined) {
+            print("pointerEnabled: " + data.pointerEnabled);
+            isPointerEnabled = data.pointerEnabled;
+        }
+    }
+}
+
+Messages.subscribe(HIFI_POINTER_DISABLE_MESSAGE_CHANNEL);
+Messages.messageReceived.connect(handleMessages);
+
 var settingsChecker = Script.setInterval(checkSettings, SETTINGS_CHANGE_RECHECK_INTERVAL);
+Script.update.connect(update);
 Script.scriptEnding.connect(function () {
+    Messages.unsubscribe(HIFI_POINTER_DISABLE_MESSAGE_CHANNEL);
+    Messages.messageReceived.disconnect(handleMessages);
     Script.clearInterval(settingsChecker);
-    Script.clearInterval(updateIntervalTimer);
+    Script.update.disconnect(update);
     OffscreenFlags.navigationFocusDisabled = false;
 });
 

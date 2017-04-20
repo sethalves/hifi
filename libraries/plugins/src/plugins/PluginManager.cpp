@@ -123,8 +123,6 @@ const CodecPluginList& PluginManager::getCodecPlugins() {
     static CodecPluginList codecPlugins;
     static std::once_flag once;
     std::call_once(once, [&] {
-        //codecPlugins = ::getCodecPlugins();
-
         // Now grab the dynamic plugins
         for (auto loader : getLoadedPlugins()) {
             CodecProvider* codecProvider = qobject_cast<CodecProvider*>(loader->instance());
@@ -145,6 +143,22 @@ const CodecPluginList& PluginManager::getCodecPlugins() {
         }
     });
     return codecPlugins;
+}
+
+const SteamClientPluginPointer PluginManager::getSteamClientPlugin() {
+    static SteamClientPluginPointer steamClientPlugin;
+    static std::once_flag once;
+    std::call_once(once, [&] {
+        // Now grab the dynamic plugins
+        for (auto loader : getLoadedPlugins()) {
+            SteamClientProvider* steamClientProvider = qobject_cast<SteamClientProvider*>(loader->instance());
+            if (steamClientProvider) {
+                steamClientPlugin = steamClientProvider->getSteamClientPlugin();
+                break;
+            }
+        }
+    });
+    return steamClientPlugin;
 }
 
 #ifndef Q_OS_ANDROID

@@ -21,6 +21,10 @@
 #include <QThreadPool>
 
 #include "ModelNetworkingLogging.h"
+#include <Trace.h>
+#include <StatTracker.h>
+
+Q_LOGGING_CATEGORY(trace_resource_parse_geometry, "trace.resource.parse.geometry")
 
 class GeometryReader;
 
@@ -28,6 +32,7 @@ class GeometryExtra {
 public:
     const QVariantHash& mapping;
     const QUrl& textureBaseUrl;
+    bool combineParts;
 };
 
 QUrl resolveTextureBaseUrl(const QUrl& url, const QUrl& textureBaseUrl) {
@@ -38,6 +43,8 @@ class GeometryMappingResource : public GeometryResource {
     Q_OBJECT
 public:
     GeometryMappingResource(const QUrl& url) : GeometryResource(url) {};
+
+    QString getType() const override { return "GeometryMapping"; }
 
     virtual void downloadFinished(const QByteArray& data) override;
 
@@ -50,6 +57,9 @@ private:
 };
 
 void GeometryMappingResource::downloadFinished(const QByteArray& data) {
+    PROFILE_ASYNC_BEGIN(resource_parse_geometry, "GeometryMappingResource::downloadFinished", _url.toString(),
+                         { { "url", _url.toString() } });
+
     auto mapping = FSTReader::readMapping(data);
 
     QString filename = mapping.value("filename").toString();
@@ -80,7 +90,7 @@ void GeometryMappingResource::downloadFinished(const QByteArray& data) {
         }
 
         auto modelCache = DependencyManager::get<ModelCache>();
-        GeometryExtra extra{ mapping, _textureBaseUrl };
+        GeometryExtra extra{ mapping, _textureBaseUrl, false };
 
         // Get the raw GeometryResource
         _geometryResource = modelCache->getResource(url, QUrl(), &extra).staticCast<GeometryResource>();
@@ -113,15 +123,18 @@ void GeometryMappingResource::onGeometryMappingLoaded(bool success) {
         disconnect(_connection); // FIXME Should not have to do this
     }
 
+    PROFILE_ASYNC_END(resource_parse_geometry, "GeometryMappingResource::downloadFinished", _url.toString());
     finishedLoading(success);
 }
 
 class GeometryReader : public QRunnable {
 public:
     GeometryReader(QWeakPointer<Resource>& resource, const QUrl& url, const QVariantHash& mapping,
-        const QByteArray& data) :
-        _resource(resource), _url(url), _mapping(mapping), _data(data) {}
-    virtual ~GeometryReader() = default;
+                   const QByteArray& data, bool combineParts) :
+        _resource(resource), _url(url), _mapping(mapping), _data(data), _combineParts(combineParts) {
+
+        DependencyManager::get<StatTracker>()->incrementStat("PendingProcessing");
+    }
 
     virtual void run() override;
 
@@ -130,9 +143,13 @@ private:
     QUrl _url;
     QVariantHash _mapping;
     QByteArray _data;
+    bool _combineParts;
 };
 
 void GeometryReader::run() {
+    DependencyManager::get<StatTracker>()->decrementStat("PendingProcessing");
+    CounterStat counter("Processing");
+    PROFILE_RANGE_EX(resource_parse_geometry, "GeometryReader::run", 0xFF00FF00, 0, { { "url", _url.toString() } });
     auto originalPriority = QThread::currentThread()->priority();
     if (originalPriority == QThread::InheritPriority) {
         originalPriority = QThread::NormalPriority;
@@ -163,7 +180,7 @@ void GeometryReader::run() {
                     throw QString("empty geometry, possibly due to an unsupported FBX version");
                 }
             } else if (_url.path().toLower().endsWith(".obj")) {
-                fbxGeometry.reset(OBJReader().readOBJ(_data, _mapping, _url));
+                fbxGeometry.reset(OBJReader().readOBJ(_data, _mapping, _combineParts, _url));
             } else {
                 throw QString("unsupported format");
             }
@@ -194,8 +211,10 @@ void GeometryReader::run() {
 class GeometryDefinitionResource : public GeometryResource {
     Q_OBJECT
 public:
-    GeometryDefinitionResource(const QUrl& url, const QVariantHash& mapping, const QUrl& textureBaseUrl) :
-        GeometryResource(url, resolveTextureBaseUrl(url, textureBaseUrl)), _mapping(mapping) {}
+    GeometryDefinitionResource(const QUrl& url, const QVariantHash& mapping, const QUrl& textureBaseUrl, bool combineParts) :
+        GeometryResource(url, resolveTextureBaseUrl(url, textureBaseUrl)), _mapping(mapping), _combineParts(combineParts) {}
+
+    QString getType() const override { return "GeometryDefinition"; }
 
     virtual void downloadFinished(const QByteArray& data) override;
 
@@ -204,10 +223,11 @@ protected:
 
 private:
     QVariantHash _mapping;
+    bool _combineParts;
 };
 
 void GeometryDefinitionResource::downloadFinished(const QByteArray& data) {
-    QThreadPool::globalInstance()->start(new GeometryReader(_self, _url, _mapping, data));
+    QThreadPool::globalInstance()->start(new GeometryReader(_self, _url, _mapping, data, _combineParts));
 }
 
 void GeometryDefinitionResource::setGeometryDefinition(FBXGeometry::Pointer fbxGeometry) {
@@ -248,7 +268,7 @@ ModelCache::ModelCache() {
 }
 
 QSharedPointer<Resource> ModelCache::createResource(const QUrl& url, const QSharedPointer<Resource>& fallback,
-    const void* extra) {
+                                                    const void* extra) {
     Resource* resource = nullptr;
     if (url.path().toLower().endsWith(".fst")) {
         resource = new GeometryMappingResource(url);
@@ -256,14 +276,30 @@ QSharedPointer<Resource> ModelCache::createResource(const QUrl& url, const QShar
         const GeometryExtra* geometryExtra = static_cast<const GeometryExtra*>(extra);
         auto mapping = geometryExtra ? geometryExtra->mapping : QVariantHash();
         auto textureBaseUrl = geometryExtra ? geometryExtra->textureBaseUrl : QUrl();
-        resource = new GeometryDefinitionResource(url, mapping, textureBaseUrl);
+        bool combineParts = geometryExtra ? geometryExtra->combineParts : true;
+        resource = new GeometryDefinitionResource(url, mapping, textureBaseUrl, combineParts);
     }
 
     return QSharedPointer<Resource>(resource, &Resource::deleter);
 }
 
-GeometryResource::Pointer ModelCache::getGeometryResource(const QUrl& url, const QVariantHash& mapping, const QUrl& textureBaseUrl) {
-    GeometryExtra geometryExtra = { mapping, textureBaseUrl };
+GeometryResource::Pointer ModelCache::getGeometryResource(const QUrl& url,
+                                                          const QVariantHash& mapping, const QUrl& textureBaseUrl) {
+    bool combineParts = true;
+    GeometryExtra geometryExtra = { mapping, textureBaseUrl, combineParts };
+    GeometryResource::Pointer resource = getResource(url, QUrl(), &geometryExtra).staticCast<GeometryResource>();
+    if (resource) {
+        if (resource->isLoaded() && resource->shouldSetTextures()) {
+            resource->setTextures();
+        }
+    }
+    return resource;
+}
+
+GeometryResource::Pointer ModelCache::getCollisionGeometryResource(const QUrl& url,
+                                                                   const QVariantHash& mapping, const QUrl& textureBaseUrl) {
+    bool combineParts = false;
+    GeometryExtra geometryExtra = { mapping, textureBaseUrl, combineParts };
     GeometryResource::Pointer resource = getResource(url, QUrl(), &geometryExtra).staticCast<GeometryResource>();
     if (resource) {
         if (resource->isLoaded() && resource->shouldSetTextures()) {
@@ -455,7 +491,7 @@ QUrl NetworkMaterial::getTextureUrl(const QUrl& baseUrl, const FBXTexture& textu
 model::TextureMapPointer NetworkMaterial::fetchTextureMap(const QUrl& baseUrl, const FBXTexture& fbxTexture,
                                                         TextureType type, MapChannel channel) {
     const auto url = getTextureUrl(baseUrl, fbxTexture);
-    const auto texture = DependencyManager::get<TextureCache>()->getTexture(url, type, fbxTexture.content);
+    const auto texture = DependencyManager::get<TextureCache>()->getTexture(url, type, fbxTexture.content, fbxTexture.maxNumPixels);
     _textures[channel] = Texture { fbxTexture.name, texture };
 
     auto map = std::make_shared<model::TextureMap>();

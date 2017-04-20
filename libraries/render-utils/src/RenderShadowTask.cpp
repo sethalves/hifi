@@ -36,10 +36,15 @@ void RenderShadowMap::run(const render::SceneContextPointer& sceneContext, const
     assert(renderContext->args);
     assert(renderContext->args->hasViewFrustum());
 
-    const auto& lightStage = DependencyManager::get<DeferredLightingEffect>()->getLightStage();
-    const auto globalLight = lightStage.lights[0];
-    const auto& shadow = globalLight->shadow;
-    const auto& fbo = shadow.framebuffer;
+    auto lightStage = DependencyManager::get<DeferredLightingEffect>()->getLightStage();
+
+    LightStage::Index globalLightIndex { 0 };
+
+    const auto globalLight = lightStage->getLight(globalLightIndex);
+    const auto shadow = lightStage->getShadow(globalLightIndex);
+    if (!shadow) return;
+
+    const auto& fbo = shadow->framebuffer;
 
     RenderArgs* args = renderContext->args;
     gpu::doInBatch(args->_context, [&](gpu::Batch& batch) {
@@ -54,8 +59,8 @@ void RenderShadowMap::run(const render::SceneContextPointer& sceneContext, const
             gpu::Framebuffer::BUFFER_COLOR0 | gpu::Framebuffer::BUFFER_DEPTH,
             vec4(vec3(1.0, 1.0, 1.0), 0.0), 1.0, 0, true);
 
-        batch.setProjectionTransform(shadow.getProjection());
-        batch.setViewTransform(shadow.getView(), false);
+        batch.setProjectionTransform(shadow->getProjection());
+        batch.setViewTransform(shadow->getView(), false);
 
         auto shadowPipeline = _shapePlumber->pickPipeline(args, ShapeKey());
         auto shadowSkinnedPipeline = _shapePlumber->pickPipeline(args, ShapeKey::Builder().withSkinned());
@@ -85,7 +90,7 @@ void RenderShadowMap::run(const render::SceneContextPointer& sceneContext, const
     });
 }
 
-RenderShadowTask::RenderShadowTask(CullFunctor cullFunctor) {
+void RenderShadowTask::build(JobModel& task, const render::Varying& input, render::Varying& output, CullFunctor cullFunctor) {
     cullFunctor = cullFunctor ? cullFunctor : [](const RenderArgs*, const AABox&){ return true; };
 
     // Prepare the ShapePipeline
@@ -110,62 +115,52 @@ RenderShadowTask::RenderShadowTask(CullFunctor cullFunctor) {
             skinProgram, state);
     }
 
+    const auto cachedMode = task.addJob<RenderShadowSetup>("Setup");
+
     // CPU jobs:
     // Fetch and cull the items from the scene
     auto shadowFilter = ItemFilter::Builder::visibleWorldItems().withTypeShape().withOpaque().withoutLayered();
-    const auto shadowSelection = addJob<FetchSpatialTree>("FetchShadowSelection", shadowFilter);
-    const auto culledShadowSelection = addJob<CullSpatialSelection>("CullShadowSelection", shadowSelection, cullFunctor, RenderDetails::SHADOW, shadowFilter);
+    const auto shadowSelection = task.addJob<FetchSpatialTree>("FetchShadowSelection", shadowFilter);
+    const auto culledShadowSelection = task.addJob<CullSpatialSelection>("CullShadowSelection", shadowSelection, cullFunctor, RenderDetails::SHADOW, shadowFilter);
 
     // Sort
-    const auto sortedPipelines = addJob<PipelineSortShapes>("PipelineSortShadowSort", culledShadowSelection);
-    const auto sortedShapes = addJob<DepthSortShapes>("DepthSortShadowMap", sortedPipelines);
+    const auto sortedPipelines = task.addJob<PipelineSortShapes>("PipelineSortShadowSort", culledShadowSelection);
+    const auto sortedShapes = task.addJob<DepthSortShapes>("DepthSortShadowMap", sortedPipelines);
 
     // GPU jobs: Render to shadow map
-    addJob<RenderShadowMap>("RenderShadowMap", sortedShapes, shapePlumber);
+    task.addJob<RenderShadowMap>("RenderShadowMap", sortedShapes, shapePlumber);
+
+    task.addJob<RenderShadowTeardown>("Teardown", cachedMode);
 }
 
 void RenderShadowTask::configure(const Config& configuration) {
     DependencyManager::get<DeferredLightingEffect>()->setShadowMapEnabled(configuration.enabled);
     // This is a task, so must still propogate configure() to its Jobs
-    Task::configure(configuration);
+//    Task::configure(configuration);
 }
 
-void RenderShadowTask::run(const SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext) {
-    assert(sceneContext);
-    RenderArgs* args = renderContext->args;
-
-    // sanity checks
-    if (!sceneContext->_scene || !args) {
-        return;
-    }
-
-    const auto& lightStage = DependencyManager::get<DeferredLightingEffect>()->getLightStage();
-    const auto globalLight = lightStage.lights[0];
-
-    // If the global light is not set, bail
-    if (!globalLight) {
-        return;
-    }
+void RenderShadowSetup::run(const SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext, Output& output) {
+    auto lightStage = DependencyManager::get<DeferredLightingEffect>()->getLightStage();
+    const auto globalShadow = lightStage->getShadow(0);
 
     // Cache old render args
-    RenderArgs::RenderMode mode = args->_renderMode;
+    RenderArgs* args = renderContext->args;
+    output = args->_renderMode;
 
     auto nearClip = args->getViewFrustum().getNearClip();
     float nearDepth = -args->_boomOffset.z;
     const int SHADOW_FAR_DEPTH = 20;
-    globalLight->shadow.setKeylightFrustum(args->getViewFrustum(), nearDepth, nearClip + SHADOW_FAR_DEPTH);
+    globalShadow->setKeylightFrustum(args->getViewFrustum(), nearDepth, nearClip + SHADOW_FAR_DEPTH);
 
     // Set the keylight render args
-    args->pushViewFrustum(*(globalLight->shadow.getFrustum()));
+    args->pushViewFrustum(*(globalShadow->getFrustum()));
     args->_renderMode = RenderArgs::SHADOW_RENDER_MODE;
+}
 
-    // TODO: Allow runtime manipulation of culling ShouldRenderFunctor
-
-    for (auto job : _jobs) {
-        job.run(sceneContext, renderContext);
-    }
+void RenderShadowTeardown::run(const SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext, const Input& input) {
+    RenderArgs* args = renderContext->args;
 
     // Reset the render args
     args->popViewFrustum();
-    args->_renderMode = mode;
+    args->_renderMode = input;
 };

@@ -16,8 +16,6 @@
 
 #include <OctreeUtils.h>
 #include <PerfStat.h>
-#include <ViewFrustum.h>
-#include <gpu/Context.h>
 
 using namespace render;
 

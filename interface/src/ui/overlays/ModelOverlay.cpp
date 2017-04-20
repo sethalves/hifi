@@ -18,7 +18,7 @@
 QString const ModelOverlay::TYPE = "model";
 
 ModelOverlay::ModelOverlay()
-    : _model(std::make_shared<Model>(std::make_shared<Rig>())),
+    : _model(std::make_shared<Model>(std::make_shared<Rig>(), nullptr, this)),
       _modelTextures(QVariantMap())
 {
     _model->init();
@@ -27,7 +27,7 @@ ModelOverlay::ModelOverlay()
 
 ModelOverlay::ModelOverlay(const ModelOverlay* modelOverlay) :
     Volume3DOverlay(modelOverlay),
-    _model(std::make_shared<Model>(std::make_shared<Rig>())),
+    _model(std::make_shared<Model>(std::make_shared<Rig>(), nullptr, this)),
     _modelTextures(QVariantMap()),
     _url(modelOverlay->_url),
     _updateModel(false)
@@ -58,15 +58,15 @@ void ModelOverlay::update(float deltatime) {
     _isLoaded = _model->isActive();
 }
 
-bool ModelOverlay::addToScene(Overlay::Pointer overlay, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges) {
-    Volume3DOverlay::addToScene(overlay, scene, pendingChanges);
-    _model->addToScene(scene, pendingChanges);
+bool ModelOverlay::addToScene(Overlay::Pointer overlay, const render::ScenePointer& scene, render::Transaction& transaction) {
+    Volume3DOverlay::addToScene(overlay, scene, transaction);
+    _model->addToScene(scene, transaction);
     return true;
 }
 
-void ModelOverlay::removeFromScene(Overlay::Pointer overlay, std::shared_ptr<render::Scene> scene, render::PendingChanges& pendingChanges) {
-    Volume3DOverlay::removeFromScene(overlay, scene, pendingChanges);
-    _model->removeFromScene(scene, pendingChanges);
+void ModelOverlay::removeFromScene(Overlay::Pointer overlay, const render::ScenePointer& scene, render::Transaction& transaction) {
+    Volume3DOverlay::removeFromScene(overlay, scene, transaction);
+    _model->removeFromScene(scene, transaction);
 }
 
 void ModelOverlay::render(RenderArgs* args) {
@@ -74,15 +74,16 @@ void ModelOverlay::render(RenderArgs* args) {
     // check to see if when we added our model to the scene they were ready, if they were not ready, then
     // fix them up in the scene
     render::ScenePointer scene = qApp->getMain3DScene();
-    render::PendingChanges pendingChanges;
+    render::Transaction transaction;
     if (_model->needsFixupInScene()) {
-        _model->removeFromScene(scene, pendingChanges);
-        _model->addToScene(scene, pendingChanges);
+        _model->removeFromScene(scene, transaction);
+        _model->addToScene(scene, transaction);
     }
 
     _model->setVisibleInScene(_visible, scene);
+    _model->setLayeredInFront(getDrawInFront(), scene);
 
-    scene->enqueuePendingChanges(pendingChanges);
+    scene->enqueueTransaction(transaction);
 }
 
 void ModelOverlay::setProperties(const QVariantMap& properties) {

@@ -8,17 +8,16 @@
 
 #include "GLTexture.h"
 
+#include <QtCore/QThread>
 #include <NumericalConstants.h>
 
-#include "GLTextureTransfer.h"
 #include "GLBackend.h"
 
 using namespace gpu;
 using namespace gpu::gl;
 
-std::shared_ptr<GLTextureTransferHelper> GLTexture::_textureTransferHelper;
 
-const GLenum GLTexture::CUBE_FACE_LAYOUT[6] = {
+const GLenum GLTexture::CUBE_FACE_LAYOUT[GLTexture::TEXTURE_CUBE_NUM_FACES] = {
     GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
     GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
     GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
@@ -67,6 +66,17 @@ GLenum GLTexture::getGLTextureType(const Texture& texture) {
 }
 
 
+uint8_t GLTexture::getFaceCount(GLenum target) {
+    switch (target) {
+        case GL_TEXTURE_2D:
+            return TEXTURE_2D_NUM_FACES;
+        case GL_TEXTURE_CUBE_MAP:
+            return TEXTURE_CUBE_NUM_FACES;
+        default:
+            Q_UNREACHABLE();
+            break;
+    }
+}
 const std::vector<GLenum>& GLTexture::getFaceTargets(GLenum target) {
     static std::vector<GLenum> cubeFaceTargets {
         GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
@@ -89,216 +99,465 @@ const std::vector<GLenum>& GLTexture::getFaceTargets(GLenum target) {
     return faceTargets;
 }
 
-// Default texture memory = GPU total memory - 2GB
-#define GPU_MEMORY_RESERVE_BYTES MB_TO_BYTES(2048)
-// Minimum texture memory = 1GB
-#define TEXTURE_MEMORY_MIN_BYTES MB_TO_BYTES(1024)
-
-
-float GLTexture::getMemoryPressure() {
-    // Check for an explicit memory limit
-    auto availableTextureMemory = Texture::getAllowedGPUMemoryUsage();
-    
-
-    // If no memory limit has been set, use a percentage of the total dedicated memory
-    if (!availableTextureMemory) {
-#if 0
-        auto totalMemory = getDedicatedMemory();
-        if ((GPU_MEMORY_RESERVE_BYTES + TEXTURE_MEMORY_MIN_BYTES) > totalMemory) {
-            availableTextureMemory = TEXTURE_MEMORY_MIN_BYTES;
-        } else {
-            availableTextureMemory = totalMemory - GPU_MEMORY_RESERVE_BYTES;
-        }
-#else 
-        // Hardcode texture limit for sparse textures at 1 GB for now
-        availableTextureMemory = TEXTURE_MEMORY_MIN_BYTES;
-#endif
-    }
-
-    // Return the consumed texture memory divided by the available texture memory.
-    auto consumedGpuMemory = Context::getTextureGPUMemoryUsage() - Context::getTextureGPUFramebufferMemoryUsage();
-    float memoryPressure = (float)consumedGpuMemory / (float)availableTextureMemory;
-    static Context::Size lastConsumedGpuMemory = 0;
-    if (memoryPressure > 1.0f && lastConsumedGpuMemory != consumedGpuMemory) {
-        lastConsumedGpuMemory = consumedGpuMemory;
-        qCDebug(gpugllogging) << "Exceeded max allowed texture memory: " << consumedGpuMemory << " / " << availableTextureMemory;
-    }
-    return memoryPressure;
-}
-
-
-// Create the texture and allocate storage
-GLTexture::GLTexture(const std::weak_ptr<GLBackend>& backend, const Texture& texture, GLuint id, bool transferrable) :
-    GLObject(backend, texture, id),
-    _external(false),
-    _source(texture.source()),
-    _storageStamp(texture.getStamp()),
-    _target(getGLTextureType(texture)),
-    _internalFormat(gl::GLTexelFormat::evalGLTexelFormatInternal(texture.getTexelFormat())),
-    _maxMip(texture.maxMip()),
-    _minMip(texture.minMip()),
-    _virtualSize(texture.evalTotalSize()),
-    _transferrable(transferrable)
-{
-    auto strongBackend = _backend.lock();
-    strongBackend->recycle();
-    Backend::incrementTextureGPUCount();
-    Backend::updateTextureGPUVirtualMemoryUsage(0, _virtualSize);
-    Backend::setGPUObject(texture, this);
-}
-
 GLTexture::GLTexture(const std::weak_ptr<GLBackend>& backend, const Texture& texture, GLuint id) :
     GLObject(backend, texture, id),
-    _external(true),
     _source(texture.source()),
-    _storageStamp(0),
-    _target(getGLTextureType(texture)),
-    _internalFormat(GL_RGBA8),
-    // FIXME force mips to 0?
-    _maxMip(texture.maxMip()),
-    _minMip(texture.minMip()),
-    _virtualSize(0),
-    _transferrable(false) 
+    _target(getGLTextureType(texture))
 {
     Backend::setGPUObject(texture, this);
-
-    // FIXME Is this necessary?
-    //withPreservedTexture([this] {
-    //    syncSampler();
-    //    if (_gpuObject.isAutogenerateMips()) {
-    //        generateMips();
-    //    }
-    //});
 }
 
 GLTexture::~GLTexture() {
     auto backend = _backend.lock();
-    if (backend) {
-        if (_external) {
-            auto recycler = _gpuObject.getExternalRecycler();
-            if (recycler) {
-                backend->releaseExternalTexture(_id, recycler);
-            } else {
-                qWarning() << "No recycler available for texture " << _id << " possible leak";
-            }
-        } else if (_id) {
-            // WARNING!  Sparse textures do not use this code path.  See GL45BackendTexture for 
-            // the GL45Texture destructor for doing any required work tracking GPU stats
-            backend->releaseTexture(_id, _size);
-        }
-
-        if (!_external && !_transferrable) {
-            Backend::updateTextureGPUFramebufferMemoryUsage(_size, 0);
-        }
+    if (backend && _id) {
+        backend->releaseTexture(_id, 0);
     }
-    Backend::updateTextureGPUVirtualMemoryUsage(_virtualSize, 0);
 }
 
-void GLTexture::createTexture() {
-    withPreservedTexture([&] {
-        allocateStorage();
-        (void)CHECK_GL_ERROR();
-        syncSampler();
-        (void)CHECK_GL_ERROR();
+void GLTexture::copyMipFaceFromTexture(uint16_t sourceMip, uint16_t targetMip, uint8_t face) const {
+    if (!_gpuObject.isStoredMipFaceAvailable(sourceMip)) {
+        return;
+    }
+    auto size = _gpuObject.evalMipDimensions(sourceMip);
+    auto mipData = _gpuObject.accessStoredMipFace(sourceMip, face);
+    if (mipData) {
+        GLTexelFormat texelFormat = GLTexelFormat::evalGLTexelFormat(_gpuObject.getTexelFormat(), _gpuObject.getStoredMipFormat());
+        copyMipFaceLinesFromTexture(targetMip, face, size, 0, texelFormat.format, texelFormat.type, mipData->readData());
+    } else {
+         qCDebug(gpugllogging) << "Missing mipData level=" << sourceMip << " face=" << (int)face << " for texture " << _gpuObject.source().c_str();
+    }
+}
+
+
+GLExternalTexture::GLExternalTexture(const std::weak_ptr<GLBackend>& backend, const Texture& texture, GLuint id) 
+    : Parent(backend, texture, id) { }
+
+GLExternalTexture::~GLExternalTexture() {
+    auto backend = _backend.lock();
+    if (backend) {
+        auto recycler = _gpuObject.getExternalRecycler();
+        if (recycler) {
+            backend->releaseExternalTexture(_id, recycler);
+        } else {
+            qWarning() << "No recycler available for texture " << _id << " possible leak";
+        }
+        const_cast<GLuint&>(_id) = 0;
+    }
+}
+
+
+// Variable sized textures
+using MemoryPressureState = GLVariableAllocationSupport::MemoryPressureState;
+using WorkQueue = GLVariableAllocationSupport::WorkQueue;
+
+std::list<TextureWeakPointer> GLVariableAllocationSupport::_memoryManagedTextures;
+MemoryPressureState GLVariableAllocationSupport::_memoryPressureState { MemoryPressureState::Idle };
+std::atomic<bool> GLVariableAllocationSupport::_memoryPressureStateStale { false };
+const uvec3 GLVariableAllocationSupport::INITIAL_MIP_TRANSFER_DIMENSIONS { 64, 64, 1 };
+WorkQueue GLVariableAllocationSupport::_transferQueue;
+WorkQueue GLVariableAllocationSupport::_promoteQueue;
+WorkQueue GLVariableAllocationSupport::_demoteQueue;
+TexturePointer GLVariableAllocationSupport::_currentTransferTexture;
+size_t GLVariableAllocationSupport::_frameTexturesCreated { 0 };
+
+#define OVERSUBSCRIBED_PRESSURE_VALUE 0.95f
+#define UNDERSUBSCRIBED_PRESSURE_VALUE 0.85f
+#define DEFAULT_ALLOWED_TEXTURE_MEMORY_MB ((size_t)1024)
+
+static const size_t DEFAULT_ALLOWED_TEXTURE_MEMORY = MB_TO_BYTES(DEFAULT_ALLOWED_TEXTURE_MEMORY_MB);
+
+using TransferJob = GLVariableAllocationSupport::TransferJob;
+
+const uvec3 GLVariableAllocationSupport::MAX_TRANSFER_DIMENSIONS { 1024, 1024, 1 };
+const size_t GLVariableAllocationSupport::MAX_TRANSFER_SIZE = GLVariableAllocationSupport::MAX_TRANSFER_DIMENSIONS.x * GLVariableAllocationSupport::MAX_TRANSFER_DIMENSIONS.y * 4;
+
+#if THREADED_TEXTURE_BUFFERING
+std::shared_ptr<std::thread> TransferJob::_bufferThread { nullptr };
+std::atomic<bool> TransferJob::_shutdownBufferingThread { false };
+Mutex TransferJob::_mutex;
+TransferJob::VoidLambdaQueue TransferJob::_bufferLambdaQueue;
+
+void TransferJob::startTransferLoop() {
+    if (_bufferThread) {
+        return;
+    }
+    _shutdownBufferingThread = false;
+    _bufferThread = std::make_shared<std::thread>([] {
+        TransferJob::bufferLoop();
     });
 }
 
-void GLTexture::withPreservedTexture(std::function<void()> f) const {
-    GLint boundTex = -1;
-    switch (_target) {
-        case GL_TEXTURE_2D:
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &boundTex);
-            break;
-
-        case GL_TEXTURE_CUBE_MAP:
-            glGetIntegerv(GL_TEXTURE_BINDING_CUBE_MAP, &boundTex);
-            break;
-
-        default:
-            qFatal("Unsupported texture type");
+void TransferJob::stopTransferLoop() {
+    if (!_bufferThread) {
+        return;
     }
-    (void)CHECK_GL_ERROR();
-
-    glBindTexture(_target, _texture);
-    f();
-    glBindTexture(_target, boundTex);
-    (void)CHECK_GL_ERROR();
+    _shutdownBufferingThread = true;
+    _bufferThread->join();
+    _bufferThread.reset();
+    _shutdownBufferingThread = false;
 }
+#endif
 
-void GLTexture::setSize(GLuint size) const {
-    if (!_external && !_transferrable) {
-        Backend::updateTextureGPUFramebufferMemoryUsage(_size, size);
-    }
-    Backend::updateTextureGPUMemoryUsage(_size, size);
-    const_cast<GLuint&>(_size) = size;
-}
+TransferJob::TransferJob(const GLTexture& parent, uint16_t sourceMip, uint16_t targetMip, uint8_t face, uint32_t lines, uint32_t lineOffset)
+    : _parent(parent) {
 
-bool GLTexture::isInvalid() const {
-    return _storageStamp < _gpuObject.getStamp();
-}
+    auto transferDimensions = _parent._gpuObject.evalMipDimensions(sourceMip);
+    GLenum format;
+    GLenum type;
+    GLTexelFormat texelFormat = GLTexelFormat::evalGLTexelFormat(_parent._gpuObject.getTexelFormat(), _parent._gpuObject.getStoredMipFormat());
+    format = texelFormat.format;
+    type = texelFormat.type;
+    auto mipSize = _parent._gpuObject.getStoredMipFaceSize(sourceMip, face);
 
-bool GLTexture::isOutdated() const {
-    return GLSyncState::Idle == _syncState && _contentStamp < _gpuObject.getDataStamp();
-}
 
-bool GLTexture::isReady() const {
-    // If we have an invalid texture, we're never ready
-    if (isInvalid()) {
-        return false;
-    }
+    if (0 == lines) {
+        _transferSize = mipSize;
+        _bufferingLambda = [=] {
+            auto mipData = _parent._gpuObject.accessStoredMipFace(sourceMip, face);
+            _buffer.resize(_transferSize);
+            memcpy(&_buffer[0], mipData->readData(), _transferSize);
+            _bufferingCompleted = true;
+        };
 
-    auto syncState = _syncState.load();
-    if (isOutdated() || Idle != syncState) {
-        return false;
+    } else {
+        transferDimensions.y = lines;
+        auto dimensions = _parent._gpuObject.evalMipDimensions(sourceMip);
+        auto bytesPerLine = (uint32_t)mipSize / dimensions.y;
+        auto sourceOffset = bytesPerLine * lineOffset;
+        _transferSize = bytesPerLine * lines;
+        _bufferingLambda = [=] {
+            auto mipData = _parent._gpuObject.accessStoredMipFace(sourceMip, face);
+            _buffer.resize(_transferSize);
+            memcpy(&_buffer[0], mipData->readData() + sourceOffset, _transferSize);
+            _bufferingCompleted = true;
+        };
     }
 
+    Backend::updateTextureTransferPendingSize(0, _transferSize);
+
+    _transferLambda = [=] {
+        _parent.copyMipFaceLinesFromTexture(targetMip, face, transferDimensions, lineOffset, format, type, _buffer.data());
+        std::vector<uint8_t> emptyVector;
+        _buffer.swap(emptyVector);
+    };
+}
+
+TransferJob::TransferJob(const GLTexture& parent, std::function<void()> transferLambda)
+    : _parent(parent), _bufferingCompleted(true), _transferLambda(transferLambda) {
+}
+
+TransferJob::~TransferJob() {
+    Backend::updateTextureTransferPendingSize(_transferSize, 0);
+}
+
+
+bool TransferJob::tryTransfer() {
+    // Disable threaded texture transfer for now
+#if THREADED_TEXTURE_BUFFERING
+    // Are we ready to transfer
+    if (_bufferingCompleted) {
+        _transferLambda();
+        return true;
+    }
+
+    startBuffering();
+    return false;
+#else
+    if (!_bufferingCompleted) {
+        _bufferingLambda();
+        _bufferingCompleted = true;
+    }
+    _transferLambda();
     return true;
+#endif
 }
 
+#if THREADED_TEXTURE_BUFFERING
 
-// Do any post-transfer operations that might be required on the main context / rendering thread
-void GLTexture::postTransfer() {
-    setSyncState(GLSyncState::Idle);
-    ++_transferCount;
+void TransferJob::startBuffering() {
+    if (_bufferingStarted) {
+        return;
+    }
+    _bufferingStarted = true;
+    {
+        Lock lock(_mutex);
+        _bufferLambdaQueue.push(_bufferingLambda);
+    }
+}
 
-    // At this point the mip pixels have been loaded, we can notify the gpu texture to abandon it's memory
-    switch (_gpuObject.getType()) {
-        case Texture::TEX_2D:
-            for (uint16_t i = 0; i < Sampler::MAX_MIP_LEVEL; ++i) {
-                if (_gpuObject.isStoredMipFaceAvailable(i)) {
-                    _gpuObject.notifyMipFaceGPULoaded(i);
-                }
+void TransferJob::bufferLoop() {
+    while (!_shutdownBufferingThread) {
+        VoidLambdaQueue workingQueue;
+        {
+            Lock lock(_mutex);
+            _bufferLambdaQueue.swap(workingQueue);
+        }
+
+        if (workingQueue.empty()) {
+            QThread::msleep(5);
+            continue;
+        }
+
+        while (!workingQueue.empty()) {
+            workingQueue.front()();
+            workingQueue.pop();
+        }
+    }
+}
+#endif
+
+GLVariableAllocationSupport::GLVariableAllocationSupport() {
+    _memoryPressureStateStale = true;
+}
+
+GLVariableAllocationSupport::~GLVariableAllocationSupport() {
+    _memoryPressureStateStale = true;
+}
+
+void GLVariableAllocationSupport::addMemoryManagedTexture(const TexturePointer& texturePointer) {
+    _memoryManagedTextures.push_back(texturePointer);
+    addToWorkQueue(texturePointer);
+}
+
+void GLVariableAllocationSupport::addToWorkQueue(const TexturePointer& texturePointer) {
+    GLTexture* gltexture = Backend::getGPUObject<GLTexture>(*texturePointer);
+    GLVariableAllocationSupport* vargltexture = dynamic_cast<GLVariableAllocationSupport*>(gltexture);
+    switch (_memoryPressureState) {
+        case MemoryPressureState::Oversubscribed:
+            if (vargltexture->canDemote()) {
+                // Demote largest first
+                _demoteQueue.push({ texturePointer, (float)gltexture->size() });
             }
             break;
 
-        case Texture::TEX_CUBE:
-            // transfer pixels from each faces
-            for (uint8_t f = 0; f < CUBE_NUM_FACES; f++) {
-                for (uint16_t i = 0; i < Sampler::MAX_MIP_LEVEL; ++i) {
-                    if (_gpuObject.isStoredMipFaceAvailable(i, f)) {
-                        _gpuObject.notifyMipFaceGPULoaded(i, f);
-                    }
-                    }
-                }
+        case MemoryPressureState::Undersubscribed:
+            if (vargltexture->canPromote()) {
+                // Promote smallest first
+                _promoteQueue.push({ texturePointer, 1.0f / (float)gltexture->size() });
+            }
+            break;
+
+        case MemoryPressureState::Transfer:
+            if (vargltexture->hasPendingTransfers()) {
+                // Transfer priority given to smaller mips first
+                _transferQueue.push({ texturePointer, 1.0f / (float)gltexture->_gpuObject.evalMipSize(vargltexture->_populatedMip) });
+            }
+            break;
+
+        case MemoryPressureState::Idle:
             break;
 
         default:
-            qCWarning(gpugllogging) << __FUNCTION__ << " case for Texture Type " << _gpuObject.getType() << " not supported";
+            Q_UNREACHABLE();
+    }
+}
+
+WorkQueue& GLVariableAllocationSupport::getActiveWorkQueue() {
+    static WorkQueue empty;
+    switch (_memoryPressureState) {
+        case MemoryPressureState::Oversubscribed:
+            return _demoteQueue;
+
+        case MemoryPressureState::Undersubscribed:
+            return _promoteQueue;
+
+        case MemoryPressureState::Transfer:
+            return _transferQueue;
+
+        default:
             break;
     }
+    Q_UNREACHABLE();
+    return empty;
 }
 
-void GLTexture::initTextureTransferHelper() {
-    _textureTransferHelper = std::make_shared<GLTextureTransferHelper>();
+// FIXME hack for stats display
+QString getTextureMemoryPressureModeString() {
+    switch (GLVariableAllocationSupport::_memoryPressureState) {
+        case MemoryPressureState::Oversubscribed:
+            return "Oversubscribed";
+
+        case MemoryPressureState::Undersubscribed:
+            return "Undersubscribed";
+
+        case MemoryPressureState::Transfer:
+            return "Transfer";
+
+        case MemoryPressureState::Idle:
+            return "Idle";
+    }
+    Q_UNREACHABLE();
+    return "Unknown";
 }
 
-void GLTexture::startTransfer() {
-    createTexture();
-}
+void GLVariableAllocationSupport::updateMemoryPressure() {
+    static size_t lastAllowedMemoryAllocation = gpu::Texture::getAllowedGPUMemoryUsage();
 
-void GLTexture::finishTransfer() {
-    if (_gpuObject.isAutogenerateMips()) {
-        generateMips();
+    size_t allowedMemoryAllocation = gpu::Texture::getAllowedGPUMemoryUsage();
+    if (0 == allowedMemoryAllocation) {
+        allowedMemoryAllocation = DEFAULT_ALLOWED_TEXTURE_MEMORY;
+    }
+
+    // If the user explicitly changed the allowed memory usage, we need to mark ourselves stale 
+    // so that we react
+    if (allowedMemoryAllocation != lastAllowedMemoryAllocation) {
+        _memoryPressureStateStale = true;
+        lastAllowedMemoryAllocation = allowedMemoryAllocation;
+    }
+
+    if (!_memoryPressureStateStale.exchange(false)) {
+        return;
+    }
+
+    PROFILE_RANGE(render_gpu_gl, __FUNCTION__);
+
+    // Clear any defunct textures (weak pointers that no longer have a valid texture)
+    _memoryManagedTextures.remove_if([&](const TextureWeakPointer& weakPointer) {
+        return weakPointer.expired();
+    });
+
+    // Convert weak pointers to strong.  This new list may still contain nulls if a texture was 
+    // deleted on another thread between the previous line and this one
+    std::vector<TexturePointer> strongTextures; {
+        strongTextures.reserve(_memoryManagedTextures.size());
+        std::transform(
+            _memoryManagedTextures.begin(), _memoryManagedTextures.end(),
+            std::back_inserter(strongTextures),
+            [](const TextureWeakPointer& p) { return p.lock(); });
+    }
+
+    size_t totalVariableMemoryAllocation = 0;
+    size_t idealMemoryAllocation = 0;
+    bool canDemote = false;
+    bool canPromote = false;
+    bool hasTransfers = false;
+    for (const auto& texture : strongTextures) {
+        // Race conditions can still leave nulls in the list, so we need to check
+        if (!texture) {
+            continue;
+        }
+        GLTexture* gltexture = Backend::getGPUObject<GLTexture>(*texture);
+        GLVariableAllocationSupport* vartexture = dynamic_cast<GLVariableAllocationSupport*>(gltexture);
+        // Track how much the texture thinks it should be using
+        idealMemoryAllocation += texture->evalTotalSize();
+        // Track how much we're actually using
+        totalVariableMemoryAllocation += gltexture->size();
+        canDemote |= vartexture->canDemote();
+        canPromote |= vartexture->canPromote();
+        hasTransfers |= vartexture->hasPendingTransfers();
+    }
+
+    size_t unallocated = idealMemoryAllocation - totalVariableMemoryAllocation;
+    float pressure = (float)totalVariableMemoryAllocation / (float)allowedMemoryAllocation;
+
+    auto newState = MemoryPressureState::Idle;
+    if (pressure > OVERSUBSCRIBED_PRESSURE_VALUE && canDemote) {
+        newState = MemoryPressureState::Oversubscribed;
+    } else if (pressure < UNDERSUBSCRIBED_PRESSURE_VALUE && unallocated != 0 && canPromote) {
+        newState = MemoryPressureState::Undersubscribed;
+    } else if (hasTransfers) {
+        newState = MemoryPressureState::Transfer;
+    }
+
+    if (newState != _memoryPressureState) {
+#if THREADED_TEXTURE_BUFFERING
+        if (MemoryPressureState::Transfer == _memoryPressureState) {
+            TransferJob::stopTransferLoop();
+        }
+        _memoryPressureState = newState;
+        if (MemoryPressureState::Transfer == _memoryPressureState) {
+            TransferJob::startTransferLoop();
+        }
+#else
+        _memoryPressureState = newState;
+#endif
+        // Clear the existing queue
+        _transferQueue = WorkQueue();
+        _promoteQueue = WorkQueue();
+        _demoteQueue = WorkQueue();
+
+        // Populate the existing textures into the queue
+        for (const auto& texture : strongTextures) {
+            // Race conditions can still leave nulls in the list, so we need to check
+            if (!texture) {
+                continue;
+            }
+            addToWorkQueue(texture);
+        }
     }
 }
 
+void GLVariableAllocationSupport::processWorkQueues() {
+    if (MemoryPressureState::Idle == _memoryPressureState) {
+        return;
+    }
+
+    auto& workQueue = getActiveWorkQueue();
+    PROFILE_RANGE(render_gpu_gl, __FUNCTION__);
+    while (!workQueue.empty()) {
+        auto workTarget = workQueue.top();
+        workQueue.pop();
+        auto texture = workTarget.first.lock();
+        if (!texture) {
+            continue;
+        }
+
+        // Grab the first item off the demote queue
+        GLTexture* gltexture = Backend::getGPUObject<GLTexture>(*texture);
+        GLVariableAllocationSupport* vartexture = dynamic_cast<GLVariableAllocationSupport*>(gltexture);
+        if (MemoryPressureState::Oversubscribed == _memoryPressureState) {
+            if (!vartexture->canDemote()) {
+                continue;
+            }
+            vartexture->demote();
+            _memoryPressureStateStale = true;
+        } else if (MemoryPressureState::Undersubscribed == _memoryPressureState) {
+            if (!vartexture->canPromote()) {
+                continue;
+            }
+            vartexture->promote();
+            _memoryPressureStateStale = true;
+        } else if (MemoryPressureState::Transfer == _memoryPressureState) {
+            if (!vartexture->hasPendingTransfers()) {
+                continue;
+            }
+            vartexture->executeNextTransfer(texture);
+        } else {
+            Q_UNREACHABLE();
+        }
+
+        // Reinject into the queue if more work to be done
+        addToWorkQueue(texture);
+        break;
+    }
+
+    if (workQueue.empty()) {
+        _memoryPressureStateStale = true;
+    }
+}
+
+void GLVariableAllocationSupport::manageMemory() {
+    PROFILE_RANGE(render_gpu_gl, __FUNCTION__);
+    updateMemoryPressure();
+    processWorkQueues();
+}
+
+
+void GLVariableAllocationSupport::executeNextTransfer(const TexturePointer& currentTexture) {
+    if (_populatedMip <= _allocatedMip) {
+        return;
+    }
+
+    if (_pendingTransfers.empty()) {
+        populateTransferQueue();
+    }
+
+    if (!_pendingTransfers.empty()) {
+        // Keeping hold of a strong pointer during the transfer ensures that the transfer thread cannot try to access a destroyed texture
+        _currentTransferTexture = currentTexture;
+        if (_pendingTransfers.front()->tryTransfer()) {
+            _pendingTransfers.pop();
+            _currentTransferTexture.reset();
+        }
+    }
+}

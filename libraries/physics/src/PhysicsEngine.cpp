@@ -143,12 +143,35 @@ void PhysicsEngine::addObjectToDynamicsWorld(ObjectMotionState* motionState) {
 }
 
 void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
-    // first bump and prune contacts for all objects in the list
+    // bump and prune contacts for all objects in the list
     for (auto object : objects) {
         bumpAndPruneContacts(object);
     }
 
-    // then remove them
+    if (_activeStaticBodies.size() > 0) {
+        // _activeStaticBodies was not cleared last frame.
+        // The only way to get here is if a static object were moved but we did not actually step the simulation last
+        // frame (because the framerate is faster than our physics simulation rate).  When this happens we must scan
+        // _activeStaticBodies for objects that were recently deleted so we don't try to access a dangling pointer.
+        for (auto object : objects) {
+            btRigidBody* body = object->getRigidBody();
+
+            std::vector<btRigidBody*>::reverse_iterator itr = _activeStaticBodies.rbegin();
+            while (itr != _activeStaticBodies.rend()) {
+                if (body == *itr) {
+                    if (*itr != *(_activeStaticBodies.rbegin())) {
+                        // swap with rbegin
+                        *itr = *(_activeStaticBodies.rbegin());
+                    }
+                    _activeStaticBodies.pop_back();
+                    break;
+                }
+                ++itr;
+            }
+        }
+    }
+
+    // remove bodies
     for (auto object : objects) {
         btRigidBody* body = object->getRigidBody();
         if (body) {
@@ -270,7 +293,7 @@ void PhysicsEngine::stepSimulation() {
     }
 
     auto onSubStep = [this]() {
-        updateContactMap();
+        this->updateContactMap();
     };
 
     int numSubsteps = _dynamicsWorld->stepSimulationWithSubstepCallback(timeStep, PHYSICS_ENGINE_MAX_NUM_SUBSTEPS,
@@ -393,7 +416,6 @@ void PhysicsEngine::updateContactMap() {
 }
 
 const CollisionEvents& PhysicsEngine::getCollisionEvents() {
-    const uint32_t CONTINUE_EVENT_FILTER_FREQUENCY = 10;
     _collisionEvents.clear();
 
     // scan known contacts and trigger events
@@ -402,28 +424,42 @@ const CollisionEvents& PhysicsEngine::getCollisionEvents() {
     while (contactItr != _contactMap.end()) {
         ContactInfo& contact = contactItr->second;
         ContactEventType type = contact.computeType(_numContactFrames);
-        if(type != CONTACT_EVENT_TYPE_CONTINUE || _numSubsteps % CONTINUE_EVENT_FILTER_FREQUENCY == 0) {
+        const btScalar SIGNIFICANT_DEPTH = -0.002f; // penetrations have negative distance
+        if (type != CONTACT_EVENT_TYPE_CONTINUE ||
+                (contact.distance < SIGNIFICANT_DEPTH &&
+                 contact.readyForContinue(_numContactFrames))) {
             ObjectMotionState* motionStateA = static_cast<ObjectMotionState*>(contactItr->first._a);
             ObjectMotionState* motionStateB = static_cast<ObjectMotionState*>(contactItr->first._b);
-            glm::vec3 velocityChange = (motionStateA ? motionStateA->getObjectLinearVelocityChange() : glm::vec3(0.0f)) +
-                (motionStateB ? motionStateB->getObjectLinearVelocityChange() : glm::vec3(0.0f));
 
-            if (motionStateA) {
+            // NOTE: the MyAvatar RigidBody is the only object in the simulation that does NOT have a MotionState
+            // which means should we ever want to report ALL collision events against the avatar we can
+            // modify the logic below.
+            //
+            // We only create events when at least one of the objects is (or should be) owned in the local simulation.
+            if (motionStateA && (motionStateA->shouldBeLocallyOwned())) {
                 QUuid idA = motionStateA->getObjectID();
                 QUuid idB;
                 if (motionStateB) {
                     idB = motionStateB->getObjectID();
                 }
                 glm::vec3 position = bulletToGLM(contact.getPositionWorldOnB()) + _originOffset;
+                glm::vec3 velocityChange = motionStateA->getObjectLinearVelocityChange() +
+                    (motionStateB ? motionStateB->getObjectLinearVelocityChange() : glm::vec3(0.0f));
                 glm::vec3 penetration = bulletToGLM(contact.distance * contact.normalWorldOnB);
                 _collisionEvents.push_back(Collision(type, idA, idB, position, penetration, velocityChange));
-            } else if (motionStateB) {
+            } else if (motionStateB && (motionStateB->shouldBeLocallyOwned())) {
                 QUuid idB = motionStateB->getObjectID();
+                QUuid idA;
+                if (motionStateA) {
+                    idA = motionStateA->getObjectID();
+                }
                 glm::vec3 position = bulletToGLM(contact.getPositionWorldOnA()) + _originOffset;
+                glm::vec3 velocityChange = motionStateB->getObjectLinearVelocityChange() +
+                    (motionStateA ? motionStateA->getObjectLinearVelocityChange() : glm::vec3(0.0f));
                 // NOTE: we're flipping the order of A and B (so that the first objectID is never NULL)
-                // hence we must negate the penetration.
+                // hence we negate the penetration (because penetration always points from B to A).
                 glm::vec3 penetration = - bulletToGLM(contact.distance * contact.normalWorldOnB);
-                _collisionEvents.push_back(Collision(type, idB, QUuid(), position, penetration, velocityChange));
+                _collisionEvents.push_back(Collision(type, idB, idA, position, penetration, velocityChange));
             }
         }
 
@@ -436,7 +472,7 @@ const CollisionEvents& PhysicsEngine::getCollisionEvents() {
     return _collisionEvents;
 }
 
-const VectorOfMotionStates& PhysicsEngine::getOutgoingChanges() {
+const VectorOfMotionStates& PhysicsEngine::getChangedMotionStates() {
     BT_PROFILE("copyOutgoingChanges");
     // Bullet will not deactivate static objects (it doesn't expect them to be active)
     // so we must deactivate them ourselves

@@ -11,6 +11,8 @@
 #include "GLBackend.h"
 #include "GLState.h"
 
+#include <gpu/GPULogging.h>
+
 using namespace gpu;
 using namespace gpu::gl;
 
@@ -26,11 +28,8 @@ void GLBackend::resetPipelineState(State::Signature nextSignature) {
             }
         }
     }
-}
 
-void GLBackend::syncPipelineStateCache() {
-    State::Data state;
-
+    // force a few states regardless
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
     // Point size is always on
@@ -41,6 +40,25 @@ void GLBackend::syncPipelineStateCache() {
 
     // Default line width accross the board
     glLineWidth(1.0f);
+    glEnable(GL_LINE_SMOOTH);
+
+}
+
+void GLBackend::syncPipelineStateCache() {
+    State::Data state;
+
+    // force a few states regardless
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+    // Point size is always on
+    // FIXME CORE
+    //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+    glEnable(GL_PROGRAM_POINT_SIZE_EXT);
+    glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
+
+    // Default line width accross the board
+    glLineWidth(1.0f);
+    glEnable(GL_LINE_SMOOTH);
 
     getCurrentGLState(state);
     State::Signature signature = State::evalSignature(state);
@@ -172,7 +190,7 @@ void GLBackend::do_setStateDepthTest(State::DepthTest test) {
             glDepthFunc(COMPARISON_TO_GL[test.getFunction()]);
         }
         if (CHECK_GL_ERROR()) {
-            qDebug() << "DepthTest" << (test.isEnabled() ? "Enabled" : "Disabled")
+            qCDebug(gpulogging) << "DepthTest" << (test.isEnabled() ? "Enabled" : "Disabled")
                 << "Mask=" << (test.getWriteMask() ? "Write" : "no Write")
                 << "Func=" << test.getFunction()
                 << "Raw=" << test.getRaw();
@@ -213,13 +231,13 @@ void GLBackend::do_setStateStencil(State::StencilActivation activation, State::S
             GL_DECR };
 
         if (testFront != testBack) {
-            glStencilOpSeparate(GL_FRONT, STENCIL_OPS[testFront.getFailOp()], STENCIL_OPS[testFront.getPassOp()], STENCIL_OPS[testFront.getDepthFailOp()]);
+            glStencilOpSeparate(GL_FRONT, STENCIL_OPS[testFront.getFailOp()], STENCIL_OPS[testFront.getDepthFailOp()], STENCIL_OPS[testFront.getPassOp()]);
             glStencilFuncSeparate(GL_FRONT, COMPARISON_TO_GL[testFront.getFunction()], testFront.getReference(), testFront.getReadMask());
 
-            glStencilOpSeparate(GL_BACK, STENCIL_OPS[testBack.getFailOp()], STENCIL_OPS[testBack.getPassOp()], STENCIL_OPS[testBack.getDepthFailOp()]);
+            glStencilOpSeparate(GL_BACK, STENCIL_OPS[testBack.getFailOp()], STENCIL_OPS[testBack.getDepthFailOp()], STENCIL_OPS[testBack.getPassOp()]);
             glStencilFuncSeparate(GL_BACK, COMPARISON_TO_GL[testBack.getFunction()], testBack.getReference(), testBack.getReadMask());
         } else {
-            glStencilOp(STENCIL_OPS[testFront.getFailOp()], STENCIL_OPS[testFront.getPassOp()], STENCIL_OPS[testFront.getDepthFailOp()]);
+            glStencilOp(STENCIL_OPS[testFront.getFailOp()], STENCIL_OPS[testFront.getDepthFailOp()], STENCIL_OPS[testFront.getPassOp()]);
             glStencilFunc(COMPARISON_TO_GL[testFront.getFunction()], testFront.getReference(), testFront.getReadMask());
         }
 

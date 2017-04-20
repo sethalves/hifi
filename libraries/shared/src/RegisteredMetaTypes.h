@@ -113,6 +113,10 @@ QScriptValue qVectorFloatToScriptValue(QScriptEngine* engine, const QVector<floa
 void qVectorFloatFromScriptValue(const QScriptValue& array, QVector<float>& vector);
 QVector<float> qVectorFloatFromScriptValue(const QScriptValue& array);
 
+// vector<uint32_t>
+QScriptValue qVectorIntToScriptValue(QScriptEngine* engine, const QVector<uint32_t>& vector);
+void qVectorIntFromScriptValue(const QScriptValue& array, QVector<uint32_t>& vector);
+
 QVector<QUuid> qVectorQUuidFromScriptValue(const QScriptValue& array);
 
 QScriptValue aaCubeToScriptValue(QScriptEngine* engine, const AACube& aaCube);
@@ -142,11 +146,13 @@ public:
               const glm::vec3& cPenetration, const glm::vec3& velocityChange)
     :   type(cType), idA(cIdA), idB(cIdB), contactPoint(cPoint), penetration(cPenetration), velocityChange(velocityChange) { }
 
+    void invert(); // swap A and B
+
     ContactEventType type;
     QUuid idA;
     QUuid idB;
-    glm::vec3 contactPoint;
-    glm::vec3 penetration;
+    glm::vec3 contactPoint; // on B in world-frame
+    glm::vec3 penetration; // from B towards A in world-frame
     glm::vec3 velocityChange;
 };
 Q_DECLARE_METATYPE(Collision)

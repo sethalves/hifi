@@ -32,28 +32,21 @@ KeyLightPropertyGroup EntityItemProperties::_staticKeyLight;
 EntityPropertyList PROP_LAST_ITEM = (EntityPropertyList)(PROP_AFTER_LAST_ITEM - 1);
 
 EntityItemProperties::EntityItemProperties(EntityPropertyFlags desiredProperties) :
+    _id(UNKNOWN_ENTITY_ID),
+    _idSet(false),
+    _lastEdited(0),
+    _type(EntityTypes::Unknown),
 
-_id(UNKNOWN_ENTITY_ID),
-_idSet(false),
-_lastEdited(0),
-_type(EntityTypes::Unknown),
+    _localRenderAlpha(1.0f),
 
-_localRenderAlpha(1.0f),
+    _localRenderAlphaChanged(false),
 
-_localRenderAlphaChanged(false),
-
-_defaultSettings(true),
-_naturalDimensions(1.0f, 1.0f, 1.0f),
-_naturalPosition(0.0f, 0.0f, 0.0f),
-_desiredProperties(desiredProperties)
+    _defaultSettings(true),
+    _naturalDimensions(1.0f, 1.0f, 1.0f),
+    _naturalPosition(0.0f, 0.0f, 0.0f),
+    _desiredProperties(desiredProperties)
 {
-}
 
-void EntityItemProperties::setSittingPoints(const QVector<SittingPoint>& sittingPoints) {
-    _sittingPoints.clear();
-    foreach (SittingPoint sitPoint, sittingPoints) {
-        _sittingPoints.append(sitPoint);
-    }
 }
 
 void EntityItemProperties::calculateNaturalPosition(const glm::vec3& min, const glm::vec3& max) {
@@ -147,15 +140,15 @@ QString getCollisionGroupAsString(uint8_t group) {
 }
 
 uint8_t getCollisionGroupAsBitMask(const QStringRef& name) {
-    if (0 == name.compare("dynamic")) {
+    if (0 == name.compare(QString("dynamic"))) {
         return USER_COLLISION_GROUP_DYNAMIC;
-    } else if (0 == name.compare("static")) {
+    } else if (0 == name.compare(QString("static"))) {
         return USER_COLLISION_GROUP_STATIC;
-    } else if (0 == name.compare("kinematic")) {
+    } else if (0 == name.compare(QString("kinematic"))) {
         return USER_COLLISION_GROUP_KINEMATIC;
-    } else if (0 == name.compare("myAvatar")) {
+    } else if (0 == name.compare(QString("myAvatar"))) {
         return USER_COLLISION_GROUP_MY_AVATAR;
-    } else if (0 == name.compare("otherAvatar")) {
+    } else if (0 == name.compare(QString("otherAvatar"))) {
         return USER_COLLISION_GROUP_OTHER_AVATAR;
     }
     return 0;
@@ -241,6 +234,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_LIFETIME, lifetime);
     CHECK_PROPERTY_CHANGE(PROP_SCRIPT, script);
     CHECK_PROPERTY_CHANGE(PROP_SCRIPT_TIMESTAMP, scriptTimestamp);
+    CHECK_PROPERTY_CHANGE(PROP_SERVER_SCRIPTS, serverScripts);
     CHECK_PROPERTY_CHANGE(PROP_COLLISION_SOUND_URL, collisionSoundURL);
     CHECK_PROPERTY_CHANGE(PROP_COLOR, color);
     CHECK_PROPERTY_CHANGE(PROP_COLOR_SPREAD, colorSpread);
@@ -331,6 +325,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
 
     CHECK_PROPERTY_CHANGE(PROP_FLYING_ALLOWED, flyingAllowed);
     CHECK_PROPERTY_CHANGE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
+    CHECK_PROPERTY_CHANGE(PROP_FILTER_URL, filterURL);
 
     CHECK_PROPERTY_CHANGE(PROP_CLIENT_ONLY, clientOnly);
     CHECK_PROPERTY_CHANGE(PROP_OWNING_AVATAR_ID, owningAvatarID);
@@ -348,11 +343,15 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     return changedProperties;
 }
 
-QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool skipDefaults) const {
+QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool skipDefaults, bool allowUnknownCreateTime, bool strictSemantics) const {
+    // If strictSemantics is true and skipDefaults is false, then all and only those properties are copied for which the property flag
+    // is included in _desiredProperties, or is one of the specially enumerated ALWAYS properties below.
+    // (There may be exceptions, but if so, they are bugs.)
+    // In all other cases, you are welcome to inspect the code and try to figure out what was intended. I wish you luck. -HRS 1/18/17
     QScriptValue properties = engine->newObject();
     EntityItemProperties defaultEntityProperties;
 
-    if (_created == UNKNOWN_CREATED_TIME) {
+    if (_created == UNKNOWN_CREATED_TIME && !allowUnknownCreateTime) {
         // No entity properties can have been set so return without setting any default, zero property values.
         return properties;
     }
@@ -366,11 +365,12 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     created.setTimeSpec(Qt::OffsetFromUTC);
     COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER_ALWAYS(created, created.toString(Qt::ISODate));
 
-    if (!skipDefaults || _lifetime != defaultEntityProperties._lifetime) {
+    if ((!skipDefaults || _lifetime != defaultEntityProperties._lifetime) && !strictSemantics) {
         COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER_NO_SKIP(age, getAge()); // gettable, but not settable
         COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER_NO_SKIP(ageAsText, formatSecondsElapsed(getAge())); // gettable, but not settable
     }
 
+    properties.setProperty("lastEdited", convertScriptValue(engine, _lastEdited));
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LAST_EDITED_BY, lastEditedBy);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_POSITION, position);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_DIMENSIONS, dimensions);
@@ -389,6 +389,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LIFETIME, lifetime);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_SCRIPT, script);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_SCRIPT_TIMESTAMP, scriptTimestamp);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_SERVER_SCRIPTS, serverScripts);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_REGISTRATION_POINT, registrationPoint);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_ANGULAR_VELOCITY, angularVelocity);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_ANGULAR_DAMPING, angularDamping);
@@ -504,6 +505,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FLYING_ALLOWED, flyingAllowed);
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FILTER_URL, filterURL);
     }
 
     // Web only
@@ -539,21 +541,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_TEXTURES, textures);
     }
 
-    // Sitting properties support
-    if (!skipDefaults) {
-        QScriptValue sittingPoints = engine->newObject();
-        for (int i = 0; i < _sittingPoints.size(); ++i) {
-            QScriptValue sittingPoint = engine->newObject();
-            sittingPoint.setProperty("name", _sittingPoints.at(i).name);
-            sittingPoint.setProperty("position", vec3toScriptValue(engine, _sittingPoints.at(i).position));
-            sittingPoint.setProperty("rotation", quatToScriptValue(engine, _sittingPoints.at(i).rotation));
-            sittingPoints.setProperty(i, sittingPoint);
-        }
-        sittingPoints.setProperty("length", _sittingPoints.size());
-        COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER_ALWAYS(sittingPoints, sittingPoints); // gettable, but not settable
-    }
-
-    if (!skipDefaults) {
+    if (!skipDefaults && !strictSemantics) {
         AABox aaBox = getAABox();
         QScriptValue boundingBox = engine->newObject();
         QScriptValue bottomRightNear = vec3toScriptValue(engine, aaBox.getCorner());
@@ -568,7 +556,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     }
 
     QString textureNamesStr = QJsonDocument::fromVariant(_textureNames).toJson();
-    if (!skipDefaults) {
+    if (!skipDefaults && !strictSemantics) {
         COPY_PROPERTY_TO_QSCRIPTVALUE_GETTER_NO_SKIP(originalTextures, textureNamesStr); // gettable, but not settable
     }
 
@@ -585,7 +573,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_OWNING_AVATAR_ID, owningAvatarID);
 
     // Rendering info
-    if (!skipDefaults) {
+    if (!skipDefaults && !strictSemantics) {
         QScriptValue renderInfo = engine->newObject();
 
         // currently only supported by models
@@ -631,6 +619,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(lifetime, float, setLifetime);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(script, QString, setScript);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(scriptTimestamp, quint64, setScriptTimestamp);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(serverScripts, QString, setServerScripts);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(registrationPoint, glmVec3, setRegistrationPoint);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(angularVelocity, glmVec3, setAngularVelocity);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(angularDamping, float, setAngularDamping);
@@ -747,6 +736,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(flyingAllowed, bool, setFlyingAllowed);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(ghostingAllowed, bool, setGhostingAllowed);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(filterURL, QString, setFilterURL);
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(clientOnly, bool, setClientOnly);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(owningAvatarID, QUuid, setOwningAvatarID);
@@ -877,6 +867,7 @@ void EntityItemProperties::merge(const EntityItemProperties& other) {
 
     COPY_PROPERTY_IF_CHANGED(flyingAllowed);
     COPY_PROPERTY_IF_CHANGED(ghostingAllowed);
+    COPY_PROPERTY_IF_CHANGED(filterURL);
 
     COPY_PROPERTY_IF_CHANGED(clientOnly);
     COPY_PROPERTY_IF_CHANGED(owningAvatarID);
@@ -924,6 +915,7 @@ QScriptValue EntityItemProperties::entityPropertyFlagsToScriptValue(QScriptEngin
 static QHash<QString, EntityPropertyList> _propertyStringsToEnums;
 
 void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue& object, EntityPropertyFlags& flags) {
+
     static std::once_flag initMap;
 
     std::call_once(initMap, [](){
@@ -941,6 +933,7 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_PROPERTY_TO_MAP(PROP_LIFETIME, Lifetime, lifetime, float);
         ADD_PROPERTY_TO_MAP(PROP_SCRIPT, Script, script, QString);
         ADD_PROPERTY_TO_MAP(PROP_SCRIPT_TIMESTAMP, ScriptTimestamp, scriptTimestamp, quint64);
+        ADD_PROPERTY_TO_MAP(PROP_SERVER_SCRIPTS, ServerScripts, serverScripts, QString);
         ADD_PROPERTY_TO_MAP(PROP_COLLISION_SOUND_URL, CollisionSoundURL, collisionSoundURL, QString);
         ADD_PROPERTY_TO_MAP(PROP_COLOR, Color, color, xColor);
         ADD_PROPERTY_TO_MAP(PROP_COLOR_SPREAD, ColorSpread, colorSpread, xColor);
@@ -1061,6 +1054,7 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
 
         ADD_PROPERTY_TO_MAP(PROP_FLYING_ALLOWED, FlyingAllowed, flyingAllowed, bool);
         ADD_PROPERTY_TO_MAP(PROP_GHOSTING_ALLOWED, GhostingAllowed, ghostingAllowed, bool);
+        ADD_PROPERTY_TO_MAP(PROP_FILTER_URL, FilterURL, filterURL, QString);
 
         ADD_PROPERTY_TO_MAP(PROP_DPI, DPI, dpi, uint16_t);
 
@@ -1210,6 +1204,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_LIFETIME, properties.getLifetime());
             APPEND_ENTITY_PROPERTY(PROP_SCRIPT, properties.getScript());
             APPEND_ENTITY_PROPERTY(PROP_SCRIPT_TIMESTAMP, properties.getScriptTimestamp());
+            APPEND_ENTITY_PROPERTY(PROP_SERVER_SCRIPTS, properties.getServerScripts());
             APPEND_ENTITY_PROPERTY(PROP_COLOR, properties.getColor());
             APPEND_ENTITY_PROPERTY(PROP_REGISTRATION_POINT, properties.getRegistrationPoint());
             APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, properties.getAngularVelocity());
@@ -1310,6 +1305,7 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
                 APPEND_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, properties.getFlyingAllowed());
                 APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, properties.getGhostingAllowed());
+                APPEND_ENTITY_PROPERTY(PROP_FILTER_URL, properties.getFilterURL());
             }
 
             if (properties.getType() == EntityTypes::PolyVox) {
@@ -1511,6 +1507,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LIFETIME, float, setLifetime);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SCRIPT, QString, setScript);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SCRIPT_TIMESTAMP, quint64, setScriptTimestamp);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SERVER_SCRIPTS, QString, setServerScripts);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COLOR, xColor, setColor);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_REGISTRATION_POINT, glm::vec3, setRegistrationPoint);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ANGULAR_VELOCITY, glm::vec3, setAngularVelocity);
@@ -1604,6 +1601,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
 
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_FLYING_ALLOWED, bool, setFlyingAllowed);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_FILTER_URL, QString, setFilterURL);
     }
 
     if (properties.getType() == EntityTypes::PolyVox) {
@@ -1637,7 +1635,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
 
     // NOTE: Spheres and Boxes are just special cases of Shape, and they need to include their PROP_SHAPE
     // when encoding/decoding edits because otherwise they can't polymorph to other shape types
-    if (properties.getType() == EntityTypes::Shape || 
+    if (properties.getType() == EntityTypes::Shape ||
         properties.getType() == EntityTypes::Box ||
         properties.getType() == EntityTypes::Sphere) {
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SHAPE, QString, setShape);
@@ -1699,6 +1697,7 @@ void EntityItemProperties::markAllChanged() {
     _userDataChanged = true;
     _scriptChanged = true;
     _scriptTimestampChanged = true;
+    _serverScriptsChanged = true;
     _collisionSoundURLChanged = true;
     _registrationPointChanged = true;
     _angularVelocityChanged = true;
@@ -1807,6 +1806,7 @@ void EntityItemProperties::markAllChanged() {
 
     _flyingAllowedChanged = true;
     _ghostingAllowedChanged = true;
+    _filterURLChanged = true;
 
     _clientOnlyChanged = true;
     _owningAvatarIDChanged = true;
@@ -1918,6 +1918,9 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     }
     if (scriptTimestampChanged()) {
         out += "scriptTimestamp";
+    }
+    if (serverScriptsChanged()) {
+        out += "serverScripts";
     }
     if (collisionSoundURLChanged()) {
         out += "collisionSoundURL";
@@ -2158,7 +2161,9 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (ghostingAllowedChanged()) {
         out += "ghostingAllowed";
     }
-
+    if (filterURLChanged()) {
+        out += "filterURL";
+    }
     if (dpiChanged()) {
         out += "dpi";
     }

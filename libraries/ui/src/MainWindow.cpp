@@ -24,6 +24,7 @@
 #include <QMimeData>
 #include <QDebug>
 
+#include "ui/Logging.h"
 
 MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent),
@@ -35,7 +36,7 @@ MainWindow::MainWindow(QWidget* parent) :
 }
 
 MainWindow::~MainWindow() {
-    qDebug() << "Destroying main window";
+    qCDebug(uiLogging) << "Destroying main window";
 }
 
 void MainWindow::restoreGeometry() {
@@ -108,8 +109,12 @@ void MainWindow::changeEvent(QEvent* event) {
             stateChangeEvent->oldState() == Qt::WindowMaximized) &&
             windowState() == Qt::WindowMinimized) {
             emit windowShown(false);
+            emit windowMinimizedChanged(true);
         } else {
             emit windowShown(true);
+            if (stateChangeEvent->oldState() == Qt::WindowMinimized) {
+                emit windowMinimizedChanged(false);
+            }
         }
     } else if (event->type() == QEvent::ActivationChange) {
         if (isActiveWindow()) {

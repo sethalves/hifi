@@ -17,6 +17,7 @@
 
 #include <QHash>
 #include <QObject>
+#include <QtCore/QJsonObject>
 
 #include <shared/ReadWriteLockable.h>
 #include <SimpleMovingAverage.h>
@@ -58,9 +59,7 @@ const bool DONT_COLLAPSE          = false;
 const int DONT_CHOP              = 0;
 const int NO_BOUNDARY_ADJUST     = 0;
 const int LOW_RES_MOVING_ADJUST  = 1;
-const quint64 IGNORE_LAST_SENT  = 0;
 
-#define IGNORE_SCENE_STATS       NULL
 #define IGNORE_COVERAGE_MAP      NULL
 #define IGNORE_JURISDICTION_MAP  NULL
 
@@ -68,7 +67,6 @@ class EncodeBitstreamParams {
 public:
     ViewFrustum viewFrustum;
     ViewFrustum lastViewFrustum;
-    quint64 lastViewFrustumSent;
     int maxEncodeLevel;
     int maxLevelReached;
     bool includeExistsBits;
@@ -78,15 +76,15 @@ public:
     int boundaryLevelAdjust;
     float octreeElementSizeScale;
     bool forceSendScene;
-    OctreeSceneStats* stats;
     JurisdictionMap* jurisdictionMap;
-    OctreeElementExtraEncodeData* extraEncodeData;
+    NodeData* nodeData;
 
     // output hints from the encode process
     typedef enum {
         UNKNOWN,
         DIDNT_FIT,
         NULL_NODE,
+        NULL_NODE_DATA,
         TOO_DEEP,
         OUT_OF_JURISDICTION,
         LOD_SKIP,
@@ -104,12 +102,9 @@ public:
         bool useDeltaView = false,
         int boundaryLevelAdjust = NO_BOUNDARY_ADJUST,
         float octreeElementSizeScale = DEFAULT_OCTREE_SIZE_SCALE,
-        quint64 lastViewFrustumSent = IGNORE_LAST_SENT,
         bool forceSendScene = true,
-        OctreeSceneStats* stats = IGNORE_SCENE_STATS,
         JurisdictionMap* jurisdictionMap = IGNORE_JURISDICTION_MAP,
-        OctreeElementExtraEncodeData* extraEncodeData = NULL) :
-            lastViewFrustumSent(lastViewFrustumSent),
+        NodeData* nodeData = nullptr) :
             maxEncodeLevel(maxEncodeLevel),
             maxLevelReached(0),
             includeExistsBits(includeExistsBits),
@@ -118,9 +113,8 @@ public:
             boundaryLevelAdjust(boundaryLevelAdjust),
             octreeElementSizeScale(octreeElementSizeScale),
             forceSendScene(forceSendScene),
-            stats(stats),
             jurisdictionMap(jurisdictionMap),
-            extraEncodeData(extraEncodeData),
+            nodeData(nodeData),
             stopReason(UNKNOWN)
     {
         lastViewFrustum.invalidate();
@@ -299,9 +293,8 @@ public:
     void loadOctreeFile(const char* fileName);
 
     // Octree exporters
-    bool writeToFile(const char* filename, OctreeElementPointer element = NULL, QString persistAsFileType = "svo");
+    bool writeToFile(const char* filename, OctreeElementPointer element = NULL, QString persistAsFileType = "json.gz");
     bool writeToJSONFile(const char* filename, OctreeElementPointer element = NULL, bool doGzip = false);
-    bool writeToSVOFile(const char* filename, OctreeElementPointer element = NULL);
     virtual bool writeToMap(QVariantMap& entityDescription, OctreeElementPointer element, bool skipDefaultValues,
                             bool skipThoseWithBadParents) = 0;
 
@@ -349,6 +342,7 @@ public:
     virtual quint64 getAverageUpdateTime() const { return 0;  }
     virtual quint64 getAverageCreateTime() const { return 0;  }
     virtual quint64 getAverageLoggingTime() const { return 0;  }
+    virtual quint64 getAverageFilterTime() const { return 0; }
 
 signals:
     void importSize(float x, float y, float z);

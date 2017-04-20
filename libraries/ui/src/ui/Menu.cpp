@@ -256,6 +256,16 @@ bool Menu::isOptionChecked(const QString& menuOption) const {
     return false;
 }
 
+void Menu::closeInfoView(const QString& path) {
+    auto offscreenUi = DependencyManager::get<OffscreenUi>();
+    offscreenUi->hide(path);
+}
+
+bool Menu::isInfoViewVisible(const QString& path) {
+    auto offscreenUi = DependencyManager::get<OffscreenUi>();
+    return offscreenUi->isVisible(path);
+}
+
 void Menu::triggerOption(const QString& menuOption) {
     QAction* action = _actionHash.value(menuOption);
     if (action) {
@@ -460,11 +470,11 @@ void Menu::removeSeparator(const QString& menuName, const QString& separatorName
     if (menu) {
         int textAt = findPositionOfMenuItem(menu, separatorName);
         QList<QAction*> menuActions = menu->actions();
-        QAction* separatorText = menuActions[textAt];
         if (textAt > 0 && textAt < menuActions.size()) {
             QAction* separatorLine = menuActions[textAt - 1];
             if (separatorLine) {
                 if (separatorLine->isSeparator()) {
+                    QAction* separatorText = menuActions[textAt];
                     menu->removeAction(separatorText);
                     menu->removeAction(separatorLine);
                     separatorRemoved = true;

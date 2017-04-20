@@ -112,6 +112,7 @@ Window {
                 placeName: model.place_name;
                 hifiUrl: model.place_name + model.path;
                 thumbnail: model.thumbnail_url;
+                imageUrl: model.image_url;
                 action: model.action;
                 timestamp: model.created_at;
                 onlineUsers: model.online_users;
@@ -186,9 +187,6 @@ Window {
             ToolbarButton {
                 id: homeButton
                 imageURL: "../images/home.svg"
-                buttonState: 1
-                defaultState: 1
-                hoverState: 2
                 onClicked: {
                     addressBarDialog.loadHome();
                     root.shown = false;
@@ -203,9 +201,6 @@ Window {
             ToolbarButton {
                 id: backArrow;
                 imageURL: "../images/backward.svg";
-                hoverState: addressBarDialog.backEnabled ? 2 : 0;
-                defaultState: addressBarDialog.backEnabled ? 1 : 0;
-                buttonState: addressBarDialog.backEnabled ? 1 : 0;
                 onClicked: addressBarDialog.loadBack();
                 anchors {
                     left: homeButton.right
@@ -215,9 +210,6 @@ Window {
             ToolbarButton {
                 id: forwardArrow;
                 imageURL: "../images/forward.svg";
-                hoverState: addressBarDialog.forwardEnabled ? 2 : 0;
-                defaultState: addressBarDialog.forwardEnabled ? 1 : 0;
-                buttonState: addressBarDialog.forwardEnabled ? 1 : 0;
                 onClicked: addressBarDialog.loadForward();
                 anchors {
                     left: backArrow.right
@@ -395,6 +387,7 @@ Window {
             created_at: data.created_at || "",
             action: data.action || "",
             thumbnail_url: resolveUrl(thumbnail_url),
+            image_url: resolveUrl(data.details.image_url),
 
             metaverseId: (data.id || "").toString(), // Some are strings from server while others are numbers. Model objects require uniformity.
 
@@ -410,7 +403,7 @@ Window {
         if (place.action === 'snapshot') {
             return true;
         }
-        return (place.place_name !== AddressManager.hostname); // Not our entry, but do show other entry points to current domain.
+        return (place.place_name !== AddressManager.placename); // Not our entry, but do show other entry points to current domain.
     }
     property var selectedTab: allTab;
     function tabSelect(textButton) {
@@ -437,7 +430,10 @@ Window {
     property int requestId: 0;
     function getUserStoryPage(pageNumber, cb) { // cb(error) after all pages of domain data have been added to model
         var options = [
+            'now=' + new Date().toISOString(),
             'include_actions=' + selectedTab.includeActions,
+            'restriction=' + (Account.isLoggedIn() ? 'open,hifi' : 'open'),
+            'require_online=true',
             'protocol=' + encodeURIComponent(AddressManager.protocolVersion()),
             'page=' + pageNumber
         ];
@@ -498,7 +494,7 @@ Window {
             notice.text = AddressManager.isConnected ? "Your location:" : "Not Connected";
             notice.color = AddressManager.isConnected ? hifiStyleConstants.colors.baseGrayHighlight : hifiStyleConstants.colors.redHighlight;
             // Display hostname, which includes ip address, localhost, and other non-placenames.
-            location.text = (AddressManager.hostname || '') + (AddressManager.pathname ? AddressManager.pathname.match(/\/[^\/]+/)[0] : '');
+            location.text = (AddressManager.placename || AddressManager.hostname || '') + (AddressManager.pathname ? AddressManager.pathname.match(/\/[^\/]+/)[0] : '');
         }
     }
 

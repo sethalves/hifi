@@ -70,6 +70,7 @@ public:
     bool findRayIntersection(const glm::vec3& origin, const glm::vec3& direction, float& distance,
                                 BoxFace& face, glm::vec3& surfaceNormal) const;
     bool touchesSphere(const glm::vec3& center, float radius) const; // fast but may generate false positives
+    bool touchesAAEllipsoid(const glm::vec3& center, const glm::vec3& radials) const;
     bool findSpherePenetration(const glm::vec3& center, float radius, glm::vec3& penetration) const;
     bool findCapsulePenetration(const glm::vec3& start, const glm::vec3& end, float radius, glm::vec3& penetration) const;
 
@@ -96,6 +97,9 @@ public:
     void embiggen(float scale);
     void embiggen(const glm::vec3& scale);
 
+    // Set a new scale for the Box, but keep it centered at its current location
+    void setScaleStayCentered(const glm::vec3& scale);
+
     // Transform the extents with transform
     void transform(const Transform& transform);
 
@@ -105,6 +109,8 @@ public:
     static const glm::vec3 INFINITY_VECTOR;
 
     bool isInvalid() const { return _corner == INFINITY_VECTOR; }
+
+    void clear() { _corner = INFINITY_VECTOR; _scale = glm::vec3(0.0f); }
 
 private:
     glm::vec3 getClosestPointOnFace(const glm::vec3& point, BoxFace face) const;

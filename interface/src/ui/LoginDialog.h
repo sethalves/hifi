@@ -27,6 +27,7 @@ public:
 
     LoginDialog(QQuickItem* parent = nullptr);
 
+    static void showWithSelection();
 signals:
     void handleLoginCompleted();
     void handleLoginFailed();
@@ -36,6 +37,9 @@ signals:
 
     void handleCreateCompleted();
     void handleCreateFailed(QString error);
+    
+    void handleSignupCompleted();
+    void handleSignupFailed(QString errorString);
 
 public slots:
     void linkCompleted(QNetworkReply& reply);
@@ -43,6 +47,9 @@ public slots:
 
     void createCompleted(QNetworkReply& reply);
     void createFailed(QNetworkReply& reply);
+    
+    void signupCompleted(QNetworkReply& reply);
+    void signupFailed(QNetworkReply& reply);
 
 protected slots:
     Q_INVOKABLE bool isSteamRunning() const;
@@ -51,6 +58,8 @@ protected slots:
     Q_INVOKABLE void loginThroughSteam();
     Q_INVOKABLE void linkSteam();
     Q_INVOKABLE void createAccountFromStream(QString username = QString());
+    
+    Q_INVOKABLE void signup(const QString& email, const QString& username, const QString& password);
 
     Q_INVOKABLE void openUrl(const QString& url) const;
 

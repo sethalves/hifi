@@ -114,7 +114,7 @@ void releaseOpenVrSystem() {
 
             // HACK: workaround openvr crash, call submit with an invalid texture, right before VR_Shutdown.
             const GLuint INVALID_GL_TEXTURE_HANDLE = -1;
-            vr::Texture_t vrTexture{ (void*)INVALID_GL_TEXTURE_HANDLE, vr::API_OpenGL, vr::ColorSpace_Auto };
+            vr::Texture_t vrTexture{ (void*)INVALID_GL_TEXTURE_HANDLE, vr::TextureType_OpenGL, vr::ColorSpace_Auto };
             static vr::VRTextureBounds_t OPENVR_TEXTURE_BOUNDS_LEFT{ 0, 0, 0.5f, 1 };
             static vr::VRTextureBounds_t OPENVR_TEXTURE_BOUNDS_RIGHT{ 0.5f, 0, 1, 1 };
 
@@ -363,14 +363,14 @@ void showMinSpecWarning() {
     vrOverlay->ShowOverlay(minSpecFailedOverlay);
 
     QTimer* timer = new QTimer(&miniApp);
-    timer->setInterval(FAILED_MIN_SPEC_UPDATE_INTERVAL_MS);
+    timer->setInterval(FAILED_MIN_SPEC_UPDATE_INTERVAL_MS); // Qt::CoarseTimer acceptable, we don't need this to be frame rate accurate
     QObject::connect(timer, &QTimer::timeout, [&] {
         vr::TrackedDevicePose_t vrPoses[vr::k_unMaxTrackedDeviceCount];
         vrSystem->GetDeviceToAbsoluteTrackingPose(vr::TrackingUniverseSeated, 0, vrPoses, vr::k_unMaxTrackedDeviceCount);
         auto headPose = toGlm(vrPoses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking);
         auto overlayPose = toOpenVr(headPose * glm::translate(glm::mat4(), vec3(0, 0, -1)));
         vrOverlay->SetOverlayTransformAbsolute(minSpecFailedOverlay, vr::TrackingUniverseSeated, &overlayPose);
-        
+
         vr::VREvent_t event;
         while (vrSystem->PollNextEvent(&event, sizeof(event))) {
             switch (event.eventType) {
@@ -405,7 +405,7 @@ bool checkMinSpecImpl() {
         return true;
     }
 
-    // If we have at least 5 cores, pass
+    // If we have at least MIN_CORES_SPEC cores, pass
     auto coreCount = QThread::idealThreadCount();
     if (coreCount >= MIN_CORES_SPEC) {
         return true;

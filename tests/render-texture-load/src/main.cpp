@@ -48,6 +48,7 @@
 #include <gpu/gl/GLTexture.h>
 #include <gpu/StandardShaderLib.h>
 
+#include <GenericThread.h>
 #include <AddressManager.h>
 #include <NodeList.h>
 #include <TextureCache.h>
@@ -355,7 +356,7 @@ public:
         }
 
         QTimer* timer = new QTimer(this);
-        timer->setInterval(0);
+        timer->setInterval(0); // Qt::CoarseTimer acceptable
         connect(timer, &QTimer::timeout, this, [this] {
             draw();
         });
@@ -455,7 +456,7 @@ protected:
             return;
         }
         auto texture = _textures[_currentTextureIndex];
-        texture->setMinMip(texture->minMip() + 1);
+        texture->setMinMip(texture->getMinMip() + 1);
     }
 
     void loadTexture() {
@@ -563,7 +564,6 @@ private:
         gpu::doInBatch(gpuContext, [&](gpu::Batch& batch) {
             batch.resetStages();
         });
-        PROFILE_RANGE(__FUNCTION__);
         auto framebuffer = DependencyManager::get<FramebufferCache>()->getFramebuffer();
 
         gpu::doInBatch(gpuContext, [&](gpu::Batch& batch) {

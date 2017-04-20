@@ -60,7 +60,7 @@ public:
         int rightEyeJointIndex = -1;
     };
 
-    struct HandParameters {
+    struct HandAndFeetParameters {
         bool isLeftEnabled;
         bool isRightEnabled;
         float bodyCapsuleRadius;
@@ -70,6 +70,13 @@ public:
         glm::quat leftOrientation = glm::quat();  // rig space (z forward)
         glm::vec3 rightPosition = glm::vec3();    // rig space
         glm::quat rightOrientation = glm::quat(); // rig space (z forward)
+
+        bool isLeftFootEnabled;
+        bool isRightFootEnabled;
+        glm::vec3 leftFootPosition = glm::vec3();     // rig space
+        glm::quat leftFootOrientation = glm::quat();  // rig space (z forward)
+        glm::vec3 rightFootPosition = glm::vec3();    // rig space
+        glm::quat rightFootOrientation = glm::quat(); // rig space (z forward)
     };
 
     enum class CharacterControllerState {
@@ -104,6 +111,10 @@ public:
     void clearJointAnimationPriority(int index);
 
     void clearIKJointLimitHistory();
+    void setMaxHipsOffsetLength(float maxLength);
+    float getMaxHipsOffsetLength() const;
+
+    float getIKErrorOnLastSolve() const;
 
     int getJointParentIndex(int childIndex) const;
 
@@ -181,7 +192,7 @@ public:
 
     void updateFromHeadParameters(const HeadParameters& params, float dt);
     void updateFromEyeParameters(const EyeParameters& params);
-    void updateFromHandParameters(const HandParameters& params, float dt);
+    void updateFromHandAndFeetParameters(const HandAndFeetParameters& params, float dt);
 
     void initAnimGraph(const QUrl& url);
 
@@ -206,12 +217,16 @@ public:
 
     void copyJointsIntoJointData(QVector<JointData>& jointDataVec) const;
     void copyJointsFromJointData(const QVector<JointData>& jointDataVec);
+    void computeExternalPoses(const glm::mat4& modelOffsetMat);
 
     void computeAvatarBoundingCapsule(const FBXGeometry& geometry, float& radiusOut, float& heightOut, glm::vec3& offsetOut) const;
 
     void setEnableInverseKinematics(bool enable);
+    void setEnableAnimations(bool enable);
 
     const glm::mat4& getGeometryToRigTransform() const { return _geometryToRigTransform; }
+
+    void setEnableDebugDrawIKTargets(bool enableDebugDrawIKTargets) { _enableDebugDrawIKTargets = enableDebugDrawIKTargets; }
 
 signals:
     void onLoadComplete();
@@ -261,7 +276,7 @@ protected:
     int _rightElbowJointIndex { -1 };
     int _rightShoulderJointIndex { -1 };
 
-    glm::vec3 _lastFront;
+    glm::vec3 _lastForward;
     glm::vec3 _lastPosition;
     glm::vec3 _lastVelocity;
 
@@ -311,10 +326,15 @@ protected:
 
     std::map<QString, AnimNode::Pointer> _origRoleAnimations;
 
+    int32_t _numOverrides { 0 };
     bool _lastEnableInverseKinematics { true };
     bool _enableInverseKinematics { true };
+    bool _enabledAnimations { true };
 
     mutable uint32_t _jointNameWarningCount { 0 };
+    float _maxHipsOffsetLength { 1.0f };
+
+    bool _enableDebugDrawIKTargets { false };
 
 private:
     QMap<int, StateHandler> _stateHandlers;

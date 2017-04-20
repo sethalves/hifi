@@ -25,6 +25,7 @@ Column {
                      "Lightmap:LightingModel:enableLightmap",
                      "Background:LightingModel:enableBackground",                      
                      "ssao:AmbientOcclusion:enabled",                      
+                     "Textures:LightingModel:enableMaterialTexturing"                     
                 ]
                 CheckBox {
                     text: modelData.split(":")[0]
@@ -44,6 +45,7 @@ Column {
                      "Diffuse:LightingModel:enableDiffuse",
                      "Specular:LightingModel:enableSpecular",
                      "Albedo:LightingModel:enableAlbedo",
+                     "Wireframe:LightingModel:enableWireframe"
                 ]
                 CheckBox {
                     text: modelData.split(":")[0]
@@ -61,7 +63,8 @@ Column {
                      "Directional:LightingModel:enableDirectionalLight",
                      "Point:LightingModel:enablePointLight",
                      "Spot:LightingModel:enableSpotLight",
-                     "Light Contour:LightingModel:showLightContour"
+                     "Light Contour:LightingModel:showLightContour",
+                     "Shadow:RenderShadowTask:enabled"
                 ]
                 CheckBox {
                     text: modelData.split(":")[0]
@@ -74,7 +77,7 @@ Column {
     Column {
         spacing: 10 
         Repeater {
-            model: [ "Tone Mapping exposure:ToneMapping:exposure:5.0:-5.0"
+            model: [ "Tone Mapping Exposure:ToneMapping:exposure:5.0:-5.0"
                           ]
             ConfigSlider {
                     label: qsTr(modelData.split(":")[0])
@@ -88,7 +91,7 @@ Column {
 
         Row {
             Label {
-                text: "Debug Framebuffer"
+                text: "Tone Mapping Curve"
                 anchors.left: root.left           
             }
 
@@ -109,6 +112,7 @@ Column {
     }
     Row {
         id: framebuffer
+        spacing: 10 
 
         Label {
             text: "Debug Framebuffer"
@@ -147,6 +151,7 @@ Column {
                 ListElement { text: "Mid Normal"; color: "White" }
                 ListElement { text: "Low Curvature"; color: "White" }
                 ListElement { text: "Low Normal"; color: "White" }
+                ListElement { text: "Curvature Occlusion"; color: "White" }
                 ListElement { text: "Debug Scattering"; color: "White" }
                 ListElement { text: "Ambient Occlusion"; color: "White" }
                 ListElement { text: "Ambient Occlusion Blurred"; color: "White" }
@@ -154,6 +159,40 @@ Column {
             }
             width: 200
             onCurrentIndexChanged: { framebuffer.setDebugMode(currentIndex) }
+        }
+    }
+
+    Column {
+        id: metas
+        CheckBox {
+            text: "Metas"
+            checked: Render.getConfig("DrawMetaBounds")["enabled"]
+            onCheckedChanged: { Render.getConfig("DrawMetaBounds")["enabled"] = checked }
+        }
+        CheckBox {
+            text: "Opaques"
+            checked: Render.getConfig("DrawOpaqueBounds")["enabled"]
+            onCheckedChanged: { Render.getConfig("DrawOpaqueBounds")["enabled"] = checked }
+        }
+        CheckBox {
+            text: "Transparents"
+            checked: Render.getConfig("DrawTransparentBounds")["enabled"]
+            onCheckedChanged: { Render.getConfig("DrawTransparentBounds")["enabled"] = checked }
+        }
+        CheckBox {
+            text: "Overlay Opaques"
+            checked: Render.getConfig("DrawOverlayOpaqueBounds")["enabled"]
+            onCheckedChanged: { Render.getConfig("DrawOverlayOpaqueBounds")["enabled"] = checked }
+        }
+        CheckBox {
+            text: "Overlay Transparents"
+            checked: Render.getConfig("DrawOverlayTransparentBounds")["enabled"]
+            onCheckedChanged: { Render.getConfig("DrawOverlayTransparentBounds")["enabled"] = checked }
+        }
+        CheckBox {
+            text: "Zones"
+            checked: Render.getConfig("DrawZones")["enabled"]
+            onCheckedChanged: { Render.getConfig("ZoneRenderer")["enabled"] = checked; Render.getConfig("DrawZones")["enabled"] = checked; }
         }
     }
 }

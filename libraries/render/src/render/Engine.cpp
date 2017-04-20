@@ -18,13 +18,26 @@
 #include <gpu/Context.h>
 
 #include "EngineStats.h"
+#include "Logging.h"
 
 using namespace render;
 
-Engine::Engine() :
+class EngineTask {
+public:
+
+    using JobModel = Task::Model<EngineTask>;
+
+    EngineTask() {}
+
+    void build(JobModel& task, const Varying& in, Varying& out) {
+        task.addJob<EngineStats>("Stats");
+    }
+};
+
+Engine::Engine() : Task("Engine", EngineTask::JobModel::create()),
     _sceneContext(std::make_shared<SceneContext>()),
-    _renderContext(std::make_shared<RenderContext>()) {
-    addJob<EngineStats>("Stats");
+    _renderContext(std::make_shared<RenderContext>())
+{
 }
 
 void Engine::load() {
@@ -44,18 +57,10 @@ void Engine::load() {
         QJsonDocument doc = QJsonDocument::fromJson(data.toUtf8(), &error);
         if (error.error == error.NoError) {
             config->setPresetList(doc.object());
-            qDebug() << "Engine configuration file" << path << "loaded";
+            qCDebug(renderlogging) << "Engine configuration file" << path << "loaded";
         } else {
             qWarning() << "Engine configuration file" << path << "failed to load:" <<
                 error.errorString() << "at offset" << error.offset;
         }
     }
 }
-
-void Engine::run() {
-    for (auto job : _jobs) {
-        job.run(_sceneContext, _renderContext);
-    }
-
-}
-

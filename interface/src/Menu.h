@@ -26,7 +26,6 @@ public:
 };
 
 namespace MenuOption {
-    const QString AboutApp = "About Interface";
     const QString AddRemoveFriends = "Add/Remove Friends...";
     const QString AddressBar = "Show Address Bar";
     const QString Animations = "Animations...";
@@ -48,16 +47,16 @@ namespace MenuOption {
     const QString AudioTools = "Show Level Meter";
     const QString AutoMuteAudio = "Auto Mute Microphone";
     const QString AvatarReceiveStats = "Show Receive Stats";
+    const QString AvatarBookmarks = "Avatar Bookmarks";
     const QString Back = "Back";
-    const QString BandwidthDetails = "Bandwidth Details";
     const QString BinaryEyelidControl = "Binary Eyelid Control";
+    const QString BookmarkAvatar = "Bookmark Avatar";
     const QString BookmarkLocation = "Bookmark Location";
-    const QString Bookmarks = "Bookmarks";
-    const QString CachesSize = "RAM Caches Size";
     const QString CalibrateCamera = "Calibrate Camera";
     const QString CameraEntityMode = "Entity Mode";
     const QString CenterPlayerInView = "Center Player In View";
     const QString Chat = "Chat...";
+    const QString ClearDiskCache = "Clear Disk Cache";
     const QString Collisions = "Collisions";
     const QString Connexion = "Activate 3D Connexion Devices";
     const QString Console = "Console...";
@@ -80,11 +79,11 @@ namespace MenuOption {
     const QString DeadlockInterface = "Deadlock Interface";
     const QString DecreaseAvatarSize = "Decrease Avatar Size";
     const QString DefaultSkybox = "Default Skybox";
+    const QString DeleteAvatarBookmark = "Delete Avatar Bookmark...";
     const QString DeleteBookmark = "Delete Bookmark...";
     const QString DisableActivityLogger = "Disable Activity Logger";
     const QString DisableEyelidAdjustment = "Disable Eyelid Adjustment";
     const QString DisableLightEntities = "Disable Light Entities";
-    const QString DiskCacheEditor = "Disk Cache Editor";
     const QString DisplayCrashOptions = "Display Crash Options";
     const QString DisplayHandTargets = "Show Hand Targets";
     const QString DisplayModelBounds = "Display Model Bounds";
@@ -92,12 +91,14 @@ namespace MenuOption {
     const QString DisplayModelElementChildProxies = "Display Model Element Children";
     const QString DisplayModelElementProxy = "Display Model Element Bounds";
     const QString DisplayDebugTimingDetails = "Display Timing Details";
+    const QString LocationBookmarks = "Bookmarks";
     const QString DontDoPrecisionPicking = "Don't Do Precision Picking";
     const QString DontRenderEntitiesAsScene = "Don't Render Entities as Scene";
     const QString EchoLocalAudio = "Echo Local Audio";
     const QString EchoServerAudio = "Echo Server Audio";
     const QString EnableCharacterController = "Enable avatar collisions";
     const QString EnableInverseKinematics = "Enable Inverse Kinematics";
+    const QString EntityScriptServerLog = "Entity Script Server Log";
     const QString ExpandMyAvatarSimulateTiming = "Expand /myAvatar/simulation";
     const QString ExpandMyAvatarTiming = "Expand /myAvatar";
     const QString ExpandOtherAvatarTiming = "Expand /otherAvatar";
@@ -119,12 +120,11 @@ namespace MenuOption {
     const QString LoadScript = "Open and Run Script File...";
     const QString LoadScriptURL = "Open and Run Script from URL...";
     const QString LodTools = "LOD Tools";
-    const QString Login = "Login";
+    const QString Login = "Login / Sign Up";
     const QString Log = "Log";
     const QString LogExtraTimings = "Log Extra Timing Details";
     const QString LowVelocityFilter = "Low Velocity Filter";
     const QString MeshVisible = "Draw Mesh";
-    const QString MiniMirror = "Mini Mirror";
     const QString MuteAudio = "Mute Microphone";
     const QString MuteEnvironment = "Mute Environment";
     const QString MuteFaceTracking = "Mute Face Tracking";
@@ -151,6 +151,7 @@ namespace MenuOption {
     const QString RenderOtherLookAtVectors = "Show Other Eye Vectors";
     const QString RenderMaxTextureMemory = "Maximum Texture Memory";
     const QString RenderMaxTextureAutomatic = "Automatic Texture Memory";
+    const QString RenderMaxTexture4MB = "4 MB";
     const QString RenderMaxTexture64MB = "64 MB";
     const QString RenderMaxTexture256MB = "256 MB";
     const QString RenderMaxTexture512MB = "512 MB";
@@ -163,11 +164,12 @@ namespace MenuOption {
     const QString RenderResolutionThird = "1/3";
     const QString RenderResolutionQuarter = "1/4";
     const QString RenderSensorToWorldMatrix = "Show SensorToWorld Matrix";
+    const QString RenderIKTargets = "Show IK Targets";
     const QString ResetAvatarSize = "Reset Avatar Size";
     const QString ResetSensors = "Reset Sensors";
     const QString RunningScripts = "Running Scripts...";
+    const QString RunClientScriptTests = "Run Client Script Tests";
     const QString RunTimingTests = "Run Timing Tests";
-    const QString ScriptEditor = "Script Editor...";
     const QString ScriptedMotorControl = "Enable Scripted Motor Control";
     const QString SendWrongDSConnectVersion = "Send wrong DS connect version";
     const QString SendWrongProtocolVersion = "Send wrong protocol version";

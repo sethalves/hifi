@@ -117,6 +117,8 @@ void HmdDisplayPlugin::internalDeactivate() {
     Parent::internalDeactivate();
 }
 
+static const int32_t LINE_DATA_SLOT = 1;
+
 void HmdDisplayPlugin::customizeContext() {
     Parent::customizeContext();
     _overlayRenderer.build();
@@ -131,13 +133,11 @@ void HmdDisplayPlugin::customizeContext() {
         state->setBlendFunction(true,
             gpu::State::SRC_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::INV_SRC_ALPHA,
             gpu::State::FACTOR_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::ONE);
-        gpu::Shader::makeProgram(*program, gpu::Shader::BindingSet());
+        
+        gpu::Shader::BindingSet bindings;
+        bindings.insert({ "lineData", LINE_DATA_SLOT });;
+        gpu::Shader::makeProgram(*program, bindings);
         _glowLinePipeline = gpu::Pipeline::create(program, state);
-        for (const auto& buffer : program->getBuffers()) {
-            if (buffer._name == "lineData") {
-                _handLaserUniformSlot = buffer._location;
-            }
-        }
         _handLaserUniforms = std::array<gpu::BufferPointer, 2>{ { std::make_shared<gpu::Buffer>(), std::make_shared<gpu::Buffer>() } };
         _extraLaserUniforms = std::make_shared<gpu::Buffer>();
     };
@@ -206,7 +206,7 @@ float HmdDisplayPlugin::getLeftCenterPixel() const {
 }
 
 void HmdDisplayPlugin::internalPresent() {
-    PROFILE_RANGE_EX(__FUNCTION__, 0xff00ff00, (uint64_t)presentCount())
+    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)presentCount())
 
     // Composite together the scene, overlay and mouse cursor
     hmdPresent();
@@ -296,33 +296,33 @@ void HmdDisplayPlugin::internalPresent() {
         image = image.convertToFormat(QImage::Format_RGBA8888);
         if (!_previewTexture) {
             _previewTexture.reset(
-                gpu::Texture::create2D(
+                gpu::Texture::createStrict(
                 gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA),
                 image.width(), image.height(),
+                gpu::Texture::MAX_NUM_MIPS,
                 gpu::Sampler(gpu::Sampler::FILTER_MIN_MAG_MIP_LINEAR)));
             _previewTexture->setSource("HMD Preview Texture");
             _previewTexture->setUsage(gpu::Texture::Usage::Builder().withColor().build());
-            _previewTexture->assignStoredMip(0, gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA), image.byteCount(), image.constBits());
-            _previewTexture->autoGenerateMips(-1);
+            _previewTexture->setStoredMipFormat(gpu::Element(gpu::VEC4, gpu::NUINT8, gpu::RGBA));
+            _previewTexture->assignStoredMip(0, image.byteCount(), image.constBits());
+            _previewTexture->setAutoGenerateMips(true);
         }
         
-        if (getGLBackend()->isTextureReady(_previewTexture)) {
-            auto viewport = getViewportForSourceSize(uvec2(_previewTexture->getDimensions()));
+        auto viewport = getViewportForSourceSize(uvec2(_previewTexture->getDimensions()));
 
-            render([&](gpu::Batch& batch) {
-                batch.enableStereo(false);
-                batch.resetViewTransform();
-                batch.setFramebuffer(gpu::FramebufferPointer());
-                batch.clearColorFramebuffer(gpu::Framebuffer::BUFFER_COLOR0, vec4(0));
-                batch.setStateScissorRect(viewport);
-                batch.setViewportTransform(viewport);
-                batch.setResourceTexture(0, _previewTexture);
-                batch.setPipeline(_presentPipeline);
-                batch.draw(gpu::TRIANGLE_STRIP, 4);
-            });
-            _clearPreviewFlag = false;
-            swapBuffers();
-        }
+        render([&](gpu::Batch& batch) {
+            batch.enableStereo(false);
+            batch.resetViewTransform();
+            batch.setFramebuffer(gpu::FramebufferPointer());
+            batch.clearColorFramebuffer(gpu::Framebuffer::BUFFER_COLOR0, vec4(0));
+            batch.setStateScissorRect(viewport);
+            batch.setViewportTransform(viewport);
+            batch.setResourceTexture(0, _previewTexture);
+            batch.setPipeline(_presentPipeline);
+            batch.draw(gpu::TRIANGLE_STRIP, 4);
+        });
+        _clearPreviewFlag = false;
+        swapBuffers();
     }
     postPreview();
 
@@ -725,7 +725,7 @@ void HmdDisplayPlugin::compositeExtra() {
                 const auto& points = _presentHandLaserPoints[index];
                 _handLaserUniforms[index]->resize(sizeof(HandLaserData));
                 _handLaserUniforms[index]->setSubData(0, HandLaserData { vec4(points.first, 1.0f), vec4(points.second, 1.0f), _handLasers[index].color });
-                batch.setUniformBuffer(_handLaserUniformSlot, _handLaserUniforms[index]);
+                batch.setUniformBuffer(LINE_DATA_SLOT, _handLaserUniforms[index]);
                 batch.draw(gpu::TRIANGLE_STRIP, 4, 0);
             }
         });
@@ -734,14 +734,13 @@ void HmdDisplayPlugin::compositeExtra() {
             const auto& points = _presentExtraLaserPoints;
             _extraLaserUniforms->resize(sizeof(HandLaserData));
             _extraLaserUniforms->setSubData(0, HandLaserData { vec4(points.first, 1.0f), vec4(points.second, 1.0f), _presentExtraLaser.color });
-            batch.setUniformBuffer(_handLaserUniformSlot, _extraLaserUniforms);
+            batch.setUniformBuffer(LINE_DATA_SLOT, _extraLaserUniforms);
             batch.draw(gpu::TRIANGLE_STRIP, 4, 0);
         }
     });
 }
 
 HmdDisplayPlugin::~HmdDisplayPlugin() {
-    qDebug() << "Destroying HmdDisplayPlugin";
 }
 
 float HmdDisplayPlugin::stutterRate() const {
