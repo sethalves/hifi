@@ -146,7 +146,7 @@ public:
     };
     Q_ENUM(DriveKeys)
 
-    explicit MyAvatar(RigPointer rig);
+    explicit MyAvatar(QThread* thread, RigPointer rig);
     ~MyAvatar();
 
     void registerMetaTypes(QScriptEngine* engine);
@@ -353,7 +353,6 @@ public:
 
     eyeContactTarget getEyeContactTarget();
 
-    Q_INVOKABLE glm::vec3 getTrackedHeadPosition() const { return _trackedHeadPosition; }
     Q_INVOKABLE glm::vec3 getHeadPosition() const { return getHead()->getPosition(); }
     Q_INVOKABLE float getHeadFinalYaw() const { return getHead()->getFinalYaw(); }
     Q_INVOKABLE float getHeadFinalRoll() const { return getHead()->getFinalRoll(); }
@@ -542,7 +541,7 @@ private:
 
     void simulate(float deltaTime);
     void updateFromTrackers(float deltaTime);
-    virtual void render(RenderArgs* renderArgs, const glm::vec3& cameraPositio) override;
+    virtual void render(RenderArgs* renderArgs) override;
     virtual bool shouldRenderHead(const RenderArgs* renderArgs) const override;
     void setShouldRenderLocally(bool shouldRender) { _shouldRender = shouldRender; setEnableMeshVisible(shouldRender); }
     bool getShouldRenderLocally() const { return _shouldRender; }
@@ -568,7 +567,7 @@ private:
     // These are made private for MyAvatar so that you will use the "use" methods instead
     virtual void setSkeletonModelURL(const QUrl& skeletonModelURL) override;
 
-    void setVisibleInSceneIfReady(Model* model, render::ScenePointer scene, bool visiblity);
+    void setVisibleInSceneIfReady(Model* model, const render::ScenePointer& scene, bool visiblity);
 
     virtual void updatePalms() override {}
     void lateUpdatePalms();
