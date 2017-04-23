@@ -558,7 +558,7 @@ static const std::vector<float> LATERAL_SPEEDS = { 0.2f, 0.65f }; // m/s
 
 void Rig::computeMotionAnimationState(float deltaTime, const glm::vec3& worldPosition, const glm::vec3& worldVelocity, const glm::quat& worldRotation, CharacterControllerState ccState) {
 
-    glm::vec3 forward = worldRotation * IDENTITY_FORWARD;
+    glm::vec3 forward = glm::normalize(worldRotation * IDENTITY_FORWARD);
     glm::vec3 workingVelocity = worldVelocity;
 
     {
