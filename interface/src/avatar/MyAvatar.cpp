@@ -759,6 +759,12 @@ void MyAvatar::render(RenderArgs* renderArgs) {
     Avatar::render(renderArgs);
 }
 
+void MyAvatar::locationChanged(bool tellPhysics) {
+    PerformanceTimer pertTimer("locationChanged");
+    // jump over Avatar::locationChanged
+    SpatiallyNestable::locationChanged(tellPhysics);
+}
+
 void MyAvatar::overrideAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "overrideAnimation", Q_ARG(const QString&, url), Q_ARG(float, fps),
