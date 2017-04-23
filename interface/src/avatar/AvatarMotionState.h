@@ -25,7 +25,7 @@ using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 
 class AvatarMotionState : public ObjectMotionState {
 public:
-    AvatarMotionState(Avatar* avatar, const btCollisionShape* shape,
+    AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape,
                       EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
 
     virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
@@ -89,11 +89,7 @@ protected:
     virtual bool isReadyToComputeShape() const override { return true; }
     virtual const btCollisionShape* computeNewShape() override;
 
-    // The AvatarMotionState keeps a RAW backpointer to its Avatar because all AvatarMotionState
-    // instances are "owned" by their corresponding Avatar instance and are deleted in the Avatar dtor.
-    // In other words, it is impossible for the Avatar to be deleted out from under its MotionState.
-    // In conclusion: weak pointer shennanigans would be pure overhead.
-    Avatar* _avatar; // do NOT use smartpointer here, no need for weakpointer
+    AvatarSharedPointer _avatar;
 
     PhysicsEngineWeakPointer _physicsEngine;
 

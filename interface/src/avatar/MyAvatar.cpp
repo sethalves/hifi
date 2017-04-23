@@ -1460,13 +1460,6 @@ void MyAvatar::prepareForPhysicsSimulation() {
         return;
     }
 
-    bool success;
-    glm::vec3 parentVelocity = getParentVelocity(success);
-    if (!success) {
-        qDebug() << "Warning: getParentVelocity failed" << getID();
-        parentVelocity = glm::vec3();
-    }
-
     // convert global values to bullet position and orientation
     bool posSuccess, oSuccess;
     glm::vec3 position = SpatiallyNestable::worldToLocal(getPosition(), physicsEngine->getID(), -1, posSuccess);

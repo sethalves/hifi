@@ -237,7 +237,6 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
     return result.getRotation();
 }
 
-
 glm::mat4 SpatiallyNestable::worldToLocal(const glm::mat4& trans,
                                           const QUuid& parentID, int parentJointIndex,
                                           bool& success) {
@@ -272,7 +271,6 @@ glm::mat4 SpatiallyNestable::worldToLocal(const glm::mat4& trans,
     Transform::inverseMult(result, parentTransform, trans);
     return result.getMatrix();
 }
-
 
 glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                                   int parentJointIndex, bool& success) {
@@ -414,8 +412,6 @@ glm::mat4 SpatiallyNestable::localToWorld(const glm::mat4& trans,
     Transform::mult(result, parentTransform, trans);
     return result.getMatrix();
 }
-
-
 
 glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                                   int parentJointIndex, bool& success) {

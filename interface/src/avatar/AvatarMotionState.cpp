@@ -17,7 +17,7 @@
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
-AvatarMotionState::AvatarMotionState(Avatar* avatar, const btCollisionShape* shape,
+AvatarMotionState::AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape,
                                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
     ObjectMotionState(shape, simulation),
     _avatar(avatar),
@@ -53,7 +53,7 @@ PhysicsMotionType AvatarMotionState::computePhysicsMotionType() const {
 // virtual and protected
 const btCollisionShape* AvatarMotionState::computeNewShape() {
     ShapeInfo shapeInfo;
-    _avatar->computeShapeInfo(shapeInfo);
+    std::static_pointer_cast<Avatar>(_avatar)->computeShapeInfo(shapeInfo);
     return getShapeManager()->getShape(shapeInfo);
 }
 
@@ -134,7 +134,7 @@ glm::vec3 AvatarMotionState::getObjectAngularVelocity() const {
 
 // virtual
 glm::vec3 AvatarMotionState::getObjectGravity() const {
-    return _avatar->getAcceleration();
+    return std::static_pointer_cast<Avatar>(_avatar)->getAcceleration();
 }
 
 // virtual

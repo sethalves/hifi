@@ -159,6 +159,7 @@ void PhysicsEngine::removeObject(ObjectMotionState* object, bool doBumpAndPrune)
         body->setMotionState(nullptr);
         delete body;
     }
+    object->clearIncomingDirtyFlags();
 }
 
 void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
