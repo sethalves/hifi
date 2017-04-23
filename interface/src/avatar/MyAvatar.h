@@ -504,6 +504,8 @@ public slots:
     glm::vec3 getPositionForAudio();
     glm::quat getOrientationForAudio();
 
+    virtual void locationChanged(bool tellPhysics = true) override;
+
 signals:
     void audioListenerModeChanged();
     void transformChanged();

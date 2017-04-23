@@ -79,9 +79,9 @@ public:
     void postSimulation();
 
     void setPositionAndOrientation( const glm::vec3& position, const glm::quat& orientation);
-    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const;
+    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const;
 
-    void setParentVelocity(const glm::vec3& parentVelocity);
+    void setVelocity(const glm::vec3& velocity);
     void setFollowParameters(const glm::mat4& desiredWorldMatrix, float timeRemaining);
     float getFollowTime() const { return _followTime; }
     glm::vec3 getFollowLinearDisplacement() const;
@@ -138,7 +138,6 @@ protected:
     std::vector<CharacterMotor> _motors;
     btVector3 _currentUp;
     btVector3 _targetVelocity;
-    btVector3 _parentVelocity;
     btVector3 _preSimulationVelocity;
     btVector3 _velocityChange;
     btTransform _followDesiredBodyTransform;
@@ -170,7 +169,7 @@ protected:
     btVector3 _linearAcceleration;
 
     std::atomic_bool _enabled;
-    State _state;
+    State _state { State::Hover };
     bool _isPushingUp;
 
     btDynamicsWorld* _dynamicsWorld { nullptr };

@@ -127,6 +127,8 @@ public:
     void queuePacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer node);
     int processPackets(); // returns number of packets processed
 
+    glm::vec3 getClientGlobalPosition() const { return _avatar ? _avatar->getClientGlobalPosition() : glm::vec3(0.0f); }
+
 private:
     struct PacketQueue : public std::queue<QSharedPointer<ReceivedMessage>> {
         QWeakPointer<Node> node;

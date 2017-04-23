@@ -22,6 +22,8 @@ class AvatarMotionState : public ObjectMotionState {
 public:
     AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape);
 
+    virtual QString getName() const override { return "avatar"; }
+
     virtual PhysicsMotionType getMotionType() const override { return _motionType; }
 
     virtual uint32_t getIncomingDirtyFlags() override;

@@ -334,6 +334,8 @@ protected:
     RateCounter<> _skeletonModelSimulationRate;
     RateCounter<> _jointDataSimulationRate;
 
+    virtual void locationChanged(bool tellPhysics = true) override;
+
     // Smoothing data for blending from one position/orientation to another on remote agents.
     float _smoothPositionTime;
     float _smoothPositionTimer;

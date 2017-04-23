@@ -191,9 +191,9 @@ const btScalar MIN_TARGET_SPEED = 0.001f;
 const btScalar MIN_TARGET_SPEED_SQUARED = MIN_TARGET_SPEED * MIN_TARGET_SPEED;
 
 void CharacterController::playerStep(btCollisionWorld* dynaWorld, btScalar dt) {
-    btVector3 velocity = _rigidBody->getLinearVelocity() - _parentVelocity;
+    btVector3 velocity = _rigidBody->getLinearVelocity();
     computeNewVelocity(dt, velocity);
-    _rigidBody->setLinearVelocity(velocity + _parentVelocity);
+    _rigidBody->setLinearVelocity(velocity);
 
     // Dynamicaly compute a follow velocity to move this body toward the _followDesiredBodyTransform.
     // Rather than add this velocity to velocity the RigidBody, we explicitly teleport the RigidBody towards its goal.
@@ -332,7 +332,7 @@ void CharacterController::setEnabled(bool enabled) {
             }
             _pendingFlags &= ~ PENDING_FLAG_ADD_TO_SIMULATION;
         }
-        SET_STATE(State::Hover, "setEnabled");
+        SET_STATE(_state, "setEnabled");
         _enabled = enabled;
     }
 }
@@ -359,16 +359,19 @@ void CharacterController::setPositionAndOrientation(
     _characterBodyTransform = btTransform(bodyOrientation, bodyPosition);
 }
 
-void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const {
+void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const {
     if (_enabled && _rigidBody) {
         const btTransform& avatarTransform = _rigidBody->getWorldTransform();
         rotation = bulletToGLM(avatarTransform.getRotation());
         position = bulletToGLM(avatarTransform.getOrigin()) - rotation * _shapeLocalOffset;
+        success = true;
+    } else {
+        success = false;
     }
 }
 
-void CharacterController::setParentVelocity(const glm::vec3& velocity) {
-    _parentVelocity = glmToBullet(velocity);
+void CharacterController::setVelocity(const glm::vec3& velocity) {
+    _rigidBody->setLinearVelocity(glmToBullet(velocity));
 }
 
 void CharacterController::setFollowParameters(const glm::mat4& desiredWorldBodyMatrix, float timeRemaining) {

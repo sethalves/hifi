@@ -759,6 +759,12 @@ void MyAvatar::render(RenderArgs* renderArgs) {
     Avatar::render(renderArgs);
 }
 
+void MyAvatar::locationChanged(bool tellPhysics) {
+    PerformanceTimer pertTimer("locationChanged");
+    // jump over Avatar::locationChanged
+    SpatiallyNestable::locationChanged(tellPhysics);
+}
+
 void MyAvatar::overrideAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "overrideAnimation", Q_ARG(const QString&, url), Q_ARG(float, fps),
@@ -1431,7 +1437,6 @@ void MyAvatar::prepareForPhysicsSimulation() {
         qDebug() << "Warning: getParentVelocity failed" << getID();
         parentVelocity = glm::vec3();
     }
-    _characterController.setParentVelocity(parentVelocity);
 
     _characterController.setPositionAndOrientation(getPosition(), getOrientation());
     if (qApp->isHMDMode()) {
@@ -1447,7 +1452,8 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     glm::vec3 position = getPosition();
     glm::quat orientation = getOrientation();
     if (_characterController.isEnabledAndReady()) {
-        _characterController.getPositionAndOrientation(position, orientation);
+        bool success;
+        _characterController.getPositionAndOrientation(position, orientation, success);
     }
     nextAttitude(position, orientation);
     _bodySensorMatrix = _follow.postPhysicsUpdate(*this, _bodySensorMatrix);
