@@ -192,7 +192,6 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
                 AvatarMotionState* motionState =
                     new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
                 avatar->setPhysicsCallback([=] (uint32_t flags) { motionState->addDirtyFlags(flags); });
-                avatar->setMotionState(motionState);
                 _motionStatesToAddToPhysics.insert(motionState);
             }
         }
