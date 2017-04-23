@@ -191,9 +191,11 @@ const btScalar MIN_TARGET_SPEED = 0.001f;
 const btScalar MIN_TARGET_SPEED_SQUARED = MIN_TARGET_SPEED * MIN_TARGET_SPEED;
 
 void CharacterController::playerStep(btCollisionWorld* dynaWorld, btScalar dt) {
-    btVector3 velocity = _rigidBody->getLinearVelocity();
-    computeNewVelocity(dt, velocity);
-    _rigidBody->setLinearVelocity(velocity);
+    btVector3 velocity = _rigidBody->getLinearVelocity() - _parentInducedVelocity;
+    btVector3 angularVelocity = _rigidBody->getAngularVelocity() - _parentInducedAngularVelocity;
+    computeNewVelocity(dt, velocity, angularVelocity);
+    _rigidBody->setLinearVelocity(velocity + _parentInducedVelocity);
+    _rigidBody->setAngularVelocity(angularVelocity + _parentInducedAngularVelocity);
 
     // Dynamicaly compute a follow velocity to move this body toward the _followDesiredBodyTransform.
     // Rather than add this velocity to velocity the RigidBody, we explicitly teleport the RigidBody towards its goal.
@@ -370,6 +372,12 @@ void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::qu
     }
 }
 
+void CharacterController::setParentInducedVelocity(glm::vec3 parentInducedVelocity, glm::vec3 parentInducedAngularVelocity) {
+    _parentInducedVelocity = glmToBullet(parentInducedVelocity);
+    _parentInducedAngularVelocity = glmToBullet(parentInducedAngularVelocity);
+}
+
+
 void CharacterController::setVelocity(const glm::vec3& velocity) {
     _rigidBody->setLinearVelocity(glmToBullet(velocity));
 }
@@ -485,7 +493,7 @@ void CharacterController::applyMotor(int index, btScalar dt, btVector3& worldVel
     }
 }
 
-void CharacterController::computeNewVelocity(btScalar dt, btVector3& velocity) {
+void CharacterController::computeNewVelocity(btScalar dt, btVector3& velocity, btVector3& angularVelocity) {
     if (velocity.length2() < MIN_TARGET_SPEED_SQUARED) {
         velocity = btVector3(0.0f, 0.0f, 0.0f);
     }
@@ -520,10 +528,12 @@ void CharacterController::computeNewVelocity(btScalar dt, btVector3& velocity) {
     _targetVelocity = velocity;
 }
 
-void CharacterController::computeNewVelocity(btScalar dt, glm::vec3& velocity) {
+void CharacterController::computeNewVelocity(btScalar dt, glm::vec3& velocity, glm::vec3& angularVelocity) {
     btVector3 btVelocity = glmToBullet(velocity);
-    computeNewVelocity(dt, btVelocity);
+    btVector3 btAngularVelocity = glmToBullet(angularVelocity);
+    computeNewVelocity(dt, btVelocity, btAngularVelocity);
     velocity = bulletToGLM(btVelocity);
+    angularVelocity = bulletToGLM(btAngularVelocity);
 }
 
 void CharacterController::preSimulation() {

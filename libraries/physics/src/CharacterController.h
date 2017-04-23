@@ -69,8 +69,8 @@ public:
     void clearMotors();
     void addMotor(const glm::vec3& velocity, const glm::quat& rotation, float horizTimescale, float vertTimescale = -1.0f);
     void applyMotor(int index, btScalar dt, btVector3& worldVelocity, std::vector<btVector3>& velocities, std::vector<btScalar>& weights);
-    void computeNewVelocity(btScalar dt, btVector3& velocity);
-    void computeNewVelocity(btScalar dt, glm::vec3& velocity);
+    void computeNewVelocity(btScalar dt, btVector3& velocity, btVector3& angularVelocity);
+    void computeNewVelocity(btScalar dt, glm::vec3& velocity, glm::vec3& angularVelocity);
 
     // HACK for legacy 'thrust' feature
     void setLinearAcceleration(const glm::vec3& acceleration) { _linearAcceleration = glmToBullet(acceleration); }
@@ -80,6 +80,8 @@ public:
 
     void setPositionAndOrientation( const glm::vec3& position, const glm::quat& orientation);
     void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const;
+
+    void setParentInducedVelocity(glm::vec3 parentInducedVelocity, glm::vec3 parentInducedAngularVelocity);
 
     void setVelocity(const glm::vec3& velocity);
     void setFollowParameters(const glm::mat4& desiredWorldMatrix, float timeRemaining);
@@ -138,6 +140,8 @@ protected:
     std::vector<CharacterMotor> _motors;
     btVector3 _currentUp;
     btVector3 _targetVelocity;
+    btVector3 _parentInducedVelocity;
+    btVector3 _parentInducedAngularVelocity;
     btVector3 _preSimulationVelocity;
     btVector3 _velocityChange;
     btTransform _followDesiredBodyTransform;
