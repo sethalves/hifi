@@ -1431,13 +1431,6 @@ void MyAvatar::prepareForPhysicsSimulation() {
     relayDriveKeysToCharacterController();
     updateMotors();
 
-    bool success;
-    glm::vec3 parentVelocity = getParentVelocity(success);
-    if (!success) {
-        qDebug() << "Warning: getParentVelocity failed" << getID();
-        parentVelocity = glm::vec3();
-    }
-
     _characterController.setPositionAndOrientation(getPosition(), getOrientation());
     if (qApp->isHMDMode()) {
         _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput());
