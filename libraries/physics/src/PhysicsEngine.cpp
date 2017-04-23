@@ -220,6 +220,9 @@ VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& ob
     VectorOfMotionStates stillNeedChange;
     for (auto object : objects) {
         uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
+        if (flags & Simulation::DIRTY_HIERARCHY) {
+            object->maybeSwitchPhysicsEngines();
+        }
         if (flags & HARD_DIRTY_PHYSICS_FLAGS) {
             if (object->handleHardAndEasyChanges(flags, this)) {
                 object->clearIncomingDirtyFlags();

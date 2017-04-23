@@ -1461,9 +1461,10 @@ PhysicsEnginePointer Avatar::getPhysicsEngine() {
 
 void Avatar::hierarchyChanged() {
     SpatiallyNestable::hierarchyChanged();
-    if (_motionState) {
-        _motionState->maybeSwitchPhysicsEngines();
-    }
+    // if (_motionState) {
+    //     _motionState->maybeSwitchPhysicsEngines();
+    // }
+    addPhysicsFlags(Simulation::DIRTY_HIERARCHY);
 }
 
 QList<QVariant> Avatar::getSkeleton() {

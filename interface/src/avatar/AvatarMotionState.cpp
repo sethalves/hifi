@@ -162,9 +162,15 @@ PhysicsEnginePointer AvatarMotionState::getPhysicsEngine() const {
     return getShouldBeInPhysicsEngine();
 }
 
+PhysicsEnginePointer AvatarMotionState::getShouldBeInPhysicsEngine() const {
+    AvatarSharedPointer avatarData = getAvatar();
+    std::shared_ptr<Avatar> avatar = std::dynamic_pointer_cast<Avatar>(avatarData);
+    return avatar->getPhysicsEngine();
+}
+
 // virtual
 void AvatarMotionState::maybeSwitchPhysicsEngines() {
-    MyAvatar* myAvatar = dynamic_cast<MyAvatar*>(_avatar); // will be nullptr if not MyAvatar
+    std::shared_ptr<MyAvatar> myAvatar = std::dynamic_pointer_cast<MyAvatar>(_avatar);  // will be nullptr if not MyAvatar
     if (myAvatar) {
         myAvatar->handleZoneChange();
     }

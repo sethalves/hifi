@@ -28,6 +28,7 @@ namespace Simulation {
     const uint32_t DIRTY_SIMULATOR_ID = 0x1000; // the simulatorID has changed
     const uint32_t DIRTY_SIMULATION_OWNERSHIP_FOR_POKE = 0x2000; // bid for simulation ownership at "poke"
     const uint32_t DIRTY_SIMULATION_OWNERSHIP_FOR_GRAB = 0x4000; // bid for simulation ownership at "grab"
+    const uint32_t DIRTY_HIERARCHY = 0x8000; // bid for simulation ownership at "grab"
 
     const uint32_t DIRTY_TRANSFORM = DIRTY_POSITION | DIRTY_ROTATION;
     const uint32_t DIRTY_VELOCITIES = DIRTY_LINEAR_VELOCITY | DIRTY_ANGULAR_VELOCITY;
