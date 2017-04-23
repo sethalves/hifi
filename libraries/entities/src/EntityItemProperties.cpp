@@ -322,6 +322,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_ROTATION, localRotation);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_VELOCITY, localVelocity);
     CHECK_PROPERTY_CHANGE(PROP_LOCAL_ANGULAR_VELOCITY, localAngularVelocity);
+    CHECK_PROPERTY_CHANGE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
 
     CHECK_PROPERTY_CHANGE(PROP_FLYING_ALLOWED, flyingAllowed);
     CHECK_PROPERTY_CHANGE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
@@ -503,6 +504,9 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
 
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FLYING_ALLOWED, flyingAllowed);
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_GHOSTING_ALLOWED, ghostingAllowed);
+
+        COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCALIZED_SIMULATION, localizedSimulation);
+
         COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FILTER_URL, filterURL);
     }
 
@@ -738,6 +742,8 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(owningAvatarID, QUuid, setOwningAvatarID);
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(dpi, uint16_t, setDPI);
+
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(localizedSimulation, bool, setLocalizedSimulation);
 
     _lastEdited = usecTimestampNow();
 }
@@ -1050,6 +1056,8 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
 
         ADD_PROPERTY_TO_MAP(PROP_DPI, DPI, dpi, uint16_t);
 
+        ADD_PROPERTY_TO_MAP(PROP_LOCALIZED_SIMULATION, LocalizedSimulation, localizedSimulation, bool);
+
         // FIXME - these are not yet handled
         //ADD_PROPERTY_TO_MAP(PROP_CREATED, Created, created, quint64);
 
@@ -1295,6 +1303,9 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
 
                 APPEND_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, properties.getFlyingAllowed());
                 APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, properties.getGhostingAllowed());
+
+                APPEND_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, properties.getLocalizedSimulation());
+
                 APPEND_ENTITY_PROPERTY(PROP_FILTER_URL, properties.getFilterURL());
             }
 
@@ -1590,6 +1601,9 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
 
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_FLYING_ALLOWED, bool, setFlyingAllowed);
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
+
+        READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCALIZED_SIMULATION, bool, setLocalizedSimulation);
+
         READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_FILTER_URL, QString, setFilterURL);
     }
 
@@ -1798,6 +1812,8 @@ void EntityItemProperties::markAllChanged() {
 
     _clientOnlyChanged = true;
     _owningAvatarIDChanged = true;
+
+    _localizedSimulationChanged = true;
 
     _dpiChanged = true;
 }
@@ -2130,12 +2146,15 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (owningAvatarIDChanged()) {
         out += "owningAvatarID";
     }
-
     if (flyingAllowedChanged()) {
         out += "flyingAllowed";
     }
     if (ghostingAllowedChanged()) {
         out += "ghostingAllowed";
+    }
+
+    if (localizedSimulationChanged()) {
+        out += "localizedSimulation";
     }
     if (filterURLChanged()) {
         out += "filterURL";
@@ -2143,7 +2162,6 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (dpiChanged()) {
         out += "dpi";
     }
-
     if (shapeChanged()) {
         out += "shape";
     }

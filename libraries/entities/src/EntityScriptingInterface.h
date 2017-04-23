@@ -102,8 +102,11 @@ public:
     void setEntitiesScriptEngine(EntitiesScriptEngineProvider* engine);
     float calculateCost(float mass, float oldVelocity, float newVelocity);
 
+    void setDefaultParentID(const QUuid& defaultParentID) { _defaultParentID = defaultParentID; }
+
     void resetActivityTracking();
     ActivityTracking getActivityTracking() const { return _activityTracking; }
+
 public slots:
 
     /**jsdoc
@@ -414,6 +417,8 @@ private:
     float costMultiplier = { 0.01f };
     float getCostMultiplier();
     void setCostMultiplier(float value);
+
+    QUuid _defaultParentID;
 };
 
 #endif // hifi_EntityScriptingInterface_h

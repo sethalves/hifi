@@ -31,6 +31,7 @@
 #include "EntityTree.h"
 #include "EntitySimulation.h"
 #include "EntityDynamicFactoryInterface.h"
+#include "PhysicsEngineTrackerInterface.h"
 
 
 int EntityItem::_maxActionsDataSize = 800;
@@ -101,6 +102,15 @@ EntityItem::~EntityItem() {
     assert(!_element);
     assert(!_physicsInfo);
 }
+
+QString EntityItem::toString() const {
+    QString name = getName();
+    if (name == "") {
+        return getID().toString();
+    }
+    return name + ":" + getID().toString();
+}
+
 
 EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties;
@@ -1944,6 +1954,30 @@ void EntityItem::setPendingOwnershipPriority(quint8 priority, const quint64& tim
     _simulationOwner.setPendingPriority(priority, timestamp);
 }
 
+EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
+    // search upward through parents for a zone
+    bool success = true;
+    for (SpatiallyNestablePointer ancestor = SpatiallyNestable::findByID(parentID, success);
+         ancestor && success;
+         ancestor = ancestor->getParentPointer(success)) {
+        if (ancestor->isSimulationParent()) {
+            // currently must be a ZoneEntityItem
+            EntityItemPointer ancestorEntity = std::static_pointer_cast<EntityItem>(ancestor);
+            return ancestorEntity;
+        }
+    }
+    return nullptr;
+}
+
+PhysicsEnginePointer EntityItem::getPhysicsEngine() {
+    EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
+    if (ancestorZone) {
+        return ancestorZone->getChildPhysicsEngine();
+    }
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID);
+}
+
 void EntityItem::rememberHasSimulationOwnershipBid() const {
     _hasBidOnSimulation = true;
 }
@@ -1972,7 +2006,7 @@ bool EntityItem::addAction(EntitySimulationPointer simulation, EntityDynamicPoin
             action->setIsMine(true);
             _dynamicDataDirty = true;
         } else {
-            removeActionInternal(action->getID());
+            removeActionInternal(action->getID(), simulation);
         }
     });
 
@@ -2031,7 +2065,7 @@ bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& a
     bool success = false;
     withWriteLock([&] {
         checkWaitingToRemove(simulation);
-        success = removeActionInternal(actionID);
+        success = removeActionInternal(actionID, simulation);
     });
     return success;
 }
@@ -2310,6 +2344,13 @@ void EntityItem::locationChanged(bool tellPhysics) {
         }
     }
     SpatiallyNestable::locationChanged(tellPhysics); // tell all the children, also
+}
+
+void EntityItem::hierarchyChanged() {
+    SpatiallyNestable::hierarchyChanged();
+    if (_physicsInfo) {
+        _physicsInfo->maybeSwitchPhysicsEngines();
+    }
 }
 
 void EntityItem::dimensionsChanged() {

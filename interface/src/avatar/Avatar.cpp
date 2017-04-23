@@ -33,6 +33,8 @@
 #include "InterfaceLogging.h"
 #include "SceneScriptingInterface.h"
 #include "SoftAttachmentModel.h"
+#include <Rig.h>
+#include "PhysicsEngineTracker.h"
 
 using namespace std;
 
@@ -1446,6 +1448,23 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
             qCDebug(interfaceapp) << "Avatar::setParentJointIndex failed to reset avatar's location.";
         }
     }
+}
+
+PhysicsEnginePointer Avatar::getPhysicsEngine() {
+    EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
+    if (ancestorZone) {
+        return ancestorZone->getChildPhysicsEngine();
+    }
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTracker::DEFAULT_PHYSICS_ENGINE_ID);
+}
+
+void Avatar::hierarchyChanged() {
+    SpatiallyNestable::hierarchyChanged();
+    // if (_motionState) {
+    //     _motionState->maybeSwitchPhysicsEngines();
+    // }
+    addPhysicsFlags(Simulation::DIRTY_HIERARCHY);
 }
 
 QList<QVariant> Avatar::getSkeleton() {

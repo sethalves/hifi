@@ -57,8 +57,6 @@ public:
 
     void updateEntities();
 
-//    friend class EntityTree;
-
     virtual void addDynamic(EntityDynamicPointer dynamic);
     virtual void removeDynamic(const QUuid dynamicID);
     virtual void removeDynamics(QList<QUuid> dynamicIDsToRemove);
@@ -67,6 +65,8 @@ public:
     /// \param entity pointer to EntityItem to be added
     /// \sideeffect sets relevant backpointers in entity, but maybe later when appropriate data structures are locked
     void addEntity(EntityItemPointer entity);
+    void removeEntity(EntityItemPointer entity);
+    void transferEntity(EntityItemPointer entity);
 
     /// \param entity pointer to EntityItem that may have changed in a way that would affect its simulation
     /// call this whenever an entity was changed from some EXTERNAL event (NOT by the EntitySimulation itself)
@@ -91,6 +91,7 @@ protected:
     // calls them in the right places.
     virtual void updateEntitiesInternal(const quint64& now) = 0;
     virtual void addEntityInternal(EntityItemPointer entity);
+    virtual void transferEntityInternal(EntityItemPointer entity);
     virtual void removeEntityInternal(EntityItemPointer entity) = 0;
     virtual void changeEntityInternal(EntityItemPointer entity);
     virtual void clearEntitiesInternal() = 0;
@@ -123,7 +124,6 @@ private:
 
 
     SetOfEntities _entitiesToUpdate; // entities that need to call EntityItem::update()
-
 };
 
 #endif // hifi_EntitySimulation_h

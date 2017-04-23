@@ -83,7 +83,7 @@ void makeEntityItemStatusGetters(EntityItemPointer entity, render::Item::Status:
     });
 
     statusGetters.push_back([entity] () -> render::Item::Status::Value {
-        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(entity->getPhysicsInfo());
+        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(entity->getPhysicsInfo());
         if (motionState && motionState->isActive()) {
             return render::Item::Status::Value(1.0f, render::Item::Status::Value::BLUE,
                                                (unsigned char)RenderItemStatusIcon::ACTIVE_IN_BULLET);

@@ -24,6 +24,7 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
+#include "PhysicsEngineTrackerInterface.h"
 #include "EntityEditFilters.h"
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
@@ -316,7 +317,7 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
                     _simulation->changeEntity(entity);
                 }
             } else {
-                // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
+                // normally the _simulation clears ALL updateFlags, but since there are none we do it explicitly
                 entity->clearDirtyFlags();
             }
         }

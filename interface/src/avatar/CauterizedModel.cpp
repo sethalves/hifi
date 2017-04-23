@@ -18,8 +18,8 @@
 #include "CauterizedMeshPartPayload.h"
 
 
-CauterizedModel::CauterizedModel(RigPointer rig, QObject* parent) :
-        Model(rig, parent) {
+CauterizedModel::CauterizedModel(RigPointer rig, QObject* parent, SpatiallyNestable* spatiallyNestableOverride) :
+    Model(rig, parent, spatiallyNestableOverride) {
 }
 
 CauterizedModel::~CauterizedModel() {

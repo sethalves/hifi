@@ -62,12 +62,13 @@ ShapeManager* ObjectMotionState::getShapeManager() {
     return shapeManager;
 }
 
-ObjectMotionState::ObjectMotionState(const btCollisionShape* shape) :
+ObjectMotionState::ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation) :
     _motionType(MOTION_TYPE_STATIC),
     _shape(shape),
     _body(nullptr),
     _mass(0.0f),
-    _lastKinematicStep(worldSimulationStep)
+    _lastKinematicStep(worldSimulationStep),
+    _simulation(simulation)
 {
 }
 
@@ -317,4 +318,3 @@ void ObjectMotionState::updateBodyMassProperties() {
     _body->setMassProps(mass, inertia);
     _body->updateInertiaTensor();
 }
-

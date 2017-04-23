@@ -89,7 +89,14 @@ public:
     static const QString DEFAULT_COMPOUND_SHAPE_URL;
     static const bool DEFAULT_FLYING_ALLOWED;
     static const bool DEFAULT_GHOSTING_ALLOWED;
+    static const bool DEFAULT_LOCALIZED_SIMULATION;
     static const QString DEFAULT_FILTER_URL;
+
+    virtual PhysicsEnginePointer getChildPhysicsEngine() override;
+
+    bool getLocalizedSimulation() const { return _localizedSimulation; }
+    void setLocalizedSimulation(bool value);
+    virtual bool isSimulationParent() override;
 
 protected:
     KeyLightPropertyGroup _keyLightProperties;
@@ -104,6 +111,7 @@ protected:
 
     bool _flyingAllowed { DEFAULT_FLYING_ALLOWED };
     bool _ghostingAllowed { DEFAULT_GHOSTING_ALLOWED };
+    bool _localizedSimulation { DEFAULT_LOCALIZED_SIMULATION };
     QString _filterURL { DEFAULT_FILTER_URL };
 
     static bool _drawZoneBoundaries;

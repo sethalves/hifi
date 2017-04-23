@@ -573,6 +573,42 @@
                     <div><input type="number" class="blue" id="property-light-color-blue"><label for="property-light-color-blue">Blue:</label></div>
                 </div>
             </div>
+        </div>
+        <div class="zone-group zone-section skybox-section property url ">
+            <label for="property-zone-skybox-url">Skybox URL</label>
+            <input type="text" id="property-zone-skybox-url">
+        </div>
+        <div class="zone-group zone-section property checkbox">
+            <input type="checkbox" id="property-zone-flying-allowed">
+            <label for="property-zone-flying-allowed">&nbsp;Flying Allowed</label>
+        </div>
+        <div class="zone-group zone-section property checkbox">
+            <input type="checkbox" id="property-zone-ghosting-allowed">
+            <label for="property-zone-ghosting-allowed">&nbsp;Ghosting Allowed</label>
+        </div>
+        <div class="zone-group zone-section property checkbox">
+            <input type="checkbox" id="property-zone-localized-simulation">
+            <label for="property-zone-localized-simulation">&nbsp;Localized Physics</label>
+        </div>
+
+        <div class="section-header web-group web-section">
+            <label>Web</label><span>M</span>
+        </div>
+        <div class="web-group web-section property url ">
+            <label for="property-web-source-url">Source URL</label>
+            <input type="text" id="property-web-source-url">
+        </div>
+        <div class="section-header light-group light-section">
+            <label>Light</label><span>M</span>
+        </div>
+        <div class="light-group light-section property rgb">
+            <div class="color-picker" id="property-light-color"></div>
+            <label>Light color</label>
+            <div class="tuple">
+                <div><input type="number" class="red" id="property-light-color-red"><label for="property-light-color-red">Red:</label></div>
+                <div><input type="number" class="green" id="property-light-color-green"><label for="property-light-color-green">Green:</label></div>
+                <div><input type="number" class="blue" id="property-light-color-blue"><label for="property-light-color-blue">Blue:</label></div>
+            </div>
             <div class="light-group light-section property gen">
                 <div class="tuple">
                     <div><label>Intensity</label><input type="number" id="property-light-intensity" min="0" step="0.1"></div>

@@ -37,6 +37,7 @@
 #include "SimulationOwner.h"
 #include "SimulationFlags.h"
 #include "EntityDynamicInterface.h"
+#include "ObjectMotionStateInterface.h"
 
 class EntitySimulation;
 class EntityTreeElement;
@@ -48,8 +49,8 @@ class btCollisionShape;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
 typedef std::shared_ptr<EntityDynamicInterface> EntityDynamicPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
+typedef std::weak_ptr<EntitySimulation> EntitySimulationWeakPointer;
 using EntityTreeElementExtraEncodeDataPointer = std::shared_ptr<EntityTreeElementExtraEncodeData>;
-
 
 namespace render {
     class Scene;
@@ -63,6 +64,8 @@ namespace render {
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
 class MeshProxyList;
 
 
@@ -375,9 +378,9 @@ public:
 
     bool isSimulated() const { return _simulated; }
 
-    void* getPhysicsInfo() const { return _physicsInfo; }
+    ObjectMotionStateInterface* getPhysicsInfo() const { return _physicsInfo; }
 
-    void setPhysicsInfo(void* data) { _physicsInfo = data; }
+    void setPhysicsInfo(ObjectMotionStateInterface* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
     EntityTreePointer getTree() const;
     virtual SpatialParentTree* getParentTree() const override;
@@ -453,6 +456,15 @@ public:
     // if this entity is client-only, which avatar is it associated with?
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
+
+    static EntityItemPointer findAncestorZone(QUuid parentID);
+
+    virtual PhysicsEnginePointer getChildPhysicsEngine() { return nullptr; } // overridden in ZoneEntityItem
+
+    virtual QString toString() const override;
+
+    PhysicsEnginePointer getPhysicsEngine();
+    virtual void hierarchyChanged() override;
 
     static void setEntitiesShouldFadeFunction(std::function<bool()> func) { _entitiesShouldFadeFunction = func; }
     static std::function<bool()> getEntitiesShouldFadeFunction() { return _entitiesShouldFadeFunction; }
@@ -567,11 +579,11 @@ protected:
 
     // these backpointers are only ever set/cleared by friends:
     EntityTreeElementPointer _element { nullptr }; // set by EntityTreeElement
-    void* _physicsInfo { nullptr }; // set by EntitySimulation
+    ObjectMotionStateInterface* _physicsInfo { nullptr }; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
     bool addActionInternal(EntitySimulationPointer simulation, EntityDynamicPointer action);
-    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation = nullptr);
+    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;
     QHash<QUuid, EntityDynamicPointer> _objectActions;

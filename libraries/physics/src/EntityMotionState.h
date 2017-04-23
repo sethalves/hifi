@@ -1,6 +1,6 @@
 //
 //  EntityMotionState.h
-//  libraries/entities/src
+//  libraries/physics/src
 //
 //  Created by Andrew Meadows on 2014.11.06
 //  Copyright 2013 High Fidelity, Inc.
@@ -17,6 +17,10 @@
 
 #include "ObjectMotionState.h"
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
+
 
 // From the MotionState's perspective:
 //      Inside = physics simulation
@@ -25,8 +29,11 @@
 class EntityMotionState : public ObjectMotionState {
 public:
 
-    EntityMotionState(btCollisionShape* shape, EntityItemPointer item);
+    EntityMotionState(btCollisionShape* shape, EntityItemPointer item,
+                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
     virtual ~EntityMotionState();
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
 
     void updateServerPhysicsVariables();
     void handleDeactivation();
@@ -57,10 +64,12 @@ public:
     virtual float getObjectLinearDamping() const override { return _entity->getDamping(); }
     virtual float getObjectAngularDamping() const override { return _entity->getAngularDamping(); }
 
-    virtual glm::vec3 getObjectPosition() const override { return _entity->getPosition() - ObjectMotionState::getWorldOffset(); }
-    virtual glm::quat getObjectRotation() const override { return _entity->getRotation(); }
-    virtual glm::vec3 getObjectLinearVelocity() const override { return _entity->getVelocity(); }
-    virtual glm::vec3 getObjectAngularVelocity() const override { return _entity->getAngularVelocity(); }
+    virtual glm::vec3 getObjectPosition() const override {
+        return _entity->getPositionInSimulationFrame() - ObjectMotionState::getWorldOffset();
+    }
+    virtual glm::quat getObjectRotation() const override { return _entity->getOrientationInSimulationFrame(); }
+    virtual glm::vec3 getObjectLinearVelocity() const override { return _entity->getVelocityInSimulationFrame(); }
+    virtual glm::vec3 getObjectAngularVelocity() const override { return _entity->getAngularVelocityInSimulationFrame(); }
     virtual glm::vec3 getObjectGravity() const override { return _entity->getGravity(); }
     virtual glm::vec3 getObjectLinearVelocityChange() const override;
 
@@ -71,6 +80,9 @@ public:
     virtual void bump(uint8_t priority) override;
 
     EntityItemPointer getEntity() const { return _entityPtr.lock(); }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override;
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override { return getEntity()->getPhysicsEngine(); }
+    virtual void maybeSwitchPhysicsEngines() override;
 
     void resetMeasuredBodyAcceleration();
     void measureBodyAcceleration();
@@ -105,6 +117,8 @@ protected:
     EntityItemWeakPointer _entityPtr;
     // Meanwhile we also keep a raw EntityItem* for internal stuff where the pointer is guaranteed valid.
     EntityItem* _entity;
+
+    PhysicsEngineWeakPointer _physicsEngine;
 
     glm::vec3 _serverPosition;    // in simulation-frame (not world-frame)
     glm::quat _serverRotation;

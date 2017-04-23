@@ -284,6 +284,8 @@ public:
     void takeSnapshot(bool notify, bool includeAnimated = false, float aspectRatio = 0.0f);
     void shareSnapshot(const QString& filename, const QUrl& href = QUrl(""));
 
+    PhysicalEntitySimulationPointer getSimulation() { return _entitySimulation; }
+
     model::SkyboxPointer getDefaultSkybox() const { return _defaultSkybox; }
     gpu::TexturePointer getDefaultSkyboxTexture() const { return _defaultSkyboxTexture;  }
     gpu::TexturePointer getDefaultSkyboxAmbientTexture() const { return _defaultSkyboxAmbientTexture; }
@@ -540,7 +542,6 @@ private:
 
     ShapeManager _shapeManager;
     PhysicalEntitySimulationPointer _entitySimulation;
-    PhysicsEnginePointer _physicsEngine;
 
     EntityTreeRenderer _entityClipboardRenderer;
     EntityTreePointer _entityClipboard;
@@ -689,5 +690,7 @@ private:
     SharedSoundPointer _snapshotSound;
 };
 
+void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor);
+PhysicsEnginePointer getDefaultPhysicsEngine();
 
 #endif // hifi_Application_h

@@ -13,11 +13,15 @@
 #include <PhysicsEngine.h>
 #include <PhysicsHelpers.h>
 
-#include "Avatar.h"
+#include "MyAvatar.h"
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
-AvatarMotionState::AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape) : ObjectMotionState(shape), _avatar(avatar) {
+AvatarMotionState::AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape,
+                                     EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
+    ObjectMotionState(shape, simulation),
+    _avatar(avatar),
+    _physicsEngine(physicsEngine) {
     assert(_avatar);
     _type = MOTIONSTATE_TYPE_AVATAR;
     if (_shape) {
@@ -149,3 +153,25 @@ void AvatarMotionState::computeCollisionGroupAndMask(int16_t& group, int16_t& ma
     mask = Physics::getDefaultCollisionMask(group);
 }
 
+// virtual
+PhysicsEnginePointer AvatarMotionState::getPhysicsEngine() const {
+    PhysicsEnginePointer result = _physicsEngine.lock();
+    if (result) {
+        return result;
+    }
+    return getShouldBeInPhysicsEngine();
+}
+
+PhysicsEnginePointer AvatarMotionState::getShouldBeInPhysicsEngine() const {
+    AvatarSharedPointer avatarData = getAvatar();
+    std::shared_ptr<Avatar> avatar = std::dynamic_pointer_cast<Avatar>(avatarData);
+    return avatar->getPhysicsEngine();
+}
+
+// virtual
+void AvatarMotionState::maybeSwitchPhysicsEngines() {
+    std::shared_ptr<MyAvatar> myAvatar = std::dynamic_pointer_cast<MyAvatar>(_avatar);  // will be nullptr if not MyAvatar
+    if (myAvatar) {
+        myAvatar->handleZoneChange();
+    }
+}

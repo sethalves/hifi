@@ -44,18 +44,26 @@ public:
 using ContactMap = std::map<ContactKey, ContactInfo>;
 using CollisionEvents = std::vector<Collision>;
 
-class PhysicsEngine {
+class PhysicsEngine : public std::enable_shared_from_this<PhysicsEngine> {
 public:
-    PhysicsEngine(const glm::vec3& offset);
+    PhysicsEngine(QUuid id, const glm::vec3& offset);
     ~PhysicsEngine();
     void init();
+
+    inline PhysicsEnginePointer getThisPointer() const {
+        return std::const_pointer_cast<PhysicsEngine>(shared_from_this());
+    }
+
+    QUuid getID() { return _id; }
 
     uint32_t getNumSubsteps();
 
     void removeObjects(const VectorOfMotionStates& objects);
     void removeObjects(const SetOfMotionStates& objects); // only called during teardown
+    void removeObject(ObjectMotionState* object, bool doBumpAndPrune = true);
 
     void addObjects(const VectorOfMotionStates& objects);
+    void addObject(ObjectMotionState* object);
     VectorOfMotionStates changeObjects(const VectorOfMotionStates& objects);
     void reinsertObject(ObjectMotionState* object);
 
@@ -102,6 +110,8 @@ private:
 
     void doOwnershipInfection(const btCollisionObject* objectA, const btCollisionObject* objectB);
 
+    QUuid _id; // corresponds to entityID of zone that owns this PhysicsEngine, or nullptr for the default one
+
     btClock _clock;
     btDefaultCollisionConfiguration* _collisionConfig = NULL;
     btCollisionDispatcher* _collisionDispatcher = NULL;
@@ -118,7 +128,7 @@ private:
 
     glm::vec3 _originOffset;
 
-    CharacterController* _myAvatarController;
+    CharacterController* _myAvatarController { nullptr };
 
     uint32_t _numContactFrames = 0;
     uint32_t _numSubsteps;
@@ -128,6 +138,7 @@ private:
 
 };
 
-typedef std::shared_ptr<PhysicsEngine> PhysicsEnginePointer;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
 
 #endif // hifi_PhysicsEngine_h

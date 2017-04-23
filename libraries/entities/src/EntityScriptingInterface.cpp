@@ -191,7 +191,14 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
 
     _activityTracking.addedEntityCount++;
 
-    EntityItemProperties propertiesWithSimID = convertLocationFromScriptSemantics(properties);
+    EntityItemProperties propertiesWithSimID = properties;
+
+    if (!propertiesWithSimID.parentIDChanged()) {
+        // _defaultParentID is set from MyAvatar to be either null or the current simulation parent's ID
+        propertiesWithSimID.setParentID(_defaultParentID);
+    }
+
+    propertiesWithSimID = convertLocationFromScriptSemantics(propertiesWithSimID);
     propertiesWithSimID.setDimensionsInitialized(properties.dimensionsChanged());
 
     if (clientOnly) {
@@ -1072,7 +1079,6 @@ bool EntityScriptingInterface::appendPoint(QUuid entityID, const glm::vec3& poin
     return false;
 }
 
-
 bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
                                             std::function<bool(EntitySimulationPointer, EntityItemPointer)> actor) {
     if (!_entityTree) {
@@ -1521,17 +1527,9 @@ QVector<QUuid> EntityScriptingInterface::getChildrenIDsOfJoint(const QUuid& pare
         return result;
     }
     _entityTree->withReadLock([&] {
-        QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
-        if (!parentFinder) {
-            return;
-        }
         bool success;
-        SpatiallyNestableWeakPointer parentWP = parentFinder->find(parentID, success);
-        if (!success) {
-            return;
-        }
-        SpatiallyNestablePointer parent = parentWP.lock();
-        if (!parent) {
+        SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
+        if (!parent || !success) {
             return;
         }
         parent->forEachChild([&](SpatiallyNestablePointer child) {

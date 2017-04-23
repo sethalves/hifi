@@ -78,6 +78,9 @@ void EntitySimulation::addEntityInternal(EntityItemPointer entity) {
     }
 }
 
+void EntitySimulation::transferEntityInternal(EntityItemPointer entity) {
+}
+
 void EntitySimulation::changeEntityInternal(EntityItemPointer entity) {
     QMutexLocker lock(&_mutex);
     if (entity->isMovingRelativeToParent() && !entity->getPhysicsInfo()) {
@@ -191,6 +194,12 @@ void EntitySimulation::addEntity(EntityItemPointer entity) {
     entity->clearDirtyFlags();
 }
 
+void EntitySimulation::transferEntity(EntityItemPointer entity) {
+    QMutexLocker lock(&_mutex);
+    assert(entity);
+    transferEntityInternal(entity);
+}
+
 void EntitySimulation::changeEntity(EntityItemPointer entity) {
     QMutexLocker lock(&_mutex);
     assert(entity);
@@ -237,6 +246,10 @@ void EntitySimulation::changeEntity(EntityItemPointer entity) {
         }
         changeEntityInternal(entity);
     }
+}
+
+void EntitySimulation::removeEntity(EntityItemPointer entity) {
+    removeEntityInternal(entity);
 }
 
 void EntitySimulation::clearEntities() {

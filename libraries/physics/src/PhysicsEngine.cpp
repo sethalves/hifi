@@ -20,9 +20,11 @@
 #include "ThreadSafeDynamicsWorld.h"
 #include "PhysicsLogging.h"
 
-PhysicsEngine::PhysicsEngine(const glm::vec3& offset) :
-        _originOffset(offset),
-        _myAvatarController(nullptr) {
+PhysicsEngine::PhysicsEngine(QUuid id, const glm::vec3& offset) :
+    _id(id),
+    _originOffset(offset),
+    _myAvatarController(nullptr) {
+    qDebug() << "NEW PHYSICS ENGINE: " << id;
 }
 
 PhysicsEngine::~PhysicsEngine() {
@@ -162,6 +164,24 @@ QList<EntityDynamicPointer> PhysicsEngine::removeDynamicsForBody(btRigidBody* bo
     return removedDynamics;
 }
 
+void PhysicsEngine::removeObject(ObjectMotionState* object, bool doBumpAndPrune) {
+    if (doBumpAndPrune) {
+        bumpAndPruneContacts(object);
+    }
+
+    btRigidBody* body = object->getRigidBody();
+    if (body) {
+        _dynamicsWorld->removeRigidBody(body);
+        object->setPhysicsEngine(nullptr);
+
+        // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
+        object->setRigidBody(nullptr);
+        body->setMotionState(nullptr);
+        delete body;
+    }
+    object->clearIncomingDirtyFlags();
+}
+
 void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
     // bump and prune contacts for all objects in the list
     for (auto object : objects) {
@@ -193,16 +213,7 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
 
     // remove bodies
     for (auto object : objects) {
-        btRigidBody* body = object->getRigidBody();
-        if (body) {
-            removeDynamicsForBody(body);
-            _dynamicsWorld->removeRigidBody(body);
-
-            // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-            object->setRigidBody(nullptr);
-            body->setMotionState(nullptr);
-            delete body;
-        }
+        removeObject(object, false);
     }
 }
 
@@ -210,17 +221,7 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
 void PhysicsEngine::removeObjects(const SetOfMotionStates& objects) {
     _contactMap.clear();
     for (auto object : objects) {
-        btRigidBody* body = object->getRigidBody();
-        if (body) {
-            removeDynamicsForBody(body);
-            _dynamicsWorld->removeRigidBody(body);
-
-            // NOTE: setRigidBody() modifies body->m_userPointer so we should clear the MotionState's body BEFORE deleting it.
-            object->setRigidBody(nullptr);
-            body->setMotionState(nullptr);
-            delete body;
-        }
-        object->clearIncomingDirtyFlags();
+        removeObject(object, false);
     }
 }
 
@@ -230,10 +231,18 @@ void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
     }
 }
 
+void PhysicsEngine::addObject(ObjectMotionState* object) {
+    object->setPhysicsEngine(getThisPointer());
+    addObjectToDynamicsWorld(object);
+}
+
 VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& objects) {
     VectorOfMotionStates stillNeedChange;
     for (auto object : objects) {
         uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
+        if (flags & Simulation::DIRTY_HIERARCHY) {
+            object->maybeSwitchPhysicsEngines();
+        }
         if (flags & HARD_DIRTY_PHYSICS_FLAGS) {
             if (object->handleHardAndEasyChanges(flags, this)) {
                 object->clearIncomingDirtyFlags();

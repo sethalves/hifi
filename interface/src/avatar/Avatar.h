@@ -26,6 +26,7 @@
 #include "SkeletonModel.h"
 #include "Rig.h"
 #include <ThreadSafeValueCache.h>
+#include "EntitySimulation.h"
 
 namespace render {
     template <> const ItemKey payloadGetKey(const AvatarSharedPointer& avatar);
@@ -33,6 +34,9 @@ namespace render {
     template <> void payloadRender(const AvatarSharedPointer& avatar, RenderArgs* args);
     template <> uint32_t metaFetchMetaSubItems(const AvatarSharedPointer& avatar, ItemIDs& subItems);
 }
+
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
 
 static const float SCALING_RATIO = .05f;
 static const float SMOOTHING_RATIO = .05f; // 0 < ratio < 1
@@ -223,6 +227,9 @@ public:
     glm::quat getUncachedLeftPalmRotation() const;
     glm::vec3 getUncachedRightPalmPosition() const;
     glm::quat getUncachedRightPalmRotation() const;
+
+    PhysicsEnginePointer getPhysicsEngine();
+    virtual void hierarchyChanged() override;
 
     uint64_t getLastRenderUpdateTime() const { return _lastRenderUpdateTime; }
     void setLastRenderUpdateTime(uint64_t time) { _lastRenderUpdateTime = time; }

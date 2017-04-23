@@ -27,6 +27,7 @@
 #include "AtRestDetector.h"
 #include "MyCharacterController.h"
 #include <ThreadSafeValueCache.h>
+#include <ZoneEntityItem.h>
 
 class AvatarActionHold;
 class ModelItemID;
@@ -504,6 +505,8 @@ public slots:
     glm::vec3 getPositionForAudio();
     glm::quat getOrientationForAudio();
 
+    void handleZoneChange();
+
     virtual void locationChanged(bool tellPhysics = true) override;
 
 signals:
@@ -669,6 +672,7 @@ private:
     bool _goToPending;
     glm::vec3 _goToPosition;
     glm::quat _goToOrientation;
+    QUuid _currentZoneID;
 
     std::unordered_set<int> _headBoneSet;
     RigPointer _rig;

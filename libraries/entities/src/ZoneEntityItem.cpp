@@ -19,6 +19,8 @@
 #include "EntityTree.h"
 #include "EntityTreeElement.h"
 #include "ZoneEntityItem.h"
+#include "PhysicsEngineTrackerInterface.h"
+#include "EntitySimulation.h"
 #include "EntityEditFilters.h"
 
 bool ZoneEntityItem::_zonesArePickable = false;
@@ -29,6 +31,7 @@ const ShapeType ZoneEntityItem::DEFAULT_SHAPE_TYPE = SHAPE_TYPE_BOX;
 const QString ZoneEntityItem::DEFAULT_COMPOUND_SHAPE_URL = "";
 const bool ZoneEntityItem::DEFAULT_FLYING_ALLOWED = true;
 const bool ZoneEntityItem::DEFAULT_GHOSTING_ALLOWED = true;
+const bool ZoneEntityItem::DEFAULT_LOCALIZED_SIMULATION = false;
 const QString ZoneEntityItem::DEFAULT_FILTER_URL = "";
 
 EntityItemPointer ZoneEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
@@ -62,6 +65,7 @@ EntityItemProperties ZoneEntityItem::getProperties(EntityPropertyFlags desiredPr
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(flyingAllowed, getFlyingAllowed);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(ghostingAllowed, getGhostingAllowed);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(localizedSimulation, getLocalizedSimulation);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(filterURL, getFilterURL);
 
     return properties;
@@ -72,15 +76,15 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
     somethingChanged = EntityItem::setProperties(properties); // set the properties in our base class
 
     bool somethingChangedInKeyLight = _keyLightProperties.setProperties(properties);
-    
+
     bool somethingChangedInStage = _stageProperties.setProperties(properties);
 
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(shapeType, setShapeType);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(compoundShapeURL, setCompoundShapeURL);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(backgroundMode, setBackgroundMode);
-
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(flyingAllowed, setFlyingAllowed);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(ghostingAllowed, setGhostingAllowed);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(localizedSimulation, setLocalizedSimulation);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(filterURL, setFilterURL);
 
     bool somethingChangedInSkybox = _skyboxProperties.setProperties(properties);
@@ -131,6 +135,7 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 
     READ_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, bool, setFlyingAllowed);
     READ_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, bool, setGhostingAllowed);
+    READ_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, bool, setLocalizedSimulation);
     READ_ENTITY_PROPERTY(PROP_FILTER_URL, QString, setFilterURL);
 
     return bytesRead;
@@ -151,6 +156,7 @@ EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& p
 
     requestedProperties += PROP_FLYING_ALLOWED;
     requestedProperties += PROP_GHOSTING_ALLOWED;
+    requestedProperties += PROP_LOCALIZED_SIMULATION;
     requestedProperties += PROP_FILTER_URL;
 
     return requestedProperties;
@@ -182,6 +188,7 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
 
     APPEND_ENTITY_PROPERTY(PROP_FLYING_ALLOWED, getFlyingAllowed());
     APPEND_ENTITY_PROPERTY(PROP_GHOSTING_ALLOWED, getGhostingAllowed());
+    APPEND_ENTITY_PROPERTY(PROP_LOCALIZED_SIMULATION, getLocalizedSimulation());
     APPEND_ENTITY_PROPERTY(PROP_FILTER_URL, getFilterURL());
 }
 
@@ -217,11 +224,38 @@ void ZoneEntityItem::setCompoundShapeURL(const QString& url) {
 }
 
 bool ZoneEntityItem::findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                         bool& keepSearching, OctreeElementPointer& element, float& distance, 
+                         bool& keepSearching, OctreeElementPointer& element, float& distance,
                          BoxFace& face, glm::vec3& surfaceNormal,
                          void** intersectedObject, bool precisionPicking) const {
 
     return _zonesArePickable;
+}
+
+PhysicsEnginePointer ZoneEntityItem::getChildPhysicsEngine() {
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    PhysicsEnginePointer physicsEngine = physicsEngineTracker->getPhysicsEngineByID(getID());
+    if (physicsEngine) {
+        return physicsEngine;
+    }
+
+    // This doesn't get called unless this entity has a child.  If this entity has a child but no physicsEngine,
+    // we need to create a new physicsEngine.
+    EntityTreePointer tree = getTree();
+    return physicsEngineTracker->newPhysicsEngine(getID(), glm::vec3(0.0f), tree);
+}
+
+void ZoneEntityItem::setLocalizedSimulation(bool value) {
+    if (_localizedSimulation != value) {
+        _localizedSimulation = value;
+        forEachDescendant([&](SpatiallyNestablePointer object) {
+            // cause all descendents to reevaluate which physics engine they are in
+            object->hierarchyChanged();
+        });
+    }
+}
+
+bool ZoneEntityItem::isSimulationParent() {
+    return _localizedSimulation;
 }
 
 void ZoneEntityItem::setFilterURL(QString url) {

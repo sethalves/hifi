@@ -22,6 +22,7 @@
 
 #include "ContactInfo.h"
 #include "ShapeManager.h"
+#include "ObjectMotionStateInterface.h"
 
 enum PhysicsMotionType {
     MOTION_TYPE_STATIC,     // no motion
@@ -64,8 +65,13 @@ const uint32_t OUTGOING_DIRTY_PHYSICS_FLAGS = Simulation::DIRTY_TRANSFORM | Simu
 class OctreeEditPacketSender;
 class PhysicsEngine;
 
-class ObjectMotionState : public btMotionState {
+class EntitySimulation;
+using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
+
+class ObjectMotionState : public btMotionState, public ObjectMotionStateInterface {
 public:
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
+
     // These poroperties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
     // (assuming just one PhysicsEngine).  They are cached as statics for fast calculations in the
     // ObjectMotionState context.
@@ -78,7 +84,7 @@ public:
     static void setShapeManager(ShapeManager* manager);
     static ShapeManager* getShapeManager();
 
-    ObjectMotionState(const btCollisionShape* shape);
+    ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation);
     ~ObjectMotionState();
 
     virtual void handleEasyChanges(uint32_t& flags);
@@ -146,6 +152,9 @@ public:
     void dirtyInternalKinematicChanges() { _hasInternalKinematicChanges = true; }
     void clearInternalKinematicChanges() { _hasInternalKinematicChanges = false; }
 
+    virtual PhysicsEnginePointer getPhysicsEngine() const { return nullptr; }
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const { return nullptr; }
+    virtual void maybeSwitchPhysicsEngines() override { };
     virtual bool shouldBeLocallyOwned() const { return false; }
 
     friend class PhysicsEngine;
@@ -168,6 +177,8 @@ protected:
 
     uint32_t _lastKinematicStep;
     bool _hasInternalKinematicChanges { false };
+
+    EntitySimulationWeakPointer _simulation;
 };
 
 typedef QSet<ObjectMotionState*> SetOfMotionStates;

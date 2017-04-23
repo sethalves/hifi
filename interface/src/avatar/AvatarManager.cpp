@@ -188,9 +188,10 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
             avatar->computeShapeInfo(shapeInfo);
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
             if (shape) {
-                AvatarMotionState* motionState = new AvatarMotionState(avatar, shape);
+                // don't add to the simulation now, instead put it on a list to be added later
+                AvatarMotionState* motionState =
+                    new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
                 avatar->setPhysicsCallback([=] (uint32_t flags) { motionState->addDirtyFlags(flags); });
-                _motionStates.insert(avatar.get(), motionState);
                 _motionStatesToAddToPhysics.insert(motionState);
             }
         }
@@ -461,6 +462,7 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
             auto collisionSound = myAvatar->getCollisionSound();
             if (collisionSound) {
                 const auto characterController = myAvatar->getCharacterController();
+                // XXX local velocity to world?
                 const float avatarVelocityChange = (characterController ? glm::length(characterController->getVelocityChange()) : 0.0f);
                 const float velocityChange = glm::length(collision.velocityChange) + avatarVelocityChange;
                 const float MIN_AVATAR_COLLISION_ACCELERATION = 2.4f; // walking speed
@@ -495,6 +497,22 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
         }
     }
 }
+
+// void AvatarManager::addAvatarToSimulation(Avatar* avatar) {
+//     assert(!avatar->getMotionState());
+
+//     ShapeInfo shapeInfo;
+//     avatar->computeShapeInfo(shapeInfo);
+//     btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
+//     if (shape) {
+//         // we don't add to the simulation now, we put it on a list to be added later
+//         AvatarMotionState* motionState =
+//             new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
+//         avatar->setMotionState(motionState);
+//         _motionStatesToAddToPhysics.insert(motionState);
+//         _motionStatesThatMightUpdate.insert(motionState);
+//     }
+// }
 
 void AvatarManager::updateAvatarRenderStatus(bool shouldRenderAvatars) {
     _shouldRender = shouldRenderAvatars;

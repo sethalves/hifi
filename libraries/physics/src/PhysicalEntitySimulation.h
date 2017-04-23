@@ -32,7 +32,7 @@ public:
     PhysicalEntitySimulation();
     ~PhysicalEntitySimulation();
 
-    void init(EntityTreePointer tree, PhysicsEnginePointer engine, EntityEditPacketSender* packetSender);
+    void init(EntityTreePointer tree, PhysicsEnginePointer defaultPhysicsEngine, EntityEditPacketSender* packetSender);
 
     virtual void addDynamic(EntityDynamicPointer dynamic) override;
     virtual void applyDynamicChanges() override;
@@ -43,6 +43,7 @@ protected: // only called by EntitySimulation
     // overrides for EntitySimulation
     virtual void updateEntitiesInternal(const quint64& now) override;
     virtual void addEntityInternal(EntityItemPointer entity) override;
+    virtual void transferEntityInternal(EntityItemPointer entity) override;
     virtual void removeEntityInternal(EntityItemPointer entity) override;
     virtual void changeEntityInternal(EntityItemPointer entity) override;
     virtual void clearEntitiesInternal() override;
@@ -55,6 +56,7 @@ public:
     void getObjectsToAddToPhysics(VectorOfMotionStates& result);
     void setObjectsToChange(const VectorOfMotionStates& objectsToChange);
     void getObjectsToChange(VectorOfMotionStates& result);
+    void getObjectsToTransfer(VectorOfMotionStates& result);
 
     void handleDeactivatedMotionStates(const VectorOfMotionStates& motionStates);
     void handleChangedMotionStates(const VectorOfMotionStates& motionStates);
@@ -66,19 +68,47 @@ private:
     SetOfEntities _entitiesToRemoveFromPhysics;
     SetOfEntities _entitiesToRelease;
     SetOfEntities _entitiesToAddToPhysics;
+    SetOfEntities _entitiesToTransfer;
 
     SetOfEntityMotionStates _pendingChanges; // EntityMotionStates already in PhysicsEngine that need their physics changed
     SetOfEntityMotionStates _outgoingChanges; // EntityMotionStates for which we may need to send updates to entity-server
 
     SetOfMotionStates _physicalObjects; // MotionStates of entities in PhysicsEngine
 
-    PhysicsEnginePointer _physicsEngine = nullptr;
     EntityEditPacketSender* _entityPacketSender = nullptr;
 
-    uint32_t _lastStepSendPackets { 0 };
+    PhysicsEnginePointer _defaultPhysicsEngine;
+
+    QHash<QUuid, uint32_t> _lastStepSendPackets;
 };
 
 
 typedef std::shared_ptr<PhysicalEntitySimulation> PhysicalEntitySimulationPointer;
+
+template<class T>
+inline QHash<QUuid, QVector<T>> sortMotionStatesByEngine(QVector<T> unsortedStates) {
+    QHash<QUuid, QVector<T>> result;
+    foreach (ObjectMotionState* motionState, unsortedStates) {
+        T upcastMotionState = dynamic_cast<T>(motionState);
+        if (upcastMotionState) {
+            PhysicsEnginePointer physicsEngine = upcastMotionState->getPhysicsEngine();
+            result[physicsEngine->getID()] += upcastMotionState;
+        }
+    }
+    return result;
+}
+
+template<class T>
+inline QHash<QUuid, QSet<T>> sortMotionStatesByEngine(QSet<T> unsortedStates) {
+    QHash<QUuid, QSet<T>> result;
+    foreach (ObjectMotionState* motionState, unsortedStates) {
+        T upcastMotionState = dynamic_cast<T>(motionState);
+        if (upcastMotionState) {
+            PhysicsEnginePointer physicsEngine = upcastMotionState->getPhysicsEngine();
+            result[physicsEngine->getID()] += upcastMotionState;
+        }
+    }
+    return result;
+}
 
 #endif // hifi_PhysicalEntitySimulation_h

@@ -22,6 +22,7 @@
 #include "PhysicsEngine.h"
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
+#include "PhysicalEntitySimulation.h"
 
 #ifdef WANT_DEBUG_ENTITY_TREE_LOCKS
 #include "EntityTree.h"
@@ -46,10 +47,12 @@ bool entityTreeIsLocked() {
 #endif
 
 
-EntityMotionState::EntityMotionState(btCollisionShape* shape, EntityItemPointer entity) :
-    ObjectMotionState(nullptr),
+EntityMotionState::EntityMotionState(btCollisionShape* shape, EntityItemPointer entity,
+                                     EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
+    ObjectMotionState(nullptr, simulation),
     _entityPtr(entity),
     _entity(entity.get()),
+    _physicsEngine(physicsEngine),
     _serverPosition(0.0f),
     _serverRotation(),
     _serverVelocity(0.0f),
@@ -121,7 +124,7 @@ void EntityMotionState::handleEasyChanges(uint32_t& flags) {
     if (flags & Simulation::DIRTY_SIMULATOR_ID) {
         if (_entity->getSimulatorID().isNull()) {
             // simulation ownership has been removed by an external simulator
-            if (glm::length2(_entity->getVelocity()) == 0.0f) {
+            if (glm::length2(_entity->getVelocityInSimulationFrame()) == 0.0f) {
                 // this object is coming to rest --> clear the ACTIVATION flag and _outgoingPriority
                 flags &= ~Simulation::DIRTY_PHYSICS_ACTIVATION;
                 _body->setActivationState(WANTS_DEACTIVATION);
@@ -186,7 +189,7 @@ PhysicsMotionType EntityMotionState::computePhysicsMotionType() const {
     }
 
     if (_entity->getDynamic()) {
-        if (!_entity->getParentID().isNull()) {
+        if (!_entity->getParentID().isNull() && !_entity->parentIsSimulationParent()) {
             // if something would have been dynamic but is a child of something else, force it to be kinematic, instead.
             return MOTION_TYPE_KINEMATIC;
         }
@@ -234,7 +237,7 @@ void EntityMotionState::getWorldTransform(btTransform& worldTrans) const {
         _accelerationNearlyGravityCount = (uint8_t)(-1);
     }
     worldTrans.setOrigin(glmToBullet(getObjectPosition()));
-    worldTrans.setRotation(glmToBullet(_entity->getRotation()));
+    worldTrans.setRotation(glmToBullet(_entity->getOrientationInSimulationFrame()));
 }
 
 // This callback is invoked by the physics simulation at the end of each simulation step...
@@ -243,24 +246,10 @@ void EntityMotionState::setWorldTransform(const btTransform& worldTrans) {
     assert(_entity);
     assert(entityTreeIsLocked());
     measureBodyAcceleration();
-    bool positionSuccess;
-    _entity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(), positionSuccess, false);
-    if (!positionSuccess) {
-        static QString repeatedMessage =
-            LogHandler::getInstance().addRepeatedMessageRegex("EntityMotionState::setWorldTransform "
-                                                              "setPosition failed.*");
-        qCDebug(physics) << "EntityMotionState::setWorldTransform setPosition failed" << _entity->getID();
-    }
-    bool orientationSuccess;
-    _entity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false);
-    if (!orientationSuccess) {
-        static QString repeatedMessage =
-            LogHandler::getInstance().addRepeatedMessageRegex("EntityMotionState::setWorldTransform "
-                                                              "setOrientation failed.*");
-        qCDebug(physics) << "EntityMotionState::setWorldTransform setOrientation failed" << _entity->getID();
-    }
-    _entity->setVelocity(getBodyLinearVelocity());
-    _entity->setAngularVelocity(getBodyAngularVelocity());
+    _entity->setPositionInSimulationFrame(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
+    _entity->setOrientationInSimulationFrame(bulletToGLM(worldTrans.getRotation()));
+    _entity->setVelocityInSimulationFrame(getBodyLinearVelocity());
+    _entity->setAngularVelocityInSimulationFrame(getBodyAngularVelocity());
     _entity->setLastSimulated(usecTimestampNow());
 
     if (_entity->getSimulatorID().isNull()) {
@@ -529,8 +518,9 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
             const float DYNAMIC_ANGULAR_VELOCITY_THRESHOLD = 0.087266f;  // ~5 deg/sec
 
             bool movingSlowlyLinear =
-                glm::length2(_entity->getVelocity()) < (DYNAMIC_LINEAR_VELOCITY_THRESHOLD * DYNAMIC_LINEAR_VELOCITY_THRESHOLD);
-            bool movingSlowlyAngular = glm::length2(_entity->getAngularVelocity()) <
+                glm::length2(_entity->getVelocityInSimulationFrame()) < (DYNAMIC_LINEAR_VELOCITY_THRESHOLD *
+                                                                         DYNAMIC_LINEAR_VELOCITY_THRESHOLD);
+            bool movingSlowlyAngular = glm::length2(_entity->getAngularVelocityInSimulationFrame()) <
                     (DYNAMIC_ANGULAR_VELOCITY_THRESHOLD * DYNAMIC_ANGULAR_VELOCITY_THRESHOLD);
             bool movingSlowly = movingSlowlyLinear && movingSlowlyAngular && _entity->getAcceleration() == Vectors::ZERO;
 
@@ -770,7 +760,7 @@ void EntityMotionState::setMotionType(PhysicsMotionType motionType) {
 // virtual
 QString EntityMotionState::getName() const {
     assert(entityTreeIsLocked());
-    return _entity->getName();
+    return _entity->getDebugName();
 }
 
 // virtual
@@ -786,4 +776,25 @@ bool EntityMotionState::shouldBeLocallyOwned() const {
 
 void EntityMotionState::upgradeOutgoingPriority(uint8_t priority) {
     _outgoingPriority = glm::max<uint8_t>(_outgoingPriority, priority);
+}
+
+void EntityMotionState::maybeSwitchPhysicsEngines() {
+    PhysicsEnginePointer currentPhysicsEngine = getPhysicsEngine();
+    PhysicsEnginePointer shouldBeInPhysicsEngine = getShouldBeInPhysicsEngine();
+    auto simulation = _simulation.lock();
+    if (!simulation) {
+        return;
+    }
+
+    if (currentPhysicsEngine != shouldBeInPhysicsEngine) {
+        simulation->transferEntity(_entity->getThisPointer());
+    }
+}
+
+PhysicsEnginePointer EntityMotionState::getPhysicsEngine() const {
+    PhysicsEnginePointer result = _physicsEngine.lock();
+    if (result) {
+        return result;
+    }
+    return getShouldBeInPhysicsEngine();
 }
