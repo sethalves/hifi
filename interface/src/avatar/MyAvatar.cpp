@@ -1431,12 +1431,55 @@ void MyAvatar::prepareForPhysicsSimulation() {
     relayDriveKeysToCharacterController();
     updateMotors();
 
-    bool success;
-    glm::vec3 parentVelocity = getParentVelocity(success);
-    if (!success) {
-        qDebug() << "Warning: getParentVelocity failed" << getID();
-        parentVelocity = glm::vec3();
+    // attempt to keep the avatar stuck to its parent by matching velocities
+    // bool pvSuccess;
+    // glm::vec3 parentVelocity = getParentVelocity(success);
+    // bool pavSuccess;
+    // glm::vec3 parentAngularVelocity = getParentAngularVelocity(success);
+    // if (!pvSuccess || !pavSuccess) {
+    //     qDebug() << "Warning: couldn't get parent's velocity" << getID();
+    //     parentVelocity = glm::vec3();
+    //     parentAngularVelocity = glm::vec3();
+
+    // }
+    // Transform localTransform = getLocalTransform();
+    // _characterController.setParentVelocity(parentVelocity, parentAngularVelocity, localTransform);
+    // XXX;
+
+    // QUuid parentID = getParentID();
+    // int parentJointIndex = getParentJointIndex();
+    // bool lSuccess;
+    // glm::vec3 parentInducedVelocity = localToWorldVelocity(getLocalVelocity(), parentID, parentJointIndex, lSuccess);
+    // bool aSuccess;
+    // glm::vec3 parentInducedAngularVelocity =
+    //     localToWorldAngularVelocity(getLocalAngularVelocity(), parentID, parentJointIndex, aSuccess);
+    // if (!lSuccess || !aSuccess) {
+    //     qDebug() << "Warning: couldn't get parent's velocity" << getID();
+    //     parentInducedVelocity = glm::vec3();
+    //     parentInducedAngularVelocity = glm::vec3();
+    // }
+    // _characterController.setParentInducedVelocity(parentInducedVelocity - getParentVelocity(),
+    //                                               parentInducedAngularVelocity - getParentAngularVelocity());
+
+
+
+    QUuid parentID = getParentID();
+    int parentJointIndex = getParentJointIndex();
+    glm::vec3 parentInducedVelocity;
+    glm::vec3 parentInducedAngularVelocity;
+    if (parentID != QUuid()) {
+        bool success;
+        Transform parentTransform = getParentTransform(success);
+        glm::vec3 parentVelocity = getParentVelocity();
+        glm::vec3 parentAngularVelocity = getParentAngularVelocity();
+        glm::quat qParentAngularVelocity = glm::quat(parentAngularVelocity);
+
+        glm::vec3 localPosition = getLocalPosition();
+
+        parentInducedVelocity = parentVelocity + (qParentAngularVelocity * localPosition - localPosition);
     }
+    _characterController.setParentInducedVelocity(parentInducedVelocity, parentInducedAngularVelocity);
+
 
     _characterController.setPositionAndOrientation(getPosition(), getOrientation());
     if (qApp->isHMDMode()) {
@@ -1877,11 +1920,12 @@ void MyAvatar::updatePosition(float deltaTime) {
     }
 
     vec3 velocity = getVelocity();
+    vec3 angularVelocity = getAngularVelocity();
     const float MOVING_SPEED_THRESHOLD_SQUARED = 0.0001f; // 0.01 m/s
     if (!_characterController.isEnabledAndReady()) {
         // _characterController is not in physics simulation but it can still compute its target velocity
         updateMotors();
-        _characterController.computeNewVelocity(deltaTime, velocity);
+        _characterController.computeNewVelocity(deltaTime, velocity, angularVelocity);
 
         float speed2 = glm::length2(velocity);
         if (speed2 > MIN_AVATAR_SPEED_SQUARED) {
