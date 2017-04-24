@@ -32,8 +32,6 @@ public:
 
     virtual QString getName() const override { return "avatar"; }
 
-    virtual QString getName() const override { return "avatar"; }
-
     virtual PhysicsMotionType getMotionType() const override { return _motionType; }
 
     virtual uint32_t getIncomingDirtyFlags() override;
