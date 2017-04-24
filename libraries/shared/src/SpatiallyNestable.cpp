@@ -627,6 +627,17 @@ glm::vec3 SpatiallyNestable::getParentVelocity(bool& success, bool inSimulationF
     return result;
 }
 
+glm::vec3 SpatiallyNestable::getParentVelocity() const {
+    glm::vec3 result;
+    bool success;
+    result = getParentVelocity(success);
+    if (!success) {
+        qCDebug(shared) << "Warning -- getParentVelocity failed" << getID();
+        return glm::vec3();
+    }
+    return result;
+}
+
 glm::vec3 SpatiallyNestable::getAngularVelocity(bool& success) const {
     glm::vec3 result;
     Transform parentTransform = getParentTransform(success);
@@ -676,6 +687,17 @@ glm::vec3 SpatiallyNestable::getParentAngularVelocity(bool& success) const {
     }
     if (parent) {
         result = parent->getAngularVelocity(success);
+    }
+    return result;
+}
+
+glm::vec3 SpatiallyNestable::getParentAngularVelocity() const {
+    glm::vec3 result;
+    bool success;
+    result = getParentAngularVelocity(success);
+    if (!success) {
+        qCDebug(shared) << "Warning -- getParentAngularVelocity failed" << getID();
+        return glm::vec3();
     }
     return result;
 }

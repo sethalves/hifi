@@ -410,7 +410,6 @@ void PhysicalEntitySimulation::applyDynamicChanges() {
             if (!ownerEntity) {
                 continue;
             }
-            XXX this is wrong -- need sortDynamicsByEngine ?
             PhysicsEnginePointer physicsEngine = ownerEntity->getPhysicsEngine();
             if (physicsEngine) {
                 if (!physicsEngine->addDynamic(dynamicToAdd)) {

@@ -96,13 +96,16 @@ public:
     virtual glm::vec3 getVelocity() const;
     virtual void setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame = false);
     virtual void setVelocity(const glm::vec3& velocity);
+
     virtual glm::vec3 getParentVelocity(bool& success, bool inSimulationFrame = false) const;
+    virtual glm::vec3 getParentVelocity() const;
 
     virtual glm::vec3 getAngularVelocity(bool& success) const;
     virtual glm::vec3 getAngularVelocity() const;
     virtual void setAngularVelocity(const glm::vec3& angularVelocity, bool& success);
     virtual void setAngularVelocity(const glm::vec3& angularVelocity);
     virtual glm::vec3 getParentAngularVelocity(bool& success) const;
+    virtual glm::vec3 getParentAngularVelocity() const;
 
     virtual AACube getMaximumAACube(bool& success) const;
     virtual void checkAndAdjustQueryAACube();
