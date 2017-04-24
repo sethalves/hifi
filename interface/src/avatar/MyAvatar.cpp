@@ -1452,15 +1452,19 @@ void MyAvatar::updateMotors() {
 }
 
 void MyAvatar::prepareForPhysicsSimulation() {
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+
     relayDriveKeysToCharacterController();
     updateMotors();
 
-#if 0
     // attempt to keep the avatar stuck to its parent by matching velocities
     QUuid parentID = getParentID();
     glm::vec3 parentInducedVelocity;
     glm::vec3 parentInducedAngularVelocity;
-    if (parentID != QUuid()) {
+    if (parentID != QUuid() && parentID != physicsEngine->getID()) {
         bool success;
         Transform parentTransform = getParentTransform(success);
         if (success) {
@@ -1489,12 +1493,6 @@ void MyAvatar::prepareForPhysicsSimulation() {
         _previousParentLocationSet = false;
     }
     _characterController.setParentInducedVelocity(parentInducedVelocity);
-#endif
-
-    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-    if (!physicsEngine) {
-        return;
-    }
 
     // convert global values to bullet position and orientation
     bool posSuccess, oSuccess;

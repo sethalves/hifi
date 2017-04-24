@@ -37,11 +37,10 @@ void ObjectActionTravelOriented::updateActionWorker(btScalar deltaTimeStep) {
         if (!ownerEntity) {
             return;
         }
-        void* physicsInfo = ownerEntity->getPhysicsInfo();
-        if (!physicsInfo) {
+        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        if (!motionState) {
             return;
         }
-        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
         btRigidBody* rigidBody = motionState->getRigidBody();
         if (!rigidBody) {
             qCDebug(physics) << "ObjectActionTravelOriented::updateActionWorker no rigidBody";

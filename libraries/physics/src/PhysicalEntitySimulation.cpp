@@ -252,7 +252,8 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
             if (shape) {
                 EntityMotionState* motionState = new EntityMotionState(shape, entity, getThisPointer(), physicsEngine);
-                entity->setPhysicsInfo(motionState);
+                ObjectMotionStateInterface* motionStateInt = dynamic_cast<ObjectMotionStateInterface*>(motionState);
+                entity->setPhysicsInfo(motionStateInt);
                 _physicalObjects.insert(motionState);
                 result.push_back(motionState);
                 entityItr = _entitiesToAddToPhysics.erase(entityItr);

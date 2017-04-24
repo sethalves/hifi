@@ -240,12 +240,11 @@ void AvatarActionHold::doKinematicUpdate(float deltaTimeStep) {
         return;
     }
 
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    if (!physicsInfo) {
-        qDebug() << "AvatarActionHold::doKinematicUpdate -- no owning physics info";
+    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    if (!motionState) {
+        qDebug() << "AvatarActionHold::doKinematicUpdate -- no owning-entity motionState";
         return;
     }
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
     btRigidBody* rigidBody = motionState ? motionState->getRigidBody() : nullptr;
     if (!rigidBody) {
         qDebug() << "AvatarActionHold::doKinematicUpdate -- no rigidBody";

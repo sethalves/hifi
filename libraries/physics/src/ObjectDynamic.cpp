@@ -85,7 +85,7 @@ QVariantMap ObjectDynamic::getArguments() {
 
         EntityItemPointer entity = _ownerEntity.lock();
         if (entity) {
-            ObjectMotionState* motionState = static_cast<ObjectMotionState*>(entity->getPhysicsInfo());
+            ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(entity->getPhysicsInfo());
             if (motionState) {
                 arguments["::active"] = motionState->isActive();
                 arguments["::motion-type"] = motionTypeToString(motionState->getMotionType());
@@ -127,11 +127,10 @@ btRigidBody* ObjectDynamic::getRigidBody() {
         if (!ownerEntity) {
             return;
         }
-        void* physicsInfo = ownerEntity->getPhysicsInfo();
-        if (!physicsInfo) {
+        motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        if (!motionState) {
             return;
         }
-        motionState = static_cast<ObjectMotionState*>(physicsInfo);
     });
     if (motionState) {
         return motionState->getRigidBody();
@@ -203,8 +202,7 @@ void ObjectDynamic::forceBodyNonStatic() {
     if (!ownerEntity) {
         return;
     }
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
+    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
     if (motionState && motionState->getMotionType() == MOTION_TYPE_STATIC) {
         ownerEntity->flagForMotionStateChange();
     }
@@ -256,12 +254,7 @@ btRigidBody* ObjectDynamic::getOtherRigidBody(EntityItemID otherEntityID) {
         return nullptr;
     }
 
-    void* otherPhysicsInfo = otherEntity->getPhysicsInfo();
-    if (!otherPhysicsInfo) {
-        return nullptr;
-    }
-
-    ObjectMotionState* otherMotionState = static_cast<ObjectMotionState*>(otherPhysicsInfo);
+    ObjectMotionState* otherMotionState = dynamic_cast<ObjectMotionState*>(otherEntity->getPhysicsInfo());
     if (!otherMotionState) {
         return nullptr;
     }
