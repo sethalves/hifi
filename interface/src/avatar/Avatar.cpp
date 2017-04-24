@@ -1173,12 +1173,12 @@ int Avatar::parseDataFromBuffer(const QByteArray& buffer) {
     }
 
     // change in position implies movement
-    glm::vec3 oldPosition = getPosition();
+    glm::vec3 oldPosition = getPositionInSimulationFrame();
 
     int bytesRead = AvatarData::parseDataFromBuffer(buffer);
 
     const float MOVE_DISTANCE_THRESHOLD = 0.001f;
-    _moving = glm::distance(oldPosition, getPosition()) > MOVE_DISTANCE_THRESHOLD;
+    _moving = glm::distance(oldPosition, getPositionInSimulationFrame()) > MOVE_DISTANCE_THRESHOLD;
     if (_moving) {
         addPhysicsFlags(Simulation::DIRTY_POSITION);
     }
