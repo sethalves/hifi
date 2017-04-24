@@ -81,7 +81,7 @@ public:
     void setPositionAndOrientation( const glm::vec3& position, const glm::quat& orientation);
     void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const;
 
-    void setParentInducedVelocity(glm::vec3 parentInducedVelocity, glm::vec3 parentInducedAngularVelocity);
+    void setParentInducedVelocity(glm::vec3 parentInducedVelocity);
 
     void setVelocity(const glm::vec3& velocity);
     void setFollowParameters(const glm::mat4& desiredWorldMatrix, float timeRemaining);
@@ -141,7 +141,6 @@ protected:
     btVector3 _currentUp;
     btVector3 _targetVelocity;
     btVector3 _parentInducedVelocity;
-    btVector3 _parentInducedAngularVelocity;
     btVector3 _preSimulationVelocity;
     btVector3 _velocityChange;
     btTransform _followDesiredBodyTransform;

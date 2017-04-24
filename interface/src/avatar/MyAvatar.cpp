@@ -1432,53 +1432,38 @@ void MyAvatar::prepareForPhysicsSimulation() {
     updateMotors();
 
     // attempt to keep the avatar stuck to its parent by matching velocities
-    // bool pvSuccess;
-    // glm::vec3 parentVelocity = getParentVelocity(success);
-    // bool pavSuccess;
-    // glm::vec3 parentAngularVelocity = getParentAngularVelocity(success);
-    // if (!pvSuccess || !pavSuccess) {
-    //     qDebug() << "Warning: couldn't get parent's velocity" << getID();
-    //     parentVelocity = glm::vec3();
-    //     parentAngularVelocity = glm::vec3();
-
-    // }
-    // Transform localTransform = getLocalTransform();
-    // _characterController.setParentVelocity(parentVelocity, parentAngularVelocity, localTransform);
-    // XXX;
-
-    // QUuid parentID = getParentID();
-    // int parentJointIndex = getParentJointIndex();
-    // bool lSuccess;
-    // glm::vec3 parentInducedVelocity = localToWorldVelocity(getLocalVelocity(), parentID, parentJointIndex, lSuccess);
-    // bool aSuccess;
-    // glm::vec3 parentInducedAngularVelocity =
-    //     localToWorldAngularVelocity(getLocalAngularVelocity(), parentID, parentJointIndex, aSuccess);
-    // if (!lSuccess || !aSuccess) {
-    //     qDebug() << "Warning: couldn't get parent's velocity" << getID();
-    //     parentInducedVelocity = glm::vec3();
-    //     parentInducedAngularVelocity = glm::vec3();
-    // }
-    // _characterController.setParentInducedVelocity(parentInducedVelocity - getParentVelocity(),
-    //                                               parentInducedAngularVelocity - getParentAngularVelocity());
-
-
-
     QUuid parentID = getParentID();
-    int parentJointIndex = getParentJointIndex();
     glm::vec3 parentInducedVelocity;
     glm::vec3 parentInducedAngularVelocity;
     if (parentID != QUuid()) {
         bool success;
         Transform parentTransform = getParentTransform(success);
-        glm::vec3 parentVelocity = getParentVelocity();
-        glm::vec3 parentAngularVelocity = getParentAngularVelocity();
-        glm::quat qParentAngularVelocity = glm::quat(parentAngularVelocity);
+        if (success) {
+            glm::vec3 parentPosition = parentTransform.getTranslation();
+            glm::quat parentRotation = parentTransform.getRotation();
+            glm::vec3 parentVelocity = getParentVelocity();
+            glm::vec3 parentAngularVelocity = getParentAngularVelocity();
+            glm::quat qParentAngularVelocity = glm::quat(parentAngularVelocity);
 
-        glm::vec3 localPosition = getLocalPosition();
+            glm::vec3 childPosition = getPosition();
+            parentInducedVelocity = parentVelocity + qParentAngularVelocity * (childPosition - parentPosition);
 
-        parentInducedVelocity = parentVelocity + (qParentAngularVelocity * localPosition - localPosition);
+            if (_previousParentLocationSet) {
+                glm::quat deltaRot = parentRotation * glm::inverse(_previousParentRotation);
+                glm::vec3 deltaRotEu = glm::eulerAngles(deltaRot);
+                deltaRotEu.x = 0.0f;
+                deltaRotEu.z = 0.0f;
+                glm::quat newRot = getOrientation() * glm::quat(deltaRotEu);
+                setOrientation(newRot);
+                updateAttitude();
+            }
+            _previousParentRotation = parentRotation;
+            _previousParentLocationSet = true;
+        }
+    } else {
+        _previousParentLocationSet = false;
     }
-    _characterController.setParentInducedVelocity(parentInducedVelocity, parentInducedAngularVelocity);
+    _characterController.setParentInducedVelocity(parentInducedVelocity);
 
 
     _characterController.setPositionAndOrientation(getPosition(), getOrientation());
