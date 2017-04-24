@@ -1493,16 +1493,7 @@ void MyAvatar::prepareForPhysicsSimulation() {
         _previousParentLocationSet = false;
     }
     _characterController.setParentInducedVelocity(parentInducedVelocity);
-
-    // convert global values to bullet position and orientation
-    bool posSuccess, oSuccess;
-    glm::vec3 position = SpatiallyNestable::worldToLocal(getPosition(), physicsEngine->getID(), -1, posSuccess);
-    glm::quat orientation = SpatiallyNestable::worldToLocal(getOrientation(), physicsEngine->getID(), -1, oSuccess);
-    if (posSuccess && oSuccess) {
-        _characterController.setPositionAndOrientation(position, orientation);
-    } else {
-        qDebug() << "MyAvatar::prepareForPhysicsSimulation failed to set _characterController position or orientation";
-    }
+    _characterController.setPositionAndOrientation(getPositionInSimulationFrame(), getOrientationInSimulationFrame());
 
     if (qApp->isHMDMode()) {
         _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput());
@@ -1514,8 +1505,8 @@ void MyAvatar::prepareForPhysicsSimulation() {
 }
 
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
-    glm::vec3 position = getPosition();
-    glm::quat orientation = getOrientation();
+    glm::vec3 position = getPositionInSimulationFrame();
+    glm::quat orientation = getOrientationInSimulationFrame();
 
     PhysicsEnginePointer physicsEngine = getPhysicsEngine();
     if (!physicsEngine) {
@@ -1525,14 +1516,8 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     if (_characterController.isEnabledAndReady()) {
         bool success;
         _characterController.getPositionAndOrientation(position, orientation, success);
-        if (success) {
-            // convert bullet position and orientation to global values
-            bool positionToWorldSuccess, orientationToWorldSuccess;
-            position = SpatiallyNestable::localToWorld(position, physicsEngine->getID(), -1, positionToWorldSuccess);
-            orientation = SpatiallyNestable::localToWorld(orientation, physicsEngine->getID(), -1, orientationToWorldSuccess);
-            if (!positionToWorldSuccess || !orientationToWorldSuccess) {
-                qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to world coords";
-            }
+        if (!success) {
+            qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't get position and orientation";
         }
     }
 
@@ -1541,13 +1526,7 @@ void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
 
     if (_characterController.isEnabled()) {
         glm::vec3 inSimulationVelocity = _characterController.getLinearVelocity() + _characterController.getFollowVelocity();
-
-        bool velocityToWorldSuccess;
-        setVelocity(SpatiallyNestable::localToWorldVelocity(inSimulationVelocity, physicsEngine->getID(),
-                                                            -1, velocityToWorldSuccess));
-        if (!velocityToWorldSuccess) {
-            qDebug() << "MyAvatar::harvestResultsFromPhysicsSimulation couldn't convert to velocity from local to world";
-        }
+        setVelocityInSimulationFrame(inSimulationVelocity);
     } else {
         setVelocity(getVelocity() + _characterController.getFollowVelocity());
     }

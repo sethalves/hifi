@@ -579,7 +579,7 @@ glm::vec3 SpatiallyNestable::getVelocity() const {
 }
 
 void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame) {
-    glm::vec3 parentVelocity = getParentVelocity(success);
+    glm::vec3 parentVelocity = getParentVelocity(success, inSimulationFrame);
     if (!success) {
         qDebug() << "Warning -- setVelocity failed on getParentVelocity" << getID();
     }
