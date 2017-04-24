@@ -70,22 +70,22 @@ using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
 
 class ObjectMotionState : public btMotionState, public ObjectMotionStateInterface {
 public:
-    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
-
     // These poroperties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
     // (assuming just one PhysicsEngine).  They are cached as statics for fast calculations in the
     // ObjectMotionState context.
     static void setWorldOffset(const glm::vec3& offset);
     static const glm::vec3& getWorldOffset();
 
-    static void setWorldSimulationStep(uint32_t step);
-    static uint32_t getWorldSimulationStep();
-
     static void setShapeManager(ShapeManager* manager);
     static ShapeManager* getShapeManager();
 
-    ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation);
+    ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation, uint32_t worldSimulationStep);
     ~ObjectMotionState();
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
+
+    void setWorldSimulationStep(uint32_t step);
+    uint32_t getWorldSimulationStep() const;
 
     virtual void handleEasyChanges(uint32_t& flags);
     virtual bool handleHardAndEasyChanges(uint32_t& flags, PhysicsEngine* engine);

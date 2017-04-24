@@ -333,7 +333,7 @@ void PhysicsEngine::stepSimulation() {
     if (numSubsteps > 0) {
         BT_PROFILE("postSimulation");
         _numSubsteps += (uint32_t)numSubsteps;
-        ObjectMotionState::setWorldSimulationStep(_numSubsteps);
+        _worldSimulationStep = _numSubsteps;
 
         if (_myAvatarController) {
             _myAvatarController->postSimulation();

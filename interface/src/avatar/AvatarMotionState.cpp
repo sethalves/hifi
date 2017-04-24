@@ -19,7 +19,7 @@
 
 AvatarMotionState::AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape,
                                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
-    ObjectMotionState(shape, simulation),
+    ObjectMotionState(shape, simulation, physicsEngine->getWorldSimulationStep()),
     _avatar(avatar),
     _physicsEngine(physicsEngine) {
     assert(_avatar);

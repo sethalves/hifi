@@ -49,7 +49,7 @@ bool entityTreeIsLocked() {
 
 EntityMotionState::EntityMotionState(btCollisionShape* shape, EntityItemPointer entity,
                                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine) :
-    ObjectMotionState(nullptr, simulation),
+    ObjectMotionState(nullptr, simulation, physicsEngine->getWorldSimulationStep()),
     _entityPtr(entity),
     _entity(entity.get()),
     _physicsEngine(physicsEngine),
@@ -225,7 +225,7 @@ void EntityMotionState::getWorldTransform(btTransform& worldTrans) const {
         // of the physics simulation and uses full gravity for acceleration.
         _entity->setAcceleration(_entity->getGravity());
 
-        uint32_t thisStep = ObjectMotionState::getWorldSimulationStep();
+        uint32_t thisStep = getWorldSimulationStep();
         float dt = (thisStep - _lastKinematicStep) * PHYSICS_ENGINE_FIXED_SUBSTEP;
         _entity->stepKinematicMotion(dt);
 

@@ -98,6 +98,9 @@ public:
     void removeDynamic(const QUuid dynamicID);
     void forEachDynamic(std::function<void(EntityDynamicPointer)> actor);
 
+    void setWorldSimulationStep(uint32_t step) { assert(step > _worldSimulationStep); _worldSimulationStep = step; }
+    uint32_t getWorldSimulationStep() { return _worldSimulationStep; }
+
 private:
     QList<EntityDynamicPointer> removeDynamicsForBody(btRigidBody* body);
     void addObjectToDynamicsWorld(ObjectMotionState* motionState);
@@ -136,6 +139,7 @@ private:
     bool _dumpNextStats = false;
     bool _hasOutgoingChanges = false;
 
+    uint32_t _worldSimulationStep;
 };
 
 using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
