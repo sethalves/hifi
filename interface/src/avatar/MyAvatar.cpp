@@ -1444,11 +1444,7 @@ void MyAvatar::updateMotors() {
 
     // legacy support for 'MyAvatar::applyThrust()', which has always been implemented as a
     // short-lived linearAcceleration
-    // _characterController.setLinearAcceleration(_thrust);
-    bool success;
-    _characterController.setLinearAcceleration(
-        SpatiallyNestable::worldToLocalVelocity(_thrust, physicsEngine->getID(), -1, success));
-    _thrust = Vectors::ZERO;
+    _characterController.setLinearAcceleration(_thrust);
 }
 
 void MyAvatar::prepareForPhysicsSimulation() {
