@@ -497,11 +497,11 @@ void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, cons
     if (!ownerEntity) {
         return;
     }
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    if (!physicsInfo) {
+    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    if (!motionState) {
         return;
     }
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
+
     btRigidBody* rigidBody = motionState ? motionState->getRigidBody() : nullptr;
     if (!rigidBody) {
         return;
