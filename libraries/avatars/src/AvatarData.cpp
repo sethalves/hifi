@@ -2298,6 +2298,11 @@ glm::mat4 AvatarData::getSensorToWorldMatrix() const {
 }
 
 // thread-safe
+glm::mat4 AvatarData::getSensorToSimulationMatrix() const {
+    return _sensorToSimulationMatrixCache.get();
+}
+
+// thread-safe
 glm::mat4 AvatarData::getControllerLeftHandMatrix() const {
     return _controllerLeftHandMatrixCache.get();
 }

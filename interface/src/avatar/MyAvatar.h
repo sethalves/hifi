@@ -443,6 +443,8 @@ public:
     controller::Pose getRightHandControllerPoseInSensorFrame() const;
     controller::Pose getLeftHandControllerPoseInWorldFrame() const;
     controller::Pose getRightHandControllerPoseInWorldFrame() const;
+    controller::Pose getLeftHandControllerPoseInSimulationFrame() const;
+    controller::Pose getRightHandControllerPoseInSimulationFrame() const;
     controller::Pose getLeftHandControllerPoseInAvatarFrame() const;
     controller::Pose getRightHandControllerPoseInAvatarFrame() const;
 
@@ -451,6 +453,8 @@ public:
     controller::Pose getRightFootControllerPoseInSensorFrame() const;
     controller::Pose getLeftFootControllerPoseInWorldFrame() const;
     controller::Pose getRightFootControllerPoseInWorldFrame() const;
+    controller::Pose getLeftFootControllerPoseInSimulationFrame() const;
+    controller::Pose getRightFootControllerPoseInSimulationFrame() const;
     controller::Pose getLeftFootControllerPoseInAvatarFrame() const;
     controller::Pose getRightFootControllerPoseInAvatarFrame() const;
 
@@ -628,6 +632,7 @@ private:
 
     // working copies -- see AvatarData for thread-safe _sensorToWorldMatrixCache, used for outward facing access
     glm::mat4 _sensorToWorldMatrix { glm::mat4() };
+    glm::mat4 _sensorToSimulationMatrix { glm::mat4() };
 
     // cache of the current HMD sensor position and orientation
     // in sensor space.

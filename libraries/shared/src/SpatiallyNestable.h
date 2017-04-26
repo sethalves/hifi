@@ -74,6 +74,8 @@ public:
     virtual void setTransform(const Transform& transform, bool& success);
     virtual bool setTransform(const Transform& transform);
 
+    virtual const Transform getTransformInSimulationFrame() const;
+
     virtual Transform getParentTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
 
     virtual glm::vec3 getPosition(bool& success) const;

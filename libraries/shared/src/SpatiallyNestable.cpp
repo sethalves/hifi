@@ -721,6 +721,15 @@ const Transform SpatiallyNestable::getTransform() const {
     return result;
 }
 
+const Transform SpatiallyNestable::getTransformInSimulationFrame() const {
+    bool success;
+    Transform result = getTransform(success, 0, true);
+    if (!success) {
+        qCDebug(shared) << "getTransform failed for" << getID();
+    }
+    return result;
+}
+
 const Transform SpatiallyNestable::getTransform(int jointIndex, bool& success, int depth) const {
     // this returns the world-space transform for this object.  It finds its parent's transform (which may
     // cause this object's parent to query its parent, etc) and multiplies this object's local transform onto it.

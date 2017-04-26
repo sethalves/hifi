@@ -133,9 +133,9 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
             // fetch the hand controller pose
             controller::Pose pose;
             if (isRightHand) {
-                pose = myAvatar->getRightHandControllerPoseInWorldFrame();
+                pose = myAvatar->getRightHandControllerPoseInSimulationFrame();
             } else {
-                pose = myAvatar->getLeftHandControllerPoseInWorldFrame();
+                pose = myAvatar->getLeftHandControllerPoseInSimulationFrame();
             }
 
             if (pose.isValid()) {
@@ -163,7 +163,7 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
                 glm::quat camRelRot = myAvatar->getAbsoluteJointRotationInObjectFrame(camRelIndex);
 
                 Transform avatarTransform;
-                avatarTransform = myAvatar->getTransform();
+                avatarTransform = myAvatar->getTransformInSimulationFrame();
                 palmPosition = avatarTransform.transform(camRelPos / myAvatar->getDomainLimitedScale());
                 palmRotation = avatarTransform.getRotation() * camRelRot;
             } else {
@@ -195,13 +195,13 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
         } else { // regular avatar
             if (isRightHand) {
                 Transform controllerRightTransform = Transform(holdingAvatar->getControllerRightHandMatrix());
-                Transform avatarTransform = holdingAvatar->getTransform();
+                Transform avatarTransform = holdingAvatar->getTransformInSimulationFrame();
                 palmRotation = avatarTransform.getRotation() * controllerRightTransform.getRotation();
                 palmPosition = avatarTransform.getTranslation() +
                     (avatarTransform.getRotation() * controllerRightTransform.getTranslation());
             } else {
                 Transform controllerLeftTransform = Transform(holdingAvatar->getControllerLeftHandMatrix());
-                Transform avatarTransform = holdingAvatar->getTransform();
+                Transform avatarTransform = holdingAvatar->getTransformInSimulationFrame();
                 palmRotation = avatarTransform.getRotation() * controllerLeftTransform.getRotation();
                 palmPosition = avatarTransform.getTranslation() +
                     (avatarTransform.getRotation() * controllerLeftTransform.getTranslation());
@@ -524,7 +524,8 @@ void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, cons
     rigidBody->setWorldTransform(worldTrans);
 
     bool positionSuccess;
-    ownerEntity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(), positionSuccess, false);
+    ownerEntity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(),
+                             positionSuccess, false, true);
     bool orientationSuccess;
-    ownerEntity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false);
+    ownerEntity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false, true);
 }

@@ -43,8 +43,26 @@ ObjectActionSpring::~ObjectActionSpring() {
 
 bool ObjectActionSpring::getTarget(float deltaTimeStep, glm::quat& rotation, glm::vec3& position,
                                    glm::vec3& linearVelocity, glm::vec3& angularVelocity) {
-    rotation = _desiredRotationalTarget;
-    position = _desiredPositionalTarget;
+    auto ownerEntity = _ownerEntity.lock();
+    if (!ownerEntity) {
+        return false;
+    }
+
+    EntityItemPointer ancestorZone = ownerEntity->findAncestorZone(ownerEntity->getParentID());
+    if (!ancestorZone) {
+        rotation = _desiredRotationalTarget;
+        position = _desiredPositionalTarget;
+    } else {
+        // convert from world-frame to simulation-frame
+        bool rSuccess;
+        rotation = SpatiallyNestable::worldToLocal(_desiredRotationalTarget, ancestorZone->getID(), -1, rSuccess);
+        bool pSuccess;
+        position = SpatiallyNestable::worldToLocal(_desiredPositionalTarget, ancestorZone->getID(), -1, pSuccess);
+        if (!rSuccess || !pSuccess) {
+            rotation = _desiredRotationalTarget;
+            position = _desiredPositionalTarget;
+        }
+    }
     linearVelocity = glm::vec3();
     angularVelocity = glm::vec3();
     return true;
@@ -122,11 +140,10 @@ void ObjectActionSpring::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        ObjectMotionStateInterface* physicsInfo = ownerEntity->getPhysicsInfo();
-        if (!physicsInfo) {
+        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        if (!motionState) {
             return;
         }
-        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(physicsInfo);
         btRigidBody* rigidBody = motionState->getRigidBody();
         if (!rigidBody) {
             qCDebug(physics) << "ObjectActionSpring::updateActionWorker no rigidBody";

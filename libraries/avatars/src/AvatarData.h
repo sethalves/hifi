@@ -588,6 +588,7 @@ public:
 
     // thread safe
     Q_INVOKABLE glm::mat4 getSensorToWorldMatrix() const;
+    Q_INVOKABLE glm::mat4 getSensorToSimulationMatrix() const;
     Q_INVOKABLE glm::mat4 getControllerLeftHandMatrix() const;
     Q_INVOKABLE glm::mat4 getControllerRightHandMatrix() const;
 
@@ -652,6 +653,7 @@ protected:
     bool avatarScaleChangedSince(quint64 time) const { return _avatarScaleChanged >= time; }
     bool lookAtPositionChangedSince(quint64 time) const { return _headData->lookAtPositionChangedSince(time); }
     bool sensorToWorldMatrixChangedSince(quint64 time) const { return _sensorToWorldMatrixChanged >= time; }
+    bool sensorToSimulationMatrixChangedSince(quint64 time) const { return _sensorToSimulationMatrixChanged >= time; }
     bool additionalFlagsChangedSince(quint64 time) const { return _additionalFlagsChanged >= time; }
     bool parentInfoChangedSince(quint64 time) const { return _parentChanged >= time; }
     bool faceTrackerInfoChangedSince(quint64 time) const { return true; } // FIXME
@@ -719,6 +721,7 @@ protected:
     quint64 _avatarBoundingBoxChanged { 0 };
     quint64 _avatarScaleChanged { 0 };
     quint64 _sensorToWorldMatrixChanged { 0 };
+    quint64 _sensorToSimulationMatrixChanged { 0 };
     quint64 _additionalFlagsChanged { 0 };
     quint64 _parentChanged { 0 };
 
@@ -768,6 +771,7 @@ protected:
 
     // used to transform any sensor into world space, including the _hmdSensorMat, or hand controllers.
     ThreadSafeValueCache<glm::mat4> _sensorToWorldMatrixCache { glm::mat4() };
+    ThreadSafeValueCache<glm::mat4> _sensorToSimulationMatrixCache { glm::mat4() };
     ThreadSafeValueCache<glm::mat4> _controllerLeftHandMatrixCache { glm::mat4() };
     ThreadSafeValueCache<glm::mat4> _controllerRightHandMatrixCache { glm::mat4() };
 

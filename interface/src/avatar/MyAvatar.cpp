@@ -627,8 +627,13 @@ void MyAvatar::updateJointFromController(controller::Action poseKey, ThreadSafeV
 void MyAvatar::updateSensorToWorldMatrix() {
     // update the sensor mat so that the body position will end up in the desired
     // position when driven from the head.
+    glm::mat4 bodySensorMatrixInv = glm::inverse(_bodySensorMatrix);
     glm::mat4 desiredMat = createMatFromQuatAndPos(getOrientation(), getPosition());
-    _sensorToWorldMatrix = desiredMat * glm::inverse(_bodySensorMatrix);
+    _sensorToWorldMatrix = desiredMat * bodySensorMatrixInv;
+
+    glm::mat4 desiredSimulationMat = createMatFromQuatAndPos(getOrientationInSimulationFrame(),
+                                                             getPositionInSimulationFrame());
+    _sensorToSimulationMatrix = desiredSimulationMat * bodySensorMatrixInv;;
 
     lateUpdatePalms();
 
@@ -638,6 +643,8 @@ void MyAvatar::updateSensorToWorldMatrix() {
     }
 
     _sensorToWorldMatrixCache.set(_sensorToWorldMatrix);
+
+    _sensorToSimulationMatrixCache.set(_sensorToSimulationMatrix);
 
     updateJointFromController(controller::Action::LEFT_HAND, _controllerLeftHandMatrixCache);
     updateJointFromController(controller::Action::RIGHT_HAND, _controllerRightHandMatrixCache);
@@ -1340,6 +1347,14 @@ controller::Pose MyAvatar::getRightHandControllerPoseInWorldFrame() const {
     return _rightHandControllerPoseInSensorFrameCache.get().transform(getSensorToWorldMatrix());
 }
 
+controller::Pose MyAvatar::getLeftHandControllerPoseInSimulationFrame() const {
+    return _leftHandControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
+controller::Pose MyAvatar::getRightHandControllerPoseInSimulationFrame() const {
+    return _rightHandControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
 controller::Pose MyAvatar::getLeftHandControllerPoseInAvatarFrame() const {
     glm::mat4 invAvatarMatrix = glm::inverse(createMatFromQuatAndPos(getOrientation(), getPosition()));
     return getLeftHandControllerPoseInWorldFrame().transform(invAvatarMatrix);
@@ -1376,6 +1391,14 @@ controller::Pose MyAvatar::getLeftFootControllerPoseInWorldFrame() const {
 
 controller::Pose MyAvatar::getRightFootControllerPoseInWorldFrame() const {
     return _rightFootControllerPoseInSensorFrameCache.get().transform(getSensorToWorldMatrix());
+}
+
+controller::Pose MyAvatar::getLeftFootControllerPoseInSimulationFrame() const {
+    return _leftFootControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
+controller::Pose MyAvatar::getRightFootControllerPoseInSimulationFrame() const {
+    return _rightFootControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
 }
 
 controller::Pose MyAvatar::getLeftFootControllerPoseInAvatarFrame() const {
@@ -1497,7 +1520,7 @@ void MyAvatar::prepareForPhysicsSimulation() {
         _follow.deactivate();
     }
 
-    _prePhysicsRoomPose = AnimPose(_sensorToWorldMatrix);
+    _prePhysicsRoomPose = AnimPose(_sensorToSimulationMatrix);
 }
 
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
@@ -1750,7 +1773,7 @@ void MyAvatar::postUpdate(float deltaTime) {
     DebugDraw::getInstance().updateMyAvatarPos(getPosition());
     DebugDraw::getInstance().updateMyAvatarRot(getOrientation());
 
-    AnimPose postUpdateRoomPose(_sensorToWorldMatrix);
+    AnimPose postUpdateRoomPose(_sensorToSimulationMatrix);
 
     updateHoldActions(_prePhysicsRoomPose, postUpdateRoomPose);
 }
