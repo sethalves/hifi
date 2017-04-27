@@ -206,7 +206,9 @@ const PacketVersion VERSION_ENTITIES_LAST_EDITED_BY = 65;
 const PacketVersion VERSION_ENTITIES_SERVER_SCRIPTS = 66;
 const PacketVersion VERSION_ENTITIES_PHYSICS_PACKET = 67;
 const PacketVersion VERSION_ENTITIES_ZONE_FILTERS = 68;
-const PacketVersion VERSION_ENTITIES_ZONE_LOCAL_SIMULATION = 69;
+const PacketVersion VERSION_ENTITIES_HINGE_CONSTRAINT = 69;
+const PacketVersion VERSION_ENTITIES_SLIDER_CONSTRAINT = 70;
+const PacketVersion VERSION_ENTITIES_ZONE_LOCAL_SIMULATION = 71;
 
 enum class EntityQueryPacketVersion: PacketVersion {
     JSONFilter = 18,
@@ -214,7 +216,8 @@ enum class EntityQueryPacketVersion: PacketVersion {
 };
 
 enum class AssetServerPacketVersion: PacketVersion {
-    VegasCongestionControl = 19
+    VegasCongestionControl = 19,
+    RangeRequestSupport
 };
 
 enum class AvatarMixerPacketVersion : PacketVersion {
@@ -230,7 +233,8 @@ enum class AvatarMixerPacketVersion : PacketVersion {
     ImmediateSessionDisplayNameUpdates,
     VariableAvatarData,
     AvatarAsChildFixes,
-    StickAndBallDefaultAvatar
+    StickAndBallDefaultAvatar,
+    IdentityPacketsIncludeUpdateTime
 };
 
 enum class DomainConnectRequestVersion : PacketVersion {
