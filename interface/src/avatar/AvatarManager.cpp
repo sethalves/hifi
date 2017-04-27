@@ -188,10 +188,10 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
             avatar->computeShapeInfo(shapeInfo);
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
             if (shape) {
-                // don't add to the simulation now, instead put it on a list to be added later
                 AvatarMotionState* motionState =
                     new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
                 avatar->setPhysicsCallback([=] (uint32_t flags) { motionState->addDirtyFlags(flags); });
+                _motionStates.insert(avatar.get(), motionState);
                 _motionStatesToAddToPhysics.insert(motionState);
             }
         }

@@ -171,7 +171,7 @@ void PhysicsEngine::removeObject(ObjectMotionState* object, bool doBumpAndPrune)
 
     btRigidBody* body = object->getRigidBody();
     if (body) {
-        // removeDynamicsForBody(body);
+        removeDynamicsForBody(body);
         _dynamicsWorld->removeRigidBody(body);
         object->setPhysicsEngine(nullptr);
 

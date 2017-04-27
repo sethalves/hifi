@@ -90,7 +90,6 @@ protected:
     virtual const btCollisionShape* computeNewShape() override;
 
     AvatarSharedPointer _avatar;
-
     PhysicsEngineWeakPointer _physicsEngine;
 
     uint32_t _dirtyFlags;
