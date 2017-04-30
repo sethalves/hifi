@@ -470,6 +470,10 @@ public:
     void removeHoldAction(AvatarActionHold* holdAction);  // thread-safe
     void updateHoldActions(const AnimPose& prePhysicsPose, const AnimPose& postUpdatePose);
 
+    // derive avatar body position and orientation from the current HMD Sensor location.
+    // results are in HMD frame
+    glm::mat4 deriveBodyFromHMDSensor() const;
+
 public slots:
     void increaseSize();
     void decreaseSize();
@@ -562,9 +566,7 @@ private:
 
     void setVisibleInSceneIfReady(Model* model, const render::ScenePointer& scene, bool visiblity);
 
-    // derive avatar body position and orientation from the current HMD Sensor location.
-    // results are in HMD frame
-    glm::mat4 deriveBodyFromHMDSensor() const;
+private:
 
     virtual void updatePalms() override {}
     void lateUpdatePalms();

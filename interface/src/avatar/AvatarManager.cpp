@@ -196,10 +196,6 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
             }
         }
         avatar->animateScaleChanges(deltaTime);
-        if (avatar->shouldDie()) {
-            avatar->die();
-            removeAvatar(avatar->getID());
-        }
 
         const float OUT_OF_VIEW_THRESHOLD = 0.5f * AvatarData::OUT_OF_VIEW_PENALTY;
         uint64_t now = usecTimestampNow();
@@ -317,45 +313,18 @@ AvatarSharedPointer AvatarManager::newSharedAvatar() {
     return std::make_shared<Avatar>(qApp->thread(), std::make_shared<Rig>());
 }
 
-void AvatarManager::processAvatarDataPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode) {
-    PerformanceTimer perfTimer("receiveAvatar");
-    // enumerate over all of the avatars in this packet
-    // only add them if mixerWeakPointer points to something (meaning that mixer is still around)
-    while (message->getBytesLeftToRead()) {
-        AvatarSharedPointer avatarData = parseAvatarData(message, sendingNode);
-        if (avatarData) {
-            auto avatar = std::static_pointer_cast<Avatar>(avatarData);
-            if (avatar->isInScene()) {
-                if (!_shouldRender) {
-                    // rare transition so we process the transaction immediately
-                    const render::ScenePointer& scene = qApp->getMain3DScene();
-                    if (scene) {
-                        render::Transaction transaction;
-                        avatar->removeFromScene(avatar, scene, transaction);
-                        scene->enqueueTransaction(transaction);
-                    }
-                }
-            } else if (_shouldRender) {
-                // very rare transition so we process the transaction immediately
-                const render::ScenePointer& scene = qApp->getMain3DScene();
-                if (scene) {
-                    render::Transaction transaction;
-                    avatar->addToScene(avatar, scene, transaction);
-                    scene->enqueueTransaction(transaction);
-                }
-            }
-        }
-    }
-}
-
 void AvatarManager::removeAvatarFromPhysicsSimulation(Avatar* avatar) {
     assert(avatar);
     avatar->setPhysicsCallback(nullptr);
     AvatarMotionStateMap::iterator itr = _motionStates.find(avatar);
     if (itr != _motionStates.end()) {
         AvatarMotionState* motionState = *itr;
-        _motionStatesToAddToPhysics.remove(motionState);
-        _motionStatesToRemoveFromPhysics.push_back(motionState);
+        if (motionState) {
+            _motionStatesThatMightUpdate.remove(motionState);
+            _motionStatesToAddToPhysics.remove(motionState);
+            _motionStatesToRemoveFromPhysics.push_back(motionState);
+        }
+
     }
 }
 
@@ -365,7 +334,6 @@ void AvatarManager::handleRemovedAvatar(const AvatarSharedPointer& removedAvatar
     // removedAvatar is a shared pointer to an AvatarData but we need to get to the derived Avatar
     // class in this context so we can call methods that don't exist at the base class.
     auto avatar = std::static_pointer_cast<Avatar>(removedAvatar);
-    avatar->die();
     removeAvatarFromPhysicsSimulation(avatar.get());
 
     if (removalReason == KillAvatarReason::TheirAvatarEnteredYourBubble) {
@@ -396,8 +364,11 @@ void AvatarManager::clearOtherAvatars() {
                 avatar->removeFromScene(avatar, scene, transaction);
             }
             removeAvatarFromPhysicsSimulation(avatar.get());
+            handleRemovedAvatar(avatar);
+            avatarIterator = _avatarHash.erase(avatarIterator);
+        } else {
+            ++avatarIterator;
         }
-        ++avatarIterator;
     }
     assert(scene);
     scene->enqueueTransaction(transaction);
