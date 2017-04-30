@@ -320,7 +320,6 @@ void AvatarManager::removeAvatarFromPhysicsSimulation(Avatar* avatar) {
     if (itr != _motionStates.end()) {
         AvatarMotionState* motionState = *itr;
         if (motionState) {
-            _motionStatesThatMightUpdate.remove(motionState);
             _motionStatesToAddToPhysics.remove(motionState);
             _motionStatesToRemoveFromPhysics.push_back(motionState);
         }
