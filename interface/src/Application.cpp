@@ -129,12 +129,12 @@
 #include <Preferences.h>
 #include <display-plugins/CompositorHelper.h>
 #include <trackers/EyeTracker.h>
-
+#include <avatars-renderer/ScriptAvatar.h>
 
 #include "AudioClient.h"
 #include "audio/AudioScope.h"
 #include "avatar/AvatarManager.h"
-#include "avatar/ScriptAvatar.h"
+#include "avatar/MyHead.h"
 #include "CrashHandler.h"
 #include "devices/DdeFaceTracker.h"
 #include "devices/Leapmotion.h"
@@ -1588,6 +1588,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     connect(&domainHandler, &DomainHandler::hostnameChanged, this, &Application::addAssetToWorldMessageClose);
 
     updateSystemTabletMode();
+
+    connect(&_myCamera, &Camera::modeUpdated, this, &Application::cameraModeChanged);
 }
 
 void Application::domainConnectionRefused(const QString& reasonMessage, int reasonCodeInt, const QString& extraInfo) {
@@ -2197,7 +2199,7 @@ void Application::paintGL() {
                 _myCamera.setOrientation(glm::quat_cast(camMat));
             } else {
                 _myCamera.setPosition(myAvatar->getDefaultEyePosition());
-                _myCamera.setOrientation(myAvatar->getHead()->getCameraOrientation());
+                _myCamera.setOrientation(myAvatar->getMyHead()->getCameraOrientation());
             }
         } else if (_myCamera.getMode() == CAMERA_MODE_THIRD_PERSON) {
             if (isHMDMode()) {
@@ -2531,6 +2533,11 @@ bool Application::event(QEvent* event) {
         paintGL();
 
         isPaintingThrottled = false;
+
+        return true;
+    } else if ((int)event->type() == (int)Idle) {
+        float nsecsElapsed = (float)_lastTimeUpdated.nsecsElapsed();
+        idle(nsecsElapsed);
 
         return true;
     }
@@ -4094,6 +4101,30 @@ void Application::cycleCamera() {
     cameraMenuChanged(); // handle the menu change
 }
 
+void Application::cameraModeChanged() {
+    switch (_myCamera.getMode()) {
+        case CAMERA_MODE_FIRST_PERSON:
+            Menu::getInstance()->setIsOptionChecked(MenuOption::FirstPerson, true);
+            break;
+        case CAMERA_MODE_THIRD_PERSON:
+            Menu::getInstance()->setIsOptionChecked(MenuOption::ThirdPerson, true);
+            break;
+        case CAMERA_MODE_MIRROR:
+            Menu::getInstance()->setIsOptionChecked(MenuOption::FullscreenMirror, true);
+            break;
+        case CAMERA_MODE_INDEPENDENT:
+            Menu::getInstance()->setIsOptionChecked(MenuOption::IndependentMode, true);
+            break;
+        case CAMERA_MODE_ENTITY:
+            Menu::getInstance()->setIsOptionChecked(MenuOption::CameraEntityMode, true);
+            break;
+        default:
+            break;
+    }
+    cameraMenuChanged();
+}
+
+
 void Application::cameraMenuChanged() {
     if (Menu::getInstance()->isOptionChecked(MenuOption::FullscreenMirror)) {
         if (_myCamera.getMode() != CAMERA_MODE_MIRROR) {
@@ -4313,13 +4344,6 @@ void Application::update(float deltaTime) {
             if (nearbyEntitiesAreReadyForPhysics()) {
                 _physicsEnabled = true;
                 getMyAvatar()->updateMotionBehaviorFromMenu();
-            } else {
-                auto characterController = getMyAvatar()->getCharacterController();
-                if (characterController) {
-                    // if we have a character controller, disable it here so the avatar doesn't get stuck due to
-                    // a non-loading collision hull.
-                    characterController->setEnabled(false);
-                }
             }
         }
     } else if (domainLoadingInProgress) {
@@ -5509,7 +5533,6 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
         scriptEngine->registerGlobalObject("Test", TestScriptingInterface::getInstance());
     }
 
-    scriptEngine->registerGlobalObject("Overlays", &_overlays);
     scriptEngine->registerGlobalObject("Rates", new RatesScriptingInterface(this));
 
     // hook our avatar and avatar hash map object into this script engine
@@ -5608,6 +5631,8 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
 
     auto entityScriptServerLog = DependencyManager::get<EntityScriptServerLogClient>();
     scriptEngine->registerGlobalObject("EntityScriptServerLog", entityScriptServerLog.data());
+    scriptEngine->registerGlobalObject("AvatarInputs", AvatarInputs::getInstance());
+
 
     qScriptRegisterMetaType(scriptEngine, OverlayIDtoScriptValue, OverlayIDfromScriptValue);
 
@@ -6570,10 +6595,22 @@ void Application::activeChanged(Qt::ApplicationState state) {
 }
 
 void Application::windowMinimizedChanged(bool minimized) {
+    // initialize the _minimizedWindowTimer
+    static std::once_flag once;
+    std::call_once(once, [&] {
+        connect(&_minimizedWindowTimer, &QTimer::timeout, this, [] {
+            QCoreApplication::postEvent(QCoreApplication::instance(), new QEvent(static_cast<QEvent::Type>(Idle)), Qt::HighEventPriority);
+        });
+    });
+
+    // avoid rendering to the display plugin but continue posting Idle events,
+    // so that physics continues to simulate and the deadlock watchdog knows we're alive
     if (!minimized && !getActiveDisplayPlugin()->isActive()) {
+        _minimizedWindowTimer.stop();
         getActiveDisplayPlugin()->activate();
     } else if (minimized && getActiveDisplayPlugin()->isActive()) {
         getActiveDisplayPlugin()->deactivate();
+        _minimizedWindowTimer.start(THROTTLED_SIM_FRAME_PERIOD_MS);
     }
 }
 

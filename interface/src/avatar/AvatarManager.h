@@ -21,13 +21,11 @@
 #include <PIDController.h>
 #include <SimpleMovingAverage.h>
 #include <shared/RateCounter.h>
+#include <avatars-renderer/AvatarMotionState.h>
+#include <avatars-renderer/ScriptAvatar.h>
 
-#include "Avatar.h"
 #include "MyAvatar.h"
-#include "AvatarMotionState.h"
-#include "ScriptAvatar.h"
 
-class MyAvatar;
 class AudioInjector;
 
 class AvatarManager : public AvatarHashMap {
@@ -93,6 +91,7 @@ private:
 
     AvatarSharedPointer newSharedAvatar() override;
     void removeAvatarFromPhysicsSimulation(Avatar* avatar);
+    void deleteMotionStates();
     void handleRemovedAvatar(const AvatarSharedPointer& removedAvatar, KillAvatarReason removalReason = KillAvatarReason::NoReason) override;
 
     QVector<AvatarSharedPointer> _avatarsToFade;
@@ -100,6 +99,7 @@ private:
     using AvatarMotionStateMap = QMap<Avatar*, AvatarMotionState*>;
     AvatarMotionStateMap _motionStates;
     VectorOfMotionStates _motionStatesToRemoveFromPhysics;
+    VectorOfMotionStates _motionStatesToDelete;
     SetOfMotionStates _motionStatesToAddToPhysics;
 
     std::shared_ptr<MyAvatar> _myAvatar;

@@ -11,7 +11,10 @@
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
+
 (function () { // BEGIN LOCAL_SCOPE
+
+    var request = Script.require('request').request;
 
     var LABEL = "makeUserConnection";
     var MAX_AVATAR_DISTANCE = 0.2; // m
@@ -119,67 +122,13 @@
     function debug() {
         var stateString = "<" + STATE_STRINGS[state] + ">";
         var connecting = "[" + connectingId + "/" + connectingHandJointIndex + "]";
-        print.apply(null, [].concat.apply([LABEL, stateString, JSON.stringify(waitingList), connecting],
+        var current = "[" + currentHand + "/" + currentHandJointIndex + "]"
+        print.apply(null, [].concat.apply([LABEL, stateString, current, JSON.stringify(waitingList), connecting],
             [].map.call(arguments, JSON.stringify)));
     }
 
     function cleanId(guidWithCurlyBraces) {
         return guidWithCurlyBraces.slice(1, -1);
-    }
-    function request(options, callback) { // cb(error, responseOfCorrectContentType) of url. A subset of npm request.
-        var httpRequest = new XMLHttpRequest(), key;
-        // QT bug: apparently doesn't handle onload. Workaround using readyState.
-        httpRequest.onreadystatechange = function () {
-            var READY_STATE_DONE = 4;
-            var HTTP_OK = 200;
-            if (httpRequest.readyState >= READY_STATE_DONE) {
-                var error = (httpRequest.status !== HTTP_OK) && httpRequest.status.toString() + ':' + httpRequest.statusText,
-                    response = !error && httpRequest.responseText,
-                    contentType = !error && httpRequest.getResponseHeader('content-type');
-                if (!error && contentType.indexOf('application/json') === 0) { // ignoring charset, etc.
-                    try {
-                        response = JSON.parse(response);
-                    } catch (e) {
-                        error = e;
-                    }
-                }
-                if (error) {
-                    response = {statusCode: httpRequest.status};
-                }
-                callback(error, response);
-            }
-        };
-        if (typeof options === 'string') {
-            options = {uri: options};
-        }
-        if (options.url) {
-            options.uri = options.url;
-        }
-        if (!options.method) {
-            options.method = 'GET';
-        }
-        if (options.body && (options.method === 'GET')) { // add query parameters
-            var params = [], appender = (-1 === options.uri.search('?')) ? '?' : '&';
-            for (key in options.body) {
-                if (options.body.hasOwnProperty(key)) {
-                    params.push(key + '=' + options.body[key]);
-                }
-            }
-            options.uri += appender + params.join('&');
-            delete options.body;
-        }
-        if (options.json) {
-            options.headers = options.headers || {};
-            options.headers["Content-type"] = "application/json";
-            options.body = JSON.stringify(options.body);
-        }
-        for (key in options.headers || {}) {
-            if (options.headers.hasOwnProperty(key)) {
-                httpRequest.setRequestHeader(key, options.headers[key]);
-            }
-        }
-        httpRequest.open(options.method, options.uri, true);
-        httpRequest.send(options.body);
     }
 
     function handToString(hand) {
@@ -514,16 +463,14 @@
         endHandshakeAnimation();
         // No-op if we were successful, but this way we ensure that failures and abandoned handshakes don't leave us
         // in a weird state.
-        request({uri: requestUrl, method: 'DELETE'}, debug);
+        request({ uri: requestUrl, method: 'DELETE' }, debug);
     }
 
     function updateTriggers(value, fromKeyboard, hand) {
         if (currentHand && hand !== currentHand) {
-            debug("currentHand", currentHand, "ignoring messages from", hand);
+            debug("currentHand", currentHand, "ignoring messages from", hand); // this can be a lot of spam on Touch. Should guard that someday.
             return;
         }
-        currentHand = hand;
-        currentHandJointIndex = getIdealHandJointIndex(MyAvatar, handToString(currentHand)); // Always, in case of changed skeleton.
         // ok now, we are either initiating or quitting...
         var isGripping = value > GRIP_MIN;
         if (isGripping) {
@@ -531,6 +478,8 @@
             if (state !== STATES.INACTIVE) {
                 return;
             }
+            currentHand = hand;
+            currentHandJointIndex = getIdealHandJointIndex(MyAvatar, handToString(currentHand)); // Always, in case of changed skeleton.
             startHandshake(fromKeyboard);
         } else {
             // TODO: should we end handshake even when inactive?  Ponder
@@ -811,7 +760,10 @@
             break;
         case "done":
             delete waitingList[senderID];
-            if (state === STATES.CONNECTING && connectingId === senderID) {
+            if (connectionId !== senderID) {
+                break;
+            }
+            if (state === STATES.CONNECTING) {
                 // if they are done, and didn't connect us, terminate our
                 // connecting
                 if (message.connectionId !== MyAvatar.sessionUUID) {
@@ -820,11 +772,20 @@
                     // value for isKeyboard, as we should not change the animation
                     // state anyways (if any)
                     startHandshake();
+                } else {
+                    // they just created a connection request to us, and we are connecting to
+                    // them, so lets just stop connecting and make connection..
+                    makeConnection(connectingId);
+                    stopConnecting();
                 }
             } else {
-                // if waiting or inactive, lets clear the connecting id. If in makingConnection,
-                // do nothing
-                if (state !== STATES.MAKING_CONNECTION && connectingId === senderID) {
+                if (state == STATES.MAKING_CONNECTION) {
+                    // we are making connection, they just started, so lets reset the
+                    // poll count just in case
+                    pollCount = 0;
+                } else {
+                    // if waiting or inactive, lets clear the connecting id. If in makingConnection,
+                    // do nothing
                     clearConnecting();
                     if (state !== STATES.INACTIVE) {
                         startHandshake();

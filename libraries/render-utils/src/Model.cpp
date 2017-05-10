@@ -578,7 +578,7 @@ bool Model::addToScene(const render::ScenePointer& scene,
 
     bool somethingAdded = false;
     if (_collisionGeometry) {
-        if (_collisionRenderItems.empty()) {
+        if (_collisionRenderItemsMap.empty()) {
             foreach (auto renderItem, _collisionRenderItems) {
                 auto item = scene->allocateID();
                 auto renderPayload = std::make_shared<MeshPartPayload::Payload>(renderItem);
@@ -588,7 +588,7 @@ bool Model::addToScene(const render::ScenePointer& scene,
                 transaction.resetItem(item, renderPayload);
                 _collisionRenderItemsMap.insert(item, renderPayload);
             }
-            somethingAdded = !_collisionRenderItems.empty();
+            somethingAdded = !_collisionRenderItemsMap.empty();
         }
     } else {
         if (_modelMeshRenderItemsMap.empty()) {
@@ -637,7 +637,7 @@ void Model::removeFromScene(const render::ScenePointer& scene, render::Transacti
         transaction.removeItem(item);
     }
     _collisionRenderItems.clear();
-    _collisionRenderItems.clear();
+    _collisionRenderItemsMap.clear();
     _addedToScene = false;
 
     _renderInfoVertexCount = 0;
@@ -1199,7 +1199,7 @@ void Model::createVisibleRenderItemSet() {
 
     // all of our mesh vectors must match in size
     if ((int)meshes.size() != _meshStates.size()) {
-        qCDebug(renderlogging) << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
+        qCDebug(renderutils) << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
         return;
     }
 

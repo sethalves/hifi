@@ -1345,3 +1345,16 @@ void SpatiallyNestable::setAngularVelocityInSimulationFrame(const glm::vec3& ang
     // TODO: fix this
     setAngularVelocity(angularVelocity);
 }
+
+QString SpatiallyNestable::nestableTypeToString(NestableType nestableType) {
+    switch(nestableType) {
+        case NestableType::Entity:
+            return "entity";
+        case NestableType::Avatar:
+            return "avatar";
+        case NestableType::Overlay:
+            return "overlay";
+        default:
+            return "unknown";
+    }
+}
