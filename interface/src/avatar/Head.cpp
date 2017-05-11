@@ -72,8 +72,6 @@ void Head::reset() {
 }
 
 void Head::simulate(float deltaTime, bool isMine) {
-    const float NORMAL_HZ = 60.0f; // the update rate the constant values were tuned for
-
     // grab the audio loudness from the owning avatar, if we have one
     float audioLoudness = 0.0f;
 
