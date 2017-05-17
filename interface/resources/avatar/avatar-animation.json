@@ -49,7 +49,15 @@
                         "id": "ik",
                         "type": "inverseKinematics",
                         "data": {
+                            "solutionSource": "relaxToUnderPoses",
+                            "solutionSourceVar": "solutionSource",
                             "targets": [
+                                {
+                                    "jointName": "Hips",
+                                    "positionVar": "hipsPosition",
+                                    "rotationVar": "hipsRotation",
+                                    "typeVar": "hipsType"
+                                },
                                 {
                                     "jointName": "RightHand",
                                     "positionVar": "rightHandPosition",
@@ -75,10 +83,10 @@
                                     "typeVar": "leftFootType"
                                 },
                                 {
-                                    "jointName": "Neck",
-                                    "positionVar": "neckPosition",
-                                    "rotationVar": "neckRotation",
-                                    "typeVar": "neckType"
+                                    "jointName": "Spine2",
+                                    "positionVar": "spine2Position",
+                                    "rotationVar": "spine2Rotation",
+                                    "typeVar": "spine2Type"
                                 },
                                 {
                                     "jointName": "Head",
@@ -91,20 +99,27 @@
                         "children": []
                     },
                     {
-                        "id": "manipulatorOverlay",
+                        "id": "hipsManipulatorOverlay",
                         "type": "overlay",
                         "data": {
-                            "alpha": 1.0,
-                            "boneSet": "spineOnly"
+                            "alpha": 0.0,
+                            "boneSet": "hipsOnly"
                         },
                         "children": [
                             {
-                                "id": "spineLean",
+                                "id": "hipsManipulator",
                                 "type": "manipulator",
                                 "data": {
                                     "alpha": 0.0,
+                                    "alphaVar": "hipsManipulatorAlpha",
                                     "joints": [
-                                        { "type": "absoluteRotation", "jointName": "Spine", "var": "lean" }
+                                        {
+                                            "jointName": "Hips",
+                                            "rotationType": "absolute",
+                                            "translationType": "absolute",
+                                            "rotationVar": "hipsManipulatorRotation",
+                                            "translationVar": "hipsManipulatorPosition"
+                                        }
                                     ]
                                 },
                                 "children": []

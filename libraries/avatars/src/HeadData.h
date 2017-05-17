@@ -59,10 +59,11 @@ public:
 
     void setBlendshape(QString name, float val);
     const QVector<float>& getBlendshapeCoefficients() const { return _blendshapeCoefficients; }
+    const QVector<float>& getSummedBlendshapeCoefficients();
     void setBlendshapeCoefficients(const QVector<float>& blendshapeCoefficients) { _blendshapeCoefficients = blendshapeCoefficients; }
 
     const glm::vec3& getLookAtPosition() const { return _lookAtPosition; }
-    void setLookAtPosition(const glm::vec3& lookAtPosition) { 
+    void setLookAtPosition(const glm::vec3& lookAtPosition) {
         if (_lookAtPosition != lookAtPosition) {
             _lookAtPositionChanged = usecTimestampNow();
         }
@@ -84,14 +85,16 @@ protected:
     glm::vec3 _lookAtPosition;
     quint64 _lookAtPositionChanged { 0 };
 
-    bool _isFaceTrackerConnected;
-    bool _isEyeTrackerConnected;
-    float _leftEyeBlink;
-    float _rightEyeBlink;
-    float _averageLoudness;
-    float _browAudioLift;
+    bool _isFaceTrackerConnected { false };
+    bool _isEyeTrackerConnected { false };
+    float _leftEyeBlink { 0.0f };
+    float _rightEyeBlink { 0.0f };
+    float _averageLoudness { 0.0f };
+    float _browAudioLift { 0.0f };
 
     QVector<float> _blendshapeCoefficients;
+    QVector<float> _transientBlendshapeCoefficients;
+    QVector<float> _summedBlendshapeCoefficients;
     AvatarData* _owningAvatar;
 
 private:

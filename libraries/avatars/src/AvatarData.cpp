@@ -63,8 +63,6 @@ AvatarData::AvatarData() :
     _keyState(NO_KEY_DOWN),
     _forceFaceTrackerConnected(false),
     _headData(NULL),
-    _displayNameTargetAlpha(1.0f),
-    _displayNameAlpha(1.0f),
     _errorLogExpiry(0),
     _owningAvatarMixer(),
     _targetVelocity(0.0f)
@@ -393,9 +391,9 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         if (isFingerPointing) {
             setAtBit(flags, HAND_STATE_FINGER_POINTING_BIT);
         }
-        // faceshift state
+        // face tracker state
         if (_headData->_isFaceTrackerConnected) {
-            setAtBit(flags, IS_FACESHIFT_CONNECTED);
+            setAtBit(flags, IS_FACE_TRACKER_CONNECTED);
         }
         // eye tracker state
         if (_headData->_isEyeTrackerConnected) {
@@ -447,17 +445,17 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
     if (hasFaceTrackerInfo) {
         auto startSection = destinationBuffer;
         auto faceTrackerInfo = reinterpret_cast<AvatarDataPacket::FaceTrackerInfo*>(destinationBuffer);
+        const auto& blendshapeCoefficients = _headData->getSummedBlendshapeCoefficients();
 
         faceTrackerInfo->leftEyeBlink = _headData->_leftEyeBlink;
         faceTrackerInfo->rightEyeBlink = _headData->_rightEyeBlink;
         faceTrackerInfo->averageLoudness = _headData->_averageLoudness;
         faceTrackerInfo->browAudioLift = _headData->_browAudioLift;
-        faceTrackerInfo->numBlendshapeCoefficients = _headData->_blendshapeCoefficients.size();
+        faceTrackerInfo->numBlendshapeCoefficients = blendshapeCoefficients.size();
         destinationBuffer += sizeof(AvatarDataPacket::FaceTrackerInfo);
 
-        // followed by a variable number of float coefficients
-        memcpy(destinationBuffer, _headData->_blendshapeCoefficients.data(), _headData->_blendshapeCoefficients.size() * sizeof(float));
-        destinationBuffer += _headData->_blendshapeCoefficients.size() * sizeof(float);
+        memcpy(destinationBuffer, blendshapeCoefficients.data(), blendshapeCoefficients.size() * sizeof(float));
+        destinationBuffer += blendshapeCoefficients.size() * sizeof(float);
 
         int numBytes = destinationBuffer - startSection;
         if (outboundDataRateOut) {
@@ -883,7 +881,7 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
         auto newHandState = getSemiNibbleAt(bitItems, HAND_STATE_START_BIT)
             + (oneAtBit(bitItems, HAND_STATE_FINGER_POINTING_BIT) ? IS_FINGER_POINTING_FLAG : 0);
 
-        auto newFaceTrackerConnected = oneAtBit(bitItems, IS_FACESHIFT_CONNECTED);
+        auto newFaceTrackerConnected = oneAtBit(bitItems, IS_FACE_TRACKER_CONNECTED);
         auto newEyeTrackerConnected = oneAtBit(bitItems, IS_EYE_TRACKER_CONNECTED);
 
         bool keyStateChanged = (_keyState != newKeyState);
@@ -967,6 +965,7 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
         const int coefficientsSize = sizeof(float) * numCoefficients;
         PACKET_READ_CHECK(FaceTrackerCoefficients, coefficientsSize);
         _headData->_blendshapeCoefficients.resize(numCoefficients);  // make sure there's room for the copy!
+        _headData->_transientBlendshapeCoefficients.resize(numCoefficients);
         memcpy(_headData->_blendshapeCoefficients.data(), sourceBuffer, coefficientsSize);
         sourceBuffer += coefficientsSize;
         int numBytesRead = sourceBuffer - startSection;
@@ -1391,6 +1390,22 @@ void AvatarData::setJointRotations(QVector<glm::quat> jointRotations) {
     }
 }
 
+QVector<glm::vec3> AvatarData::getJointTranslations() const {
+    if (QThread::currentThread() != thread()) {
+        QVector<glm::vec3> result;
+        QMetaObject::invokeMethod(const_cast<AvatarData*>(this),
+                                  "getJointTranslations", Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(QVector<glm::vec3>, result));
+        return result;
+    }
+    QReadLocker readLock(&_jointDataLock);
+    QVector<glm::vec3> jointTranslations(_jointData.size());
+    for (int i = 0; i < _jointData.size(); ++i) {
+        jointTranslations[i] = _jointData[i].translation;
+    }
+    return jointTranslations;
+}
+
 void AvatarData::setJointTranslations(QVector<glm::vec3> jointTranslations) {
     if (QThread::currentThread() != thread()) {
         QVector<glm::quat> result;
@@ -1456,7 +1471,22 @@ QStringList AvatarData::getJointNames() const {
 void AvatarData::parseAvatarIdentityPacket(const QByteArray& data, Identity& identityOut) {
     QDataStream packetStream(data);
 
-    packetStream >> identityOut.uuid >> identityOut.skeletonModelURL >> identityOut.attachmentData >> identityOut.displayName >> identityOut.sessionDisplayName >> identityOut.avatarEntityData;
+    packetStream >> identityOut.uuid 
+                 >> identityOut.skeletonModelURL 
+                 >> identityOut.attachmentData
+                 >> identityOut.displayName
+                 >> identityOut.sessionDisplayName
+                 >> identityOut.avatarEntityData
+                 >> identityOut.updatedAt;
+
+#ifdef WANT_DEBUG
+    qCDebug(avatars) << __FUNCTION__
+        << "identityOut.uuid:" << identityOut.uuid
+        << "identityOut.skeletonModelURL:" << identityOut.skeletonModelURL
+        << "identityOut.displayName:" << identityOut.displayName
+        << "identityOut.sessionDisplayName:" << identityOut.sessionDisplayName;
+#endif
+
 }
 
 static const QUrl emptyURL("");
@@ -1465,7 +1495,21 @@ QUrl AvatarData::cannonicalSkeletonModelURL(const QUrl& emptyURL) const {
     return _skeletonModelURL.scheme() == "file" ? emptyURL : _skeletonModelURL;
 }
 
-void AvatarData::processAvatarIdentity(const Identity& identity, bool& identityChanged, bool& displayNameChanged) {
+void AvatarData::processAvatarIdentity(const Identity& identity, bool& identityChanged, bool& displayNameChanged, const qint64 clockSkew) {
+    quint64 identityPacketUpdatedAt = identity.updatedAt;
+
+    if (identityPacketUpdatedAt <= (uint64_t)(abs(clockSkew))) { // Incoming timestamp is bad - compute our own timestamp
+        identityPacketUpdatedAt = usecTimestampNow() + clockSkew;
+    }
+
+    // Consider the case where this packet is being processed on Client A, and Client A is connected to Sandbox B.
+    // If Client A's system clock is *ahead of* Sandbox B's system clock, "clockSkew" will be *negative*.
+    // If Client A's system clock is *behind* Sandbox B's system clock, "clockSkew" will be *positive*.
+    if ((_identityUpdatedAt > identityPacketUpdatedAt - clockSkew) && (_identityUpdatedAt != 0)) {
+        qCDebug(avatars) << "Ignoring late identity packet for avatar " << getSessionUUID() 
+            << "_identityUpdatedAt (" << _identityUpdatedAt << ") is greater than identityPacketUpdatedAt - clockSkew (" << identityPacketUpdatedAt << "-" << clockSkew << ")";
+        return;
+    }
 
     if (_firstSkeletonCheck || (identity.skeletonModelURL != cannonicalSkeletonModelURL(emptyURL))) {
         setSkeletonModelURL(identity.skeletonModelURL);
@@ -1496,24 +1540,35 @@ void AvatarData::processAvatarIdentity(const Identity& identity, bool& identityC
         setAvatarEntityData(identity.avatarEntityData);
         identityChanged = true;
     }
-    // flag this avatar as non-stale by updating _averageBytesReceived
-    const int BOGUS_NUM_BYTES = 1;
-    _averageBytesReceived.updateAverage(BOGUS_NUM_BYTES);
+
+    // use the timestamp from this identity, since we want to honor the updated times in "server clock"
+    // this will overwrite any changes we made locally to this AvatarData's _identityUpdatedAt
+    _identityUpdatedAt = identityPacketUpdatedAt - clockSkew;
 }
 
 QByteArray AvatarData::identityByteArray() const {
     QByteArray identityData;
     QDataStream identityStream(&identityData, QIODevice::Append);
-    const QUrl& urlToSend = cannonicalSkeletonModelURL(emptyURL);
+    const QUrl& urlToSend = cannonicalSkeletonModelURL(emptyURL); // depends on _skeletonModelURL
 
     _avatarEntitiesLock.withReadLock([&] {
-        identityStream << getSessionUUID() << urlToSend << _attachmentData << _displayName << getSessionDisplayNameForTransport() << _avatarEntityData;
+        identityStream << getSessionUUID() 
+                       << urlToSend 
+                       << _attachmentData
+                       << _displayName
+                       << getSessionDisplayNameForTransport() // depends on _sessionDisplayName
+                       << _avatarEntityData
+                       << _identityUpdatedAt;
     });
 
     return identityData;
 }
 
 void AvatarData::setSkeletonModelURL(const QUrl& skeletonModelURL) {
+    if (skeletonModelURL.isEmpty()) {
+        qCDebug(avatars) << __FUNCTION__ << "caller called with empty URL.";
+    }
+
     const QUrl& expanded = skeletonModelURL.isEmpty() ? AvatarData::defaultFullAvatarModelUrl() : skeletonModelURL;
     if (expanded == _skeletonModelURL) {
         return;
@@ -1522,6 +1577,7 @@ void AvatarData::setSkeletonModelURL(const QUrl& skeletonModelURL) {
     qCDebug(avatars) << "Changing skeleton model for avatar" << getSessionUUID() << "to" << _skeletonModelURL.toString();
 
     updateJointMappings();
+    markIdentityDataChanged();
 }
 
 void AvatarData::setDisplayName(const QString& displayName) {
@@ -1531,6 +1587,7 @@ void AvatarData::setDisplayName(const QString& displayName) {
     sendIdentityPacket();
 
     qCDebug(avatars) << "Changing display name for avatar to" << displayName;
+    markIdentityDataChanged();
 }
 
 QVector<AttachmentData> AvatarData::getAttachmentData() const {
@@ -1549,6 +1606,7 @@ void AvatarData::setAttachmentData(const QVector<AttachmentData>& attachmentData
         return;
     }
     _attachmentData = attachmentData;
+    markIdentityDataChanged();
 }
 
 void AvatarData::attach(const QString& modelURL, const QString& jointName,
@@ -1678,7 +1736,6 @@ void AvatarData::sendAvatarDataPacket() {
 
 void AvatarData::sendIdentityPacket() {
     auto nodeList = DependencyManager::get<NodeList>();
-
     QByteArray identityData = identityByteArray();
 
     auto packetList = NLPacketList::create(PacketType::AvatarIdentity, QByteArray(), true, true);
@@ -1692,6 +1749,7 @@ void AvatarData::sendIdentityPacket() {
         });
 
     _avatarEntityDataLocallyEdited = false;
+    _identityDataChanged = false;
 }
 
 void AvatarData::updateJointMappings() {
@@ -2228,10 +2286,12 @@ void AvatarData::updateAvatarEntity(const QUuid& entityID, const QByteArray& ent
             if (_avatarEntityData.size() < MAX_NUM_AVATAR_ENTITIES) {
                 _avatarEntityData.insert(entityID, entityData);
                 _avatarEntityDataLocallyEdited = true;
+                markIdentityDataChanged();
             }
         } else {
             itr.value() = entityData;
             _avatarEntityDataLocallyEdited = true;
+            markIdentityDataChanged();
         }
     });
 }
@@ -2245,6 +2305,7 @@ void AvatarData::clearAvatarEntity(const QUuid& entityID) {
     _avatarEntitiesLock.withWriteLock([&] {
         _avatarEntityData.remove(entityID);
         _avatarEntityDataLocallyEdited = true;
+        markIdentityDataChanged();
     });
 }
 

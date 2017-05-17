@@ -2,124 +2,123 @@ import QtQuick 2.5
 import QtQuick.Controls 1.4
 import QtWebEngine 1.2
 import QtWebChannel 1.0
+import HFTabletWebEngineProfile 1.0
 import "../controls-uit" as HiFiControls
 import "../styles" as HifiStyles
 import "../styles-uit"
-import HFWebEngineProfile 1.0
-import HFTabletWebEngineProfile 1.0
 import "../"
+import "."
+
 Item {
     id: web
+    HifiConstants { id: hifi }
     width: parent.width
     height: parent.height
     property var parentStackItem: null
-    property int headerHeight: 38
+    property int headerHeight: 70
     property string url
-    property string address: url //for compatibility
     property string scriptURL
     property alias eventBridge: eventBridgeWrapper.eventBridge
-    property bool keyboardEnabled: HMD.active
+    property bool keyboardEnabled: false
     property bool keyboardRaised: false
     property bool punctuationMode: false
     property bool isDesktop: false
-    property WebEngineView view: loader.currentView
+    property alias webView: webview
+    property alias profile: webview.profile
+    property bool remove: false
 
-    
-    property int currentPage: -1 // used as a model for repeater
-    property alias pagesModel: pagesModel
+    // Manage own browse history because WebEngineView history is wiped when a new URL is loaded via
+    // onNewViewRequested, e.g., as happens when a social media share button is clicked.
+    property var history: []
+    property int historyIndex: -1
 
-    Row {
+    Rectangle {
         id: buttons
-        HifiConstants { id: hifi }
-        HifiStyles.HifiConstants { id: hifistyles }
-        height: headerHeight
-        spacing: 4
-        anchors.top: parent.top
-        anchors.topMargin: 8
-        anchors.left: parent.left
-        anchors.leftMargin: 8
-        HiFiGlyphs {
-            id: back;
-            enabled: currentPage >= 0
-            text: hifi.glyphs.backward
-            color: enabled ? hifistyles.colors.text : hifistyles.colors.disabledText
-            size: 48
-            MouseArea { anchors.fill: parent;  onClicked: goBack() }
-        }
-        
-        HiFiGlyphs {
-            id: forward;
-            enabled: currentPage < pagesModel.count - 1
-            text: hifi.glyphs.forward
-            color: enabled ? hifistyles.colors.text : hifistyles.colors.disabledText
-            size: 48
-            MouseArea { anchors.fill: parent;  onClicked: goForward() }
-        }
-        
-        HiFiGlyphs {
-            id: reload;
-            enabled: view != null;
-            text: (view !== null && view.loading) ? hifi.glyphs.close : hifi.glyphs.reload
-            color: enabled ? hifistyles.colors.text : hifistyles.colors.disabledText
-            size: 48
-            MouseArea { anchors.fill: parent;  onClicked: reloadPage(); }
-        }
-        
-    }
+        width: parent.width
+        height: parent.headerHeight
+        color: hifi.colors.white
 
-    TextField {
-        id: addressBar
-        height: 30
-        anchors.right: parent.right
-        anchors.rightMargin: 8
-        anchors.left: buttons.right
-        anchors.leftMargin: 0
-        anchors.verticalCenter: buttons.verticalCenter
-        focus: true
-        text: address
-        Component.onCompleted: ScriptDiscoveryService.scriptsModelFilter.filterRegExp = new RegExp("^.*$", "i")
+        Row {
+            id: nav
+            anchors {
+                top: parent.top
+                topMargin: 10
+                horizontalCenter: parent.horizontalCenter
+            }
+            spacing: 120
+            
+            TabletWebButton {
+                id: back
+                enabledColor: hifi.colors.darkGray
+                disabledColor: hifi.colors.lightGrayText
+                enabled: historyIndex > 0
+                text: "BACK"
 
-        Keys.onPressed: {
-            switch (event.key) {
-                case Qt.Key_Enter:
-                case Qt.Key_Return: 
-                    event.accepted = true;
-                    if (text.indexOf("http") != 0) {
-                        text = "http://" + text;
-                     }
-                    //root.hidePermissionsBar();
-                    web.keyboardRaised = false;
-                    gotoPage(text);
-                    break;
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: goBack()
+                }
+            }
 
-                
+            TabletWebButton {
+                id: close
+                enabledColor: hifi.colors.darkGray
+                disabledColor: hifi.colors.lightGrayText
+                enabled: true
+                text: "CLOSE"
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: closeWebEngine()
+                }
             }
         }
-    }
 
-    ListModel {
-        id: pagesModel
-        onCountChanged: {
-            currentPage = count - 1
+        RalewaySemiBold {
+            id: displayUrl
+            color: hifi.colors.baseGray
+            font.pixelSize: 12
+            verticalAlignment: Text.AlignLeft
+            text: webview.url
+            anchors {
+                top: nav.bottom
+                horizontalCenter: parent.horizontalCenter;
+                left: parent.left
+                leftMargin: 20
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            preventStealing: true
+            propagateComposedEvents: true
         }
     }
-        
+
     function goBack() {
-        if (currentPage > 0) {
-            currentPage--;
-        } else if (parentStackItem) {
+        if (historyIndex > 0) {
+            historyIndex--;
+            loadUrl(history[historyIndex]);
+        }
+    }
+
+    function closeWebEngine() {
+        if (remove) {
+            web.destroy();
+            return;
+        }
+        if (parentStackItem) {
             parentStackItem.pop();
+        } else {
+            web.visible = false;
         }
     }
 
     function goForward() {
-        if (currentPage < pagesModel.count - 1) {
-            currentPage++;
+        if (historyIndex < history.length - 1) {
+            historyIndex++;
+            loadUrl(history[historyIndex]);
         }
-    }
-
-    function gotoPage(url) {
-        urlAppend(url)
     }
 
     function reloadPage() {
@@ -128,25 +127,13 @@ Item {
         view.setEnabled(true);
     }
 
-    function urlAppend(url) {
-        var lurl = decodeURIComponent(url)
-        if (lurl[lurl.length - 1] !== "/")
-            lurl = lurl + "/"
-        if (currentPage === -1 || pagesModel.get(currentPage).webUrl !== lurl) {
-            pagesModel.append({webUrl: lurl})
-        }
-    }
-
-    onCurrentPageChanged: {
-        if (currentPage >= 0 && currentPage < pagesModel.count && loader.item !== null) {
-            loader.item.url = pagesModel.get(currentPage).webUrl
-            web.url = loader.item.url
-            web.address = loader.item.url
-        }
+    function loadUrl(url) {
+        webview.url = url
+        web.url = webview.url;
     }
 
     onUrlChanged: {
-        gotoPage(url)
+        loadUrl(url);
     }
 
     QtObject {
@@ -154,46 +141,129 @@ Item {
         WebChannel.id: "eventBridgeWrapper"
         property var eventBridge;
     }
-
-    Loader {
-        id: loader
-
-        property WebEngineView currentView: null
-
+    
+    WebEngineView {
+        id: webview
+        objectName: "webEngineView"
+        x: 0
+        y: 0
         width: parent.width
-        height: parent.height - web.headerHeight
-        asynchronous: true
+        height: keyboardEnabled && keyboardRaised ? parent.height - keyboard.height - web.headerHeight : parent.height - web.headerHeight
         anchors.top: buttons.bottom
-        active: false
-        source: "../TabletBrowser.qml"
-        onStatusChanged: {
-            if (loader.status === Loader.Ready) {
-                currentView = item.webView
-                item.webView.userScriptUrl = web.scriptURL
-                if (currentPage >= 0) {
-                    //we got something to load already
-                    item.url = pagesModel.get(currentPage).webUrl
-                    web.address = loader.item.url
+        profile: HFTabletWebEngineProfile {
+            id: webviewTabletProfile
+            storageName: "qmlTabletWebEngine"
+        }
+
+        property string userScriptUrl: ""
+
+        // creates a global EventBridge object.
+        WebEngineScript {
+            id: createGlobalEventBridge
+            sourceCode: eventBridgeJavaScriptToInject
+            injectionPoint: WebEngineScript.DocumentCreation
+            worldId: WebEngineScript.MainWorld
+        }
+
+        // detects when to raise and lower virtual keyboard
+        WebEngineScript {
+            id: raiseAndLowerKeyboard
+            injectionPoint: WebEngineScript.Deferred
+            sourceUrl: resourceDirectoryUrl + "/html/raiseAndLowerKeyboard.js"
+            worldId: WebEngineScript.MainWorld
+        }
+
+        // User script.
+        WebEngineScript {
+            id: userScript
+            sourceUrl: webview.userScriptUrl
+            injectionPoint: WebEngineScript.DocumentReady  // DOM ready but page load may not be finished.
+            worldId: WebEngineScript.MainWorld
+        }
+
+        property string urlTag: "noDownload=false";
+        userScripts: [ createGlobalEventBridge, raiseAndLowerKeyboard, userScript ]
+
+        property string newUrl: ""
+
+        webChannel.registeredObjects: [eventBridgeWrapper]
+
+        Component.onCompleted: {
+            // Ensure the JS from the web-engine makes it to our logging
+            webview.javaScriptConsoleMessage.connect(function(level, message, lineNumber, sourceID) {
+                console.log("Web Entity JS message: " + sourceID + " " + lineNumber + " " +  message);
+            });
+
+            webview.profile.httpUserAgent = "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Mobile Safari/537.36";
+        }
+
+        onFeaturePermissionRequested: {
+            grantFeaturePermission(securityOrigin, feature, true);
+        }
+
+        onUrlChanged: {
+            // Record history, skipping null and duplicate items.
+            var urlString = url + "";
+            urlString = urlString.replace(/\//g, "%2F");  // Consistent representation of "/"s to avoid false differences.
+            if (urlString.length > 0 && (historyIndex === -1 || urlString !== history[historyIndex])) {
+                historyIndex++;
+                history = history.slice(0, historyIndex);
+                history.push(urlString);
+            }
+        }
+
+        onLoadingChanged: {
+            keyboardRaised = false;
+            punctuationMode = false;
+            keyboard.resetShiftMode(false);
+            // Required to support clicking on "hifi://" links
+            if (WebEngineView.LoadStartedStatus == loadRequest.status) {
+                var url = loadRequest.url.toString();
+                if (urlHandler.canHandleUrl(url)) {
+                    if (urlHandler.handleUrl(url)) {
+                        root.stop();
+                    }
                 }
             }
+
+            if (WebEngineView.LoadFailedStatus == loadRequest.status) {
+                console.log(" Tablet WebEngineView failed to load url: " + loadRequest.url.toString());
+            }
+
+            if (WebEngineView.LoadSucceededStatus == loadRequest.status) {
+                webview.forceActiveFocus();
+            }
+        }
+        
+        onNewViewRequested: {
+            request.openIn(webview);
         }
     }
 
+    HiFiControls.Keyboard {
+        id: keyboard
+        raised: parent.keyboardEnabled && parent.keyboardRaised
+        numeric: parent.punctuationMode
+
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
+    }
+    
     Component.onCompleted: {
         web.isDesktop = (typeof desktop !== "undefined");
-        address = url;
-        loader.active = true
+        keyboardEnabled = HMD.active;
     }
 
-     Keys.onPressed: {
+    Keys.onPressed: {
         switch(event.key) {
-            case Qt.Key_L:
-                if (event.modifiers == Qt.ControlModifier) {
-                    event.accepted = true
-                    addressBar.selectAll()
-                    addressBar.forceActiveFocus()
-                }
-                break;
+        case Qt.Key_L:
+            if (event.modifiers == Qt.ControlModifier) {
+                event.accepted = true
+            }
+            break;
         }
     }
 }

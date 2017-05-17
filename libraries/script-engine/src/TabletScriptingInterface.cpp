@@ -21,16 +21,27 @@
 #include <InfoView.h>
 #include "SoundEffect.h"
 
+const QString SYSTEM_TOOLBAR = "com.highfidelity.interface.toolbar.system";
+const QString SYSTEM_TABLET = "com.highfidelity.interface.tablet.system";
+
+QScriptValue tabletToScriptValue(QScriptEngine* engine, TabletProxy* const &in) {
+    return engine->newQObject(in, QScriptEngine::QtOwnership, QScriptEngine::ExcludeDeleteLater | QScriptEngine::ExcludeChildObjects);
+}
+
+void tabletFromScriptValue(const QScriptValue& value, TabletProxy* &out) {
+    out = qobject_cast<TabletProxy*>(value.toQObject());
+}
+
 TabletScriptingInterface::TabletScriptingInterface() {
     qmlRegisterType<SoundEffect>("Hifi", 1, 0, "SoundEffect");
 }
 
 QObject* TabletScriptingInterface::getSystemToolbarProxy() {
-    const QString SYSTEM_TOOLBAR = "com.highfidelity.interface.toolbar.system";
     Qt::ConnectionType connectionType = Qt::AutoConnection;
     if (QThread::currentThread() != _toolbarScriptingInterface->thread()) {
         connectionType = Qt::BlockingQueuedConnection;
     }
+
     QObject* toolbarProxy = nullptr;
     bool hasResult = QMetaObject::invokeMethod(_toolbarScriptingInterface, "getToolbar", connectionType, Q_RETURN_ARG(QObject*, toolbarProxy), Q_ARG(QString, SYSTEM_TOOLBAR));
     if (hasResult) {
@@ -41,29 +52,39 @@ QObject* TabletScriptingInterface::getSystemToolbarProxy() {
     }
 }
 
-QObject* TabletScriptingInterface::getTablet(const QString& tabletId) {
+TabletProxy* TabletScriptingInterface::getTablet(const QString& tabletId) {
+    TabletProxy* tabletProxy = nullptr;
+    {
+        // the only thing guarded should be map mutation
+        // this avoids a deadlock with the Main thread
+        // from Qt::BlockingQueuedEvent invocations later in the call-tree
+        std::lock_guard<std::mutex> guard(_mapMutex);
 
-    std::lock_guard<std::mutex> guard(_mutex);
-
-    // look up tabletId in the map.
-    auto iter = _tabletProxies.find(tabletId);
-    if (iter != _tabletProxies.end()) {
-        // tablet already exists, just return it.
-        return iter->second;
-    } else {
-        // allocate a new tablet, add it to the map then return it.
-        auto tabletProxy = new TabletProxy(tabletId);
-        tabletProxy->setParent(this);
-        _tabletProxies[tabletId] = tabletProxy;
-        tabletProxy->setToolbarMode(_toolbarMode);
-        return tabletProxy;
+        auto iter = _tabletProxies.find(tabletId);
+        if (iter != _tabletProxies.end()) {
+            // tablet already exists
+            return iter->second;
+        } else {
+            // tablet must be created
+            tabletProxy = new TabletProxy(this, tabletId);
+            _tabletProxies[tabletId] = tabletProxy;
+        }
     }
+
+    assert(tabletProxy);
+    // initialize new tablet
+    tabletProxy->setToolbarMode(_toolbarMode);
+    return tabletProxy;
 }
 
 void TabletScriptingInterface::setToolbarMode(bool toolbarMode) {
-    std::lock_guard<std::mutex> guard(_mutex);
-
-    _toolbarMode = toolbarMode;
+    {
+        // the only thing guarded should be _toolbarMode
+        // this avoids a deadlock with the Main thread
+        // from Qt::BlockingQueuedEvent invocations later in the call-tree
+        std::lock_guard<std::mutex> guard(_mapMutex);
+        _toolbarMode = toolbarMode;
+    }
 
     for (auto& iter : _tabletProxies) {
         iter.second->setToolbarMode(toolbarMode);
@@ -80,8 +101,9 @@ void TabletScriptingInterface::setQmlTabletRoot(QString tabletId, QQuickItem* qm
 }
 
 QQuickWindow* TabletScriptingInterface::getTabletWindow() {
-    TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet("com.highfidelity.interface.tablet.system"));
+    TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet(SYSTEM_TABLET));
     QObject* qmlSurface = tablet->getTabletSurface();
+
     OffscreenQmlSurface* surface = dynamic_cast<OffscreenQmlSurface*>(qmlSurface);
 
     if (!surface) {
@@ -147,7 +169,7 @@ void TabletScriptingInterface::processTabletEvents(QObject* object, const QKeyEv
 
 
 void TabletScriptingInterface::processEvent(const QKeyEvent* event) {
-    TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet("com.highfidelity.interface.tablet.system"));
+    TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet(SYSTEM_TABLET));
     QObject* qmlTablet = tablet->getQmlTablet();
     QObject* qmlMenu = tablet->getQmlMenu();
 
@@ -176,10 +198,12 @@ class TabletRootWindow : public QmlWindowClass {
     virtual QString qmlSource() const override { return "hifi/tablet/WindowRoot.qml"; }
 };
 
-TabletProxy::TabletProxy(QString name) : _name(name) {
+TabletProxy::TabletProxy(QObject* parent, QString name) : QObject(parent), _name(name) {
 }
 
 void TabletProxy::setToolbarMode(bool toolbarMode) {
+    std::lock_guard<std::mutex> guard(_tabletMutex);
+
     if (toolbarMode == _toolbarMode) {
         return;
     }
@@ -207,8 +231,10 @@ void TabletProxy::setToolbarMode(bool toolbarMode) {
             connect(tabletRootWindow, &QmlWindowClass::fromQml, this, &TabletProxy::fromQml);
         });
     } else {
+        _state = State::Home;
         removeButtonsFromToolbar();
         addButtonsToHomeScreen();
+        emit screenChanged(QVariant("Home"), QVariant(TABLET_SOURCE_URL));
 
         // destroy desktop window
         if (_desktopWindow) {
@@ -224,6 +250,10 @@ static void addButtonProxyToQmlTablet(QQuickItem* qmlTablet, TabletButtonProxy* 
     if (QThread::currentThread() != qmlTablet->thread()) {
         connectionType = Qt::BlockingQueuedConnection;
     }
+	if (buttonProxy == NULL){
+		qCCritical(scriptengine) << "TabletScriptingInterface addButtonProxyToQmlTablet buttonProxy is NULL";
+		return;
+	}
     bool hasResult = QMetaObject::invokeMethod(qmlTablet, "addButtonProxy", connectionType,
                                                Q_RETURN_ARG(QVariant, resultVar), Q_ARG(QVariant, buttonProxy->getProperties()));
     if (!hasResult) {
@@ -279,7 +309,7 @@ bool TabletProxy::isPathLoaded(QVariant path) {
     return path.toString() == _currentPathLoaded.toString();
 }
 void TabletProxy::setQmlTabletRoot(QQuickItem* qmlTabletRoot, QObject* qmlOffscreenSurface) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_tabletMutex);
     _qmlOffscreenSurface = qmlOffscreenSurface;
     _qmlTabletRoot = qmlTabletRoot;
     if (_qmlTabletRoot && _qmlOffscreenSurface) {
@@ -410,19 +440,19 @@ void TabletProxy::loadQMLSource(const QVariant& path) {
 }
 
 void TabletProxy::pushOntoStack(const QVariant& path) {
-    if (_qmlTabletRoot) {
-        auto stack = _qmlTabletRoot->findChild<QQuickItem*>("stack");
+    QObject* root = nullptr;
+    if (!_toolbarMode && _qmlTabletRoot) {
+        root = _qmlTabletRoot;
+    } else if (_toolbarMode && _desktopWindow) {
+        root = _desktopWindow->asQuickItem();
+    }
+
+    if (root) {
+        auto stack = root->findChild<QQuickItem*>("stack");
         if (stack) {
             QMetaObject::invokeMethod(stack, "pushSource", Q_ARG(const QVariant&, path));
         } else {
             loadQMLSource(path);
-        }
-    } else if (_desktopWindow) {
-        auto stack = _desktopWindow->asQuickItem()->findChild<QQuickItem*>("stack");
-        if (stack) {
-            QMetaObject::invokeMethod(stack, "pushSource", Q_ARG(const QVariant&, path));
-        } else {
-            qCDebug(scriptengine) << "tablet cannot push QML because _desktopWindow doesn't have child stack";
         }
     } else {
         qCDebug(scriptengine) << "tablet cannot push QML because _qmlTabletRoot or _desktopWindow is null";
@@ -430,20 +460,16 @@ void TabletProxy::pushOntoStack(const QVariant& path) {
 }
 
 void TabletProxy::popFromStack() {
-    if (_qmlTabletRoot) {
-        auto stack = _qmlTabletRoot->findChild<QQuickItem*>("stack");
-        if (stack) {
-            QMetaObject::invokeMethod(stack, "popSource");
-        } else {
-            qCDebug(scriptengine) << "tablet cannot push QML because _qmlTabletRoot doesn't have child stack";
-        }
-    } else if (_desktopWindow) {
-        auto stack = _desktopWindow->asQuickItem()->findChild<QQuickItem*>("stack");
-        if (stack) {
-            QMetaObject::invokeMethod(stack, "popSource");
-        } else {
-            qCDebug(scriptengine) << "tablet cannot pop QML because _desktopWindow doesn't have child stack";
-        }
+    QObject* root = nullptr;
+    if (!_toolbarMode && _qmlTabletRoot) {
+        root = _qmlTabletRoot;
+    } else if (_toolbarMode && _desktopWindow) {
+        root = _desktopWindow->asQuickItem();
+    }
+
+    if (root) {
+        auto stack = root->findChild<QQuickItem*>("stack");
+        QMetaObject::invokeMethod(stack, "popSource");
     } else {
         qCDebug(scriptengine) << "tablet cannot pop QML because _qmlTabletRoot or _desktopWindow is null";
     }
@@ -503,7 +529,7 @@ void TabletProxy::gotoWebScreen(const QString& url, const QString& injectedJavaS
 
     if (root) {
         removeButtonsFromHomeScreen();
-        QMetaObject::invokeMethod(root, "loadSource", Q_ARG(const QVariant&, QVariant(WEB_VIEW_SOURCE_URL)));
+        QMetaObject::invokeMethod(root, "loadWebBase");
         QMetaObject::invokeMethod(root, "setShown", Q_ARG(const QVariant&, QVariant(true)));
         QMetaObject::invokeMethod(root, "loadWebUrl", Q_ARG(const QVariant&, QVariant(url)), Q_ARG(const QVariant&, QVariant(injectedJavaScriptUrl)));
     }
@@ -514,7 +540,7 @@ void TabletProxy::gotoWebScreen(const QString& url, const QString& injectedJavaS
 
 QObject* TabletProxy::addButton(const QVariant& properties) {
     auto tabletButtonProxy = QSharedPointer<TabletButtonProxy>(new TabletButtonProxy(properties.toMap()));
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_tabletMutex);
     _tabletButtonProxies.push_back(tabletButtonProxy);
     if (!_toolbarMode && _qmlTabletRoot) {
         auto tablet = getQmlTablet();
@@ -550,7 +576,7 @@ bool TabletProxy::onHomeScreen() {
 }
 
 void TabletProxy::removeButton(QObject* tabletButtonProxy) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_tabletMutex);
 
     auto tablet = getQmlTablet();
     if (!tablet) {
@@ -622,8 +648,8 @@ void TabletProxy::addButtonsToHomeScreen() {
     for (auto& buttonProxy : _tabletButtonProxies) {
         addButtonProxyToQmlTablet(tablet, buttonProxy.data());
     }
-     auto loader = _qmlTabletRoot->findChild<QQuickItem*>("loader");
-     QObject::disconnect(loader, SIGNAL(loaded()), this, SLOT(addButtonsToHomeScreen()));
+    auto loader = _qmlTabletRoot->findChild<QQuickItem*>("loader");
+    QObject::disconnect(loader, SIGNAL(loaded()), this, SLOT(addButtonsToHomeScreen()));
 }
 
 QObject* TabletProxy::getTabletSurface() {
@@ -738,12 +764,12 @@ TabletButtonProxy::TabletButtonProxy(const QVariantMap& properties) :
 }
 
 void TabletButtonProxy::setQmlButton(QQuickItem* qmlButton) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_buttonMutex);
     _qmlButton = qmlButton;
 }
 
 void TabletButtonProxy::setToolbarButtonProxy(QObject* toolbarButtonProxy) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_buttonMutex);
     _toolbarButtonProxy = toolbarButtonProxy;
     if (_toolbarButtonProxy) {
         QObject::connect(_toolbarButtonProxy, SIGNAL(clicked()), this, SLOT(clickedSlot()));
@@ -751,12 +777,12 @@ void TabletButtonProxy::setToolbarButtonProxy(QObject* toolbarButtonProxy) {
 }
 
 QVariantMap TabletButtonProxy::getProperties() const {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_buttonMutex);
     return _properties;
 }
 
 void TabletButtonProxy::editProperties(QVariantMap properties) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::lock_guard<std::mutex> guard(_buttonMutex);
 
     QVariantMap::const_iterator iter = properties.constBegin();
     while (iter != properties.constEnd()) {

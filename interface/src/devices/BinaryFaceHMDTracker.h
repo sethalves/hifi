@@ -15,7 +15,7 @@
 #include <DependencyManager.h>
 #include <ui/overlays/TextOverlay.h>
 
-#include "FaceTracker.h"
+#include <trackers/FaceTracker.h>
 #ifdef HAVE_BINARYFACEHMD
 #include <binaryfacehmd.h>
 #endif

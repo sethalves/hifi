@@ -20,7 +20,6 @@
 #include "model/Light.h"
 #include "model/Geometry.h"
 
-#include "render/Context.h"
 #include <render/CullTask.h>
 
 #include "DeferredFrameTransform.h"
@@ -127,7 +126,7 @@ class PreparePrimaryFramebuffer {
 public:
     using JobModel = render::Job::ModelO<PreparePrimaryFramebuffer, gpu::FramebufferPointer>;
 
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext, gpu::FramebufferPointer& primaryFramebuffer);
+    void run(const render::RenderContextPointer& renderContext, gpu::FramebufferPointer& primaryFramebuffer);
 
     gpu::FramebufferPointer _primaryFramebuffer;
 };
@@ -141,7 +140,7 @@ public:
 
     using JobModel = render::Job::ModelIO<PrepareDeferred, Inputs, Outputs>;
 
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext, const Inputs& inputs, Outputs& outputs);
+    void run(const render::RenderContextPointer& renderContext, const Inputs& inputs, Outputs& outputs);
 
     DeferredFramebufferPointer _deferredFramebuffer;
 };
@@ -150,7 +149,7 @@ class RenderDeferredSetup {
 public:
   //  using JobModel = render::Job::ModelI<RenderDeferredSetup, DeferredFrameTransformPointer>;
     
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext,
+    void run(const render::RenderContextPointer& renderContext,
         const DeferredFrameTransformPointer& frameTransform,
         const DeferredFramebufferPointer& deferredFramebuffer,
         const LightingModelPointer& lightingModel,
@@ -163,7 +162,7 @@ class RenderDeferredLocals {
 public:
     using JobModel = render::Job::ModelI<RenderDeferredLocals, DeferredFrameTransformPointer>;
     
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext,
+    void run(const render::RenderContextPointer& renderContext,
         const DeferredFrameTransformPointer& frameTransform,
         const DeferredFramebufferPointer& deferredFramebuffer,
         const LightingModelPointer& lightingModel,
@@ -181,7 +180,7 @@ class RenderDeferredCleanup {
 public:
     using JobModel = render::Job::Model<RenderDeferredCleanup>;
     
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext);
+    void run(const render::RenderContextPointer& renderContext);
 };
 
 using RenderDeferredConfig = render::GPUJobConfig;
@@ -196,7 +195,7 @@ public:
 
     void configure(const Config& config);
 
-    void run(const render::SceneContextPointer& sceneContext, const render::RenderContextPointer& renderContext, const Inputs& inputs);
+    void run(const render::RenderContextPointer& renderContext, const Inputs& inputs);
     
     RenderDeferredSetup setupJob;
     RenderDeferredLocals lightsJob;

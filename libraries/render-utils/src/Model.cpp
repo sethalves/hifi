@@ -231,8 +231,6 @@ void Model::updateRenderItems() {
         // We need to update them here so we can correctly update the bounding box.
         self->updateClusterMatrices();
 
-        render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
-
         uint32_t deleteGeometryCounter = self->_deleteGeometryCounter;
 
         render::Transaction transaction;
@@ -266,7 +264,7 @@ void Model::updateRenderItems() {
             });
         }
 
-        scene->enqueueTransaction(transaction);
+        AbstractViewStateInterface::instance()->getMain3DScene()->enqueueTransaction(transaction);
     });
 }
 
@@ -534,7 +532,7 @@ void Model::calculateTriangleSets() {
     }
 }
 
-void Model::setVisibleInScene(bool newValue, std::shared_ptr<render::Scene> scene) {
+void Model::setVisibleInScene(bool newValue, const render::ScenePointer& scene) {
     if (_isVisible != newValue) {
         _isVisible = newValue;
 
@@ -550,7 +548,7 @@ void Model::setVisibleInScene(bool newValue, std::shared_ptr<render::Scene> scen
 }
 
 
-void Model::setLayeredInFront(bool layered, std::shared_ptr<render::Scene> scene) {
+void Model::setLayeredInFront(bool layered, const render::ScenePointer& scene) {
     if (_isLayeredInFront != layered) {
         _isLayeredInFront = layered;
 
@@ -565,7 +563,7 @@ void Model::setLayeredInFront(bool layered, std::shared_ptr<render::Scene> scene
     }
 }
 
-bool Model::addToScene(std::shared_ptr<render::Scene> scene,
+bool Model::addToScene(const render::ScenePointer& scene,
                        render::Transaction& transaction,
                        render::Item::Status::Getters& statusGetters) {
     bool readyToRender = _collisionGeometry || isLoaded();
@@ -575,7 +573,7 @@ bool Model::addToScene(std::shared_ptr<render::Scene> scene,
 
     bool somethingAdded = false;
     if (_collisionGeometry) {
-        if (_collisionRenderItems.empty()) {
+        if (_collisionRenderItemsMap.empty()) {
             foreach (auto renderItem, _collisionRenderItems) {
                 auto item = scene->allocateID();
                 auto renderPayload = std::make_shared<MeshPartPayload::Payload>(renderItem);
@@ -585,7 +583,7 @@ bool Model::addToScene(std::shared_ptr<render::Scene> scene,
                 transaction.resetItem(item, renderPayload);
                 _collisionRenderItemsMap.insert(item, renderPayload);
             }
-            somethingAdded = !_collisionRenderItems.empty();
+            somethingAdded = !_collisionRenderItemsMap.empty();
         }
     } else {
         if (_modelMeshRenderItemsMap.empty()) {
@@ -622,7 +620,7 @@ bool Model::addToScene(std::shared_ptr<render::Scene> scene,
     return somethingAdded;
 }
 
-void Model::removeFromScene(std::shared_ptr<render::Scene> scene, render::Transaction& transaction) {
+void Model::removeFromScene(const render::ScenePointer& scene, render::Transaction& transaction) {
     foreach (auto item, _modelMeshRenderItemsMap.keys()) {
         transaction.removeItem(item);
     }
@@ -634,7 +632,7 @@ void Model::removeFromScene(std::shared_ptr<render::Scene> scene, render::Transa
         transaction.removeItem(item);
     }
     _collisionRenderItems.clear();
-    _collisionRenderItems.clear();
+    _collisionRenderItemsMap.clear();
     _addedToScene = false;
 
     _renderInfoVertexCount = 0;
@@ -795,7 +793,7 @@ void Model::setURL(const QUrl& url) {
 
     {
         render::Transaction transaction;
-        render::ScenePointer scene = AbstractViewStateInterface::instance()->getMain3DScene();
+        const render::ScenePointer& scene = AbstractViewStateInterface::instance()->getMain3DScene();
         if (scene) {
             removeFromScene(scene, transaction);
             scene->enqueueTransaction(transaction);
@@ -1048,12 +1046,12 @@ void Model::simulate(float deltaTime, bool fullUpdate) {
 //virtual
 void Model::updateRig(float deltaTime, glm::mat4 parentTransform) {
     _needsUpdateClusterMatrices = true;
-    _rig->updateAnimations(deltaTime, parentTransform);
+    glm::mat4 rigToWorldTransform = createMatFromQuatAndPos(getRotation(), getTranslation());
+    _rig->updateAnimations(deltaTime, parentTransform, rigToWorldTransform);
 }
 
 void Model::computeMeshPartLocalBounds() {
     for (auto& part : _modelMeshRenderItems) {
-        assert(part->_meshIndex < _modelMeshRenderItems.size());
         const Model::MeshState& state = _meshStates.at(part->_meshIndex);
         part->computeAdjustedLocalBound(state.clusterMatrices);
     }
@@ -1196,7 +1194,7 @@ void Model::createVisibleRenderItemSet() {
 
     // all of our mesh vectors must match in size
     if ((int)meshes.size() != _meshStates.size()) {
-        qCDebug(renderlogging) << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
+        qCDebug(renderutils) << "WARNING!!!! Mesh Sizes don't match! We will not segregate mesh groups yet.";
         return;
     }
 
@@ -1271,7 +1269,7 @@ bool Model::isRenderable() const {
     return !_meshStates.isEmpty() || (isLoaded() && _renderGeometry->getMeshes().empty());
 }
 
-bool Model::initWhenReady(render::ScenePointer scene) {
+bool Model::initWhenReady(const render::ScenePointer& scene) {
     // NOTE: this only called by SkeletonModel
     if (_addedToScene || !isRenderable()) {
         return false;

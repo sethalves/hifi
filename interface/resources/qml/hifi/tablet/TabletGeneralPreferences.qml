@@ -23,7 +23,7 @@ StackView {
     signal sendToScript(var message);
 
     function pushSource(path) {
-        profileRoot.push(Qt.reslovedUrl(path));
+        profileRoot.push(Qt.resolvedUrl(path));
     }
 
     function popSource() {
@@ -33,6 +33,6 @@ StackView {
     TabletPreferencesDialog {
         id: root
         objectName: "TabletGeneralPreferences"
-        showCategories: ["UI", "Snapshots", "Scripts", "Privacy", "Octree", "HMD", "Sixense Controllers", "Perception Neuron", "Kinect"]
+        showCategories: ["UI", "Snapshots", "Scripts", "Privacy", "Octree", "HMD", "Sixense Controllers", "Perception Neuron", "Kinect", "Vive Pucks Configuration"]
     }
 }

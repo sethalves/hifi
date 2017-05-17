@@ -43,18 +43,35 @@ public:
 
     float getMaxErrorOnLastSolve() { return _maxErrorOnLastSolve; }
 
+    enum class SolutionSource {
+        RelaxToUnderPoses = 0,
+        RelaxToLimitCenterPoses,
+        PreviousSolution,
+        UnderPoses,
+        LimitCenterPoses,
+        NumSolutionSources,
+    };
+
+    void setSolutionSource(SolutionSource solutionSource) { _solutionSource = solutionSource; }
+    void setSolutionSourceVar(const QString& solutionSourceVar) { _solutionSourceVar = solutionSourceVar; }
+
 protected:
     void computeTargets(const AnimVariantMap& animVars, std::vector<IKTarget>& targets, const AnimPoseVec& underPoses);
     void solveWithCyclicCoordinateDescent(const std::vector<IKTarget>& targets);
     int solveTargetWithCCD(const IKTarget& target, AnimPoseVec& absolutePoses);
     virtual void setSkeletonInternal(AnimSkeleton::ConstPointer skeleton) override;
+    void debugDrawConstraints(const AnimContext& context) const;
+    void initRelativePosesFromSolutionSource(SolutionSource solutionSource, const AnimPoseVec& underPose);
+    void blendToPoses(const AnimPoseVec& targetPoses, const AnimPoseVec& underPose, float blendFactor);
 
     // for AnimDebugDraw rendering
     virtual const AnimPoseVec& getPosesInternal() const override { return _relativePoses; }
 
-    RotationConstraint* getConstraint(int index);
+    RotationConstraint* getConstraint(int index) const;
     void clearConstraints();
     void initConstraints();
+    void initLimitCenterPoses();
+    void computeHipsOffset(const std::vector<IKTarget>& targets, const AnimPoseVec& underPoses, float dt);
 
     // no copies
     AnimInverseKinematics(const AnimInverseKinematics&) = delete;
@@ -84,6 +101,7 @@ protected:
     std::vector<IKTargetVar> _targetVarVec;
     AnimPoseVec _defaultRelativePoses; // poses of the relaxed state
     AnimPoseVec _relativePoses; // current relative poses
+    AnimPoseVec _limitCenterPoses;  // relative
 
     // experimental data for moving hips during IK
     glm::vec3 _hipsOffset { Vectors::ZERO };
@@ -91,6 +109,7 @@ protected:
     int _headIndex { -1 };
     int _hipsIndex { -1 };
     int _hipsParentIndex { -1 };
+    int _hipsTargetIndex { -1 };
 
     // _maxTargetIndex is tracked to help optimize the recalculation of absolute poses
     // during the the cyclic coordinate descent algorithm
@@ -98,6 +117,8 @@ protected:
 
     float _maxErrorOnLastSolve { FLT_MAX };
     bool _previousEnableDebugIKTargets { false };
+    SolutionSource _solutionSource { SolutionSource::RelaxToUnderPoses };
+    QString _solutionSourceVar;
 };
 
 #endif // hifi_AnimInverseKinematics_h
