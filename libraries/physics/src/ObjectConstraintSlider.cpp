@@ -113,8 +113,14 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
             axisInB = glm::normalize(axisInB);
         }
 
-        glm::quat rotA = glm::rotation(DEFAULT_SLIDER_AXIS, axisInA);
-        glm::quat rotB = glm::rotation(DEFAULT_SLIDER_AXIS, axisInB);
+        float angleInA = glm::angle(DEFAULT_SLIDER_AXIS, axisInA);
+        glm::vec3 rotationAxisInA = glm::cross(DEFAULT_SLIDER_AXIS, axisInA);
+        glm::quat rotA = glm::quat(angleInA, rotationAxisInA);
+
+        float angleInB = glm::angle(DEFAULT_SLIDER_AXIS, axisInB);
+        glm::vec3 rotationAxisInB = glm::cross(DEFAULT_SLIDER_AXIS, axisInB);
+        glm::quat rotB = glm::quat(angleInB, rotationAxisInA);
+
 
         btTransform frameInA(glmToBullet(rotA), glmToBullet(pointInA));
         btTransform frameInB(glmToBullet(rotB), glmToBullet(pointInB));
