@@ -11,6 +11,8 @@
 
 #include <LogHandler.h>
 
+#include <glm/gtx/vector_angle.hpp>
+
 #include "QVariantGLM.h"
 
 #include "EntityTree.h"
@@ -119,7 +121,7 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
 
         float angleInB = glm::angle(DEFAULT_SLIDER_AXIS, axisInB);
         glm::vec3 rotationAxisInB = glm::cross(DEFAULT_SLIDER_AXIS, axisInB);
-        glm::quat rotB = glm::quat(angleInB, rotationAxisInA);
+        glm::quat rotB = glm::quat(angleInB, rotationAxisInB);
 
 
         btTransform frameInA(glmToBullet(rotA), glmToBullet(pointInA));
