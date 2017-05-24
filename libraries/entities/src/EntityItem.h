@@ -37,6 +37,7 @@
 #include "SimulationOwner.h"
 #include "SimulationFlags.h"
 #include "EntityDynamicInterface.h"
+#include "ObjectMotionStateInterface.h"
 
 class EntitySimulation;
 class EntityTreeElement;
@@ -376,9 +377,9 @@ public:
 
     bool isSimulated() const { return _simulated; }
 
-    void* getPhysicsInfo() const { return _physicsInfo; }
+    ObjectMotionStateInterface* getPhysicsInfo() const { return _physicsInfo; }
 
-    void setPhysicsInfo(void* data) { _physicsInfo = data; }
+    void setPhysicsInfo(ObjectMotionStateInterface* data) { _physicsInfo = data; }
     EntityTreeElementPointer getElement() const { return _element; }
     EntityTreePointer getTree() const;
     virtual SpatialParentTree* getParentTree() const override;
@@ -568,7 +569,7 @@ protected:
 
     // these backpointers are only ever set/cleared by friends:
     EntityTreeElementPointer _element { nullptr }; // set by EntityTreeElement
-    void* _physicsInfo { nullptr }; // set by EntitySimulation
+    ObjectMotionStateInterface* _physicsInfo { nullptr }; // set by EntitySimulation
     bool _simulated; // set by EntitySimulation
 
     bool addActionInternal(EntitySimulationPointer simulation, EntityDynamicPointer action);

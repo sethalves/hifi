@@ -34,11 +34,11 @@ class CharacterController;
 class ContactKey {
 public:
     ContactKey() = delete;
-    ContactKey(void* a, void* b) : _a(a), _b(b) {}
+    ContactKey(ObjectMotionState* a, ObjectMotionState* b) : _a(a), _b(b) {}
     bool operator<(const ContactKey& other) const { return _a < other._a || (_a == other._a && _b < other._b); }
     bool operator==(const ContactKey& other) const { return _a == other._a && _b == other._b; }
-    void* _a; // ObjectMotionState pointer
-    void* _b; // ObjectMotionState pointer
+    ObjectMotionState* _a; // ObjectMotionState pointer
+    ObjectMotionState* _b; // ObjectMotionState pointer
 };
 
 using ContactMap = std::map<ContactKey, ContactInfo>;

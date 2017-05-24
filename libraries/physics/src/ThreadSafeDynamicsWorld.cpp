@@ -100,7 +100,7 @@ void ThreadSafeDynamicsWorld::synchronizeMotionState(btRigidBody* body) {
         //if (body->getActivationState() != ISLAND_SLEEPING)
         {
             if (body->isKinematicObject()) {
-                ObjectMotionState* objectMotionState = static_cast<ObjectMotionState*>(body->getMotionState());
+                ObjectMotionState* objectMotionState = dynamic_cast<ObjectMotionState*>(body->getMotionState());
                 if (objectMotionState->hasInternalKinematicChanges()) {
                     objectMotionState->clearInternalKinematicChanges();
                     body->getMotionState()->setWorldTransform(body->getWorldTransform());
@@ -130,7 +130,7 @@ void ThreadSafeDynamicsWorld::synchronizeMotionStates() {
             btRigidBody* body = btRigidBody::upcast(colObj);
             if (body && body->getMotionState()) {
                 synchronizeMotionState(body);
-                _changedMotionStates.push_back(static_cast<ObjectMotionState*>(body->getMotionState()));
+                _changedMotionStates.push_back(dynamic_cast<ObjectMotionState*>(body->getMotionState()));
             }
         }
     } else  {
@@ -141,7 +141,7 @@ void ThreadSafeDynamicsWorld::synchronizeMotionStates() {
         _deactivatedStates.clear();
         for (int i=0;i<m_nonStaticRigidBodies.size();i++) {
             btRigidBody* body = m_nonStaticRigidBodies[i];
-            ObjectMotionState* motionState = static_cast<ObjectMotionState*>(body->getMotionState());
+            ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(body->getMotionState());
             if (motionState) {
                 if (body->isActive()) {
                     synchronizeMotionState(body);

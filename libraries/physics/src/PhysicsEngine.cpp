@@ -450,8 +450,8 @@ const CollisionEvents& PhysicsEngine::getCollisionEvents() {
         if (type != CONTACT_EVENT_TYPE_CONTINUE ||
                 (contact.distance < SIGNIFICANT_DEPTH &&
                  contact.readyForContinue(_numContactFrames))) {
-            ObjectMotionState* motionStateA = static_cast<ObjectMotionState*>(contactItr->first._a);
-            ObjectMotionState* motionStateB = static_cast<ObjectMotionState*>(contactItr->first._b);
+            ObjectMotionState* motionStateA = dynamic_cast<ObjectMotionState*>(contactItr->first._a);
+            ObjectMotionState* motionStateB = dynamic_cast<ObjectMotionState*>(contactItr->first._b);
 
             // NOTE: the MyAvatar RigidBody is the only object in the simulation that does NOT have a MotionState
             // which means should we ever want to report ALL collision events against the avatar we can
