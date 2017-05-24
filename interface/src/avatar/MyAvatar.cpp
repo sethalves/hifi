@@ -38,6 +38,7 @@
 #include <UserActivityLogger.h>
 #include <AnimDebugDraw.h>
 #include <AnimClip.h>
+#include <AnimInverseKinematics.h>
 #include <recording/Deck.h>
 #include <recording/Recorder.h>
 #include <recording/Clip.h>
@@ -97,8 +98,8 @@ static const glm::quat DEFAULT_AVATAR_LEFTFOOT_ROT { -0.40167322754859924f, 0.91
 static const glm::vec3 DEFAULT_AVATAR_RIGHTFOOT_POS { 0.08f, -0.96f, 0.029f };
 static const glm::quat DEFAULT_AVATAR_RIGHTFOOT_ROT { -0.4016716778278351f, 0.9154615998268127f, 0.0053307069465518f, 0.023696165531873703f };
 
-MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
-    Avatar(thread, rig),
+MyAvatar::MyAvatar(QThread* thread) :
+    Avatar(thread),
     _yawSpeed(YAW_SPEED_DEFAULT),
     _pitchSpeed(PITCH_SPEED_DEFAULT),
     _scriptedMotorTimescale(DEFAULT_SCRIPTED_MOTOR_TIMESCALE),
@@ -109,6 +110,9 @@ MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
     _realWorldFieldOfView("realWorldFieldOfView",
                           DEFAULT_REAL_WORLD_FIELD_OF_VIEW_DEGREES),
     _useAdvancedMovementControls("advancedMovementForHandControllersIsChecked", false),
+    _smoothOrientationTimer(std::numeric_limits<float>::max()),
+    _smoothOrientationInitial(),
+    _smoothOrientationTarget(),
     _hmdSensorMatrix(),
     _hmdSensorOrientation(),
     _hmdSensorPosition(),
@@ -116,7 +120,6 @@ MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
     _goToPending(false),
     _goToPosition(),
     _goToOrientation(),
-    _rig(rig),
     _prevShouldDrawHead(true),
     _audioListenerMode(FROM_HEAD),
     _hmdAtRestDetector(glm::vec3(0), glm::quat())
@@ -125,7 +128,7 @@ MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
     // give the pointer to our head to inherited _headData variable from AvatarData
     _headData = new MyHead(this);
 
-    _skeletonModel = std::make_shared<MySkeletonModel>(this, nullptr, rig);
+    _skeletonModel = std::make_shared<MySkeletonModel>(this, nullptr);
     connect(_skeletonModel.get(), &Model::setURLFinished, this, &Avatar::setModelURLFinished);
 
 
@@ -176,9 +179,7 @@ MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
         auto audioIO = DependencyManager::get<AudioClient>();
         audioIO->setIsPlayingBackRecording(isPlaying);
 
-        if (_rig) {
-            _rig->setEnableAnimations(!isPlaying);
-        }
+        _skeletonModel->getRig().setEnableAnimations(!isPlaying);
     });
 
     connect(recorder.data(), &Recorder::recordingStateChanged, [=] {
@@ -229,12 +230,13 @@ MyAvatar::MyAvatar(QThread* thread, RigPointer rig) :
         }
 
         auto jointData = dummyAvatar.getRawJointData();
-        if (jointData.length() > 0 && _rig) {
-            _rig->copyJointsFromJointData(jointData);
+        if (jointData.length() > 0) {
+            _skeletonModel->getRig().copyJointsFromJointData(jointData);
         }
     });
 
-    connect(rig.get(), SIGNAL(onLoadComplete()), this, SIGNAL(onLoadComplete()));
+    connect(&(_skeletonModel->getRig()), SIGNAL(onLoadComplete()), this, SIGNAL(onLoadComplete()));
+    _characterController.setDensity(_density);
 }
 
 MyAvatar::~MyAvatar() {
@@ -264,6 +266,17 @@ QVariant MyAvatar::getOrientationVar() const {
     return quatToVariant(Avatar::getOrientation());
 }
 
+glm::quat MyAvatar::getOrientationOutbound() const {
+    // Allows MyAvatar to send out smoothed data to remote agents if required.
+    if (_smoothOrientationTimer > SMOOTH_TIME_ORIENTATION) {
+        return (getLocalOrientation());
+    }
+
+    // Smooth the remote avatar movement.
+    float t = _smoothOrientationTimer / SMOOTH_TIME_ORIENTATION;
+    float interp = Interpolate::easeInOutQuad(glm::clamp(t, 0.0f, 1.0f));
+    return (slerp(_smoothOrientationInitial, _smoothOrientationTarget, interp));
+}
 
 // virtual
 void MyAvatar::simulateAttachments(float deltaTime) {
@@ -290,6 +303,11 @@ QByteArray MyAvatar::toByteArrayStateful(AvatarDataDetail dataDetail) {
 }
 
 void MyAvatar::resetSensorsAndBody() {
+    if (QThread::currentThread() != thread()) {
+        QMetaObject::invokeMethod(this, "resetSensorsAndBody");
+        return;
+    }
+
     qApp->getActiveDisplayPlugin()->resetSensors();
     reset(true, false, true);
 }
@@ -334,9 +352,7 @@ void MyAvatar::clearIKJointLimitHistory() {
         return;
     }
 
-    if (_rig) {
-        _rig->clearIKJointLimitHistory();
-    }
+    _skeletonModel->getRig().clearIKJointLimitHistory();
 }
 
 void MyAvatar::reset(bool andRecenter, bool andReload, bool andHead) {
@@ -386,6 +402,11 @@ void MyAvatar::update(float deltaTime) {
     const float HMD_FACING_TIMESCALE = 4.0f; // very slow average
     float tau = deltaTime / HMD_FACING_TIMESCALE;
     _hmdSensorFacingMovingAverage = lerp(_hmdSensorFacingMovingAverage, _hmdSensorFacing, tau);
+
+    if (_smoothOrientationTimer < SMOOTH_TIME_ORIENTATION) {
+        _rotationChanged = usecTimestampNow();
+        _smoothOrientationTimer += deltaTime;
+    }
 
 #ifdef DEBUG_DRAW_HMD_MOVING_AVERAGE
     glm::vec3 p = transformPoint(getSensorToWorldMatrix(), _hmdSensorPosition + glm::vec3(_hmdSensorFacingMovingAverage.x, 0.0f, _hmdSensorFacingMovingAverage.y));
@@ -504,10 +525,9 @@ void MyAvatar::simulate(float deltaTime) {
     {
         PerformanceTimer perfTimer("skeleton");
 
-        if (_rig) {
-            _rig->setEnableDebugDrawIKTargets(_enableDebugDrawIKTargets);
-        }
-
+        _skeletonModel->getRig().setEnableDebugDrawIKTargets(_enableDebugDrawIKTargets);
+        _skeletonModel->getRig().setEnableDebugDrawIKConstraints(_enableDebugDrawIKConstraints);
+        _skeletonModel->getRig().setEnableDebugDrawIKChains(_enableDebugDrawIKChains);
         _skeletonModel->simulate(deltaTime);
     }
 
@@ -525,7 +545,7 @@ void MyAvatar::simulate(float deltaTime) {
         PerformanceTimer perfTimer("joints");
         // copy out the skeleton joints from the model
         if (_rigEnabled) {
-            _rig->copyJointsIntoJointData(_jointData);
+            _skeletonModel->getRig().copyJointsIntoJointData(_jointData);
         }
     }
 
@@ -783,7 +803,7 @@ void MyAvatar::overrideAnimation(const QString& url, float fps, bool loop, float
                                   Q_ARG(bool, loop), Q_ARG(float, firstFrame), Q_ARG(float, lastFrame));
         return;
     }
-    _rig->overrideAnimation(url, fps, loop, firstFrame, lastFrame);
+    _skeletonModel->getRig().overrideAnimation(url, fps, loop, firstFrame, lastFrame);
 }
 
 void MyAvatar::restoreAnimation() {
@@ -791,7 +811,7 @@ void MyAvatar::restoreAnimation() {
         QMetaObject::invokeMethod(this, "restoreAnimation");
         return;
     }
-    _rig->restoreAnimation();
+    _skeletonModel->getRig().restoreAnimation();
 }
 
 QStringList MyAvatar::getAnimationRoles() {
@@ -800,7 +820,7 @@ QStringList MyAvatar::getAnimationRoles() {
         QMetaObject::invokeMethod(this, "getAnimationRoles", Qt::BlockingQueuedConnection, Q_RETURN_ARG(QStringList, result));
         return result;
     }
-    return _rig->getAnimationRoles();
+    return _skeletonModel->getRig().getAnimationRoles();
 }
 
 void MyAvatar::overrideRoleAnimation(const QString& role, const QString& url, float fps, bool loop,
@@ -810,7 +830,7 @@ void MyAvatar::overrideRoleAnimation(const QString& role, const QString& url, fl
                                   Q_ARG(float, fps), Q_ARG(bool, loop), Q_ARG(float, firstFrame), Q_ARG(float, lastFrame));
         return;
     }
-    _rig->overrideRoleAnimation(role, url, fps, loop, firstFrame, lastFrame);
+    _skeletonModel->getRig().overrideRoleAnimation(role, url, fps, loop, firstFrame, lastFrame);
 }
 
 void MyAvatar::restoreRoleAnimation(const QString& role) {
@@ -818,7 +838,7 @@ void MyAvatar::restoreRoleAnimation(const QString& role) {
         QMetaObject::invokeMethod(this, "restoreRoleAnimation", Q_ARG(const QString&, role));
         return;
     }
-    _rig->restoreRoleAnimation(role);
+    _skeletonModel->getRig().restoreRoleAnimation(role);
 }
 
 void MyAvatar::saveData() {
@@ -942,6 +962,14 @@ void MyAvatar::setEnableDebugDrawIKTargets(bool isEnabled) {
     _enableDebugDrawIKTargets = isEnabled;
 }
 
+void MyAvatar::setEnableDebugDrawIKConstraints(bool isEnabled) {
+    _enableDebugDrawIKConstraints = isEnabled;
+}
+
+void MyAvatar::setEnableDebugDrawIKChains(bool isEnabled) {
+    _enableDebugDrawIKChains = isEnabled;
+}
+
 void MyAvatar::setEnableMeshVisible(bool isEnabled) {
     _skeletonModel->setVisibleInScene(isEnabled, qApp->getMain3DScene());
 }
@@ -952,7 +980,7 @@ void MyAvatar::setUseAnimPreAndPostRotations(bool isEnabled) {
 }
 
 void MyAvatar::setEnableInverseKinematics(bool isEnabled) {
-    _rig->setEnableInverseKinematics(isEnabled);
+    _skeletonModel->getRig().setEnableInverseKinematics(isEnabled);
 }
 
 void MyAvatar::loadData() {
@@ -1201,7 +1229,7 @@ void MyAvatar::setJointData(int index, const glm::quat& rotation, const glm::vec
         return;
     }
     // HACK: ATM only JS scripts call setJointData() on MyAvatar so we hardcode the priority
-    _rig->setJointState(index, true, rotation, translation, SCRIPT_PRIORITY);
+    _skeletonModel->getRig().setJointState(index, true, rotation, translation, SCRIPT_PRIORITY);
 }
 
 void MyAvatar::setJointRotation(int index, const glm::quat& rotation) {
@@ -1210,7 +1238,7 @@ void MyAvatar::setJointRotation(int index, const glm::quat& rotation) {
         return;
     }
     // HACK: ATM only JS scripts call setJointData() on MyAvatar so we hardcode the priority
-    _rig->setJointRotation(index, true, rotation, SCRIPT_PRIORITY);
+    _skeletonModel->getRig().setJointRotation(index, true, rotation, SCRIPT_PRIORITY);
 }
 
 void MyAvatar::setJointTranslation(int index, const glm::vec3& translation) {
@@ -1219,7 +1247,7 @@ void MyAvatar::setJointTranslation(int index, const glm::vec3& translation) {
         return;
     }
     // HACK: ATM only JS scripts call setJointData() on MyAvatar so we hardcode the priority
-    _rig->setJointTranslation(index, true, translation, SCRIPT_PRIORITY);
+    _skeletonModel->getRig().setJointTranslation(index, true, translation, SCRIPT_PRIORITY);
 }
 
 void MyAvatar::clearJointData(int index) {
@@ -1227,7 +1255,7 @@ void MyAvatar::clearJointData(int index) {
         QMetaObject::invokeMethod(this, "clearJointData", Q_ARG(int, index));
         return;
     }
-    _rig->clearJointAnimationPriority(index);
+    _skeletonModel->getRig().clearJointAnimationPriority(index);
 }
 
 void MyAvatar::clearJointsData() {
@@ -1235,7 +1263,7 @@ void MyAvatar::clearJointsData() {
         QMetaObject::invokeMethod(this, "clearJointsData");
         return;
     }
-    _rig->clearJointStates();
+    _skeletonModel->getRig().clearJointStates();
 }
 
 void MyAvatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
@@ -1310,28 +1338,10 @@ void MyAvatar::rebuildCollisionShape() {
     _characterController.setLocalBoundingBox(corner, diagonal);
 }
 
-static controller::Pose applyLowVelocityFilter(const controller::Pose& oldPose, const controller::Pose& newPose) {
-    controller::Pose finalPose = newPose;
-    if (newPose.isValid()) {
-        //  Use a velocity sensitive filter to damp small motions and preserve large ones with
-        //  no latency.
-        float velocityFilter = glm::clamp(1.0f - glm::length(oldPose.getVelocity()), 0.0f, 1.0f);
-        finalPose.translation = oldPose.getTranslation() * velocityFilter + newPose.getTranslation() * (1.0f - velocityFilter);
-        finalPose.rotation = safeMix(oldPose.getRotation(), newPose.getRotation(), 1.0f - velocityFilter);
-    }
-    return finalPose;
-}
 
 void MyAvatar::setHandControllerPosesInSensorFrame(const controller::Pose& left, const controller::Pose& right) {
-    if (controller::InputDevice::getLowVelocityFilter()) {
-        auto oldLeftPose = getLeftHandControllerPoseInSensorFrame();
-        auto oldRightPose = getRightHandControllerPoseInSensorFrame();
-        _leftHandControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldLeftPose, left));
-        _rightHandControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldRightPose, right));
-    } else {
-        _leftHandControllerPoseInSensorFrameCache.set(left);
-        _rightHandControllerPoseInSensorFrameCache.set(right);
-    }
+    _leftHandControllerPoseInSensorFrameCache.set(left);
+    _rightHandControllerPoseInSensorFrameCache.set(right);
 }
 
 controller::Pose MyAvatar::getLeftHandControllerPoseInSensorFrame() const {
@@ -1369,15 +1379,8 @@ controller::Pose MyAvatar::getRightHandControllerPoseInAvatarFrame() const {
 }
 
 void MyAvatar::setFootControllerPosesInSensorFrame(const controller::Pose& left, const controller::Pose& right) {
-    if (controller::InputDevice::getLowVelocityFilter()) {
-        auto oldLeftPose = getLeftFootControllerPoseInSensorFrame();
-        auto oldRightPose = getRightFootControllerPoseInSensorFrame();
-        _leftFootControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldLeftPose, left));
-        _rightFootControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldRightPose, right));
-    } else {
-        _leftFootControllerPoseInSensorFrameCache.set(left);
-        _rightFootControllerPoseInSensorFrameCache.set(right);
-    }
+    _leftFootControllerPoseInSensorFrameCache.set(left);
+    _rightFootControllerPoseInSensorFrameCache.set(right);
 }
 
 controller::Pose MyAvatar::getLeftFootControllerPoseInSensorFrame() const {
@@ -1415,15 +1418,8 @@ controller::Pose MyAvatar::getRightFootControllerPoseInAvatarFrame() const {
 }
 
 void MyAvatar::setSpineControllerPosesInSensorFrame(const controller::Pose& hips, const controller::Pose& spine2) {
-    if (controller::InputDevice::getLowVelocityFilter()) {
-        auto oldHipsPose = getHipsControllerPoseInSensorFrame();
-        auto oldSpine2Pose = getSpine2ControllerPoseInSensorFrame();
-        _hipsControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldHipsPose, hips));
-        _spine2ControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldSpine2Pose, spine2));
-    } else {
-        _hipsControllerPoseInSensorFrameCache.set(hips);
-        _spine2ControllerPoseInSensorFrameCache.set(spine2);
-    }
+    _hipsControllerPoseInSensorFrameCache.set(hips);
+    _spine2ControllerPoseInSensorFrameCache.set(spine2);
 }
 
 controller::Pose MyAvatar::getHipsControllerPoseInSensorFrame() const {
@@ -1453,12 +1449,7 @@ controller::Pose MyAvatar::getSpine2ControllerPoseInAvatarFrame() const {
 }
 
 void MyAvatar::setHeadControllerPoseInSensorFrame(const controller::Pose& head) {
-    if (controller::InputDevice::getLowVelocityFilter()) {
-        auto oldHeadPose = getHeadControllerPoseInSensorFrame();
-        _headControllerPoseInSensorFrameCache.set(applyLowVelocityFilter(oldHeadPose, head));
-    } else {
-        _headControllerPoseInSensorFrameCache.set(head);
-    }
+    _headControllerPoseInSensorFrameCache.set(head);
 }
 
 controller::Pose MyAvatar::getHeadControllerPoseInSensorFrame() const {
@@ -1755,7 +1746,7 @@ void MyAvatar::setAnimGraphUrl(const QUrl& url) {
     _skeletonModel->reset(); // Why is this necessary? Without this, we crash in the next render.
 
     _currentAnimGraphUrl.set(url);
-    _rig->initAnimGraph(url);
+    _skeletonModel->getRig().initAnimGraph(url);
 
     _bodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
     updateSensorToWorldMatrix(); // Uses updated position/orientation and _bodySensorMatrix changes
@@ -1771,7 +1762,7 @@ void MyAvatar::initAnimGraph() {
         graphUrl = QUrl::fromLocalFile(PathUtils::resourcesPath() + "avatar/avatar-animation.json");
     }
 
-    _rig->initAnimGraph(graphUrl);
+    _skeletonModel->getRig().initAnimGraph(graphUrl);
     _currentAnimGraphUrl.set(graphUrl);
 
     _bodySensorMatrix = deriveBodyFromHMDSensor(); // Based on current cached HMD position/rotation..
@@ -1779,7 +1770,7 @@ void MyAvatar::initAnimGraph() {
 }
 
 void MyAvatar::destroyAnimGraph() {
-    _rig->destroyAnimGraph();
+    _skeletonModel->getRig().destroyAnimGraph();
 }
 
 void MyAvatar::postUpdate(float deltaTime) {
@@ -1795,22 +1786,23 @@ void MyAvatar::postUpdate(float deltaTime) {
 
     if (_enableDebugDrawDefaultPose || _enableDebugDrawAnimPose) {
 
-        auto animSkeleton = _rig->getAnimSkeleton();
+        auto animSkeleton = _skeletonModel->getRig().getAnimSkeleton();
 
         // the rig is in the skeletonModel frame
         AnimPose xform(glm::vec3(1), _skeletonModel->getRotation(), _skeletonModel->getTranslation());
 
         if (_enableDebugDrawDefaultPose && animSkeleton) {
             glm::vec4 gray(0.2f, 0.2f, 0.2f, 0.2f);
-            AnimDebugDraw::getInstance().addAbsolutePoses("myAvatarDefaultPoses", animSkeleton, _rig->getAbsoluteDefaultPoses(), xform, gray);
+            AnimDebugDraw::getInstance().addAbsolutePoses("myAvatarDefaultPoses", animSkeleton, _skeletonModel->getRig().getAbsoluteDefaultPoses(), xform, gray);
         }
 
         if (_enableDebugDrawAnimPose && animSkeleton) {
             // build absolute AnimPoseVec from rig
             AnimPoseVec absPoses;
-            absPoses.reserve(_rig->getJointStateCount());
-            for (int i = 0; i < _rig->getJointStateCount(); i++) {
-                absPoses.push_back(AnimPose(_rig->getJointTransform(i)));
+            const Rig& rig = _skeletonModel->getRig();
+            absPoses.reserve(rig.getJointStateCount());
+            for (int i = 0; i < rig.getJointStateCount(); i++) {
+                absPoses.push_back(AnimPose(rig.getJointTransform(i)));
             }
             glm::vec4 cyan(0.1f, 0.6f, 0.6f, 1.0f);
             AnimDebugDraw::getInstance().addAbsolutePoses("myAvatarAnimPoses", animSkeleton, absPoses, xform, cyan);
@@ -1898,8 +1890,10 @@ void MyAvatar::updateOrientation(float deltaTime) {
     // Comfort Mode: If you press any of the left/right rotation drive keys or input, you'll
     // get an instantaneous 15 degree turn. If you keep holding the key down you'll get another
     // snap turn every half second.
+    bool snapTurn = false;
     if (getDriveKey(STEP_YAW) != 0.0f) {
         totalBodyYaw += getDriveKey(STEP_YAW);
+        snapTurn = true;
     }
 
     // use head/HMD orientation to turn while flying
@@ -1932,9 +1926,16 @@ void MyAvatar::updateOrientation(float deltaTime) {
         totalBodyYaw += (speedFactor * deltaAngle * (180.0f / PI));
     }
 
-
     // update body orientation by movement inputs
+    glm::quat initialOrientation = getOrientationOutbound();
     setOrientation(getOrientation() * glm::quat(glm::radians(glm::vec3(0.0f, totalBodyYaw, 0.0f))));
+
+    if (snapTurn) {
+        // Whether or not there is an existing smoothing going on, just reset the smoothing timer and set the starting position as the avatar's current position, then smooth to the new position.
+        _smoothOrientationInitial = initialOrientation;
+        _smoothOrientationTarget = getOrientation();
+        _smoothOrientationTimer = 0.0f;
+    }
 
     getHead()->setBasePitch(getHead()->getBasePitch() + getDriveKey(PITCH) * _pitchSpeed * deltaTime);
 
@@ -2390,17 +2391,18 @@ glm::mat4 MyAvatar::deriveBodyFromHMDSensor() const {
     const glm::quat hmdOrientation = getHMDSensorOrientation();
     const glm::quat hmdOrientationYawOnly = cancelOutRollAndPitch(hmdOrientation);
 
-    int rightEyeIndex = _rig->indexOfJoint("RightEye");
-    int leftEyeIndex = _rig->indexOfJoint("LeftEye");
-    int neckIndex = _rig->indexOfJoint("Neck");
-    int hipsIndex = _rig->indexOfJoint("Hips");
+    const Rig& rig = _skeletonModel->getRig();
+    int rightEyeIndex = rig.indexOfJoint("RightEye");
+    int leftEyeIndex = rig.indexOfJoint("LeftEye");
+    int neckIndex = rig.indexOfJoint("Neck");
+    int hipsIndex = rig.indexOfJoint("Hips");
 
     glm::vec3 rigMiddleEyePos = DEFAULT_AVATAR_MIDDLE_EYE_POS;
     if (leftEyeIndex >= 0 && rightEyeIndex >= 0) {
-        rigMiddleEyePos = (_rig->getAbsoluteDefaultPose(leftEyeIndex).trans() + _rig->getAbsoluteDefaultPose(rightEyeIndex).trans()) / 2.0f;
+        rigMiddleEyePos =  (rig.getAbsoluteDefaultPose(leftEyeIndex).trans() + rig.getAbsoluteDefaultPose(rightEyeIndex).trans()) / 2.0f;
     }
-    glm::vec3 rigNeckPos = neckIndex != -1 ? _rig->getAbsoluteDefaultPose(neckIndex).trans() : DEFAULT_AVATAR_NECK_POS;
-    glm::vec3 rigHipsPos = hipsIndex != -1 ? _rig->getAbsoluteDefaultPose(hipsIndex).trans() : DEFAULT_AVATAR_HIPS_POS;
+    glm::vec3 rigNeckPos = neckIndex != -1 ? rig.getAbsoluteDefaultPose(neckIndex).trans() : DEFAULT_AVATAR_NECK_POS;
+    glm::vec3 rigHipsPos = hipsIndex != -1 ? rig.getAbsoluteDefaultPose(hipsIndex).trans() : DEFAULT_AVATAR_HIPS_POS;
 
     glm::vec3 localEyes = (rigMiddleEyePos - rigHipsPos);
     glm::vec3 localNeck = (rigNeckPos - rigHipsPos);
@@ -2845,8 +2847,8 @@ glm::vec3 MyAvatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
 
 glm::mat4 MyAvatar::getCenterEyeCalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int rightEyeIndex = _rig->indexOfJoint("RightEye");
-    int leftEyeIndex = _rig->indexOfJoint("LeftEye");
+    int rightEyeIndex = _skeletonModel->getRig().indexOfJoint("RightEye");
+    int leftEyeIndex = _skeletonModel->getRig().indexOfJoint("LeftEye");
     if (rightEyeIndex >= 0 && leftEyeIndex >= 0) {
         auto centerEyePos = (getAbsoluteDefaultJointTranslationInObjectFrame(rightEyeIndex) + getAbsoluteDefaultJointTranslationInObjectFrame(leftEyeIndex)) * 0.5f;
         auto centerEyeRot = Quaternions::Y_180;
@@ -2858,7 +2860,7 @@ glm::mat4 MyAvatar::getCenterEyeCalibrationMat() const {
 
 glm::mat4 MyAvatar::getHeadCalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int headIndex = _rig->indexOfJoint("Head");
+    int headIndex = _skeletonModel->getRig().indexOfJoint("Head");
     if (headIndex >= 0) {
         auto headPos = getAbsoluteDefaultJointTranslationInObjectFrame(headIndex);
         auto headRot = getAbsoluteDefaultJointRotationInObjectFrame(headIndex);
@@ -2870,7 +2872,7 @@ glm::mat4 MyAvatar::getHeadCalibrationMat() const {
 
 glm::mat4 MyAvatar::getSpine2CalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int spine2Index = _rig->indexOfJoint("Spine2");
+    int spine2Index = _skeletonModel->getRig().indexOfJoint("Spine2");
     if (spine2Index >= 0) {
         auto spine2Pos = getAbsoluteDefaultJointTranslationInObjectFrame(spine2Index);
         auto spine2Rot = getAbsoluteDefaultJointRotationInObjectFrame(spine2Index);
@@ -2882,7 +2884,7 @@ glm::mat4 MyAvatar::getSpine2CalibrationMat() const {
 
 glm::mat4 MyAvatar::getHipsCalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int hipsIndex = _rig->indexOfJoint("Hips");
+    int hipsIndex = _skeletonModel->getRig().indexOfJoint("Hips");
     if (hipsIndex >= 0) {
         auto hipsPos = getAbsoluteDefaultJointTranslationInObjectFrame(hipsIndex);
         auto hipsRot = getAbsoluteDefaultJointRotationInObjectFrame(hipsIndex);
@@ -2894,7 +2896,7 @@ glm::mat4 MyAvatar::getHipsCalibrationMat() const {
 
 glm::mat4 MyAvatar::getLeftFootCalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int leftFootIndex = _rig->indexOfJoint("LeftFoot");
+    int leftFootIndex = _skeletonModel->getRig().indexOfJoint("LeftFoot");
     if (leftFootIndex >= 0) {
         auto leftFootPos = getAbsoluteDefaultJointTranslationInObjectFrame(leftFootIndex);
         auto leftFootRot = getAbsoluteDefaultJointRotationInObjectFrame(leftFootIndex);
@@ -2906,7 +2908,7 @@ glm::mat4 MyAvatar::getLeftFootCalibrationMat() const {
 
 glm::mat4 MyAvatar::getRightFootCalibrationMat() const {
     // TODO: as an optimization cache this computation, then invalidate the cache when the avatar model is changed.
-    int rightFootIndex = _rig->indexOfJoint("RightFoot");
+    int rightFootIndex = _skeletonModel->getRig().indexOfJoint("RightFoot");
     if (rightFootIndex >= 0) {
         auto rightFootPos = getAbsoluteDefaultJointTranslationInObjectFrame(rightFootIndex);
         auto rightFootRot = getAbsoluteDefaultJointRotationInObjectFrame(rightFootIndex);
@@ -2926,7 +2928,7 @@ bool MyAvatar::pinJoint(int index, const glm::vec3& position, const glm::quat& o
     slamPosition(position);
     setOrientation(orientation);
 
-    _rig->setMaxHipsOffsetLength(0.05f);
+    _skeletonModel->getRig().setMaxHipsOffsetLength(0.05f);
 
     auto it = std::find(_pinnedJoints.begin(), _pinnedJoints.end(), index);
     if (it == _pinnedJoints.end()) {
@@ -2943,7 +2945,7 @@ bool MyAvatar::clearPinOnJoint(int index) {
 
         auto hipsIndex = getJointIndex("Hips");
         if (index == hipsIndex) {
-            _rig->setMaxHipsOffsetLength(FLT_MAX);
+            _skeletonModel->getRig().setMaxHipsOffsetLength(FLT_MAX);
         }
 
         return true;
@@ -2952,7 +2954,7 @@ bool MyAvatar::clearPinOnJoint(int index) {
 }
 
 float MyAvatar::getIKErrorOnLastSolve() const {
-    return _rig->getIKErrorOnLastSolve();
+    return _skeletonModel->getRig().getIKErrorOnLastSolve();
 }
 
 // thread-safe

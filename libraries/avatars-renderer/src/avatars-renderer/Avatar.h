@@ -40,7 +40,6 @@ class PhysicsEngine;
 using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
 
 static const float SCALING_RATIO = .05f;
-static const float SMOOTHING_RATIO = .05f; // 0 < ratio < 1
 
 extern const float CHAT_MESSAGE_SCALE;
 extern const float CHAT_MESSAGE_HEIGHT;
@@ -80,7 +79,7 @@ public:
     static void setShowCollisionShapes(bool render);
     static void setShowNamesAboveHeads(bool show);
 
-    explicit Avatar(QThread* thread, RigPointer rig = nullptr);
+    explicit Avatar(QThread* thread);
     ~Avatar();
 
     virtual void instantiableAvatar() = 0;
@@ -200,6 +199,7 @@ public:
 
     virtual void computeShapeInfo(ShapeInfo& shapeInfo);
     void getCapsule(glm::vec3& start, glm::vec3& end, float& radius);
+    float computeMass();
 
     using SpatiallyNestable::setPosition;
     virtual void setPosition(const glm::vec3& position) override;
@@ -246,17 +246,8 @@ public:
 
     bool hasNewJointData() const { return _hasNewJointData; }
 
-    inline float easeInOutQuad(float lerpValue) {
-        assert(!((lerpValue < 0.0f) || (lerpValue > 1.0f)));
-
-        if (lerpValue < 0.5f) {
-            return (2.0f * lerpValue * lerpValue);
-        }
-
-        return (lerpValue*(4.0f - 2.0f * lerpValue) - 1.0f);
-    }
     float getBoundingRadius() const;
-
+    
     void addToScene(AvatarSharedPointer self, const render::ScenePointer& scene);
     void ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene);
     bool isInScene() const { return render::Item::isValidID(_renderItemID); }
@@ -278,9 +269,6 @@ public slots:
     void setModelURLFinished(bool success);
 
 protected:
-    const float SMOOTH_TIME_POSITION = 0.125f;
-    const float SMOOTH_TIME_ORIENTATION = 0.075f;
-
     virtual const QString& getSessionDisplayNameForTransport() const override { return _empty; } // Save a tiny bit of bandwidth. Mixer won't look at what we send.
     QString _empty{};
     virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) override { _sessionDisplayName = sessionDisplayName; } // don't use no-op setter!
@@ -344,16 +332,6 @@ protected:
     RateCounter<> _jointDataSimulationRate;
 
     virtual void locationChanged(bool tellPhysics = true) override;
-
-    // Smoothing data for blending from one position/orientation to another on remote agents.
-    float _smoothPositionTime { SMOOTH_TIME_POSITION };
-    float _smoothPositionTimer { std::numeric_limits<float>::max() };
-    float _smoothOrientationTime { SMOOTH_TIME_ORIENTATION };
-    float _smoothOrientationTimer { std::numeric_limits<float>::max() };
-    glm::vec3 _smoothPositionInitial;
-    glm::vec3 _smoothPositionTarget;
-    glm::quat _smoothOrientationInitial;
-    glm::quat _smoothOrientationTarget;
 
 private:
     class AvatarEntityDataHash {

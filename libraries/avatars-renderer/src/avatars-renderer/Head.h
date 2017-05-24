@@ -83,8 +83,6 @@ public:
     float getTimeWithoutTalking() const { return _timeWithoutTalking; }
 
 protected:
-    glm::vec3 calculateAverageEyePosition() const { return _leftEyePosition + (_rightEyePosition - _leftEyePosition ) * 0.5f; }
-
     // disallow copies of the Head, copy of owning Avatar is disallowed too
     Head(const Head&);
     Head& operator= (const Head&);

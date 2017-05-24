@@ -130,6 +130,7 @@ protected:
     void setState(State state);
 #endif
 
+    virtual void updateMassProperties() = 0;
     void updateGravity();
     void updateUpAxis(const glm::quat& rotation);
     bool checkForSupport(btCollisionWorld* collisionWorld);

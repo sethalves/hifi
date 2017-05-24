@@ -198,7 +198,7 @@
     }
 
     var animationData = {};
-    function updateAnimationData() {
+    function updateAnimationData(verticalOffset) {
         // all we are doing here is moving the right hand to a spot
         // that is in front of and a bit above the hips.  Basing how
         // far in front as scaling with the avatar's height (say hips
@@ -209,6 +209,9 @@
             offset = 0.8 * MyAvatar.getAbsoluteJointTranslationInObjectFrame(headIndex).y;
         }
         animationData.rightHandPosition = Vec3.multiply(offset, {x: -0.25, y: 0.8, z: 1.3});
+        if (verticalOffset) {
+            animationData.rightHandPosition.y += verticalOffset;
+        }
         animationData.rightHandRotation = Quat.fromPitchYawRollDegrees(90, 0, 90);
     }
     function shakeHandsAnimation() {
@@ -347,7 +350,32 @@
         }
         return false;
     }
-
+    function findNearestAvatar() {
+        // We only look some max distance away (much larger than the handshake distance, but still...)
+        var minDistance = MAX_AVATAR_DISTANCE * 20;
+        var closestAvatar;
+        AvatarList.getAvatarIdentifiers().forEach(function (id) {
+            var avatar = AvatarList.getAvatar(id);
+            if (avatar && avatar.sessionUUID != MyAvatar.sessionUUID) {
+                var currentDistance = Vec3.distance(avatar.position, MyAvatar.position);
+                if (minDistance > currentDistance) {
+                    minDistance = currentDistance;
+                    closestAvatar = avatar;
+                }
+            }
+        });
+        return closestAvatar;
+    }
+    function adjustAnimationHeight() {
+        var avatar = findNearestAvatar();
+        if (avatar) {
+            var myHeadIndex = MyAvatar.getJointIndex("Head");
+            var otherHeadIndex = avatar.getJointIndex("Head");
+            var diff = (avatar.getJointPosition(otherHeadIndex).y - MyAvatar.getJointPosition(myHeadIndex).y) / 2;
+            print("head height difference: " + diff);
+            updateAnimationData(diff);
+        }
+    }
     function findNearestWaitingAvatar() {
         var handPosition = getHandPosition(MyAvatar, currentHandJointIndex);
         var minDistance = MAX_AVATAR_DISTANCE;
@@ -366,6 +394,8 @@
         return nearestAvatar;
     }
     function messageSend(message) {
+        // we always append whether or not we are logged in...
+        message.isLoggedIn = Account.isLoggedIn();
         Messages.sendMessage(MESSAGE_CHANNEL, JSON.stringify(message));
     }
     function handStringMessageSend(message) {
@@ -434,6 +464,10 @@
             handStringMessageSend({
                 key: "waiting",
             });
+            // potentially adjust height of handshake
+            if (fromKeyboard) {
+                adjustAnimationHeight();
+            }
             lookForWaitingAvatar();
         }
     }
@@ -463,7 +497,9 @@
         endHandshakeAnimation();
         // No-op if we were successful, but this way we ensure that failures and abandoned handshakes don't leave us
         // in a weird state.
-        request({ uri: requestUrl, method: 'DELETE' }, debug);
+        if (Account.isLoggedIn()) {
+            request({ uri: requestUrl, method: 'DELETE' }, debug);
+        }
     }
 
     function updateTriggers(value, fromKeyboard, hand) {
@@ -590,7 +626,7 @@
         }
     }
 
-    function makeConnection(id) {
+    function makeConnection(id, isLoggedIn) {
         // send done to let the connection know you have made connection.
         messageSend({
             key: "done",
@@ -606,7 +642,10 @@
         // It would be "simpler" to skip this and just look at the response, but:
         // 1. We don't want to bother the metaverse with request that we know will fail.
         // 2. We don't want our code here to be dependent on precisely how the metaverse responds (400, 401, etc.)
-        if (!Account.isLoggedIn()) {
+        // 3. We also don't want to connect to someone who is anonymous _now_, but was not earlier and still has
+        //    the same node id.  Since the messaging doesn't say _who_ isn't logged in, fail the same as if we are
+        //    not logged in.
+        if (!Account.isLoggedIn() || isLoggedIn === false) {
             handleConnectionResponseAndMaybeRepeat("401:Unauthorized", {statusCode: 401});
             return;
         }
@@ -628,8 +667,12 @@
     // we change states, start the connectionInterval where we check
     // to be sure the hand is still close enough.  If not, we terminate
     // the interval, go back to the waiting state.  If we make it
-    // the entire CONNECTING_TIME, we make the connection.
-    function startConnecting(id, jointIndex) {
+    // the entire CONNECTING_TIME, we make the connection.  We pass in
+    // whether or not the connecting id is actually logged in, as now we 
+    // will allow to start the connection process but have it stop with a 
+    // fail message before trying to call the backend if the other guy isn't
+    // logged in.
+    function startConnecting(id, jointIndex, isLoggedIn) {
         var count = 0;
         debug("connecting", id, "hand", jointIndex);
         // do we need to do this?
@@ -671,7 +714,7 @@
                 startHandshake();
             } else if (count > CONNECTING_TIME / CONNECTING_INTERVAL) {
                 debug("made connection with " + id);
-                makeConnection(id);
+                makeConnection(id, isLoggedIn);
                 stopConnecting();
             }
         }, CONNECTING_INTERVAL);
@@ -736,7 +779,7 @@
             if (state === STATES.WAITING && (!connectingId || connectingId === senderID)) {
                 if (message.id === MyAvatar.sessionUUID) {
                     stopWaiting();
-                    startConnecting(senderID, exisitingOrSearchedJointIndex());
+                    startConnecting(senderID, exisitingOrSearchedJointIndex(), message.isLoggedIn);
                 } else if (connectingId) {
                     // this is for someone else (we lost race in connectionRequest),
                     // so lets start over
@@ -755,12 +798,12 @@
                     startHandshake();
                     break;
                 }
-                startConnecting(senderID, connectingHandJointIndex);
+                startConnecting(senderID, connectingHandJointIndex, message.isLoggedIn);
             }
             break;
         case "done":
             delete waitingList[senderID];
-            if (connectionId !== senderID) {
+            if (connectingId !== senderID) {
                 break;
             }
             if (state === STATES.CONNECTING) {
@@ -775,7 +818,7 @@
                 } else {
                     // they just created a connection request to us, and we are connecting to
                     // them, so lets just stop connecting and make connection..
-                    makeConnection(connectingId);
+                    makeConnection(connectingId, message.isLoggedIn);
                     stopConnecting();
                 }
             } else {

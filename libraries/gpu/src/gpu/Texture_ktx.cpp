@@ -184,6 +184,11 @@ KtxStorage::KtxStorage(const std::string& filename) : _filename(filename) {
 }
 
 std::shared_ptr<storage::FileStorage> KtxStorage::maybeOpenFile() const {
+    // 1. Try to get the shared ptr
+    // 2. If it doesn't exist, grab the mutex around its creation
+    // 3. If it was created before we got the mutex, return it
+    // 4. Otherwise, create it
+
     std::shared_ptr<storage::FileStorage> file = _cacheFile.lock();
     if (file) {
         return file;
@@ -205,14 +210,22 @@ std::shared_ptr<storage::FileStorage> KtxStorage::maybeOpenFile() const {
 }
 
 PixelsPointer KtxStorage::getMipFace(uint16 level, uint8 face) const {
-    storage::StoragePointer result;
     auto faceOffset = _ktxDescriptor->getMipFaceTexelsOffset(level, face);
     auto faceSize = _ktxDescriptor->getMipFaceTexelsSize(level, face);
     if (faceSize != 0 && faceOffset != 0) {
         auto file = maybeOpenFile();
-        result = file->createView(faceSize, faceOffset)->toMemoryStorage();
+        if (file) {
+            auto storageView = file->createView(faceSize, faceOffset);
+            if (storageView) {
+                return storageView->toMemoryStorage();
+            } else {
+                qWarning() << "Failed to get a valid storageView for faceSize=" << faceSize << "  faceOffset=" << faceOffset << "out of valid file " << QString::fromStdString(_filename);
+            }
+        } else {
+            qWarning() << "Failed to get a valid file out of maybeOpenFile " << QString::fromStdString(_filename);
+        }
     }
-    return result;
+    return nullptr;
 }
 
 Size KtxStorage::getMipFaceSize(uint16 level, uint8 face) const {
@@ -238,15 +251,26 @@ void KtxStorage::assignMipData(uint16 level, const storage::StoragePointer& stor
         throw std::runtime_error("Invalid level");
     }
 
-    if (storage->size() != _ktxDescriptor->images[level]._imageSize) {
-        qWarning() << "Invalid image size: " << storage->size() << ", expected: " << _ktxDescriptor->images[level]._imageSize
+    auto& imageDesc = _ktxDescriptor->images[level];
+    if (storage->size() != imageDesc._imageSize) {
+        qWarning() << "Invalid image size: " << storage->size() << ", expected: " << imageDesc._imageSize
             << ", level: " << level << ", filename: " << QString::fromStdString(_filename);
         return;
     }
 
     auto file = maybeOpenFile();
+    if (!file) {
+        qWarning() << "Failed to open file to assign mip data " << QString::fromStdString(_filename);
+        return;
+    }
 
-    auto imageData = file->mutableData();
+    auto fileData = file->mutableData();
+    if (!fileData) {
+        qWarning() << "Failed to get mutable data for " << QString::fromStdString(_filename);
+        return;
+    }
+
+    auto imageData = fileData;
     imageData += ktx::KTX_HEADER_SIZE + _ktxDescriptor->header.bytesOfKeyValueData + _ktxDescriptor->images[level]._imageOffset;
     imageData += ktx::IMAGE_SIZE_WIDTH;
 
@@ -258,10 +282,10 @@ void KtxStorage::assignMipData(uint16 level, const storage::StoragePointer& stor
             return;
         }
 
-        memcpy(imageData, storage->data(), _ktxDescriptor->images[level]._imageSize);
+        memcpy(imageData, storage->data(), storage->size());
         _minMipLevelAvailable = level;
         if (_offsetToMinMipKV > 0) {
-            auto minMipKeyData = file->mutableData() + ktx::KTX_HEADER_SIZE + _offsetToMinMipKV;
+            auto minMipKeyData = fileData + ktx::KTX_HEADER_SIZE + _offsetToMinMipKV;
             memcpy(minMipKeyData, (void*)&_minMipLevelAvailable, 1);
         }
     }
@@ -507,6 +531,8 @@ bool Texture::evalKTXFormat(const Element& mipFormat, const Element& texelFormat
         header.setCompressed(ktx::GLInternalFormat_Compressed::COMPRESSED_RED_RGTC1, ktx::GLBaseInternalFormat::RED);
     } else if (texelFormat == Format::COLOR_COMPRESSED_XY && mipFormat == Format::COLOR_COMPRESSED_XY) {
         header.setCompressed(ktx::GLInternalFormat_Compressed::COMPRESSED_RG_RGTC2, ktx::GLBaseInternalFormat::RG);
+    } else if (texelFormat == Format::COLOR_COMPRESSED_SRGBA_HIGH && mipFormat == Format::COLOR_COMPRESSED_SRGBA_HIGH) {
+        header.setCompressed(ktx::GLInternalFormat_Compressed::COMPRESSED_SRGB_ALPHA_BPTC_UNORM, ktx::GLBaseInternalFormat::RGBA);
     } else {
         return false;
     }
@@ -542,6 +568,13 @@ bool Texture::evalTextureFormat(const ktx::Header& header, Element& mipFormat, E
         } else {
             return false;
         }
+    } else if (header.getGLFormat() == ktx::GLFormat::RG && header.getGLType() == ktx::GLType::UNSIGNED_BYTE && header.getTypeSize() == 1) {
+        mipFormat = Format::VEC2NU8_XY;
+        if (header.getGLInternaFormat_Uncompressed() == ktx::GLInternalFormat_Uncompressed::RG8) {
+            texelFormat = Format::VEC2NU8_XY;
+        } else {
+            return false;
+        }
     } else if (header.getGLFormat() == ktx::GLFormat::COMPRESSED_FORMAT && header.getGLType() == ktx::GLType::COMPRESSED_TYPE) {
         if (header.getGLInternaFormat_Compressed() == ktx::GLInternalFormat_Compressed::COMPRESSED_SRGB_S3TC_DXT1_EXT) {
             mipFormat = Format::COLOR_COMPRESSED_SRGB;
@@ -558,6 +591,9 @@ bool Texture::evalTextureFormat(const ktx::Header& header, Element& mipFormat, E
         } else if (header.getGLInternaFormat_Compressed() == ktx::GLInternalFormat_Compressed::COMPRESSED_RG_RGTC2) {
             mipFormat = Format::COLOR_COMPRESSED_XY;
             texelFormat = Format::COLOR_COMPRESSED_XY;
+        } else if (header.getGLInternaFormat_Compressed() == ktx::GLInternalFormat_Compressed::COMPRESSED_SRGB_ALPHA_BPTC_UNORM) {
+            mipFormat = Format::COLOR_COMPRESSED_SRGBA_HIGH;
+            texelFormat = Format::COLOR_COMPRESSED_SRGBA_HIGH;
         } else {
             return false;
         }

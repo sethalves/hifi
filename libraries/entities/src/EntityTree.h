@@ -205,6 +205,8 @@ public:
     virtual void dumpTree() override;
     virtual void pruneTree() override;
 
+    static QByteArray remapActionDataIDs(QByteArray actionData, QHash<EntityItemID, EntityItemID>& map);
+
     QVector<EntityItemID> sendEntities(EntityEditPacketSender* packetSender, EntityTreePointer localTree,
                                        float x, float y, float z);
 
@@ -301,6 +303,8 @@ protected:
 
     void notifyNewlyCreatedEntity(const EntityItem& newEntity, const SharedNodePointer& senderNode);
 
+    bool isScriptInWhitelist(const QString& scriptURL);
+    
     QReadWriteLock _newlyCreatedHooksLock;
     QVector<NewlyCreatedEntityHook*> _newlyCreatedHooks;
 

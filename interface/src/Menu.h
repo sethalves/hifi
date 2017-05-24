@@ -161,6 +161,8 @@ namespace MenuOption {
     const QString RenderResolutionQuarter = "1/4";
     const QString RenderSensorToWorldMatrix = "Show SensorToWorld Matrix";
     const QString RenderIKTargets = "Show IK Targets";
+    const QString RenderIKConstraints = "Show IK Constraints";
+    const QString RenderIKChains = "Show IK Chains";
     const QString ResetAvatarSize = "Reset Avatar Size";
     const QString ResetSensors = "Reset Sensors";
     const QString RunningScripts = "Running Scripts...";

@@ -105,7 +105,7 @@ void Avatar::setShowNamesAboveHeads(bool show) {
     showNamesAboveHeads = show;
 }
 
-Avatar::Avatar(QThread* thread, RigPointer rig) :
+Avatar::Avatar(QThread* thread) :
     _voiceSphereID(GeometryCache::UNKNOWN_ID)
 {
     // we may have been created in the network thread, but we live in the main thread
@@ -345,54 +345,28 @@ void Avatar::simulate(float deltaTime, bool inView) {
         _simulationInViewRate.increment();
     }
 
-    if (!isMyAvatar()) {
-        if (_smoothPositionTimer < _smoothPositionTime) {
-            // Smooth the remote avatar movement.
-            _smoothPositionTimer += deltaTime;
-            if (_smoothPositionTimer < _smoothPositionTime) {
-                AvatarData::setPosition(
-                    lerp(_smoothPositionInitial,
-                        _smoothPositionTarget,
-                        easeInOutQuad(glm::clamp(_smoothPositionTimer / _smoothPositionTime, 0.0f, 1.0f)))
-                );
-                updateAttitude();
-            }
-        }
-
-        if (_smoothOrientationTimer < _smoothOrientationTime) {
-            // Smooth the remote avatar movement.
-            _smoothOrientationTimer += deltaTime;
-            if (_smoothOrientationTimer < _smoothOrientationTime) {
-                AvatarData::setOrientation(
-                    slerp(_smoothOrientationInitial,
-                        _smoothOrientationTarget,
-                        easeInOutQuad(glm::clamp(_smoothOrientationTimer / _smoothOrientationTime, 0.0f, 1.0f)))
-                );
-                updateAttitude();
-            }
-        }
-    }
-
     PerformanceTimer perfTimer("simulate");
     {
         PROFILE_RANGE(simulation, "updateJoints");
-        if (inView && _hasNewJointData) {
-            _skeletonModel->getRig()->copyJointsFromJointData(_jointData);
-            glm::mat4 rootTransform = glm::scale(_skeletonModel->getScale()) * glm::translate(_skeletonModel->getOffset());
-            _skeletonModel->getRig()->computeExternalPoses(rootTransform);
-            _jointDataSimulationRate.increment();
-
-            _skeletonModel->simulate(deltaTime, true);
-
-            locationChanged(); // joints changed, so if there are any children, update them.
-            _hasNewJointData = false;
-
-            glm::vec3 headPosition = getPosition();
-            if (!_skeletonModel->getHeadPosition(headPosition)) {
-                headPosition = getPosition();
-            }
+        if (inView) {
             Head* head = getHead();
-            head->setPosition(headPosition);
+            if (_hasNewJointData) {
+                _skeletonModel->getRig().copyJointsFromJointData(_jointData);
+                glm::mat4 rootTransform = glm::scale(_skeletonModel->getScale()) * glm::translate(_skeletonModel->getOffset());
+                _skeletonModel->getRig().computeExternalPoses(rootTransform);
+                _jointDataSimulationRate.increment();
+
+                _skeletonModel->simulate(deltaTime, true);
+
+                locationChanged(); // joints changed, so if there are any children, update them.
+                _hasNewJointData = false;
+
+                glm::vec3 headPosition = getPosition();
+                if (!_skeletonModel->getHeadPosition(headPosition)) {
+                    headPosition = getPosition();
+                }
+                head->setPosition(headPosition);
+            }
             head->setScale(getUniformScale());
             head->simulate(deltaTime);
         } else {
@@ -723,7 +697,8 @@ void Avatar::simulateAttachments(float deltaTime) {
                 _skeletonModel->getJointRotationInWorldFrame(jointIndex, jointRotation)) {
                 model->setTranslation(jointPosition + jointRotation * attachment.translation * getUniformScale());
                 model->setRotation(jointRotation * attachment.rotation);
-                model->setScaleToFit(true, getUniformScale() * attachment.scale, true); // hack to force rescale
+                float scale = getUniformScale() * attachment.scale;
+                model->setScaleToFit(true, model->getNaturalDimensions() * scale, true); // hack to force rescale
                 model->setSnapModelToCenter(false); // hack to force resnap
                 model->setSnapModelToCenter(true);
                 model->simulate(deltaTime);
@@ -946,17 +921,16 @@ glm::vec3 Avatar::getDefaultJointTranslation(int index) const {
 
 glm::quat Avatar::getAbsoluteDefaultJointRotationInObjectFrame(int index) const {
     glm::quat rotation;
-    auto rig = _skeletonModel->getRig();
-    glm::quat rot = rig->getAnimSkeleton()->getAbsoluteDefaultPose(index).rot();
+    glm::quat rot = _skeletonModel->getRig().getAnimSkeleton()->getAbsoluteDefaultPose(index).rot();
     return Quaternions::Y_180 * rot;
 }
 
 glm::vec3 Avatar::getAbsoluteDefaultJointTranslationInObjectFrame(int index) const {
     glm::vec3 translation;
-    auto rig = _skeletonModel->getRig();
-    glm::vec3 trans = rig->getAnimSkeleton()->getAbsoluteDefaultPose(index).trans();
+    const Rig& rig = _skeletonModel->getRig();
+    glm::vec3 trans = rig.getAnimSkeleton()->getAbsoluteDefaultPose(index).trans();
     glm::mat4 y180Mat = createMatFromQuatAndPos(Quaternions::Y_180, glm::vec3());
-    return transformPoint(y180Mat * rig->getGeometryToRigTransform(), trans);
+    return transformPoint(y180Mat * rig.getGeometryToRigTransform(), trans);
 }
 
 glm::quat Avatar::getAbsoluteJointRotationInObjectFrame(int index) const {
@@ -1122,16 +1096,16 @@ void Avatar::setModelURLFinished(bool success) {
 
 
 // create new model, can return an instance of a SoftAttachmentModel rather then Model
-static std::shared_ptr<Model> allocateAttachmentModel(bool isSoft, RigPointer rigOverride, bool isCauterized) {
+static std::shared_ptr<Model> allocateAttachmentModel(bool isSoft, const Rig& rigOverride, bool isCauterized) {
     if (isSoft) {
         // cast to std::shared_ptr<Model>
-        std::shared_ptr<SoftAttachmentModel> softModel = std::make_shared<SoftAttachmentModel>(std::make_shared<Rig>(), nullptr, rigOverride);
+        std::shared_ptr<SoftAttachmentModel> softModel = std::make_shared<SoftAttachmentModel>(nullptr, rigOverride);
         if (isCauterized) {
             softModel->flagAsCauterized();
         }
         return std::dynamic_pointer_cast<Model>(softModel);
     } else {
-        return std::make_shared<Model>(std::make_shared<Rig>());
+        return std::make_shared<Model>();
     }
 }
 
@@ -1304,6 +1278,17 @@ void Avatar::getCapsule(glm::vec3& start, glm::vec3& end, float& radius) {
     radius = halfExtents.x;
 }
 
+float Avatar::computeMass() {
+    float radius;
+    glm::vec3 start, end;
+    getCapsule(start, end, radius);
+    // NOTE:
+    // volumeOfCapsule = volumeOfCylinder + volumeOfSphere
+    // volumeOfCapsule = (2PI * R^2 * H) + (4PI * R^3 / 3)
+    // volumeOfCapsule = 2PI * R^2 * (H + 2R/3)
+    return _density * TWO_PI * radius * radius * (glm::length(end - start) + 2.0f * radius / 3.0f);
+}
+
 // virtual
 void Avatar::rebuildCollisionShape() {
     addPhysicsFlags(Simulation::DIRTY_SHAPE);
@@ -1382,31 +1367,13 @@ glm::quat Avatar::getUncachedRightPalmRotation() const {
 }
 
 void Avatar::setPosition(const glm::vec3& position) {
-    if (isMyAvatar()) {
-        // This is the local avatar, no need to handle any position smoothing.
-        AvatarData::setPosition(position);
-        updateAttitude();
-        return;
-    }
-
-    // Whether or not there is an existing smoothing going on, just reset the smoothing timer and set the starting position as the avatar's current position, then smooth to the new position.
-    _smoothPositionInitial = getPosition();
-    _smoothPositionTarget = position;
-    _smoothPositionTimer = 0.0f;
+    AvatarData::setPosition(position);
+    updateAttitude();
 }
 
 void Avatar::setOrientation(const glm::quat& orientation) {
-    if (isMyAvatar()) {
-        // This is the local avatar, no need to handle any position smoothing.
-        AvatarData::setOrientation(orientation);
-        updateAttitude();
-        return;
-    }
-
-    // Whether or not there is an existing smoothing going on, just reset the smoothing timer and set the starting position as the avatar's current position, then smooth to the new position.
-    _smoothOrientationInitial = getOrientation();
-    _smoothOrientationTarget = orientation;
-    _smoothOrientationTimer = 0.0f;
+    AvatarData::setOrientation(orientation);
+    updateAttitude();
 }
 
 void Avatar::updatePalms() {
@@ -1472,21 +1439,19 @@ void Avatar::hierarchyChanged() {
 QList<QVariant> Avatar::getSkeleton() {
     SkeletonModelPointer skeletonModel = _skeletonModel;
     if (skeletonModel) {
-        RigPointer rig = skeletonModel->getRig();
-        if (rig) {
-            AnimSkeleton::ConstPointer skeleton = rig->getAnimSkeleton();
-            if (skeleton) {
-                QList<QVariant> list;
-                list.reserve(skeleton->getNumJoints());
-                for (int i = 0; i < skeleton->getNumJoints(); i++) {
-                    QVariantMap obj;
-                    obj["name"] = skeleton->getJointName(i);
-                    obj["index"] = i;
-                    obj["parentIndex"] = skeleton->getParentIndex(i);
-                    list.push_back(obj);
-                }
-                return list;
+        const Rig& rig = skeletonModel->getRig();
+        AnimSkeleton::ConstPointer skeleton = rig.getAnimSkeleton();
+        if (skeleton) {
+            QList<QVariant> list;
+            list.reserve(skeleton->getNumJoints());
+            for (int i = 0; i < skeleton->getNumJoints(); i++) {
+                QVariantMap obj;
+                obj["name"] = skeleton->getJointName(i);
+                obj["index"] = i;
+                obj["parentIndex"] = skeleton->getParentIndex(i);
+                list.push_back(obj);
             }
+            return list;
         }
     }
 

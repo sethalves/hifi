@@ -308,6 +308,7 @@ public:
 
     bool getLocked() const;
     void setLocked(bool value);
+    void updateLocked(bool value);
 
     QString getUserData() const;
     virtual void setUserData(const QString& value);
