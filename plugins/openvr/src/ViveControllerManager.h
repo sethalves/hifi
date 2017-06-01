@@ -89,6 +89,9 @@ private:
         
         void calibrateShoulders(glm::mat4& defaultToReferenceMat, const controller::InputCalibrationData& inputCalibration,
                                 int firstShoulderIndex, int secondShoulderIndex);
+        void HighVelocityFilter(uint32_t deviceIndex);
+        void BuildHighVelocityFilter();
+        void processHighVelocityFilter();
 
         class FilteredStick {
         public:
@@ -146,7 +149,9 @@ private:
         bool _calibrated { false };
         bool _timeTilCalibrationSet { false };
         mutable std::recursive_mutex _lock;
-
+        std::vector<PoseData> _highVelocityFilter;
+        uint32_t _poseFilterSize;
+        uint32_t _poseFilterCount;
         QString configToString(Config config);
         friend class ViveControllerManager;
     };
