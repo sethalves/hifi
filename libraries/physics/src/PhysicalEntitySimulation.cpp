@@ -146,7 +146,7 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
 
     QHash<QUuid, SetOfMotionStates> motionStatesPerEngine = sortMotionStatesByEngine(_physicalObjects);
     foreach (QUuid engineID, motionStatesPerEngine.keys()) {
-        physicsEngineTracker->getPhysicsEngineByID(engineID)->removeObjects(motionStatesPerEngine[engineID]);
+        physicsEngineTracker->getPhysicsEngineByID(engineID)->removeSetOfObjects(motionStatesPerEngine[engineID]);
     }
 
     // delete the MotionStates

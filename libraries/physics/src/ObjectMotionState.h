@@ -80,7 +80,7 @@ public:
     static ShapeManager* getShapeManager();
 
     ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation, uint32_t worldSimulationStep);
-    ~ObjectMotionState();
+    virtual ~ObjectMotionState();
 
     virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
 
@@ -155,6 +155,7 @@ public:
     virtual PhysicsEnginePointer getPhysicsEngine() const { return nullptr; }
     virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const { return nullptr; }
     virtual void maybeSwitchPhysicsEngines() override { };
+    virtual bool isLocallyOwned() const { return false; }
     virtual bool shouldBeLocallyOwned() const { return false; }
 
     friend class PhysicsEngine;
