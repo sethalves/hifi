@@ -244,7 +244,7 @@ void AvatarActionHold::doKinematicUpdate(float deltaTimeStep) {
         return;
     }
 
-    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
     if (!motionState) {
         qDebug() << "AvatarActionHold::doKinematicUpdate -- no owning-entity motionState";
         return;
@@ -501,7 +501,7 @@ void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, cons
     if (!ownerEntity) {
         return;
     }
-    ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
     if (!motionState) {
         return;
     }

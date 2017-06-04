@@ -177,7 +177,7 @@ void ObjectActionTractor::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
         if (!motionState) {
             return;
         }

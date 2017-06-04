@@ -2372,7 +2372,11 @@ void EntityItem::locationChanged(bool tellPhysics) {
 void EntityItem::hierarchyChanged() {
     SpatiallyNestable::hierarchyChanged();
     if (_physicsInfo) {
-        _physicsInfo->maybeSwitchPhysicsEngines();
+        _dirtyFlags |= Simulation::DIRTY_HIERARCHY;
+        EntityTreePointer tree = getTree();
+        if (tree) {
+            tree->entityChanged(getThisPointer());
+        }
     }
 }
 

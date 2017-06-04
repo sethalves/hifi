@@ -22,7 +22,6 @@
 
 #include "ContactInfo.h"
 #include "ShapeManager.h"
-#include "ObjectMotionStateInterface.h"
 
 enum PhysicsMotionType {
     MOTION_TYPE_STATIC,     // no motion
@@ -68,7 +67,7 @@ class PhysicsEngine;
 class EntitySimulation;
 using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
 
-class ObjectMotionState : public btMotionState, public ObjectMotionStateInterface {
+class ObjectMotionState : public btMotionState {
 public:
     // These poroperties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
     // (assuming just one PhysicsEngine).  They are cached as statics for fast calculations in the
@@ -154,7 +153,7 @@ public:
 
     virtual PhysicsEnginePointer getPhysicsEngine() const { return nullptr; }
     virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const { return nullptr; }
-    virtual void maybeSwitchPhysicsEngines() override { };
+    virtual void maybeSwitchPhysicsEngines() { };
     virtual bool isLocallyOwned() const { return false; }
     virtual bool shouldBeLocallyOwned() const { return false; }
 

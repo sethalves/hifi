@@ -42,7 +42,7 @@ void ObjectActionOffset::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
         if (!motionState) {
             qCDebug(physics) << "ObjectActionOffset::updateActionWorker no motionState";
             return;

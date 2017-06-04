@@ -37,7 +37,7 @@ void ObjectActionTravelOriented::updateActionWorker(btScalar deltaTimeStep) {
         if (!ownerEntity) {
             return;
         }
-        ObjectMotionState* motionState = dynamic_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
         if (!motionState) {
             return;
         }
