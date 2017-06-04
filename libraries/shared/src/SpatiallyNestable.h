@@ -46,6 +46,8 @@ public:
     virtual const QUuid getID() const;
     virtual void setID(const QUuid& id);
 
+    virtual QString getName() const { return "SpatiallyNestable"; }
+
     virtual const QUuid getParentID() const;
     virtual void setParentID(const QUuid& parentID);
 
@@ -67,6 +69,8 @@ public:
                                           const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::vec3 localToWorldAngularVelocity(const glm::vec3& angularVelocity,
                                                  const QUuid& parentID, int parentJointIndex, bool& success);
+
+    static QString nestableTypeToString(NestableType nestableType);
 
     // world frame
     virtual const Transform getTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;

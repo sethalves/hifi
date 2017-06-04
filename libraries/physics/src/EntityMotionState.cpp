@@ -188,6 +188,10 @@ PhysicsMotionType EntityMotionState::computePhysicsMotionType() const {
         return MOTION_TYPE_STATIC;
     }
 
+    if (_entity->getLocked()) {
+        return MOTION_TYPE_STATIC;
+    }
+
     if (_entity->getDynamic()) {
         if (!_entity->getParentID().isNull() && !_entity->parentIsSimulationParent()) {
             // if something would have been dynamic but is a child of something else, force it to be kinematic, instead.

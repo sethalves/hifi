@@ -112,17 +112,7 @@ class Application : public QApplication,
     // TODO? Get rid of those
     friend class OctreePacketProcessor;
 
-private:
-    bool _shouldRunServer { false };
-    QString _runServerPath;
-    RunningMarker _runningMarker;
-
 public:
-    // startup related getter/setters
-    bool shouldRunServer() const { return _shouldRunServer; }
-    bool hasRunServerPath() const { return !_runServerPath.isEmpty(); }
-    QString getRunServerPath() const { return _runServerPath; }
-
     // virtual functions required for PluginContainer
     virtual ui::Menu* getPrimaryMenu() override;
     virtual void requestReset() override { resetSensors(true); }
@@ -137,15 +127,16 @@ public:
 
     enum Event {
         Present = DisplayPlugin::Present,
-        Paint = Present + 1,
-        Lambda = Paint + 1
+        Paint,
+        Idle,
+        Lambda
     };
 
     // FIXME? Empty methods, do we still need them?
     static void initPlugins(const QStringList& arguments);
     static void shutdownPlugins();
 
-    Application(int& argc, char** argv, QElapsedTimer& startup_time, bool runServer, QString runServerPathOption);
+    Application(int& argc, char** argv, QElapsedTimer& startup_time, bool runningMarkerExisted);
     ~Application();
 
     void postLambdaEvent(std::function<void()> f) override;
@@ -325,7 +316,6 @@ public slots:
     void updateThreadPoolCount() const;
     void updateSystemTabletMode();
 
-    static void setLowVelocityFilter(bool lowVelocityFilter);
     Q_INVOKABLE void loadDialog();
     Q_INVOKABLE void loadScriptURLDialog() const;
     void toggleLogDialog();
@@ -374,6 +364,7 @@ public slots:
     static void showHelp();
 
     void cycleCamera();
+    void cameraModeChanged();
     void cameraMenuChanged();
     void toggleOverlays();
     void setOverlaysVisible(bool visible);
@@ -411,6 +402,7 @@ public slots:
 private slots:
     void showDesktop();
     void clearDomainOctreeDetails();
+    void clearDomainAvatars();
     void aboutToQuit();
 
     void resettingDomain();
@@ -450,6 +442,8 @@ private slots:
     void onAssetToWorldMessageBoxClosed();
     void addAssetToWorldInfoTimeout();
     void addAssetToWorldErrorTimeout();
+
+    void handleSandboxStatus(QNetworkReply* reply);
 
 private:
     static void initDisplay();
@@ -537,6 +531,7 @@ private:
     RateCounter<> _avatarSimCounter;
     RateCounter<> _simCounter;
 
+    QTimer _minimizedWindowTimer;
     QElapsedTimer _timerStart;
     QElapsedTimer _lastTimeUpdated;
 

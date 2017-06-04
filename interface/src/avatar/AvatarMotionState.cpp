@@ -9,11 +9,12 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "AvatarMotionState.h"
+
 #include <PhysicsCollisionGroups.h>
 #include <PhysicsEngine.h>
 #include <PhysicsHelpers.h>
 
-#include "MyAvatar.h"
 #include "AvatarMotionState.h"
 #include "BulletUtil.h"
 
@@ -24,9 +25,6 @@ AvatarMotionState::AvatarMotionState(AvatarSharedPointer avatar, const btCollisi
     _physicsEngine(physicsEngine) {
     assert(_avatar);
     _type = MOTIONSTATE_TYPE_AVATAR;
-    if (_shape) {
-        _mass = 100.0f; // HACK
-    }
 }
 
 AvatarMotionState::~AvatarMotionState() {
@@ -170,8 +168,7 @@ PhysicsEnginePointer AvatarMotionState::getShouldBeInPhysicsEngine() const {
 
 // virtual
 void AvatarMotionState::maybeSwitchPhysicsEngines() {
-    std::shared_ptr<MyAvatar> myAvatar = std::dynamic_pointer_cast<MyAvatar>(_avatar);  // will be nullptr if not MyAvatar
-    if (myAvatar) {
-        myAvatar->handleZoneChange();
+    if (_avatar) {
+        _avatar->handleZoneChange();
     }
 }

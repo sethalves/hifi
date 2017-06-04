@@ -26,6 +26,8 @@
 #include "LogHandler.h"
 #include "PhysicsEngineTrackerInterface.h"
 #include "EntityEditFilters.h"
+#include "EntityDynamicFactoryInterface.h"
+
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 const float EntityTree::DEFAULT_MAX_TMP_ENTITY_LIFETIME = 60 * 60; // 1 hour
@@ -451,6 +453,13 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
 
     // NOTE: callers must lock the tree before using this method
     DeleteEntityOperator theOperator(getThisPointer(), entityID);
+
+    existingEntity->forEachDescendant([&](SpatiallyNestablePointer descendant) {
+        auto descendantID = descendant->getID();
+        theOperator.addEntityIDToDeleteList(descendantID);
+        emit deletingEntity(descendantID);
+    });
+
     recurseTreeWithOperator(&theOperator);
     processRemovedEntities(theOperator);
     _isDirty = true;
@@ -949,6 +958,24 @@ void EntityTree::bumpTimestamp(EntityItemProperties& properties) { //fixme put c
     properties.setLastEdited(properties.getLastEdited() + LAST_EDITED_SERVERSIDE_BUMP);
 }
 
+bool EntityTree::isScriptInWhitelist(const QString& scriptProperty) {
+
+    // grab a URL representation of the entity script so we can check the host for this script
+    auto entityScriptURL = QUrl::fromUserInput(scriptProperty);
+
+    for (const auto& whiteListedPrefix : _entityScriptSourceWhitelist) {
+        auto whiteListURL = QUrl::fromUserInput(whiteListedPrefix);
+
+        // check if this script URL matches the whitelist domain and, optionally, is beneath the path
+        if (entityScriptURL.host().compare(whiteListURL.host(), Qt::CaseInsensitive) == 0 &&
+            entityScriptURL.path().startsWith(whiteListURL.path(), Qt::CaseInsensitive)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned char* editData, int maxLength,
                                      const SharedNodePointer& senderNode) {
 
@@ -978,7 +1005,8 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             quint64 startFilter = 0, endFilter = 0;
             quint64 startLogging = 0, endLogging = 0;
 
-            bool suppressDisallowedScript = false;
+            bool suppressDisallowedClientScript = false;
+            bool suppressDisallowedServerScript = false;
             bool isPhysics = message.getType() == PacketType::EntityPhysics;
 
             _totalEditMessages++;
@@ -991,37 +1019,69 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                                                                                 entityItemID, properties);
             endDecode = usecTimestampNow();
 
+            EntityItemPointer existingEntity;
+            if (!isAdd) {
+                // search for the entity by EntityItemID
+                startLookup = usecTimestampNow();
+                existingEntity = findEntityByEntityItemID(entityItemID);
+                endLookup = usecTimestampNow();
+                if (!existingEntity) {
+                    // this is not an add-entity operation, and we don't know about the identified entity.
+                    validEditPacket = false;
+                }
+            }
 
-            if (validEditPacket && !_entityScriptSourceWhitelist.isEmpty() && !properties.getScript().isEmpty()) {
-                bool passedWhiteList = false;
+            if (validEditPacket && !_entityScriptSourceWhitelist.isEmpty()) {
 
-                // grab a URL representation of the entity script so we can check the host for this script
-                auto entityScriptURL = QUrl::fromUserInput(properties.getScript());
+                bool wasDeletedBecauseOfClientScript = false;
 
-                for (const auto& whiteListedPrefix : _entityScriptSourceWhitelist) {
-                    auto whiteListURL = QUrl::fromUserInput(whiteListedPrefix);
+                // check the client entity script to make sure its URL is in the whitelist
+                if (!properties.getScript().isEmpty()) {
+                    bool clientScriptPassedWhitelist = isScriptInWhitelist(properties.getScript());
 
-                    // check if this script URL matches the whitelist domain and, optionally, is beneath the path
-                    if (entityScriptURL.host().compare(whiteListURL.host(), Qt::CaseInsensitive) == 0 &&
-                        entityScriptURL.path().startsWith(whiteListURL.path(), Qt::CaseInsensitive)) {
-                        passedWhiteList = true;
-                        break;
+                    if (!clientScriptPassedWhitelist) {
+                        if (wantEditLogging()) {
+                            qCDebug(entities) << "User [" << senderNode->getUUID()
+                                << "] attempting to set entity script not on whitelist, edit rejected";
+                        }
+
+                        // If this was an add, we also want to tell the client that sent this edit that the entity was not added.
+                        if (isAdd) {
+                            QWriteLocker locker(&_recentlyDeletedEntitiesLock);
+                            _recentlyDeletedEntityItemIDs.insert(usecTimestampNow(), entityItemID);
+                            validEditPacket = false;
+                            wasDeletedBecauseOfClientScript = true;
+                        } else {
+                            suppressDisallowedClientScript = true;
+                        }
                     }
                 }
-                if (!passedWhiteList) {
-                    if (wantEditLogging()) {
-                        qCDebug(entities) << "User [" << senderNode->getUUID() << "] attempting to set entity script not on whitelist, edit rejected";
-                    }
 
-                    // If this was an add, we also want to tell the client that sent this edit that the entity was not added.
-                    if (isAdd) {
-                        QWriteLocker locker(&_recentlyDeletedEntitiesLock);
-                        _recentlyDeletedEntityItemIDs.insert(usecTimestampNow(), entityItemID);
-                        validEditPacket = passedWhiteList;
-                    } else {
-                        suppressDisallowedScript = true;
+                // check all server entity scripts to make sure their URLs are in the whitelist
+                if (!properties.getServerScripts().isEmpty()) {
+                    bool serverScriptPassedWhitelist = isScriptInWhitelist(properties.getServerScripts());
+
+                    if (!serverScriptPassedWhitelist) {
+                        if (wantEditLogging()) {
+                            qCDebug(entities) << "User [" << senderNode->getUUID()
+                                << "] attempting to set server entity script not on whitelist, edit rejected";
+                        }
+
+                        // If this was an add, we also want to tell the client that sent this edit that the entity was not added.
+                        if (isAdd) {
+                            // Make sure we didn't already need to send back a delete because the client script failed
+                            // the whitelist check
+                            if (!wasDeletedBecauseOfClientScript) {
+                                QWriteLocker locker(&_recentlyDeletedEntitiesLock);
+                                _recentlyDeletedEntityItemIDs.insert(usecTimestampNow(), entityItemID);
+                                validEditPacket = false;
+                            }
+                        } else {
+                            suppressDisallowedServerScript = true;
+                        }
                     }
                 }
+
             }
 
             if ((isAdd || properties.lifetimeChanged()) &&
@@ -1037,12 +1097,6 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
             // If we got a valid edit packet, then it could be a new entity or it could be an update to
             // an existing entity... handle appropriately
             if (validEditPacket) {
-
-                // search for the entity by EntityItemID
-                startLookup = usecTimestampNow();
-                EntityItemPointer existingEntity = findEntityByEntityItemID(entityItemID);
-                endLookup = usecTimestampNow();
-                
                 startFilter = usecTimestampNow();
                 bool wasChanged = false;
                 // Having (un)lock rights bypasses the filter, unless it's a physics result.
@@ -1062,9 +1116,14 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
 
                 if (existingEntity && !isAdd) {
 
-                    if (suppressDisallowedScript) {
+                    if (suppressDisallowedClientScript) {
                         bumpTimestamp(properties);
                         properties.setScript(existingEntity->getScript());
+                    }
+
+                    if (suppressDisallowedServerScript) {
+                        bumpTimestamp(properties);
+                        properties.setServerScripts(existingEntity->getServerScripts());
                     }
 
                     // if the EntityItem exists, then update it
@@ -1523,6 +1582,48 @@ void EntityTree::pruneTree() {
     recurseTreeWithOperator(&theOperator);
 }
 
+
+QByteArray EntityTree::remapActionDataIDs(QByteArray actionData, QHash<EntityItemID, EntityItemID>& map) {
+    if (actionData.isEmpty()) {
+        return actionData;
+    }
+
+    QDataStream serializedActionsStream(actionData);
+    QVector<QByteArray> serializedActions;
+    serializedActionsStream >> serializedActions;
+
+    auto actionFactory = DependencyManager::get<EntityDynamicFactoryInterface>();
+
+    QHash<QUuid, EntityDynamicPointer> remappedActions;
+    foreach(QByteArray serializedAction, serializedActions) {
+        QDataStream serializedActionStream(serializedAction);
+        EntityDynamicType actionType;
+        QUuid oldActionID;
+        serializedActionStream >> actionType;
+        serializedActionStream >> oldActionID;
+        EntityDynamicPointer action = actionFactory->factoryBA(nullptr, serializedAction);
+        if (action) {
+            action->remapIDs(map);
+            remappedActions[action->getID()] = action;
+        }
+    }
+
+    QVector<QByteArray> remappedSerializedActions;
+
+    QHash<QUuid, EntityDynamicPointer>::const_iterator i = remappedActions.begin();
+    while (i != remappedActions.end()) {
+        EntityDynamicPointer action = i.value();
+        QByteArray bytesForAction = action->serialize();
+        remappedSerializedActions << bytesForAction;
+        i++;
+    }
+
+    QByteArray result;
+    QDataStream remappedSerializedActionsStream(&result, QIODevice::WriteOnly);
+    remappedSerializedActionsStream << remappedSerializedActions;
+    return result;
+}
+
 QVector<EntityItemID> EntityTree::sendEntities(EntityEditPacketSender* packetSender, EntityTreePointer localTree,
                                                float x, float y, float z) {
     SendEntitiesOperationArgs args;
@@ -1539,71 +1640,67 @@ QVector<EntityItemID> EntityTree::sendEntities(EntityEditPacketSender* packetSen
     });
     packetSender->releaseQueuedMessages();
 
+    // the values from map are used as the list of successfully "sent" entities.  If some didn't actually make it,
+    // pull them out.  Bogus entries could happen if part of the imported data makes some reference to an entity
+    // that isn't in the data being imported.
+    QHash<EntityItemID, EntityItemID>::iterator i = map.begin();
+    while (i != map.end()) {
+        EntityItemID newID = i.value();
+        if (localTree->findEntityByEntityItemID(newID)) {
+            i++;
+        } else {
+            i = map.erase(i);
+        }
+    }
+
     return map.values().toVector();
 }
 
 bool EntityTree::sendEntitiesOperation(OctreeElementPointer element, void* extraData) {
     SendEntitiesOperationArgs* args = static_cast<SendEntitiesOperationArgs*>(extraData);
     EntityTreeElementPointer entityTreeElement = std::static_pointer_cast<EntityTreeElement>(element);
-    std::function<const EntityItemID(EntityItemPointer&)> getMapped = [&](EntityItemPointer& item) -> const EntityItemID {
-        EntityItemID oldID = item->getEntityItemID();
-        if (args->map->contains(oldID)) { // Already been handled (e.g., as a parent of somebody that we've processed).
-            return args->map->value(oldID);
-        }
-        EntityItemID newID = QUuid::createUuid();
-        args->map->insert(oldID, newID);
 
+    auto getMapped = [&args](EntityItemID oldID) {
+        if (oldID.isNull()) {
+            return EntityItemID();
+        }
+
+        QHash<EntityItemID, EntityItemID>::iterator iter = args->map->find(oldID);
+        if (iter == args->map->end()) {
+            EntityItemID newID = QUuid::createUuid();
+            args->map->insert(oldID, newID);
+            return newID;
+        }
+        return iter.value();
+    };
+
+    entityTreeElement->forEachEntity([&args, &getMapped, &element](EntityItemPointer item) {
+        EntityItemID oldID = item->getEntityItemID();
+        EntityItemID newID = getMapped(oldID);
         EntityItemProperties properties = item->getProperties();
+
         EntityItemID oldParentID = properties.getParentID();
         if (oldParentID.isInvalidID()) {  // no parent
             properties.setPosition(properties.getPosition() + args->root);
         } else {
             EntityItemPointer parentEntity = args->ourTree->findEntityByEntityItemID(oldParentID);
             if (parentEntity) { // map the parent
-                // Warning: (non-tail) recursion of getMapped could blow the call stack if the parent hierarchy is VERY deep.
-                properties.setParentID(getMapped(parentEntity));
+                properties.setParentID(getMapped(parentEntity->getID()));
                 // But do not add root offset in this case.
             } else { // Should not happen, but let's try to be helpful...
                 item->globalizeProperties(properties, "Cannot find %3 parent of %2 %1", args->root);
             }
         }
 
-        if (!properties.getXNNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getXNNeighborID());
-            if (neighborEntity) {
-                properties.setXNNeighborID(getMapped(neighborEntity));
-            }
-        }
-        if (!properties.getXPNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getXPNeighborID());
-            if (neighborEntity) {
-                properties.setXPNeighborID(getMapped(neighborEntity));
-            }
-        }
-        if (!properties.getYNNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getYNNeighborID());
-            if (neighborEntity) {
-                properties.setYNNeighborID(getMapped(neighborEntity));
-            }
-        }
-        if (!properties.getYPNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getYPNeighborID());
-            if (neighborEntity) {
-                properties.setYPNeighborID(getMapped(neighborEntity));
-            }
-        }
-        if (!properties.getZNNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getZNNeighborID());
-            if (neighborEntity) {
-                properties.setZNNeighborID(getMapped(neighborEntity));
-            }
-        }
-        if (!properties.getZPNeighborID().isInvalidID()) {
-            auto neighborEntity = args->ourTree->findEntityByEntityItemID(properties.getZPNeighborID());
-            if (neighborEntity) {
-                properties.setZPNeighborID(getMapped(neighborEntity));
-            }
-        }
+        properties.setXNNeighborID(getMapped(properties.getXNNeighborID()));
+        properties.setXPNeighborID(getMapped(properties.getXPNeighborID()));
+        properties.setYNNeighborID(getMapped(properties.getYNNeighborID()));
+        properties.setYPNeighborID(getMapped(properties.getYPNeighborID()));
+        properties.setZNNeighborID(getMapped(properties.getZNNeighborID()));
+        properties.setZPNeighborID(getMapped(properties.getZPNeighborID()));
+
+        QByteArray actionData = properties.getActionData();
+        properties.setActionData(remapActionDataIDs(actionData, *args->map));
 
         // set creation time to "now" for imported entities
         properties.setCreated(usecTimestampNow());
@@ -1619,13 +1716,13 @@ bool EntityTree::sendEntitiesOperation(OctreeElementPointer element, void* extra
         // also update the local tree instantly (note: this is not our tree, but an alternate tree)
         if (args->otherTree) {
             args->otherTree->withWriteLock([&] {
-                args->otherTree->addEntity(newID, properties);
+                EntityItemPointer entity = args->otherTree->addEntity(newID, properties);
+                entity->deserializeActions();
             });
         }
         return newID;
-    };
+    });
 
-    entityTreeElement->forEachEntity(getMapped);
     return true;
 }
 

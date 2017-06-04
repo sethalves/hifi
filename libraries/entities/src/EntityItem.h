@@ -284,7 +284,7 @@ public:
     float getAngularDamping() const;
     void setAngularDamping(float value);
 
-    QString getName() const;
+    virtual QString getName() const override;
     void setName(const QString& value);
     QString getDebugName();
 
@@ -308,6 +308,7 @@ public:
 
     bool getLocked() const;
     void setLocked(bool value);
+    void updateLocked(bool value);
 
     QString getUserData() const;
     virtual void setUserData(const QString& value);
