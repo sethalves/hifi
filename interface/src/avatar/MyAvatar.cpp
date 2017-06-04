@@ -1561,6 +1561,7 @@ void MyAvatar::updateMotors() {
     // legacy support for 'MyAvatar::applyThrust()', which has always been implemented as a
     // short-lived linearAcceleration
     _characterController.setLinearAcceleration(_thrust);
+    _thrust = Vectors::ZERO; // ?
 }
 
 void MyAvatar::prepareForPhysicsSimulation() {
@@ -2764,6 +2765,7 @@ void MyAvatar::handleZoneChange() {
         PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
         if (afterPhysicsEngine) {
             afterPhysicsEngine->setCharacterController(&_characterController);
+            _characterController.flagAsNeedsAddtiion();
             _characterController.setVelocity(getVelocityInSimulationFrame());
         } else {
             qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
