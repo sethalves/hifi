@@ -444,7 +444,7 @@ private slots:
     void addAssetToWorldErrorTimeout();
 
     void handleSandboxStatus(QNetworkReply* reply);
-
+    void switchDisplayMode();
 private:
     static void initDisplay();
     void init();
@@ -681,6 +681,12 @@ private:
     FileScriptingInterface* _fileDownload;
     AudioInjector* _snapshotSoundInjector { nullptr };
     SharedSoundPointer _snapshotSound;
+	
+    DisplayPluginPointer _autoSwitchDisplayModeSupportedHMDPlugin;
+    QString _autoSwitchDisplayModeSupportedHMDPluginName;
+    bool _previousHMDWornStatus;
+    void startHMDStandBySession();
+    void endHMDSession();
 };
 
 void forEachPhysicsEngine(std::function<void(PhysicsEnginePointer)> actor);
