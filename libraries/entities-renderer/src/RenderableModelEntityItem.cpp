@@ -710,6 +710,9 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
         pointCollection.clear();
         uint32_t i = 0;
 
+        glm::mat4 invRegistrationOffset =
+            glm::translate(dimensions * (getRegistrationPoint() - ENTITY_ITEM_DEFAULT_REGISTRATION_POINT));
+
         // the way OBJ files get read, each section under a "g" line is its own meshPart.  We only expect
         // to find one actual "mesh" (with one or more meshParts in it), but we loop over the meshes, just in case.
         foreach (const FBXMesh& mesh, collisionGeometry.meshes) {
@@ -718,16 +721,31 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                 pointCollection.push_back(QVector<glm::vec3>());
                 ShapeInfo::PointList& pointsInPart = pointCollection[i];
 
+                // We expect that the collision model will have the same units and will be displaced
+                // from its origin in the same way the visual model is.  The visual model has
+                // been centered and probably scaled.  We take the scaling and offset which were applied
+                // to the visual model and apply them to the collision model (without regard for the
+                // collision model's extents).
+                const FBXCluster& cluster = mesh.clusters.at(0);
+                auto jointMatrix = _model->getRig().getJointTransform(cluster.jointIndex);
+                auto hullToVisualMatrix = invRegistrationOffset * jointMatrix * cluster.inverseBindMatrix;
+                auto hullToVisual = [&](glm::vec3 hullPoint) {
+                    return glm::vec3(hullToVisualMatrix * glm::vec4(hullPoint, 1.0f));
+                };
+
                 // run through all the triangles and (uniquely) add each point to the hull
                 uint32_t numIndices = (uint32_t)meshPart.triangleIndices.size();
                 // TODO: assert rather than workaround after we start sanitizing FBXMesh higher up
                 //assert(numIndices % TRIANGLE_STRIDE == 0);
                 numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in FBXReader
+                if (numIndices != (uint32_t)meshPart.triangleIndices.size()) {
+                    qCWarning(entitiesrenderer) << "stray triangle indices in collision hull:" << _compoundShapeURL;
+                }
 
                 for (uint32_t j = 0; j < numIndices; j += TRIANGLE_STRIDE) {
-                    glm::vec3 p0 = mesh.vertices[meshPart.triangleIndices[j]];
-                    glm::vec3 p1 = mesh.vertices[meshPart.triangleIndices[j + 1]];
-                    glm::vec3 p2 = mesh.vertices[meshPart.triangleIndices[j + 2]];
+                    glm::vec3 p0 = hullToVisual(mesh.vertices[meshPart.triangleIndices[j]]);
+                    glm::vec3 p1 = hullToVisual(mesh.vertices[meshPart.triangleIndices[j + 1]]);
+                    glm::vec3 p2 = hullToVisual(mesh.vertices[meshPart.triangleIndices[j + 2]]);
                     if (!pointsInPart.contains(p0)) {
                         pointsInPart << p0;
                     }
@@ -744,12 +762,15 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                 // TODO: assert rather than workaround after we start sanitizing FBXMesh higher up
                 //assert(numIndices % QUAD_STRIDE == 0);
                 numIndices -= numIndices % QUAD_STRIDE; // WORKAROUND lack of sanity checking in FBXReader
+                if (numIndices != (uint32_t)meshPart.quadIndices.size()) {
+                    qCWarning(entitiesrenderer) << "stray quad indices in collision hull:" << _compoundShapeURL;
+                }
 
                 for (uint32_t j = 0; j < numIndices; j += QUAD_STRIDE) {
-                    glm::vec3 p0 = mesh.vertices[meshPart.quadIndices[j]];
-                    glm::vec3 p1 = mesh.vertices[meshPart.quadIndices[j + 1]];
-                    glm::vec3 p2 = mesh.vertices[meshPart.quadIndices[j + 2]];
-                    glm::vec3 p3 = mesh.vertices[meshPart.quadIndices[j + 3]];
+                    glm::vec3 p0 = hullToVisual(mesh.vertices[meshPart.quadIndices[j]]);
+                    glm::vec3 p1 = hullToVisual(mesh.vertices[meshPart.quadIndices[j + 1]]);
+                    glm::vec3 p2 = hullToVisual(mesh.vertices[meshPart.quadIndices[j + 2]]);
+                    glm::vec3 p3 = hullToVisual(mesh.vertices[meshPart.quadIndices[j + 3]]);
                     if (!pointsInPart.contains(p0)) {
                         pointsInPart << p0;
                     }
@@ -773,22 +794,6 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
             }
         }
 
-        // We expect that the collision model will have the same units and will be displaced
-        // from its origin in the same way the visual model is.  The visual model has
-        // been centered and probably scaled.  We take the scaling and offset which were applied
-        // to the visual model and apply them to the collision model (without regard for the
-        // collision model's extents).
-
-        glm::vec3 scaleToFit = dimensions / _model->getFBXGeometry().getUnscaledMeshExtents().size();
-        // multiply each point by scale before handing the point-set off to the physics engine.
-        // also determine the extents of the collision model.
-        glm::vec3 registrationOffset = dimensions * (ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
-        for (int32_t i = 0; i < pointCollection.size(); i++) {
-            for (int32_t j = 0; j < pointCollection[i].size(); j++) {
-                // back compensate for registration so we can apply that offset to the shapeInfo later
-                pointCollection[i][j] = scaleToFit * (pointCollection[i][j] + _model->getOffset()) - registrationOffset;
-            }
-        }
         shapeInfo.setParams(type, dimensions, getCompoundShapeURL());
     } else if (type >= SHAPE_TYPE_SIMPLE_HULL && type <= SHAPE_TYPE_STATIC_MESH) {
         // should never fall in here when model not fully loaded
@@ -802,17 +807,18 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
         const FBXGeometry& fbxGeometry = _model->getFBXGeometry();
         int numFbxMeshes = fbxGeometry.meshes.size();
         int totalNumVertices = 0;
-        glm::mat4 invRegistraionOffset = glm::translate(dimensions * (getRegistrationPoint() - ENTITY_ITEM_DEFAULT_REGISTRATION_POINT));
+        glm::mat4 invRegistrationOffset =
+            glm::translate(dimensions * (getRegistrationPoint() - ENTITY_ITEM_DEFAULT_REGISTRATION_POINT));
         for (int i = 0; i < numFbxMeshes; i++) {
             const FBXMesh& mesh = fbxGeometry.meshes.at(i);
             if (mesh.clusters.size() > 0) {
                 const FBXCluster& cluster = mesh.clusters.at(0);
                 auto jointMatrix = _model->getRig().getJointTransform(cluster.jointIndex);
                 // we backtranslate by the registration offset so we can apply that offset to the shapeInfo later
-                localTransforms.push_back(invRegistraionOffset * jointMatrix * cluster.inverseBindMatrix);
+                localTransforms.push_back(invRegistrationOffset * jointMatrix * cluster.inverseBindMatrix);
             } else {
                 glm::mat4 identity;
-                localTransforms.push_back(invRegistraionOffset);
+                localTransforms.push_back(invRegistrationOffset);
             }
             totalNumVertices += mesh.vertices.size();
         }
