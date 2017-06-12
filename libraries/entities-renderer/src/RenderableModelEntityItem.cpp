@@ -700,18 +700,38 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
     glm::vec3 dimensions = getDimensions();
     if (type == SHAPE_TYPE_COMPOUND) {
         updateModelBounds();
+        _model->updateGeometry();
 
         // should never fall in here when collision model not fully loaded
         // hence we assert that all geometries exist and are loaded
         assert(_model && _model->isLoaded() && _compoundShapeResource && _compoundShapeResource->isLoaded());
         const FBXGeometry& collisionGeometry = _compoundShapeResource->getFBXGeometry();
+        const FBXGeometry& fbxGeometry = _model->getFBXGeometry();
 
         ShapeInfo::PointCollection& pointCollection = shapeInfo.getPointCollection();
         pointCollection.clear();
         uint32_t i = 0;
 
+        // We expect that the collision model will have the same units and will be displaced
+        // from its origin in the same way the visual model is.  The visual model has
+        // been centered and probably scaled.  We take the scaling and offset which were applied
+        // to the visual model and apply them to the collision model (without regard for the
+        // collision model's extents).
         glm::mat4 invRegistrationOffset =
             glm::translate(dimensions * (getRegistrationPoint() - ENTITY_ITEM_DEFAULT_REGISTRATION_POINT));
+        glm::mat4 hullToVisualMatrix = invRegistrationOffset;
+        if (fbxGeometry.meshes.size() > 0) {
+            const FBXMesh& mesh = fbxGeometry.meshes.at(0);
+            if (mesh.clusters.size() > 0) {
+                const FBXCluster& cluster = mesh.clusters.at(0);
+                auto jointMatrix = _model->getRig().getJointTransform(cluster.jointIndex);
+                jointMatrix = createMatFromQuatAndPos(Quaternions::IDENTITY, extractTranslation(jointMatrix));
+                hullToVisualMatrix = invRegistrationOffset * jointMatrix * cluster.inverseBindMatrix;
+            }
+        }
+        auto hullToVisual = [&](glm::vec3 hullPoint) {
+            return glm::vec3(hullToVisualMatrix * glm::vec4(hullPoint, 1.0f)); // * scaleToFit;
+        };
 
         // the way OBJ files get read, each section under a "g" line is its own meshPart.  We only expect
         // to find one actual "mesh" (with one or more meshParts in it), but we loop over the meshes, just in case.
@@ -720,18 +740,6 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
             foreach (const FBXMeshPart &meshPart, mesh.parts) {
                 pointCollection.push_back(QVector<glm::vec3>());
                 ShapeInfo::PointList& pointsInPart = pointCollection[i];
-
-                // We expect that the collision model will have the same units and will be displaced
-                // from its origin in the same way the visual model is.  The visual model has
-                // been centered and probably scaled.  We take the scaling and offset which were applied
-                // to the visual model and apply them to the collision model (without regard for the
-                // collision model's extents).
-                const FBXCluster& cluster = mesh.clusters.at(0);
-                auto jointMatrix = _model->getRig().getJointTransform(cluster.jointIndex);
-                auto hullToVisualMatrix = invRegistrationOffset * jointMatrix * cluster.inverseBindMatrix;
-                auto hullToVisual = [&](glm::vec3 hullPoint) {
-                    return glm::vec3(hullToVisualMatrix * glm::vec4(hullPoint, 1.0f));
-                };
 
                 // run through all the triangles and (uniquely) add each point to the hull
                 uint32_t numIndices = (uint32_t)meshPart.triangleIndices.size();
@@ -817,7 +825,6 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                 // we backtranslate by the registration offset so we can apply that offset to the shapeInfo later
                 localTransforms.push_back(invRegistrationOffset * jointMatrix * cluster.inverseBindMatrix);
             } else {
-                glm::mat4 identity;
                 localTransforms.push_back(invRegistrationOffset);
             }
             totalNumVertices += mesh.vertices.size();
