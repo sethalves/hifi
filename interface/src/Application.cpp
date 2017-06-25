@@ -485,11 +485,6 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
 
     Setting::init();
 
-    // Tell the plugin manager about our statically linked plugins
-    PluginManager::setInputPluginProvider([] { return getInputPlugins(); });
-    PluginManager::setDisplayPluginProvider([] { return getDisplayPlugins(); });
-    PluginManager::setInputPluginSettingsPersister([](const InputPluginList& plugins) { saveInputPluginSettings(plugins); });
-
     if (auto steamClient = PluginManager::getInstance()->getSteamClientPlugin()) {
         steamClient->init();
     }
@@ -646,6 +641,11 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto steamClient = PluginManager::getInstance()->getSteamClientPlugin();
     setProperty(hifi::properties::STEAM, (steamClient && steamClient->isRunning()));
     setProperty(hifi::properties::CRASHED, _previousSessionCrashed);
+
+    // Tell the plugin manager about our statically linked plugins
+    PluginManager::setDisplayPluginProvider([] { return getDisplayPlugins(); });
+    PluginManager::setInputPluginProvider([] { return getInputPlugins(); });
+    PluginManager::setInputPluginSettingsPersister([](const InputPluginList& plugins) { saveInputPluginSettings(plugins); });
 
     {
         const QString TEST_SCRIPT = "--testScript";
