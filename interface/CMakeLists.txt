@@ -7,6 +7,8 @@ if (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8) # support Win64 only
   set(OPTIONAL_EXTERNALS "BinaryFaceHMD")
 endif()
 
+setup_memory_debugger()
+
 foreach(EXTERNAL ${OPTIONAL_EXTERNALS})
   string(TOUPPER ${EXTERNAL} ${EXTERNAL}_UPPERCASE)
   if (NOT ${${EXTERNAL}_UPPERCASE}_ROOT_DIR)

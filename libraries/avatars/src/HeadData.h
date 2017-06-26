@@ -45,9 +45,6 @@ public:
     float getBaseRoll() const { return _baseRoll; }
     void setBaseRoll(float roll) { _baseRoll = glm::clamp(roll, MIN_HEAD_ROLL, MAX_HEAD_ROLL); }
 
-    virtual void setFinalYaw(float finalYaw) { _baseYaw = finalYaw; }
-    virtual void setFinalPitch(float finalPitch) { _basePitch = finalPitch; }
-    virtual void setFinalRoll(float finalRoll) { _baseRoll = finalRoll; }
     virtual float getFinalYaw() const { return _baseYaw; }
     virtual float getFinalPitch() const { return _basePitch; }
     virtual float getFinalRoll() const { return _baseRoll; }
@@ -101,6 +98,8 @@ private:
     // privatize copy ctor and assignment operator so copies of this object cannot be made
     HeadData(const HeadData&);
     HeadData& operator= (const HeadData&);
+
+    void setHeadOrientation(const glm::quat& orientation);
 };
 
 #endif // hifi_HeadData_h

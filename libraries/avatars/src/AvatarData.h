@@ -52,15 +52,16 @@ typedef unsigned long long quint64;
 #include <JointData.h>
 #include <NLPacket.h>
 #include <Node.h>
-#include <RegisteredMetaTypes.h>
-#include <SimpleMovingAverage.h>
-#include <SpatiallyNestable.h>
 #include <NumericalConstants.h>
 #include <Packed.h>
-#include <ThreadSafeValueCache.h>
+#include <RegisteredMetaTypes.h>
 #include <SharedUtil.h>
-#include <shared/RateCounter.h>
+#include <SimpleMovingAverage.h>
+#include <SpatiallyNestable.h>
+#include <ThreadSafeValueCache.h>
 #include <ViewFrustum.h>
+#include <shared/RateCounter.h>
+#include <udt/SequenceNumber.h>
 
 #include "AABox.h"
 #include "HeadData.h"
@@ -165,15 +166,15 @@ namespace AvatarDataPacket {
     const size_t AVATAR_ORIENTATION_SIZE = 6;
 
     PACKED_BEGIN struct AvatarScale {
-        SmallFloat scale;                 // avatar's scale, compressed by packFloatRatioToTwoByte() 
+        SmallFloat scale;                 // avatar's scale, compressed by packFloatRatioToTwoByte()
     } PACKED_END;
     const size_t AVATAR_SCALE_SIZE = 2;
 
     PACKED_BEGIN struct LookAtPosition {
         float lookAtPosition[3];          // world space position that eyes are focusing on.
-                                          // FIXME - unless the person has an eye tracker, this is simulated... 
+                                          // FIXME - unless the person has an eye tracker, this is simulated...
                                           //    a) maybe we can just have the client calculate this
-                                          //    b) at distance this will be hard to discern and can likely be 
+                                          //    b) at distance this will be hard to discern and can likely be
                                           //       descimated or dropped completely
                                           //
                                           // POTENTIAL SAVINGS - 12 bytes
@@ -368,6 +369,7 @@ public:
     virtual ~AvatarData();
 
     static const QUrl& defaultFullAvatarModelUrl();
+    QUrl cannonicalSkeletonModelURL(const QUrl& empty) const;
 
     virtual bool isMyAvatar() const { return false; }
 
@@ -376,10 +378,10 @@ public:
     glm::vec3 getHandPosition() const;
     void setHandPosition(const glm::vec3& handPosition);
 
-    typedef enum { 
+    typedef enum {
         NoData,
         PALMinimum,
-        MinimumData, 
+        MinimumData,
         CullSmallData,
         IncludeSmallData,
         SendAllData
@@ -388,7 +390,7 @@ public:
     virtual QByteArray toByteArrayStateful(AvatarDataDetail dataDetail);
 
     virtual QByteArray toByteArray(AvatarDataDetail dataDetail, quint64 lastSentTime, const QVector<JointData>& lastSentJointData,
-        AvatarDataPacket::HasFlags& hasFlagsOut, bool dropFaceTracking, bool distanceAdjust, glm::vec3 viewerPosition, 
+        AvatarDataPacket::HasFlags& hasFlagsOut, bool dropFaceTracking, bool distanceAdjust, glm::vec3 viewerPosition,
         QVector<JointData>* sentJointDataOut, AvatarDataRate* outboundDataRateOut = nullptr) const;
 
     virtual void doneEncoding(bool cullSmallChanges);
@@ -417,23 +419,23 @@ public:
     void nextAttitude(glm::vec3 position, glm::quat orientation); // Can be safely called at any time.
     virtual void updateAttitude() {} // Tell skeleton mesh about changes
 
-    glm::quat getHeadOrientation() const { 
+    glm::quat getHeadOrientation() const {
         lazyInitHeadData();
-        return _headData->getOrientation(); 
+        return _headData->getOrientation();
     }
-    void setHeadOrientation(const glm::quat& orientation) { 
+    void setHeadOrientation(const glm::quat& orientation) {
         if (_headData) {
             _headData->setOrientation(orientation);
         }
     }
 
-    void setLookAtPosition(const glm::vec3& lookAtPosition) { 
+    void setLookAtPosition(const glm::vec3& lookAtPosition) {
         if (_headData) {
-            _headData->setLookAtPosition(lookAtPosition); 
+            _headData->setLookAtPosition(lookAtPosition);
         }
     }
 
-    void setBlendshapeCoefficients(const QVector<float>& blendshapeCoefficients) { 
+    void setBlendshapeCoefficients(const QVector<float>& blendshapeCoefficients) {
         if (_headData) {
             _headData->setBlendshapeCoefficients(blendshapeCoefficients);
         }
@@ -470,7 +472,7 @@ public:
 
     void setDomainMinimumScale(float domainMinimumScale)
         { _domainMinimumScale = glm::clamp(domainMinimumScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE); _scaleChanged = usecTimestampNow(); }
-    void setDomainMaximumScale(float domainMaximumScale) 
+    void setDomainMaximumScale(float domainMaximumScale)
         { _domainMaximumScale = glm::clamp(domainMaximumScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE); _scaleChanged = usecTimestampNow(); }
 
     //  Hand State
@@ -525,22 +527,20 @@ public:
     const HeadData* getHeadData() const { return _headData; }
 
     struct Identity {
-        QUuid uuid;
         QUrl skeletonModelURL;
         QVector<AttachmentData> attachmentData;
         QString displayName;
         QString sessionDisplayName;
+        bool isReplicated;
         AvatarEntityMap avatarEntityData;
-        quint64 updatedAt;
     };
 
-    static void parseAvatarIdentityPacket(const QByteArray& data, Identity& identityOut);
-
     // identityChanged returns true if identity has changed, false otherwise.
-    // displayNameChanged returns true if displayName has changed, false otherwise.
-    void processAvatarIdentity(const Identity& identity, bool& identityChanged, bool& displayNameChanged, const qint64 clockSkew);
+    // identityChanged returns true if identity has changed, false otherwise. Similarly for displayNameChanged and skeletonModelUrlChange.
+    void processAvatarIdentity(const QByteArray& identityData, bool& identityChanged,
+                               bool& displayNameChanged, bool& skeletonModelUrlChanged);
 
-    QByteArray identityByteArray() const;
+    QByteArray identityByteArray(bool setIsReplicated = false) const;
 
     const QUrl& getSkeletonModelURL() const { return _skeletonModelURL; }
     const QString& getDisplayName() const { return _displayName; }
@@ -548,8 +548,8 @@ public:
     virtual void setSkeletonModelURL(const QUrl& skeletonModelURL);
 
     virtual void setDisplayName(const QString& displayName);
-    virtual void setSessionDisplayName(const QString& sessionDisplayName) { 
-        _sessionDisplayName = sessionDisplayName; 
+    virtual void setSessionDisplayName(const QString& sessionDisplayName) {
+        _sessionDisplayName = sessionDisplayName;
         markIdentityDataChanged();
     }
 
@@ -604,6 +604,9 @@ public:
         return _lastSentJointData;
     }
 
+    // A method intended to be overriden by MyAvatar for polling orientation for network transmission.
+    virtual glm::quat getOrientationOutbound() const;
+
     static const float OUT_OF_VIEW_PENALTY;
 
     static void sortAvatars(
@@ -621,10 +624,13 @@ public:
     static float _avatarSortCoefficientAge;
 
     bool getIdentityDataChanged() const { return _identityDataChanged; } // has the identity data changed since the last time sendIdentityPacket() was called
-    void markIdentityDataChanged() {
-        _identityDataChanged = true;
-        _identityUpdatedAt = usecTimestampNow();
-    }
+    void markIdentityDataChanged() { _identityDataChanged = true; }
+
+    void pushIdentitySequenceNumber() { ++_identitySequenceNumber; };
+
+    float getDensity() const { return _density; }
+
+    bool getIsReplicated() const { return _isReplicated; }
 
 signals:
     void displayNameChanged();
@@ -662,6 +668,10 @@ protected:
     bool hasParent() const { return !getParentID().isNull(); }
     bool hasFaceTracker() const { return _headData ? _headData->_isFaceTrackerConnected : false; }
 
+    // isReplicated will be true on downstream Avatar Mixers and their clients, but false on the upstream "master"
+    // Audio Mixer that the replicated avatar is connected to.
+    bool _isReplicated{ false };
+
     glm::vec3 _handPosition;
     virtual const QString& getSessionDisplayNameForTransport() const { return _sessionDisplayName; }
     virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) { } // No-op in AvatarMixer
@@ -692,7 +702,6 @@ protected:
     QVector<AttachmentData> _attachmentData;
     QString _displayName;
     QString _sessionDisplayName { };
-    QUrl cannonicalSkeletonModelURL(const QUrl& empty) const;
 
     QHash<QString, int> _jointIndices; ///< 1-based, since zero is returned for missing keys
     QStringList _jointNames; ///< in order of depth-first traversal
@@ -781,7 +790,9 @@ protected:
     float _audioAverageLoudness { 0.0f };
 
     bool _identityDataChanged { false };
-    quint64 _identityUpdatedAt { 0 };
+    udt::SequenceNumber _identitySequenceNumber { 0 };
+    bool _hasProcessedFirstIdentity { false };
+    float _density;
 
 private:
     friend void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);

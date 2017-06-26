@@ -41,6 +41,7 @@
 #include "ScriptCache.h"
 #include "ScriptUUID.h"
 #include "Vec3.h"
+#include "ConsoleScriptingInterface.h"
 #include "SettingHandle.h"
 
 class QScriptEngineDebugger;
@@ -48,6 +49,8 @@ class QScriptEngineDebugger;
 static const QString NO_SCRIPT("");
 
 static const int SCRIPT_FPS = 60;
+static const int DEFAULT_MAX_ENTITY_PPS = 9000;
+static const int DEFAULT_ENTITY_PPS_PER_SCRIPT = 900;
 
 class CallbackData {
 public:
@@ -144,6 +147,7 @@ public:
     /// to run... NOTE - this is used by Application currently to load the url. We don't really want it to be exposed
     /// to scripts. we may not need this to be invokable
     void loadURL(const QUrl& scriptURL, bool reload);
+    bool hasValidScriptSuffix(const QString& scriptFileName);
 
     Q_INVOKABLE QString getContext() const;
     Q_INVOKABLE bool isClientScript() const { return _context == CLIENT_SCRIPT; }
@@ -222,7 +226,7 @@ public:
     void scriptWarningMessage(const QString& message);
     void scriptInfoMessage(const QString& message);
     void scriptPrintedMessage(const QString& message);
-
+    void clearDebugLogWindow();
     int getNumRunningEntityScripts() const;
     bool getEntityScriptDetails(const EntityItemID& entityID, EntityScriptDetails &details) const;
 
@@ -242,6 +246,7 @@ signals:
     void warningMessage(const QString& message, const QString& scriptName);
     void infoMessage(const QString& message, const QString& scriptName);
     void runningStateChanged();
+    void clearDebugWindow();
     void loadScript(const QString& scriptName, bool isUserLoaded);
     void reloadScript(const QString& scriptName, bool isUserLoaded);
     void doneRunning();
@@ -302,6 +307,7 @@ protected:
     Vec3 _vec3Library;
     Mat4 _mat4Library;
     ScriptUUID _uuidLibrary;
+    ConsoleScriptingInterface _consoleScriptingInterface;
     std::atomic<bool> _isUserLoaded { false };
     bool _isReloading { false };
 

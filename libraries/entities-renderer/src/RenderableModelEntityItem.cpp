@@ -213,7 +213,7 @@ namespace render {
         if (args) {
             if (payload && payload->entity) {
                 PROFILE_RANGE(render_detail, "MetaModelRender");
-                payload->entity->render(args);
+                payload->entity->getRenderableInterface()->render(args);
             }
         }
     }
@@ -228,7 +228,7 @@ namespace render {
     }
 }
 
-bool RenderableModelEntityItem::addToScene(EntityItemPointer self, const render::ScenePointer& scene,
+bool RenderableModelEntityItem::addToScene(const EntityItemPointer& self, const render::ScenePointer& scene,
                                             render::Transaction& transaction) {
     _myMetaItem = scene->allocateID();
 
@@ -249,7 +249,7 @@ bool RenderableModelEntityItem::addToScene(EntityItemPointer self, const render:
     return true;
 }
 
-void RenderableModelEntityItem::removeFromScene(EntityItemPointer self, const render::ScenePointer& scene,
+void RenderableModelEntityItem::removeFromScene(const EntityItemPointer& self, const render::ScenePointer& scene,
                                                 render::Transaction& transaction) {
     transaction.removeItem(_myMetaItem);
     render::Item::clearID(_myMetaItem);
@@ -390,7 +390,7 @@ void RenderableModelEntityItem::render(RenderArgs* args) {
         if (!_model || _needsModelReload) {
             // TODO: this getModel() appears to be about 3% of model render time. We should optimize
             PerformanceTimer perfTimer("getModel");
-            auto renderer = qSharedPointerCast<EntityTreeRenderer>(args->_renderer);
+            auto renderer = qSharedPointerCast<EntityTreeRenderer>(args->_renderData);
             getModel(renderer);
 
             // Remap textures immediately after loading to avoid flicker
@@ -605,7 +605,7 @@ bool RenderableModelEntityItem::findDetailedRayIntersection(const glm::vec3& ori
 
     QString extraInfo;
     return _model->findRayIntersectionAgainstSubMeshes(origin, direction, distance,
-                                                       face, surfaceNormal, extraInfo, precisionPicking);
+                                                       face, surfaceNormal, extraInfo, precisionPicking, false);
 }
 
 void RenderableModelEntityItem::getCollisionGeometryResource() {
@@ -807,7 +807,7 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
             const FBXMesh& mesh = fbxGeometry.meshes.at(i);
             if (mesh.clusters.size() > 0) {
                 const FBXCluster& cluster = mesh.clusters.at(0);
-                auto jointMatrix = _model->getRig()->getJointTransform(cluster.jointIndex);
+                auto jointMatrix = _model->getRig().getJointTransform(cluster.jointIndex);
                 // we backtranslate by the registration offset so we can apply that offset to the shapeInfo later
                 localTransforms.push_back(invRegistraionOffset * jointMatrix * cluster.inverseBindMatrix);
             } else {
@@ -1080,26 +1080,22 @@ bool RenderableModelEntityItem::setAbsoluteJointRotationInObjectFrame(int index,
     if (!_model) {
         return false;
     }
-    RigPointer rig = _model->getRig();
-    if (!rig) {
-        return false;
-    }
-
-    int jointParentIndex = rig->getJointParentIndex(index);
+    const Rig& rig = _model->getRig();
+    int jointParentIndex = rig.getJointParentIndex(index);
     if (jointParentIndex == -1) {
         return setLocalJointRotation(index, rotation);
     }
 
     bool success;
     AnimPose jointParentPose;
-    success = rig->getAbsoluteJointPoseInRigFrame(jointParentIndex, jointParentPose);
+    success = rig.getAbsoluteJointPoseInRigFrame(jointParentIndex, jointParentPose);
     if (!success) {
         return false;
     }
     AnimPose jointParentInversePose = jointParentPose.inverse();
 
     AnimPose jointAbsolutePose; // in rig frame
-    success = rig->getAbsoluteJointPoseInRigFrame(index, jointAbsolutePose);
+    success = rig.getAbsoluteJointPoseInRigFrame(index, jointAbsolutePose);
     if (!success) {
         return false;
     }
@@ -1113,26 +1109,23 @@ bool RenderableModelEntityItem::setAbsoluteJointTranslationInObjectFrame(int ind
     if (!_model) {
         return false;
     }
-    RigPointer rig = _model->getRig();
-    if (!rig) {
-        return false;
-    }
+    const Rig& rig = _model->getRig();
 
-    int jointParentIndex = rig->getJointParentIndex(index);
+    int jointParentIndex = rig.getJointParentIndex(index);
     if (jointParentIndex == -1) {
         return setLocalJointTranslation(index, translation);
     }
 
     bool success;
     AnimPose jointParentPose;
-    success = rig->getAbsoluteJointPoseInRigFrame(jointParentIndex, jointParentPose);
+    success = rig.getAbsoluteJointPoseInRigFrame(jointParentIndex, jointParentPose);
     if (!success) {
         return false;
     }
     AnimPose jointParentInversePose = jointParentPose.inverse();
 
     AnimPose jointAbsolutePose; // in rig frame
-    success = rig->getAbsoluteJointPoseInRigFrame(index, jointAbsolutePose);
+    success = rig.getAbsoluteJointPoseInRigFrame(index, jointAbsolutePose);
     if (!success) {
         return false;
     }
@@ -1248,20 +1241,16 @@ void RenderableModelEntityItem::locationChanged(bool tellPhysics) {
 }
 
 int RenderableModelEntityItem::getJointIndex(const QString& name) const {
-    if (_model && _model->isActive()) {
-        RigPointer rig = _model->getRig();
-        return rig->indexOfJoint(name);
-    }
-    return -1;
+    return (_model && _model->isActive()) ? _model->getRig().indexOfJoint(name) : -1;
 }
 
 QStringList RenderableModelEntityItem::getJointNames() const {
     QStringList result;
     if (_model && _model->isActive()) {
-        RigPointer rig = _model->getRig();
-        int jointCount = rig->getJointStateCount();
+        const Rig& rig = _model->getRig();
+        int jointCount = rig.getJointStateCount();
         for (int jointIndex = 0; jointIndex < jointCount; jointIndex++) {
-            result << rig->nameOfJoint(jointIndex);
+            result << rig.nameOfJoint(jointIndex);
         }
     }
     return result;

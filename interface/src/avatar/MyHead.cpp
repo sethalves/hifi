@@ -26,35 +26,33 @@ using namespace std;
 MyHead::MyHead(MyAvatar* owningAvatar) : Head(owningAvatar) {
 }
 
-glm::quat MyHead::getCameraOrientation() const {
-    // NOTE: Head::getCameraOrientation() is not used for orienting the camera "view" while in Oculus mode, so
+glm::quat MyHead::getHeadOrientation() const {
+    // NOTE: Head::getHeadOrientation() is not used for orienting the camera "view" while in Oculus mode, so
     // you may wonder why this code is here. This method will be called while in Oculus mode to determine how
     // to change the driving direction while in Oculus mode. It is used to support driving toward where you're
     // head is looking. Note that in oculus mode, your actual camera view and where your head is looking is not
     // always the same.
-    if (qApp->isHMDMode()) {
-        MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
-        return glm::quat_cast(myAvatar->getSensorToWorldMatrix()) * myAvatar->getHMDSensorOrientation();
-    } else {
-        Avatar* owningAvatar = static_cast<Avatar*>(_owningAvatar);
-        return owningAvatar->getWorldAlignedOrientation() * glm::quat(glm::radians(glm::vec3(_basePitch, 0.0f, 0.0f)));
+
+    MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
+    auto headPose = myAvatar->getHeadControllerPoseInWorldFrame();
+    if (headPose.isValid()) {
+        return headPose.rotation * Quaternions::Y_180;
     }
+
+    return myAvatar->getWorldAlignedOrientation() * glm::quat(glm::radians(glm::vec3(_basePitch, 0.0f, 0.0f)));
 }
 
 void MyHead::simulate(float deltaTime) {
     auto player = DependencyManager::get<recording::Deck>();
     // Only use face trackers when not playing back a recording.
-    if (player->isPlaying()) {
-        Parent::simulate(deltaTime);
-    } else {
-        computeAudioLoudness(deltaTime);
-
+    if (!player->isPlaying()) {
         FaceTracker* faceTracker = qApp->getActiveFaceTracker();
-        _isFaceTrackerConnected = faceTracker && !faceTracker->isMuted();
+        _isFaceTrackerConnected = faceTracker != nullptr && !faceTracker->isMuted();
         if (_isFaceTrackerConnected) {
             _transientBlendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
 
             if (typeid(*faceTracker) == typeid(DdeFaceTracker)) {
+
                 if (Menu::getInstance()->isOptionChecked(MenuOption::UseAudioForMouth)) {
                     calculateMouthShapes(deltaTime);
 
@@ -73,17 +71,9 @@ void MyHead::simulate(float deltaTime) {
             }
         } else {
             computeFaceMovement(deltaTime);
-		    }
-
-        auto eyeTracker = DependencyManager::get<EyeTracker>();
-        _isEyeTrackerConnected = eyeTracker && eyeTracker->isTracking();
-        if (_isEyeTrackerConnected) {
-            // TODO? figure out where EyeTracker data harvested. Move it here?
-            _saccade = glm::vec3();
-        } else {
-            computeEyeMovement(deltaTime);
         }
-
+        auto eyeTracker = DependencyManager::get<EyeTracker>();
+        _isEyeTrackerConnected = eyeTracker->isTracking();
     }
-    computeEyePosition();
+    Parent::simulate(deltaTime);
 }
