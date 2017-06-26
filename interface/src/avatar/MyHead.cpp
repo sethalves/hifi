@@ -69,8 +69,6 @@ void MyHead::simulate(float deltaTime) {
                 }
                 applyEyelidOffset(getFinalOrientationInWorldFrame());
             }
-        } else {
-            computeFaceMovement(deltaTime);
         }
         auto eyeTracker = DependencyManager::get<EyeTracker>();
         _isEyeTrackerConnected = eyeTracker->isTracking();
