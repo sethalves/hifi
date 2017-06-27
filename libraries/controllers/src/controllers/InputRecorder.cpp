@@ -313,7 +313,7 @@ namespace controller {
         }
 
         if (_playback) {
-            _playCount++;
+           _playCount++;
             if (_playCount == (_framesRecorded - 1)) {
                 _playCount = 0;
             }

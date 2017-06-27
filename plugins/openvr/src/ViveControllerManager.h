@@ -103,12 +103,16 @@ private:
         void calibrateChest(glm::mat4& defaultToReferenceMat, const controller::InputCalibrationData& inputCalibration);
         void calibrateShoulders(glm::mat4& defaultToReferenceMat, const controller::InputCalibrationData& inputCalibration,
                                 int firstShoulderIndex, int secondShoulderIndex);
+
         void calibrateHead(glm::mat4& defaultToReferenceMat, const controller::InputCalibrationData& inputCalibration);
         void calibrateFromHandController(const controller::InputCalibrationData& inputCalibrationData);
         void calibrateFromUI(const controller::InputCalibrationData& inputCalibrationData);
         void emitCalibrationStatus(const bool success);
         void calibrateNextFrame();
 
+        void HighVelocityFilter(uint32_t deviceIndex);
+        void BuildHighVelocityFilter();
+        void processHighVelocityFilter();
 
         class FilteredStick {
         public:
@@ -183,7 +187,9 @@ private:
         bool _overrideHead { false };
         bool _overrideHands { false };
         mutable std::recursive_mutex _lock;
-
+        std::vector<PoseData> _highVelocityFilter;
+        uint32_t _poseFilterSize;
+        uint32_t _poseFilterCount;
         QString configToString(Config config);
         friend class ViveControllerManager;
     };
