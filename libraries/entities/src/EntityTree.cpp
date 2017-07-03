@@ -190,164 +190,178 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         return false;
     }
 
-    // enforce support for locked entities. If an entity is currently locked, then the only
-    // property we allow you to change is the locked property.
     if (entity->getLocked()) {
-        if (properties.lockedChanged()) {
-            bool wantsLocked = properties.getLocked();
-            if (!wantsLocked) {
-                EntityItemProperties tempProperties;
-                tempProperties.setLocked(wantsLocked);
-                tempProperties.setLastEdited(properties.getLastEdited());
+        EntityPropertyFlags changed = properties.getChangedProperties();
 
-                bool success;
-                AACube queryCube = entity->getQueryAACube(success);
-                if (!success) {
-                    qCDebug(entities) << "Warning -- failed to get query-cube for" << entity->getID();
-                }
-                UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, queryCube);
-                recurseTreeWithOperator(&theOperator);
-                entity->setProperties(tempProperties);
-                _isDirty = true;
-            }
+        // these properties are covered by other lock types...
+        changed.setHasProperty(PROP_POSITION, false);
+        changed.setHasProperty(PROP_VELOCITY, false);
+        changed.setHasProperty(PROP_ROTATION, false);
+        changed.setHasProperty(PROP_ANGULAR_VELOCITY, false);
+        changed.setHasProperty(PROP_ACCELERATION, false);
+        changed.setHasProperty(PROP_USER_DATA, false);
+        changed.setHasProperty(PROP_LOCKED, false);
+
+        // these properties are injected by EntityScriptingInterface::editEntity and may not actually be changes
+        if (properties.getParentID() == entity->getParentID()) {
+            changed.setHasProperty(PROP_PARENT_ID, false);
         }
-    } else {
-        if (getIsServer()) {
-            bool simulationBlocked = !entity->getSimulatorID().isNull();
-            if (properties.simulationOwnerChanged()) {
-                QUuid submittedID = properties.getSimulationOwner().getID();
-                // a legit interface will only submit their own ID or NULL:
-                if (submittedID.isNull()) {
-                    if (entity->getSimulatorID() == senderID) {
-                        // We only allow the simulation owner to clear their own simulationID's.
-                        simulationBlocked = false;
-                        properties.clearSimulationOwner(); // clear everything
-                    }
-                    // else: We assume the sender really did believe it was the simulation owner when it sent
-                } else if (submittedID == senderID) {
-                    // the sender is trying to take or continue ownership
-                    if (entity->getSimulatorID().isNull()) {
-                        // the sender it taking ownership
-                        properties.promoteSimulationPriority(RECRUIT_SIMULATION_PRIORITY);
-                        simulationBlocked = false;
-                    } else if (entity->getSimulatorID() == senderID) {
-                        // the sender is asserting ownership
-                        simulationBlocked = false;
-                    } else {
-                        // the sender is trying to steal ownership from another simulator
-                        // so we apply the rules for ownership change:
-                        // (1) higher priority wins
-                        // (2) equal priority wins if ownership filter has expired except...
-                        uint8_t oldPriority = entity->getSimulationPriority();
-                        uint8_t newPriority = properties.getSimulationOwner().getPriority();
-                        if (newPriority > oldPriority ||
-                             (newPriority == oldPriority && properties.getSimulationOwner().hasExpired())) {
-                            simulationBlocked = false;
-                        }
-                    }
+        if (properties.getParentJointIndex() == entity->getParentJointIndex()) {
+            changed.setHasProperty(PROP_PARENT_JOINT_INDEX, false);
+        }
+        if (properties.getClientOnly() == entity->getClientOnly()) {
+            changed.setHasProperty(PROP_CLIENT_ONLY, false);
+        }
+        if (properties.getOwningAvatarID() == entity->getOwningAvatarID()) {
+            changed.setHasProperty(PROP_OWNING_AVATAR_ID, false);
+        }
+
+        // these change every time:
+        changed.setHasProperty(PROP_LAST_EDITED_BY, false);
+
+        if (!changed.isEmpty()) {
+            qCDebug(entities) << "Refusing disallowed property adjustment:" << (EntityItemProperties)changed;
+            qCDebug(entities) << "Refusing disallowed property adjustment:" << (QByteArray)changed;
+            return false;
+        }
+    }
+
+
+    if (getIsServer()) {
+        bool simulationBlocked = !entity->getSimulatorID().isNull();
+        if (properties.simulationOwnerChanged()) {
+            QUuid submittedID = properties.getSimulationOwner().getID();
+            // a legit interface will only submit their own ID or NULL:
+            if (submittedID.isNull()) {
+                if (entity->getSimulatorID() == senderID) {
+                    // We only allow the simulation owner to clear their own simulationID's.
+                    simulationBlocked = false;
+                    properties.clearSimulationOwner(); // clear everything
+                }
+                // else: We assume the sender really did believe it was the simulation owner when it sent
+            } else if (submittedID == senderID) {
+                // the sender is trying to take or continue ownership
+                if (entity->getSimulatorID().isNull()) {
+                    // the sender it taking ownership
+                    properties.promoteSimulationPriority(RECRUIT_SIMULATION_PRIORITY);
+                    simulationBlocked = false;
+                } else if (entity->getSimulatorID() == senderID) {
+                    // the sender is asserting ownership
+                    simulationBlocked = false;
                 } else {
-                    // the entire update is suspect --> ignore it
-                    return false;
-                }
-            } else if (simulationBlocked) {
-                simulationBlocked = senderID != entity->getSimulatorID();
-            }
-            if (simulationBlocked) {
-                // squash ownership and physics-related changes.
-                properties.setSimulationOwnerChanged(false);
-                properties.setPositionChanged(false);
-                properties.setRotationChanged(false);
-                properties.setVelocityChanged(false);
-                properties.setAngularVelocityChanged(false);
-                properties.setAccelerationChanged(false);
-                properties.setParentIDChanged(false);
-                properties.setParentJointIndexChanged(false);
-
-                if (wantTerseEditLogging()) {
-                    qCDebug(entities) << (senderNode ? senderNode->getUUID() : "null") << "physical edits suppressed";
-                }
-            }
-        }
-        // else client accepts what the server says
-
-        QString entityScriptBefore = entity->getScript();
-        quint64 entityScriptTimestampBefore = entity->getScriptTimestamp();
-        uint32_t preFlags = entity->getDirtyFlags();
-
-        AACube newQueryAACube;
-        if (properties.queryAACubeChanged()) {
-            newQueryAACube = properties.getQueryAACube();
-        } else {
-            newQueryAACube = entity->getQueryAACube();
-        }
-        UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newQueryAACube);
-        recurseTreeWithOperator(&theOperator);
-        entity->setProperties(properties);
-
-        // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
-        QQueue<SpatiallyNestablePointer> toProcess;
-        foreach (SpatiallyNestablePointer child, entity->getChildren()) {
-            if (child && child->getNestableType() == NestableType::Entity) {
-                toProcess.enqueue(child);
-            }
-        }
-
-        while (!toProcess.empty()) {
-            EntityItemPointer childEntity = std::static_pointer_cast<EntityItem>(toProcess.dequeue());
-            if (!childEntity) {
-                continue;
-            }
-            EntityTreeElementPointer containingElement = childEntity->getElement();
-            if (!containingElement) {
-                continue;
-            }
-
-            bool success;
-            AACube queryCube = childEntity->getQueryAACube(success);
-            if (!success) {
-                addToNeedsParentFixupList(childEntity);
-                continue;
-            }
-            if (!childEntity->getParentID().isNull()) {
-                addToNeedsParentFixupList(childEntity);
-            }
-
-            UpdateEntityOperator theChildOperator(getThisPointer(), containingElement, childEntity, queryCube);
-            recurseTreeWithOperator(&theChildOperator);
-            foreach (SpatiallyNestablePointer childChild, childEntity->getChildren()) {
-                if (childChild && childChild->getNestableType() == NestableType::Entity) {
-                    toProcess.enqueue(childChild);
-                }
-            }
-        }
-
-        _isDirty = true;
-
-        uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
-        if (newFlags) {
-            if (_simulation) {
-                if (newFlags & DIRTY_SIMULATION_FLAGS) {
-                    _simulation->changeEntity(entity);
+                    // the sender is trying to steal ownership from another simulator
+                    // so we apply the rules for ownership change:
+                    // (1) higher priority wins
+                    // (2) equal priority wins if ownership filter has expired except...
+                    uint8_t oldPriority = entity->getSimulationPriority();
+                    uint8_t newPriority = properties.getSimulationOwner().getPriority();
+                    if (newPriority > oldPriority ||
+                        (newPriority == oldPriority && properties.getSimulationOwner().hasExpired())) {
+                        simulationBlocked = false;
+                    }
                 }
             } else {
-                // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
-                entity->clearDirtyFlags();
+                // the entire update is suspect --> ignore it
+                return false;
+            }
+        } else if (simulationBlocked) {
+            simulationBlocked = senderID != entity->getSimulatorID();
+        }
+        if (simulationBlocked) {
+            // squash ownership and physics-related changes.
+            properties.setSimulationOwnerChanged(false);
+            properties.setPositionChanged(false);
+            properties.setRotationChanged(false);
+            properties.setVelocityChanged(false);
+            properties.setAngularVelocityChanged(false);
+            properties.setAccelerationChanged(false);
+            properties.setParentIDChanged(false);
+            properties.setParentJointIndexChanged(false);
+
+            if (wantTerseEditLogging()) {
+                qCDebug(entities) << (senderNode ? senderNode->getUUID() : "null") << "physical edits suppressed";
             }
         }
+    }
+    // else client accepts what the server says
 
-        QString entityScriptAfter = entity->getScript();
-        quint64 entityScriptTimestampAfter = entity->getScriptTimestamp();
-        bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
-        if (entityScriptBefore != entityScriptAfter || reload) {
-            emitEntityScriptChanging(entity->getEntityItemID(), reload); // the entity script has changed
+    QString entityScriptBefore = entity->getScript();
+    quint64 entityScriptTimestampBefore = entity->getScriptTimestamp();
+    uint32_t preFlags = entity->getDirtyFlags();
+
+    AACube newQueryAACube;
+    if (properties.queryAACubeChanged()) {
+        newQueryAACube = properties.getQueryAACube();
+    } else {
+        newQueryAACube = entity->getQueryAACube();
+    }
+    UpdateEntityOperator theOperator(getThisPointer(), containingElement, entity, newQueryAACube);
+    recurseTreeWithOperator(&theOperator);
+    entity->setProperties(properties);
+
+    // if the entity has children, run UpdateEntityOperator on them.  If the children have children, recurse
+    QQueue<SpatiallyNestablePointer> toProcess;
+    foreach (SpatiallyNestablePointer child, entity->getChildren()) {
+        if (child && child->getNestableType() == NestableType::Entity) {
+            toProcess.enqueue(child);
         }
-     }
+    }
+
+    while (!toProcess.empty()) {
+        EntityItemPointer childEntity = std::static_pointer_cast<EntityItem>(toProcess.dequeue());
+        if (!childEntity) {
+            continue;
+        }
+        EntityTreeElementPointer containingElement = childEntity->getElement();
+        if (!containingElement) {
+            continue;
+        }
+
+        bool success;
+        AACube queryCube = childEntity->getQueryAACube(success);
+        if (!success) {
+            addToNeedsParentFixupList(childEntity);
+            continue;
+        }
+        if (!childEntity->getParentID().isNull()) {
+            addToNeedsParentFixupList(childEntity);
+        }
+
+        UpdateEntityOperator theChildOperator(getThisPointer(), containingElement, childEntity, queryCube);
+        recurseTreeWithOperator(&theChildOperator);
+        foreach (SpatiallyNestablePointer childChild, childEntity->getChildren()) {
+            if (childChild && childChild->getNestableType() == NestableType::Entity) {
+                toProcess.enqueue(childChild);
+            }
+        }
+    }
+
+    _isDirty = true;
+
+    uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
+    if (newFlags) {
+        if (_simulation) {
+            if (newFlags & DIRTY_SIMULATION_FLAGS) {
+                _simulation->changeEntity(entity);
+            }
+        } else {
+            // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
+            entity->clearDirtyFlags();
+        }
+    }
+
+    QString entityScriptAfter = entity->getScript();
+    quint64 entityScriptTimestampAfter = entity->getScriptTimestamp();
+    bool reload = entityScriptTimestampBefore != entityScriptTimestampAfter;
+    if (entityScriptBefore != entityScriptAfter || reload) {
+        emitEntityScriptChanging(entity->getEntityItemID(), reload); // the entity script has changed
+    }
 
     // TODO: this final containingElement check should eventually be removed (or wrapped in an #ifdef DEBUG).
     containingElement = getContainingElement(entity->getEntityItemID());
     if (!containingElement) {
         qCDebug(entities) << "UNEXPECTED!!!! after updateEntity() we no longer have a containing element??? entityID="
-                << entity->getEntityItemID();
+                          << entity->getEntityItemID();
         return false;
     }
 
@@ -1833,6 +1847,15 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         return false;
     }
 
+
+    bool expandLegacyLocks { false };
+
+    QVariant entityDataVersionQV = map["Version"];
+    int entityDataVersion = entityDataVersionQV.isValid() ? entityDataVersionQV.toInt() : 0;
+    if (entityDataVersion < VERSION_ENTITIES_LOCK_DELETE_SPATIAL_USER_DATA) {
+        expandLegacyLocks = true;
+    }
+
     bool success = true;
     foreach (QVariant entityVariant, entitiesQList) {
         // QVariantMap --> QScriptValue --> EntityItemProperties --> Entity
@@ -1846,6 +1869,12 @@ bool EntityTree::readFromMap(QVariantMap& map) {
             entityItemID = EntityItemID(QUuid(entityMap["id"].toString()));
         } else {
             entityItemID = EntityItemID(QUuid::createUuid());
+        }
+
+        if (expandLegacyLocks) {
+            properties.setLockedDelete(properties.getLocked());
+            properties.setLockedSpatial(properties.getLocked());
+            properties.setLockedUserData(properties.getLocked());
         }
 
         EntityItemPointer entity = addEntity(entityItemID, properties);

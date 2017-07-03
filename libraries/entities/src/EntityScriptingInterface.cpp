@@ -381,7 +381,6 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
         } else {
             //debit the avatar energy and continue
 
-            qDebug() << "JHERE" << properties;
             updatedEntity = _entityTree->updateEntity(entityID, properties);
             if (updatedEntity) {
                 emit debitEnergySource(cost);
