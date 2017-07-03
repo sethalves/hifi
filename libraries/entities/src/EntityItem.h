@@ -293,8 +293,16 @@ public:
     virtual bool shouldBePhysical() const { return false; }
 
     bool getLocked() const;
+    bool getLockedDelete() const;
+    bool getLockedSpatial() const;
+    bool getLockedUserData() const;
+
     void setLocked(bool value);
-    void updateLocked(bool value);
+    void setLockedDelete(bool value);
+    void setLockedSpatial(bool value);
+    void setLockedUserData(bool value);
+
+    void updateLockedSpatial(bool value);
 
     QString getUserData() const;
     virtual void setUserData(const QString& value);
@@ -528,7 +536,10 @@ protected:
     bool _collisionless;
     uint8_t _collisionMask { ENTITY_COLLISION_MASK_DEFAULT };
     bool _dynamic;
-    bool _locked;
+    bool _locked; // for all properties not covered by these:
+    bool _lockedDelete; // is the entity undeletable?
+    bool _lockedSpatial; // is the position/rotation/velocity/angular-velocity/acceleration unchangable?
+    bool _lockedUserData; // is the userData unchangable?
     QString _userData;
     SimulationOwner _simulationOwner;
     QString _marketplaceID;

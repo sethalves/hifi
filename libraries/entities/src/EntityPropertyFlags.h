@@ -186,7 +186,12 @@ enum EntityPropertyList {
     PROP_SERVER_SCRIPTS,
 
     PROP_FILTER_URL,
-    
+
+    PROP_LOCKED_DELETE,
+    PROP_LOCKED_SPATIAL,
+    PROP_LOCKED_USER_DATA,
+
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,
@@ -221,13 +226,13 @@ enum EntityPropertyList {
     PROP_SKYBOX_COLOR = PROP_ANIMATION_URL,
     PROP_SKYBOX_URL = PROP_ANIMATION_FPS,
     PROP_KEYLIGHT_AMBIENT_URL = PROP_ANIMATION_PLAYING,
-    
+
     // Aliases/Piggyback properties for Web. These properties intentionally reuse the enum values for
-    // other properties which will never overlap with each other. 
+    // other properties which will never overlap with each other.
     PROP_SOURCE_URL = PROP_MODEL_URL,
 
     // Aliases/Piggyback properties for Particle Emmitter. These properties intentionally reuse the enum values for
-    // other properties which will never overlap with each other. 
+    // other properties which will never overlap with each other.
     PROP_EMITTING_PARTICLES = PROP_ANIMATION_PLAYING,
 
     // WARNING!!! DO NOT ADD PROPS_xxx here unless you really really meant to.... Add them UP above

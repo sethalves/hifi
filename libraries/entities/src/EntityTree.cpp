@@ -172,8 +172,21 @@ bool EntityTree::updateEntityWithElement(EntityItemPointer entity, const EntityI
         senderID = senderNode->getUUID();
     }
 
-    if (!allowLockChange && (entity->getLocked() != properties.getLocked())) {
+    if (!allowLockChange && (entity->getLocked() != properties.getLocked() ||
+                             entity->getLockedDelete() != properties.getLockedDelete() ||
+                             entity->getLockedSpatial() != properties.getLockedSpatial() ||
+                             entity->getLockedUserData() != properties.getLockedUserData())) {
         qCDebug(entities) << "Refusing disallowed lock adjustment.";
+        return false;
+    }
+
+    if (entity->getLockedSpatial() && properties.hasTerseUpdateChanges()) {
+        qCDebug(entities) << "Refusing disallowed spatial adjustment.";
+        return false;
+    }
+
+    if (entity->getLockedUserData() && properties.userDataChanged()) {
+        qCDebug(entities) << "Refusing disallowed userData adjustment.";
         return false;
     }
 
@@ -436,7 +449,7 @@ void EntityTree::deleteEntity(const EntityItemID& entityID, bool force, bool ign
         return;
     }
 
-    if (existingEntity->getLocked() && !force) {
+    if (existingEntity->getLockedDelete() && !force) {
         if (!ignoreWarnings) {
             qCDebug(entities) << "ERROR! EntityTree::deleteEntity() trying to delete locked entity. entityID=" << entityID;
         }
@@ -492,7 +505,7 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
             continue;
         }
 
-        if (existingEntity->getLocked() && !force) {
+        if (existingEntity->getLockedDelete() && !force) {
             if (!ignoreWarnings) {
                 qCDebug(entities) << "ERROR! EntityTree::deleteEntities() trying to delete locked entity. entityID=" << entityID;
             }
@@ -851,6 +864,42 @@ void EntityTree::fixupTerseEditLogging(EntityItemProperties& properties, QList<Q
                 changeHint = "1";
             }
             changedProperties[index] = QString("locked:") + changeHint;
+        }
+    }
+
+    if (properties.lockedDeleteChanged()) {
+        int index = changedProperties.indexOf("lockedDelete");
+        if (index >= 0) {
+            bool value = properties.getLockedDelete();
+            QString changeHint = "0";
+            if (value) {
+                changeHint = "1";
+            }
+            changedProperties[index] = QString("lockedDelete:") + changeHint;
+        }
+    }
+
+    if (properties.lockedSpatialChanged()) {
+        int index = changedProperties.indexOf("lockedSpatial");
+        if (index >= 0) {
+            bool value = properties.getLockedSpatial();
+            QString changeHint = "0";
+            if (value) {
+                changeHint = "1";
+            }
+            changedProperties[index] = QString("lockedSpatial:") + changeHint;
+        }
+    }
+
+    if (properties.lockedUserDataChanged()) {
+        int index = changedProperties.indexOf("lockedUserData");
+        if (index >= 0) {
+            bool value = properties.getLockedUserData();
+            QString changeHint = "0";
+            if (value) {
+                changeHint = "1";
+            }
+            changedProperties[index] = QString("lockedUserData:") + changeHint;
         }
     }
 

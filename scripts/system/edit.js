@@ -1854,6 +1854,9 @@ var PropertiesTool = function (opts) {
             if (selectionManager.selections.length > 1) {
                 properties = {
                     locked: data.properties.locked,
+                    lockedDelete: data.properties.lockedDelete,
+                    lockedSpatial: data.properties.lockedSpatial,
+                    lockedUserData: data.properties.lockedUserData,
                     visible: data.properties.visible
                 };
                 for (i = 0; i < selectionManager.selections.length; i++) {
@@ -1885,7 +1888,11 @@ var PropertiesTool = function (opts) {
                 }
                 Entities.editEntity(selectionManager.selections[0], data.properties);
                 if (data.properties.name !== undefined || data.properties.modelURL !== undefined ||
-                        data.properties.visible !== undefined || data.properties.locked !== undefined) {
+                    data.properties.visible !== undefined ||
+                    data.properties.locked !== undefined ||
+                    data.properties.lockedDelete !== undefined ||
+                    data.properties.lockedSpatial !== undefined ||
+                    data.properties.lockedUserData !== undefined) {
                     entityListTool.sendUpdate();
                 }
             }

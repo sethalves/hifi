@@ -261,6 +261,9 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_EXPONENT, exponent);
     CHECK_PROPERTY_CHANGE(PROP_CUTOFF, cutoff);
     CHECK_PROPERTY_CHANGE(PROP_LOCKED, locked);
+    CHECK_PROPERTY_CHANGE(PROP_LOCKED_DELETE, lockedDelete);
+    CHECK_PROPERTY_CHANGE(PROP_LOCKED_SPATIAL, lockedSpatial);
+    CHECK_PROPERTY_CHANGE(PROP_LOCKED_USER_DATA, lockedUserData);
     CHECK_PROPERTY_CHANGE(PROP_TEXTURES, textures);
     CHECK_PROPERTY_CHANGE(PROP_USER_DATA, userData);
     CHECK_PROPERTY_CHANGE(PROP_SIMULATION_OWNER, simulationOwner);
@@ -404,6 +407,9 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_FACE_CAMERA, faceCamera);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_ACTION_DATA, actionData);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCKED, locked);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCKED_DELETE, lockedDelete);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCKED_SPATIAL, lockedSpatial);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_LOCKED_USER_DATA, lockedUserData);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_USER_DATA, userData);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_MARKETPLACE_ID, marketplaceID);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_NAME, name);
@@ -645,6 +651,9 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(exponent, float, setExponent);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(cutoff, float, setCutoff);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(locked, bool, setLocked);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(lockedDelete, bool, setLockedDelete);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(lockedSpatial, bool, setLockedSpatial);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(lockedUserData, bool, setLockedUserData);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(textures, QString, setTextures);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(userData, QString, setUserData);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(text, QString, setText);
@@ -954,6 +963,9 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_PROPERTY_TO_MAP(PROP_EXPONENT, Exponent, exponent, float);
         ADD_PROPERTY_TO_MAP(PROP_CUTOFF, Cutoff, cutoff, float);
         ADD_PROPERTY_TO_MAP(PROP_LOCKED, Locked, locked, bool);
+        ADD_PROPERTY_TO_MAP(PROP_LOCKED_DELETE, LockedDelete, lockedDelete, bool);
+        ADD_PROPERTY_TO_MAP(PROP_LOCKED_SPATIAL, LockedSpatial, lockedSpatial, bool);
+        ADD_PROPERTY_TO_MAP(PROP_LOCKED_USER_DATA, LockedUserData, lockedUserData, bool);
         ADD_PROPERTY_TO_MAP(PROP_TEXTURES, Textures, textures, QString);
         ADD_PROPERTY_TO_MAP(PROP_USER_DATA, UserData, userData, QString);
         ADD_PROPERTY_TO_MAP(PROP_SIMULATION_OWNER, SimulationOwner, simulationOwner, SimulationOwner);
@@ -1338,6 +1350,10 @@ bool EntityItemProperties::encodeEntityEditPacket(PacketType command, EntityItem
             APPEND_ENTITY_PROPERTY(PROP_COLLISION_SOUND_URL, properties.getCollisionSoundURL());
             APPEND_ENTITY_PROPERTY(PROP_ACTION_DATA, properties.getActionData());
             APPEND_ENTITY_PROPERTY(PROP_ALPHA, properties.getAlpha());
+
+            APPEND_ENTITY_PROPERTY(PROP_LOCKED_DELETE, properties.getLockedDelete());
+            APPEND_ENTITY_PROPERTY(PROP_LOCKED_SPATIAL, properties.getLockedSpatial());
+            APPEND_ENTITY_PROPERTY(PROP_LOCKED_USER_DATA, properties.getLockedUserData());
         }
 
         if (propertyCount > 0) {
@@ -1636,6 +1652,10 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_COLLISION_SOUND_URL, QString, setCollisionSoundURL);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ACTION_DATA, QByteArray, setActionData);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_ALPHA, float, setAlpha);
+
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCKED_DELETE, bool, setLockedDelete);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCKED_SPATIAL, bool, setLockedSpatial);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_LOCKED_USER_DATA, bool, setLockedUserData);
 
     return valid;
 }

@@ -226,6 +226,10 @@ public:
 
     DEFINE_PROPERTY_REF(PROP_SERVER_SCRIPTS, ServerScripts, serverScripts, QString, ENTITY_ITEM_DEFAULT_SERVER_SCRIPTS);
 
+    DEFINE_PROPERTY(PROP_LOCKED_DELETE, LockedDelete, lockedDelete, bool, ENTITY_ITEM_DEFAULT_LOCKED);
+    DEFINE_PROPERTY(PROP_LOCKED_SPATIAL, LockedSpatial, lockedSpatial, bool, ENTITY_ITEM_DEFAULT_LOCKED);
+    DEFINE_PROPERTY(PROP_LOCKED_USER_DATA, LockedUserData, lockedUserData, bool, ENTITY_ITEM_DEFAULT_LOCKED);
+
     static QString getBackgroundModeString(BackgroundMode mode);
 
 
@@ -398,6 +402,9 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Exponent, exponent, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Cutoff, cutoff, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Locked, locked, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LockedDelete, lockedDelete, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LockedSpatial, lockedSpatial, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LockedUserData, lockedUserData, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, Textures, textures, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, UserData, userData, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, SimulationOwner, simulationOwner, SimulationOwner());

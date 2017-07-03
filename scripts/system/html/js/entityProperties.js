@@ -484,6 +484,9 @@ function loaded() {
         var elTypeIcon = document.getElementById("type-icon");
         var elName = document.getElementById("property-name");
         var elLocked = document.getElementById("property-locked");
+        var elLockedDelete = document.getElementById("property-locked-delete");
+        var elLockedSpatial = document.getElementById("property-locked-spatial");
+        var elLockedUserData = document.getElementById("property-locked-user-data");
         var elVisible = document.getElementById("property-visible");
         var elPositionX = document.getElementById("property-pos-x");
         var elPositionY = document.getElementById("property-pos-y");
@@ -754,7 +757,9 @@ function loaded() {
                         elTypeIcon.style.display = "inline-block";
 
                         elLocked.checked = properties.locked;
-
+                        elLockedDelete.checked = properties.lockedDelete;
+                        elLockedSpatial.checked = properties.lockedSpatial;
+                        elLockedUserData.checked = properties.lockedUserData;
 
                         elName.value = properties.name;
 
@@ -1045,6 +1050,10 @@ function loaded() {
                             elSaveUserData.disabled = true;
                         }
 
+                        elLockedDelete.checked = properties.lockedDelete;
+                        elLockedSpatial.checked = properties.lockedSpatial;
+                        elLockedUserData.checked = properties.lockedUserData;
+
                         var activeElement = document.activeElement;
 
                         if (typeof activeElement.select !== "undefined") {
@@ -1056,6 +1065,9 @@ function loaded() {
         }
 
         elLocked.addEventListener('change', createEmitCheckedPropertyUpdateFunction('locked'));
+        elLockedDelete.addEventListener('change', createEmitCheckedPropertyUpdateFunction('lockedDelete'));
+        elLockedSpatial.addEventListener('change', createEmitCheckedPropertyUpdateFunction('lockedSpatial'));
+        elLockedUserData.addEventListener('change', createEmitCheckedPropertyUpdateFunction('lockedUserData'));
         elName.addEventListener('change', createEmitTextPropertyUpdateFunction('name'));
         elHyperlinkHref.addEventListener('change', createEmitTextPropertyUpdateFunction('href'));
         elDescription.addEventListener('change', createEmitTextPropertyUpdateFunction('description'));

@@ -380,6 +380,8 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             updatedEntity = false;
         } else {
             //debit the avatar energy and continue
+
+            qDebug() << "JHERE" << properties;
             updatedEntity = _entityTree->updateEntity(entityID, properties);
             if (updatedEntity) {
                 emit debitEnergySource(cost);
@@ -517,7 +519,7 @@ void EntityScriptingInterface::deleteEntity(QUuid id) {
                     emit debitEnergySource(cost);
                 }
 
-                if (entity->getLocked()) {
+                if (entity->getLockedDelete()) {
                     shouldDelete = false;
                 } else {
                     _entityTree->deleteEntity(entityID);

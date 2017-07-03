@@ -67,6 +67,9 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
     _collisionMask(ENTITY_COLLISION_MASK_DEFAULT),
     _dynamic(ENTITY_ITEM_DEFAULT_DYNAMIC),
     _locked(ENTITY_ITEM_DEFAULT_LOCKED),
+    _lockedDelete(ENTITY_ITEM_DEFAULT_LOCKED),
+    _lockedSpatial(ENTITY_ITEM_DEFAULT_LOCKED),
+    _lockedUserData(ENTITY_ITEM_DEFAULT_LOCKED),
     _userData(ENTITY_ITEM_DEFAULT_USER_DATA),
     _simulationOwner(),
     _marketplaceID(ENTITY_ITEM_DEFAULT_MARKETPLACE_ID),
@@ -130,6 +133,9 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_COLLISION_MASK;
     requestedProperties += PROP_DYNAMIC;
     requestedProperties += PROP_LOCKED;
+    requestedProperties += PROP_LOCKED_DELETE;
+    requestedProperties += PROP_LOCKED_SPATIAL;
+    requestedProperties += PROP_LOCKED_USER_DATA;
     requestedProperties += PROP_USER_DATA;
     requestedProperties += PROP_MARKETPLACE_ID;
     requestedProperties += PROP_NAME;
@@ -293,6 +299,10 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, getParentJointIndex());
         APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, getQueryAACube());
         APPEND_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, getLastEditedBy());
+
+        APPEND_ENTITY_PROPERTY(PROP_LOCKED_DELETE, getLockedDelete());
+        APPEND_ENTITY_PROPERTY(PROP_LOCKED_SPATIAL, getLockedSpatial());
+        APPEND_ENTITY_PROPERTY(PROP_LOCKED_USER_DATA, getLockedUserData());
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -820,7 +830,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_COLLISIONLESS, bool, updateCollisionless);
     READ_ENTITY_PROPERTY(PROP_COLLISION_MASK, uint8_t, updateCollisionMask);
     READ_ENTITY_PROPERTY(PROP_DYNAMIC, bool, updateDynamic);
-    READ_ENTITY_PROPERTY(PROP_LOCKED, bool, updateLocked);
+    READ_ENTITY_PROPERTY(PROP_LOCKED, bool, setLocked);
     READ_ENTITY_PROPERTY(PROP_USER_DATA, QString, setUserData);
 
     if (args.bitstreamVersion >= VERSION_ENTITIES_HAS_MARKETPLACE_ID) {
@@ -843,6 +853,11 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
 
     READ_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, AACube, setQueryAACube);
     READ_ENTITY_PROPERTY(PROP_LAST_EDITED_BY, QUuid, setLastEditedBy);
+
+    READ_ENTITY_PROPERTY(PROP_LOCKED_DELETE, bool, setLockedDelete);
+    READ_ENTITY_PROPERTY(PROP_LOCKED_SPATIAL, bool, updateLockedSpatial);
+    READ_ENTITY_PROPERTY(PROP_LOCKED_USER_DATA, bool, setLockedUserData);
+
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
@@ -1241,6 +1256,9 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(collisionMask, getCollisionMask);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(dynamic, getDynamic);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(locked, getLocked);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lockedDelete, getLockedDelete);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lockedSpatial, getLockedSpatial);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(lockedUserData, getLockedUserData);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(userData, getUserData);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(marketplaceID, getMarketplaceID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(name, getName);
@@ -1327,7 +1345,11 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(dynamic, updateDynamic);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(created, updateCreated);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lifetime, updateLifetime);
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, updateLocked);
+
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(locked, setLocked);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lockedDelete, setLockedDelete);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lockedSpatial, updateLockedSpatial);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(lockedUserData, setLockedUserData);
 
     // non-simulation properties below
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(script, setScript);
@@ -2745,7 +2767,7 @@ void EntityItem::setDynamic(bool value) {
     });
 }
 
-bool EntityItem::getLocked() const { 
+bool EntityItem::getLocked() const {
     bool result;
     withReadLock([&] {
         result = _locked;
@@ -2753,21 +2775,66 @@ bool EntityItem::getLocked() const {
     return result;
 }
 
-void EntityItem::setLocked(bool value) { 
+bool EntityItem::getLockedDelete() const {
+    bool result;
+    withReadLock([&] {
+        result = _lockedDelete;
+    });
+    return result;
+}
+
+bool EntityItem::getLockedSpatial() const {
+    bool result;
+    withReadLock([&] {
+        result = _lockedSpatial;
+    });
+    return result;
+}
+
+bool EntityItem::getLockedUserData() const {
+    bool result;
+    withReadLock([&] {
+        result = _lockedUserData;
+    });
+    return result;
+}
+
+void EntityItem::setLocked(bool value) {
     withWriteLock([&] {
         _locked = value;
     });
 }
 
-void EntityItem::updateLocked(bool value) {
+void EntityItem::setLockedDelete(bool value) {
+    withWriteLock([&] {
+        _lockedDelete = value;
+    });
+}
+
+void EntityItem::setLockedSpatial(bool value) {
+    withWriteLock([&] {
+        _lockedSpatial = value;
+    });
+}
+
+void EntityItem::setLockedUserData(bool value) {
+    withWriteLock([&] {
+        _lockedUserData = value;
+    });
+}
+
+void EntityItem::updateLockedSpatial(bool value) {
     bool changed { false };
     withWriteLock([&] {
-        if (_locked != value) {
-            _locked = value;
+        if (_lockedSpatial != value) {
+            _lockedSpatial = value;
             changed = true;
         }
     });
     if (changed) {
+        // in EntityMotionState::computePhysicsMotionType, entities that have _lockedSpatial as true
+        // are forced to be static or kinematic.  Changes to _lockedSpatial need to be signaled to
+        // entity tree so that it can tell the simulation.
         markDirtyFlags(Simulation::DIRTY_MOTION_TYPE);
         EntityTreePointer tree = getTree();
         if (tree) {
