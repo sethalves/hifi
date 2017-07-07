@@ -3977,17 +3977,31 @@ function update(deltaTime) {
     var timestamp = Date.now();
 
     if (handToDisable !== LEFT_HAND && handToDisable !== 'both') {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.update.left");
         leftController.update(deltaTime, timestamp);
+        Script.endProfileRange("controllerScripts.handControllerGrab.update.left");
     } else {
+        Script.beginProfileRange("controllerScripts.handControllerPointer.release.left");
         leftController.release();
+        Script.endProfileRange("controllerScripts.handControllerPointer.release.left");
     }
     if (handToDisable !== RIGHT_HAND && handToDisable !== 'both') {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.update.right");
         rightController.update(deltaTime, timestamp);
+        Script.endProfileRange("controllerScripts.handControllerGrab.update.right");
     } else {
+        Script.beginProfileRange("controllerScripts.handControllerPointer.release.right");
         rightController.release();
+        Script.endProfileRange("controllerScripts.handControllerPointer.release.right");
     }
+
+    Script.beginProfileRange("controllerScripts.handControllerGrab.update.equipHotspotBuddy");
     equipHotspotBuddy.update(deltaTime, timestamp);
+    Script.endProfileRange("controllerScripts.handControllerGrab.update.equipHotspotBuddy");
+
+    Script.beginProfileRange("controllerScripts.handControllerPointer.update.entityPropertiesCache");
     entityPropertiesCache.update();
+    Script.endProfileRange("controllerScripts.handControllerPointer.update.entityPropertiesCache");
 }
 
 Messages.subscribe('Hifi-Grab-Disable');
