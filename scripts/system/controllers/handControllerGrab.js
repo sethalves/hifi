@@ -823,10 +823,12 @@ EntityPropertiesCache.prototype.addEntity = function(entityID) {
     }
 };
 EntityPropertiesCache.prototype.addEntities = function(entities) {
+    Script.beginProfileRange("controllerScripts.handControllerGrab.EntityPropertiesCache.addEntities");
     var _this = this;
     entities.forEach(function(entityID) {
         _this.addEntity(entityID);
     });
+    Script.endProfileRange("controllerScripts.handControllerGrab.EntityPropertiesCache.addEntities");
 };
 EntityPropertiesCache.prototype._updateCacheEntry = function(entityID) {
     var props = Entities.getEntityProperties(entityID, GRABBABLE_PROPERTIES);
@@ -1681,6 +1683,7 @@ function MyController(hand) {
 
         var tipPosition = this.stylusTip.position;
 
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.a");
         // build list of stylus targets, near the stylusTip
         var stylusTargets = [];
         var candidateEntities = Entities.findEntities(tipPosition, WEB_DISPLAY_STYLUS_DISTANCE);
@@ -1695,7 +1698,10 @@ function MyController(hand) {
                 }
             }
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.a");
 
+
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b");
         // add the tabletScreen, if it is valid
         if (HMD.tabletScreenID && HMD.tabletScreenID !== NULL_UUID && Overlays.getProperty(HMD.tabletScreenID, "visible")) {
             stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.tabletScreenID);
@@ -1736,6 +1742,9 @@ function MyController(hand) {
             this.hideStylus();
             this.pointFinger(false);
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b");
+
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.c");
 
         var nearestStylusTarget = calculateNearestStylusTarget(stylusTargets);
 
@@ -1775,6 +1784,7 @@ function MyController(hand) {
         }
 
         this.homeButtonTouched = false;
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.c");
 
         Script.endProfileRange("controllerScripts.handControllerGrab.processStylus");
     };
