@@ -1173,6 +1173,8 @@ function MyController(hand) {
     };
 
     this.update = function(deltaTime, timestamp) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.update.a");
+
         this.updateSmoothedTrigger();
         this.maybeScaleMyAvatar();
 
@@ -1197,7 +1199,9 @@ function MyController(hand) {
             this.turnOffVisualizations();
             return;
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.update.a");
 
+        Script.beginProfileRange("controllerScripts.handControllerGrab.b");
         if (CONTROLLER_STATE_MACHINE[this.state]) {
             var updateMethodName = CONTROLLER_STATE_MACHINE[this.state].updateMethod;
             var updateMethod = this[updateMethodName];
@@ -1209,6 +1213,7 @@ function MyController(hand) {
         } else {
             print("WARNING: could not find state " + this.state + " in state machine");
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.b");
     };
 
     this.callEntityMethodOnGrabbed = function(entityMethodName) {
@@ -1740,6 +1745,7 @@ function MyController(hand) {
     };
 
     this.off = function(deltaTime, timestamp) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off");
 
         this.controllerJointIndex = getControllerJointIndex(this.hand);
         this.checkForUnexpectedChildren();
@@ -1756,6 +1762,7 @@ function MyController(hand) {
             this.startingHandRotation = getControllerWorldLocation(this.handToController(), true).orientation;
             this.searchStartTime = Date.now();
             this.setState(STATE_SEARCHING, "trigger squeeze detected");
+            Script.endProfileRange("controllerScripts.handControllerGrab.off");
             return;
         }
 
@@ -1778,13 +1785,19 @@ function MyController(hand) {
         // when the grab-point enters a grabable entity, give a haptic pulse
         candidateEntities = Entities.findEntities(worldHandPosition, NEAR_GRAB_RADIUS);
         var grabbableEntities = candidateEntities.filter(function(entity) {
-            return _this.entityIsNearGrabbable(entity, worldHandPosition, NEAR_GRAB_MAX_DISTANCE);
+            Script.beginProfileRange("controllerScripts.handControllerGrab.off.can");
+            var result = _this.entityIsNearGrabbable(entity, worldHandPosition, NEAR_GRAB_MAX_DISTANCE);
+            Script.endProfileRange("controllerScripts.handControllerGrab.off.can");
+            return result;
         });
         if (grabbableEntities.length > 0) {
             if (!this.grabPointIntersectsEntity) {
                 // don't do haptic pulse for tablet
                 var nonTabletEntities = grabbableEntities.filter(function(entityID) {
-                    return entityID != HMD.tabletID && entityID != HMD.homeButtonID;
+                    Script.beginProfileRange("controllerScripts.handControllerGrab.off.nte");
+                    var result = entityID != HMD.tabletID && entityID != HMD.homeButtonID;
+                    Script.endProfileRange("controllerScripts.handControllerGrab.off.nte");
+                    return result;
                 });
                 if (nonTabletEntities.length > 0) {
                     Controller.triggerHapticPulse(1, 20, this.hand);
@@ -1807,6 +1820,7 @@ function MyController(hand) {
         } else {
             this.searchIndicatorOff();
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.off");
     };
 
     this.handleLaserOnHomeButton = function(rayPickInfo) {
@@ -3981,27 +3995,27 @@ function update(deltaTime) {
         leftController.update(deltaTime, timestamp);
         Script.endProfileRange("controllerScripts.handControllerGrab.update.left");
     } else {
-        Script.beginProfileRange("controllerScripts.handControllerPointer.release.left");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.release.left");
         leftController.release();
-        Script.endProfileRange("controllerScripts.handControllerPointer.release.left");
+        Script.endProfileRange("controllerScripts.handControllerGrab.release.left");
     }
     if (handToDisable !== RIGHT_HAND && handToDisable !== 'both') {
         Script.beginProfileRange("controllerScripts.handControllerGrab.update.right");
         rightController.update(deltaTime, timestamp);
         Script.endProfileRange("controllerScripts.handControllerGrab.update.right");
     } else {
-        Script.beginProfileRange("controllerScripts.handControllerPointer.release.right");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.release.right");
         rightController.release();
-        Script.endProfileRange("controllerScripts.handControllerPointer.release.right");
+        Script.endProfileRange("controllerScripts.handControllerGrab.release.right");
     }
 
     Script.beginProfileRange("controllerScripts.handControllerGrab.update.equipHotspotBuddy");
     equipHotspotBuddy.update(deltaTime, timestamp);
     Script.endProfileRange("controllerScripts.handControllerGrab.update.equipHotspotBuddy");
 
-    Script.beginProfileRange("controllerScripts.handControllerPointer.update.entityPropertiesCache");
+    Script.beginProfileRange("controllerScripts.handControllerGrab.update.entityPropertiesCache");
     entityPropertiesCache.update();
-    Script.endProfileRange("controllerScripts.handControllerPointer.update.entityPropertiesCache");
+    Script.endProfileRange("controllerScripts.handControllerGrab.update.entityPropertiesCache");
 }
 
 Messages.subscribe('Hifi-Grab-Disable');
