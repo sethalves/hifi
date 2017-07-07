@@ -1816,16 +1816,29 @@ function MyController(hand) {
 
         Script.beginProfileRange("controllerScripts.handControllerGrab.off.c");
         this.processStylus();
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.c");
 
-        if (isInEditMode() && !this.isNearStylusTarget && HMD.isHandControllerAvailable()) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.d");
+        var X0 = isInEditMode();
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.d");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.3");
+        var X1 = HMD.isHandControllerAvailable();
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.e");
+
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.f");
+        if (X0 && !this.isNearStylusTarget && X1) {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.off.f.1");
             // Always showing lasers while in edit mode and hands/stylus is not active.
             var rayPickInfo = this.calcRayPickInfo(this.hand);
             this.intersectionDistance = (rayPickInfo.entityID || rayPickInfo.overlayID) ? rayPickInfo.distance : 0;
             this.searchIndicatorOn(rayPickInfo.searchRay);
+            Script.endProfileRange("controllerScripts.handControllerGrab.off.f.1");
         } else {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.off.f.2");
             this.searchIndicatorOff();
+            Script.endProfileRange("controllerScripts.handControllerGrab.off.f.2");
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.c");
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.f");
 
         Script.endProfileRange("controllerScripts.handControllerGrab.off");
     };
