@@ -1821,7 +1821,7 @@ function MyController(hand) {
         Script.beginProfileRange("controllerScripts.handControllerGrab.off.d");
         var X0 = isInEditMode();
         Script.endProfileRange("controllerScripts.handControllerGrab.off.d");
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.3");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.e");
         var X1 = HMD.isHandControllerAvailable();
         Script.endProfileRange("controllerScripts.handControllerGrab.off.e");
 
