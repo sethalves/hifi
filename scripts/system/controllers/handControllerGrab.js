@@ -1349,6 +1349,7 @@ function MyController(hand) {
     this.showStylus = function() {
         Script.beginProfileRange("controllerScripts.handControllerGrab.showStylus");
         if (this.stylus) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.showStylus");
             return;
         }
 
@@ -1378,6 +1379,7 @@ function MyController(hand) {
     this.hideStylus = function() {
         Script.beginProfileRange("controllerScripts.handControllerGrab.hideStylus");
         if (!this.stylus) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.hideStylus");
             return;
         }
         Overlays.deleteOverlay(this.stylus);
@@ -1818,14 +1820,18 @@ function MyController(hand) {
         // when the grab-point enters a grabable entity, give a haptic pulse
         candidateEntities = Entities.findEntities(worldHandPosition, NEAR_GRAB_RADIUS);
         var grabbableEntities = candidateEntities.filter(function(entity) {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.off.candidates");
             var result = _this.entityIsNearGrabbable(entity, worldHandPosition, NEAR_GRAB_MAX_DISTANCE);
+            Script.endProfileRange("controllerScripts.handControllerGrab.off.candidates");
             return result;
         });
         if (grabbableEntities.length > 0) {
             if (!this.grabPointIntersectsEntity) {
                 // don't do haptic pulse for tablet
                 var nonTabletEntities = grabbableEntities.filter(function(entityID) {
+                    Script.beginProfileRange("controllerScripts.handControllerGrab.nontablet");
                     var result = entityID != HMD.tabletID && entityID != HMD.homeButtonID;
+                    Script.endProfileRange("controllerScripts.handControllerGrab.nontablet");
                     return result;
                 });
                 if (nonTabletEntities.length > 0) {
