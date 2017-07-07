@@ -1149,6 +1149,7 @@ function MyController(hand) {
     };
 
     this.updateStylusTip = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.updateStylusTip");
         if (this.useFingerInsteadOfStylus) {
             this.stylusTip = getFingerWorldLocation(this.hand);
         } else {
@@ -1170,10 +1171,11 @@ function MyController(hand) {
         } else {
             this.stylusTip.velocity = {x: 0, y: 0, z: 0};
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.updateStylusTip");
     };
 
     this.update = function(deltaTime, timestamp) {
-        Script.beginProfileRange("controllerScripts.handControllerGrab.update.a");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.update");
 
         this.updateSmoothedTrigger();
         this.maybeScaleMyAvatar();
@@ -1197,11 +1199,10 @@ function MyController(hand) {
             // However, we still should check for collisions of the stylus with the web overlay.
             this.processStylus();
             this.turnOffVisualizations();
+            Script.endProfileRange("controllerScripts.handControllerGrab.update");
             return;
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.update.a");
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.b");
         if (CONTROLLER_STATE_MACHINE[this.state]) {
             var updateMethodName = CONTROLLER_STATE_MACHINE[this.state].updateMethod;
             var updateMethod = this[updateMethodName];
@@ -1213,15 +1214,19 @@ function MyController(hand) {
         } else {
             print("WARNING: could not find state " + this.state + " in state machine");
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.b");
+
+        Script.endProfileRange("controllerScripts.handControllerGrab.update");
     };
 
     this.callEntityMethodOnGrabbed = function(entityMethodName) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.callEntityMethodOnGrabbed");
         if (this.grabbedIsOverlay) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.callEntityMethodOnGrabbed");
             return;
         }
         var args = [this.hand === RIGHT_HAND ? "right" : "left", MyAvatar.sessionUUID];
         Entities.callEntityMethod(this.grabbedThingID, entityMethodName, args);
+        Script.endProfileRange("controllerScripts.handControllerGrab.callEntityMethodOnGrabbed");
     };
 
     this.setState = function(newState, reason) {
@@ -1268,7 +1273,10 @@ function MyController(hand) {
     };
 
     this.grabPointSphereOn = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.grabPointSphereOn");
+
         if (!SHOW_GRAB_POINT_SPHERE) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.grabPointSphereOn");
             return;
         }
 
@@ -1288,16 +1296,20 @@ function MyController(hand) {
                 parentJointIndex: this.controllerJointIndex
             });
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.grabPointSphereOn");
     };
 
     this.grabPointSphereOff = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.grabPointSphereOff");
         if (this.grabPointSphere) {
             Overlays.deleteOverlay(this.grabPointSphere);
             this.grabPointSphere = null;
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.grabPointSphereOff");
     };
 
     this.searchSphereOn = function(location, size, color) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.searchSphereOn");
 
         var rotation = Quat.lookAt(location, Camera.getPosition(), Vec3.UP);
         var brightColor = colorPow(color, 0.06);
@@ -1330,9 +1342,12 @@ function MyController(hand) {
                 ignoreRayIntersection: true
             });
         }
+
+        Script.endProfileRange("controllerScripts.handControllerGrab.searchSphereOn");
     };
 
     this.showStylus = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.showStylus");
         if (this.stylus) {
             return;
         }
@@ -1357,17 +1372,21 @@ function MyController(hand) {
                                                      "_CAMERA_RELATIVE_CONTROLLER_LEFTHAND")
         };
         this.stylus = Overlays.addOverlay("model", stylusProperties);
+        Script.endProfileRange("controllerScripts.handControllerGrab.showStylus");
     };
 
     this.hideStylus = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.hideStylus");
         if (!this.stylus) {
             return;
         }
         Overlays.deleteOverlay(this.stylus);
         this.stylus = null;
+        Script.endProfileRange("controllerScripts.handControllerGrab.hideStylus");
     };
 
     this.overlayLineOn = function(closePoint, farPoint, color, farParentID) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.overlayLineOn");
         if (this.overlayLine === null) {
             var lineProperties = {
                 name: "line",
@@ -1402,9 +1421,12 @@ function MyController(hand) {
                 });
             }
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.overlayLineOn");
     };
 
     this.searchIndicatorOn = function(distantPickRay) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.searchIndicatorOn");
+
         var handPosition = distantPickRay.origin;
         var SEARCH_SPHERE_SIZE = 0.011;
         var SEARCH_SPHERE_FOLLOW_RATE = 0.50;
@@ -1427,14 +1449,17 @@ function MyController(hand) {
                                COLORS_GRAB_SEARCHING_FULL_SQUEEZE :
                                COLORS_GRAB_SEARCHING_HALF_SQUEEZE);
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.searchIndicatorOn");
     };
 
     // Turns off indicators used for searching. Overlay line and sphere.
     this.searchIndicatorOff = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.searchIndicatorOff");
         this.searchSphereOff();
         if (PICK_WITH_HAND_RAY) {
             this.overlayLineOff();
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.searchIndicatorOff");
     };
 
     this.otherGrabbingLineOn = function(avatarPosition, entityPosition, color) {
@@ -1622,6 +1647,8 @@ function MyController(hand) {
     };
 
     this.pointFinger = function(value) {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.pointFinger");
+
         var HIFI_POINT_INDEX_MESSAGE_CHANNEL = "Hifi-Point-Index";
         if (this.fingerPointing !== value) {
             var message;
@@ -1633,12 +1660,16 @@ function MyController(hand) {
             Messages.sendMessage(HIFI_POINT_INDEX_MESSAGE_CHANNEL, JSON.stringify(message), true);
             this.fingerPointing = value;
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.pointFinger");
     };
 
     this.processStylus = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus");
+
         if (!this.stylusTip.valid) {
             this.pointFinger(false);
             this.hideStylus();
+            Script.endProfileRange("controllerScripts.handControllerGrab.processStylus");
             return;
         }
 
@@ -1742,6 +1773,8 @@ function MyController(hand) {
         }
 
         this.homeButtonTouched = false;
+
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus");
     };
 
     this.off = function(deltaTime, timestamp) {
@@ -1766,7 +1799,6 @@ function MyController(hand) {
             return;
         }
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.a");
         var controllerLocation = getControllerWorldLocation(this.handToController(), true);
         var worldHandPosition = controllerLocation.position;
 
@@ -1782,24 +1814,18 @@ function MyController(hand) {
         if (potentialEquipHotspot) {
             equipHotspotBuddy.highlightHotspot(potentialEquipHotspot);
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.a");
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.b");
         // when the grab-point enters a grabable entity, give a haptic pulse
         candidateEntities = Entities.findEntities(worldHandPosition, NEAR_GRAB_RADIUS);
         var grabbableEntities = candidateEntities.filter(function(entity) {
-            Script.beginProfileRange("controllerScripts.handControllerGrab.off.can");
             var result = _this.entityIsNearGrabbable(entity, worldHandPosition, NEAR_GRAB_MAX_DISTANCE);
-            Script.endProfileRange("controllerScripts.handControllerGrab.off.can");
             return result;
         });
         if (grabbableEntities.length > 0) {
             if (!this.grabPointIntersectsEntity) {
                 // don't do haptic pulse for tablet
                 var nonTabletEntities = grabbableEntities.filter(function(entityID) {
-                    Script.beginProfileRange("controllerScripts.handControllerGrab.off.nte");
                     var result = entityID != HMD.tabletID && entityID != HMD.homeButtonID;
-                    Script.endProfileRange("controllerScripts.handControllerGrab.off.nte");
                     return result;
                 });
                 if (nonTabletEntities.length > 0) {
@@ -1812,33 +1838,20 @@ function MyController(hand) {
             this.grabPointIntersectsEntity = false;
             this.grabPointSphereOff();
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.b");
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.c");
         this.processStylus();
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.c");
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.d");
         var X0 = isInEditMode();
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.d");
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.e");
         var X1 = HMD.isHandControllerAvailable();
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.e");
 
-        Script.beginProfileRange("controllerScripts.handControllerGrab.off.f");
         if (X0 && !this.isNearStylusTarget && X1) {
-            Script.beginProfileRange("controllerScripts.handControllerGrab.off.f.1");
             // Always showing lasers while in edit mode and hands/stylus is not active.
             var rayPickInfo = this.calcRayPickInfo(this.hand);
             this.intersectionDistance = (rayPickInfo.entityID || rayPickInfo.overlayID) ? rayPickInfo.distance : 0;
             this.searchIndicatorOn(rayPickInfo.searchRay);
-            Script.endProfileRange("controllerScripts.handControllerGrab.off.f.1");
         } else {
-            Script.beginProfileRange("controllerScripts.handControllerGrab.off.f.2");
             this.searchIndicatorOff();
-            Script.endProfileRange("controllerScripts.handControllerGrab.off.f.2");
         }
-        Script.endProfileRange("controllerScripts.handControllerGrab.off.f");
 
         Script.endProfileRange("controllerScripts.handControllerGrab.off");
     };
@@ -3390,9 +3403,12 @@ function MyController(hand) {
     };
 
     this.maybeScaleMyAvatar = function() {
+        Script.beginProfileRange("controllerScripts.handControllerGrab.maybeScaleMyAvatar");
+
         if (!myAvatarScalingEnabled || this.shouldScale || this.hand === LEFT_HAND) {
             //  If scaling disabled, or if we are currently scaling an entity, don't scale avatar
             //  and only rescale avatar for one hand (so we're not doing it twice)
+            Script.endProfileRange("controllerScripts.handControllerGrab.maybeScaleMyAvatar");
             return;
         }
 
@@ -3418,6 +3434,7 @@ function MyController(hand) {
             var newAvatarScale = (scalingCurrentDistance / this.scalingStartDistance) * this.scalingStartAvatarScale;
             MyAvatar.scale = newAvatarScale;
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.maybeScaleMyAvatar");
     };
 
     this.nearTriggerEnter = function() {
