@@ -1175,7 +1175,7 @@ function MyController(hand) {
     };
 
     this.update = function(deltaTime, timestamp) {
-        Script.beginProfileRange("controllerScripts.handControllerGrab.update");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.MyControllerUpdate");
 
         this.updateSmoothedTrigger();
         this.maybeScaleMyAvatar();
@@ -1199,7 +1199,7 @@ function MyController(hand) {
             // However, we still should check for collisions of the stylus with the web overlay.
             this.processStylus();
             this.turnOffVisualizations();
-            Script.endProfileRange("controllerScripts.handControllerGrab.update");
+            Script.endProfileRange("controllerScripts.handControllerGrab.MyControllerUpdate");
             return;
         }
 
@@ -1215,7 +1215,7 @@ function MyController(hand) {
             print("WARNING: could not find state " + this.state + " in state machine");
         }
 
-        Script.endProfileRange("controllerScripts.handControllerGrab.update");
+        Script.endProfileRange("controllerScripts.handControllerGrab.MyControllerUpdate");
     };
 
     this.callEntityMethodOnGrabbed = function(entityMethodName) {
