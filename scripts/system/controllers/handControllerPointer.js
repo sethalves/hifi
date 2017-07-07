@@ -520,6 +520,7 @@ function update() {
 
     updateSeeking(true);
     if (!handControllerLockOut.expired(now)) {
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return off(); // Let them use mouse in peace.
     }
 
@@ -529,22 +530,26 @@ function update() {
         // using the mouse on another app. (Fogbugz case 546.)
         // However, in HMD, you might not realize you're not on top, and you wouldn't be able to operate
         // other apps anyway. So in that case, we DO keep going even though we're not on top. (Fogbugz 1831.)
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return off(); // Don't mess with other apps or paused mouse activity
     }
 
     leftTrigger.update();
     rightTrigger.update();
     if (!activeTrigger.state) {
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return off(); // No trigger
     }
 
     if (getGrabCommunications()) {
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return off();
     }
 
 
     var hudPoint2d = activeHudPoint2d(activeHand);
     if (!hudPoint2d) {
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return off();
     }
 
@@ -569,6 +574,7 @@ function update() {
             clearSystemLaser();
             Reticle.visible = false;
         }
+        Script.endProfileRange("controllerScripts.handControllerPointer.update");
         return;
     }
     // We are not pointing at a HUD element (but it could be a 3d overlay).
