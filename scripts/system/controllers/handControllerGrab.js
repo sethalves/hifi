@@ -1702,6 +1702,9 @@ function MyController(hand) {
 
 
         Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b");
+
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.1");
+
         // add the tabletScreen, if it is valid
         if (HMD.tabletScreenID && HMD.tabletScreenID !== NULL_UUID && Overlays.getProperty(HMD.tabletScreenID, "visible")) {
             stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.tabletScreenID);
@@ -1710,6 +1713,10 @@ function MyController(hand) {
             }
         }
 
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.1");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.2");
+
+
         // add the tablet home button.
         if (HMD.homeButtonID && HMD.homeButtonID !== NULL_UUID && Overlays.getProperty(HMD.homeButtonID, "visible")) {
             stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.homeButtonID);
@@ -1717,6 +1724,10 @@ function MyController(hand) {
                 stylusTargets.push(stylusTarget);
             }
         }
+
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.2");
+        Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.3");
+
 
         var TABLET_MIN_HOVER_DISTANCE = 0.01;
         var TABLET_MAX_HOVER_DISTANCE = 0.1;
@@ -1742,6 +1753,8 @@ function MyController(hand) {
             this.hideStylus();
             this.pointFinger(false);
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.3");
+
         Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b");
 
         Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.c");
