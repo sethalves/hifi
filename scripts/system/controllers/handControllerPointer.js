@@ -22,7 +22,10 @@
 
 var activeTrigger;
 function isLaserOn() {
-    return activeTrigger.partial();
+    Script.beginProfileRange("controllerScripts.handControllerPointer.isLaserOn");
+    var result = activeTrigger.partial();
+    Script.endProfileRange("controllerScripts.handControllerPointer.isLaserOn");
+    return result;
 }
 Script.include("../libraries/controllers.js");
 
@@ -32,14 +35,17 @@ function ignore() { }
 
 // Utility to make it easier to setup and disconnect cleanly.
 function setupHandler(event, handler) {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.setupHandler");
     event.connect(handler);
     Script.scriptEnding.connect(function () {
         event.disconnect(handler);
     });
+    Script.endProfileRange("controllerScripts.handControllerPointer.setupHandler");
 }
 
 // If some capability is not available until expiration milliseconds after the last update.
 function TimeLock(expiration) {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.TimeLock");
     var last = 0;
     this.update = function (optionalNow) {
         last = optionalNow || Date.now();
@@ -47,11 +53,13 @@ function TimeLock(expiration) {
     this.expired = function (optionalNow) {
         return ((optionalNow || Date.now()) - last) > expiration;
     };
+    Script.endProfileRange("controllerScripts.handControllerPointer.TimeLock");
 }
 
 var handControllerLockOut = new TimeLock(2000);
 
 function Trigger(label) {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.Trigger");
     // This part is copied and adapted from handControllerGrab.js. Maybe we should refactor this.
     var that = this;
     that.label = label;
@@ -84,6 +92,7 @@ function Trigger(label) {
     // This part is not from handControllerGrab.js
     that.state = null; // tri-state: falsey, 'partial', 'full'
     that.update = function () { // update state, called from an update function
+        Script.beginProfileRange("controllerScripts.handControllerPointer.Trigger.update");
         var state = that.state;
         that.updateSmoothedTrigger();
 
@@ -99,6 +108,7 @@ function Trigger(label) {
             state = 'partial';
         }
         that.state = state;
+        Script.endProfileRange("controllerScripts.handControllerPointer.Trigger.update");
     };
     // Answer a controller source function (answering either 0.0 or 1.0).
     that.partial = function () {
@@ -107,6 +117,7 @@ function Trigger(label) {
     that.full = function () {
         return (that.state === 'full') ? 1.0 : 0.0;
     };
+    Script.endProfileRange("controllerScripts.handControllerPointer.Trigger");
 }
 
 // VERTICAL FIELD OF VIEW ---------
@@ -335,18 +346,22 @@ function hudReticleDistance() { // 3d distance from camera to the reticle positi
 }
 
 function maybeAdjustReticleDepth() {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.maybeAdjustReticleDepth");
     if (HMD.active) { // set depth
         if (isPointingAtOverlay()) {
             Reticle.depth = hudReticleDistance();
         }
     }
+    Script.endProfileRange("controllerScripts.handControllerPointer.maybeAdjustReticleDepth");
 }
 var ADJUST_RETICLE_DEPTH_INTERVAL = 50; // 20hz
 Script.setInterval(maybeAdjustReticleDepth,ADJUST_RETICLE_DEPTH_INTERVAL);
 
 function onMouseMove() {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.onMouseMove");
     // Display cursor at correct depth (as in depthReticle.js), and updateMouseActivity.
     if (ignoreMouseActivity()) {
+        Script.endProfileRange("controllerScripts.handControllerPointer.onMouseMove");
         return;
     }
 
@@ -360,9 +375,12 @@ function onMouseMove() {
         }
     }
     updateMouseActivity(); // After the above, just in case the depth movement is awkward when becoming visible.
+    Script.endProfileRange("controllerScripts.handControllerPointer.onMouseMove");
 }
 function onMouseClick() {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.onMouseClick");
     updateMouseActivity(true);
+    Script.endProfileRange("controllerScripts.handControllerPointer.onMouseClick");
 }
 setupHandler(Controller.mouseMoveEvent, onMouseMove);
 setupHandler(Controller.mousePressEvent, onMouseClick);

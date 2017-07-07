@@ -3096,6 +3096,7 @@ function MyController(hand) {
          * is called correctly, as these just freshly created entity may not have completely initialized.
         */
         var grabEquipCheck = function () {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.grabEquipCheck");
             if (_this.state == STATE_NEAR_GRABBING) {
                 _this.callEntityMethodOnGrabbed("startNearGrab");
             } else { // this.state == STATE_HOLD
@@ -3115,6 +3116,7 @@ function MyController(hand) {
             _this.currentAngularVelocity = ZERO_VEC;
 
             _this.prevDropDetected = false;
+            Script.endProfileRange("controllerScripts.handControllerGrab.grabEquipCheck");
         };
 
         if (isClone) {
@@ -3996,6 +3998,7 @@ Messages.subscribe('Hifi-Object-Manipulation');
 Messages.subscribe('Hifi-Hand-Drop');
 
 var handleHandMessages = function(channel, message, sender) {
+    Script.beginProfileRange("controllerScripts.handControllerGrab.handleHandMessages");
     var data;
     if (sender === MyAvatar.sessionUUID) {
         if (channel === 'Hifi-Hand-Disabler') {
@@ -4090,6 +4093,8 @@ var handleHandMessages = function(channel, message, sender) {
             }
         }
     }
+
+    Script.endProfileRange("controllerScripts.handControllerGrab.handleHandMessages");
 };
 
 Messages.messageReceived.connect(handleHandMessages);
@@ -4162,11 +4167,13 @@ var updateWrapper = function () {
 
 Script.setTimeout(updateWrapper, UPDATE_SLEEP_MS);
 function cleanup() {
+    Script.beginProfileRange("controllerScripts.handControllerGrab.cleanup");
     Menu.removeMenuItem("Developer", "Show Grab Sphere");
     rightController.cleanup();
     leftController.cleanup();
     Controller.disableMapping(MAPPING_NAME);
     Reticle.setVisible(true);
+    Script.endProfileRange("controllerScripts.handControllerGrab.cleanup");
 }
 
 Script.scriptEnding.connect(cleanup);

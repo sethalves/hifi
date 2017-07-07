@@ -194,7 +194,9 @@ ControllerDisplayManager = function() {
 var controllerDisplayManager = new ControllerDisplayManager();
 
 Script.scriptEnding.connect(function () {
+    Script.beginProfileRange("controllerScripts.controllerDisplayManager.scriptEnding");
     controllerDisplayManager.destroy();
+    Script.endProfileRange("controllerScripts.controllerDisplayManager.scriptEnding");
 });
 
 }());
