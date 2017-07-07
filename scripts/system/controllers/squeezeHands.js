@@ -39,18 +39,29 @@ var isLeftThumbRaised = false;
 var isRightThumbRaised = false;
 
 function clamp(val, min, max) {
-    return Math.min(Math.max(val, min), max);
+    Script.beginProfileRange("controllerScripts.squeezeHands.clamp");
+    var result = Math.min(Math.max(val, min), max);
+    Script.endProfileRange("controllerScripts.squeezeHands.clamp");
+    return result;
 }
 
 function normalizeControllerValue(val) {
-    return clamp((val - CONTROLLER_DEAD_SPOT) / (1 - CONTROLLER_DEAD_SPOT), 0, 1);
+    Script.beginProfileRange("controllerScripts.squeezeHands.normalizeControllerValue");
+    var result = clamp((val - CONTROLLER_DEAD_SPOT) / (1 - CONTROLLER_DEAD_SPOT), 0, 1);
+    Script.endProfileRange("controllerScripts.squeezeHands.normalizeControllerValue");
+    return result;
 }
 
 function lerp(a, b, alpha) {
-    return a * (1 - alpha) + b * alpha;
+    Script.beginProfileRange("controllerScripts.squeezeHands.lerp");
+    var result = a * (1 - alpha) + b * alpha;
+    Script.endProfileRange("controllerScripts.squeezeHands.lerp");
+    return result;
 }
 
 function init() {
+    Script.beginProfileRange("controllerScripts.squeezeHands.init");
+
     Script.update.connect(update);
     animStateHandlerID = MyAvatar.addAnimationStateHandler(
         animStateHandler,
@@ -63,10 +74,13 @@ function init() {
     );
     Messages.subscribe(HIFI_POINT_INDEX_MESSAGE_CHANNEL);
     Messages.messageReceived.connect(handleMessages);
+
+    Script.endProfileRange("controllerScripts.squeezeHands.init");
 }
 
 function animStateHandler(props) {
-    return {
+    Script.beginProfileRange("controllerScripts.squeezeHands.animStateHandler");
+    var result = {
         leftHandOverlayAlpha: leftHandOverlayAlpha,
         leftHandGraspAlpha: lastLeftTrigger,
         rightHandOverlayAlpha: rightHandOverlayAlpha,
@@ -82,9 +96,12 @@ function animStateHandler(props) {
         isRightThumbRaise: !isRightIndexPointing && isRightThumbRaised,
         isRightIndexPointAndThumbRaise: isRightIndexPointing && isRightThumbRaised
     };
+    Script.endProfileRange("controllerScripts.squeezeHands.animStateHandler");
+    return result;
 }
 
 function update(dt) {
+    Script.beginProfileRange("controllerScripts.squeezeHands.update");
     var leftTrigger = clamp(Controller.getValue(Controller.Standard.LT) + Controller.getValue(Controller.Standard.LeftGrip), 0, 1);
     var rightTrigger = clamp(Controller.getValue(Controller.Standard.RT) + Controller.getValue(Controller.Standard.RightGrip), 0, 1);
 
@@ -114,9 +131,13 @@ function update(dt) {
     isRightIndexPointing = (rightIndexPointingOverride > 0) || (rightHandPose.valid && Controller.getValue(Controller.Standard.RightIndexPoint) === 1);
     isLeftThumbRaised = (leftThumbRaisedOverride > 0) || (leftHandPose.valid && Controller.getValue(Controller.Standard.LeftThumbUp) === 1);
     isRightThumbRaised = (rightThumbRaisedOverride > 0) || (rightHandPose.valid && Controller.getValue(Controller.Standard.RightThumbUp) === 1);
+
+    Script.endProfileRange("controllerScripts.squeezeHands.update");
 }
 
 function handleMessages(channel, message, sender) {
+    Script.beginProfileRange("controllerScripts.squeezeHands.handleMessages");
+
     if (sender === MyAvatar.sessionUUID && channel === HIFI_POINT_INDEX_MESSAGE_CHANNEL) {
         var data = JSON.parse(message);
 
@@ -167,13 +188,17 @@ function handleMessages(channel, message, sender) {
             }
         }
     }
+
+    Script.endProfileRange("controllerScripts.squeezeHands.handleMessages");
 }
 
 function shutdown() {
+    Script.beginProfileRange("controllerScripts.squeezeHands.shutdown");
     Script.update.disconnect(update);
     MyAvatar.removeAnimationStateHandler(animStateHandlerID);
     Messages.unsubscribe(HIFI_POINT_INDEX_MESSAGE_CHANNEL);
     Messages.messageReceived.disconnect(handleMessages);
+    Script.endProfileRange("controllerScripts.squeezeHands.shutdown");
 }
 
 Script.scriptEnding.connect(shutdown);

@@ -510,6 +510,8 @@ function setColoredLaser() { // answer trigger state if lasers supported, else f
 // MAIN OPERATIONS -----------
 //
 function update() {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.udpate");
+
     var now = Date.now();
     function off() {
         expireMouseCursor();
@@ -572,18 +574,24 @@ function update() {
     // We are not pointing at a HUD element (but it could be a 3d overlay).
     clearSystemLaser();
     Reticle.visible = false;
+
+    Script.endProfileRange("controllerScripts.handControllerPointer.update");
 }
 
 // Check periodically for changes to setup.
 var SETTINGS_CHANGE_RECHECK_INTERVAL = 10 * 1000; // 10 seconds
 function checkSettings() {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.checkSettings");
     updateFieldOfView();
     updateRecommendedArea();
+    Script.endProfileRange("controllerScripts.handControllerPointer.checkSettings");
 }
 checkSettings();
 
 // Enable/disable pointer.
 function handleMessages(channel, message, sender) {
+    Script.beginProfileRange("controllerScripts.handControllerPointer.handleMessages");
+
     if (sender === MyAvatar.sessionUUID && channel === HIFI_POINTER_DISABLE_MESSAGE_CHANNEL) {
         var data = JSON.parse(message);
         if (data.pointerEnabled !== undefined) {
@@ -591,6 +599,8 @@ function handleMessages(channel, message, sender) {
             isPointerEnabled = data.pointerEnabled;
         }
     }
+
+    Script.endProfileRange("controllerScripts.handControllerPointer.handleMessages");
 }
 
 Messages.subscribe(HIFI_POINTER_DISABLE_MESSAGE_CHANNEL);

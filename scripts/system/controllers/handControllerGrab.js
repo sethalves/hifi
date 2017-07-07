@@ -4108,6 +4108,7 @@ var updateTotalWork = 0;
 var UPDATE_PERFORMANCE_DEBUGGING = false;
 
 var updateWrapper = function () {
+    Script.beginProfileRange("controllerScripts.handControllerGrab.updateWrapper");
 
     intervalCount++;
     var thisInterval = Date.now();
@@ -4156,6 +4157,7 @@ var updateWrapper = function () {
     }
 
     Script.setTimeout(updateWrapper, UPDATE_SLEEP_MS);
+    Script.endProfileRange("controllerScripts.handControllerGrab.updateWrapper");
 };
 
 Script.setTimeout(updateWrapper, UPDATE_SLEEP_MS);

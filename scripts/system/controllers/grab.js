@@ -317,16 +317,21 @@ Grabber.prototype.computeNewGrabPlane = function() {
 };
 
 Grabber.prototype.pressEvent = function(event) {
+    Script.beginProfileRange("controllerScripts.grab.pressEvent");
+
     if (isInEditMode()) {
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
     if (event.isLeftButton !== true || event.isRightButton === true || event.isMiddleButton === true) {
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
     if (Overlays.getOverlayAtPoint(Reticle.position) > 0) {
         // the mouse is pointing at an overlay; don't look for entities underneath the overlay.
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
@@ -334,23 +339,27 @@ Grabber.prototype.pressEvent = function(event) {
 
     var overlayResult = Overlays.findRayIntersection(pickRay, true, [HMD.tabletID, HMD.tabletScreenID, HMD.homeButtonID]);
     if (overlayResult.intersects) {
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
     var pickResults = Entities.findRayIntersection(pickRay, true); // accurate picking
     if (!pickResults.intersects) {
         // didn't click on anything
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
     var isDynamic = Entities.getEntityProperties(pickResults.entityID, "dynamic").dynamic;
     if (!isDynamic) {
         // only grab dynamic objects
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
     var grabbableData = getEntityCustomData(GRABBABLE_DATA_KEY, pickResults.entityID, DEFAULT_GRABBABLE_DATA);
     if (grabbableData.grabbable === false) {
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
@@ -367,6 +376,7 @@ Grabber.prototype.pressEvent = function(event) {
     this.maxDistance = objectBoundingDiameter / MAX_SOLID_ANGLE;
     if (Vec3.distance(this.startPosition, cameraPosition) > this.maxDistance) {
         // don't allow grabs of things far away
+        Script.endProfileRange("controllerScripts.grab.pressEvent");
         return;
     }
 
@@ -408,10 +418,15 @@ Grabber.prototype.pressEvent = function(event) {
 
     // TODO: play sounds again when we aren't leaking AudioInjector threads
     //Audio.playSound(grabSound, { position: entityProperties.position, volume: VOLUME });
+
+    Script.endProfileRange("controllerScripts.grab.pressEvent");
 };
 
 Grabber.prototype.releaseEvent = function(event) {
+    Script.beginProfileRange("controllerScripts.grab.releaseEvent");
+
     if (event.isLeftButton!==true ||event.isRightButton===true || event.isMiddleButton===true) {
+        Script.endProfileRange("controllerScripts.grab.releaseEvent");
         return;
     }
 
@@ -437,10 +452,15 @@ Grabber.prototype.releaseEvent = function(event) {
         // TODO: play sounds again when we aren't leaking AudioInjector threads
         //Audio.playSound(releaseSound, { position: entityProperties.position, volume: VOLUME });
     }
+
+    Script.endProfileRange("controllerScripts.grab.releaseEvent");
 };
 
 Grabber.prototype.moveEvent = function(event) {
+    Script.beginProfileRange("controllerScripts.grab.moveEvent");
+
     if (!this.isGrabbing) {
+        Script.endProfileRange("controllerScripts.grab.moveEvent");
         return;
     }
     mouse.updateDrag(event);
@@ -448,6 +468,7 @@ Grabber.prototype.moveEvent = function(event) {
     // see if something added/restored gravity
     var entityProperties = Entities.getEntityProperties(this.entityID);
     if (!entityProperties || !entityProperties.gravity) {
+        Script.endProfileRange("controllerScripts.grab.moveEvent");
         return;
     }
 
@@ -538,6 +559,8 @@ Grabber.prototype.moveEvent = function(event) {
     } else {
         Entities.updateAction(this.entityID, this.actionID, actionArgs);
     }
+
+    Script.endProfileRange("controllerScripts.grab.moveEvent");
 };
 
 Grabber.prototype.keyReleaseEvent = function(event) {
@@ -563,23 +586,33 @@ Grabber.prototype.keyPressEvent = function(event) {
 var grabber = new Grabber();
 
 function pressEvent(event) {
+    Script.beginProfileRange("controllerScripts.grab.pressEvent");
     grabber.pressEvent(event);
+    Script.endProfileRange("controllerScripts.grab.pressEvent");
 }
 
 function moveEvent(event) {
+    Script.beginProfileRange("controllerScripts.grab.moveEvent");
     grabber.moveEvent(event);
+    Script.endProfileRange("controllerScripts.grab.moveEvent");
 }
 
 function releaseEvent(event) {
+    Script.beginProfileRange("controllerScripts.grab.releaseEvent");
     grabber.releaseEvent(event);
+    Script.endProfileRange("controllerScripts.grab.releaseEvent");
 }
 
 function keyPressEvent(event) {
+    Script.beginProfileRange("controllerScripts.grab.keyPressEvent");
     grabber.keyPressEvent(event);
+    Script.endProfileRange("controllerScripts.grab.keyPressEvent");
 }
 
 function keyReleaseEvent(event) {
+    Script.beginProfileRange("controllerScripts.grab.keyReleaseEvent");
     grabber.keyReleaseEvent(event);
+    Script.endProfileRange("controllerScripts.grab.keyReleaseEvent");
 }
 
 Controller.mousePressEvent.connect(pressEvent);

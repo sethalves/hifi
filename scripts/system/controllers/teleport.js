@@ -71,6 +71,7 @@ function ThumbPad(hand) {
 }
 
 function Trigger(hand) {
+    Script.beginProfileRange("controllerScripts.teleport.Trigger");
     this.hand = hand;
     var _this = this;
 
@@ -82,6 +83,7 @@ function Trigger(hand) {
         var down = _this.buttonValue === 1 ? 1.0 : 0.0;
         return down;
     };
+    Script.endProfileRange("controllerScripts.teleport.Trigger");
 }
 
 var coolInTimeout = null;
@@ -136,14 +138,19 @@ function Teleporter() {
     });
 
     this.enableMappings = function() {
+        Script.beginProfileRange("controllerScripts.teleport.enableMappings");
         Controller.enableMapping(this.teleporterMappingInternalName);
+        Script.endProfileRange("controllerScripts.teleport.enableMappings");
     };
 
     this.disableMappings = function() {
+        Script.beginProfileRange("controllerScripts.teleport.disableMappings");
         Controller.disableMapping(teleporter.teleporterMappingInternalName);
+        Script.endProfileRange("controllerScripts.teleport.disableMappings");
     };
 
     this.cleanup = function() {
+        Script.beginProfileRange("controllerScripts.teleport.cleanup");
         this.disableMappings();
 
         Overlays.deleteOverlay(this.targetOverlay);
@@ -159,6 +166,8 @@ function Teleporter() {
         if (this.updateConnected === true) {
             Script.update.disconnect(this, this.update);
         }
+
+        Script.endProfileRange("controllerScripts.teleport.cleanup");
     };
 
     this.enterTeleportMode = function(hand) {
@@ -168,6 +177,8 @@ function Teleporter() {
         if (isDisabled === 'both' || isDisabled === hand) {
             return;
         }
+
+        Script.beginProfileRange("controllerScripts.teleport.enterTeleportMode");
 
         inTeleportMode = true;
 
@@ -186,9 +197,13 @@ function Teleporter() {
         this.enableMappings();
         Script.update.connect(this, this.update);
         this.updateConnected = true;
+
+        Script.endProfileRange("controllerScripts.teleport.enterTeleportMode");
     };
 
     this.exitTeleportMode = function(value) {
+        Script.beginProfileRange("controllerScripts.teleport.exitTeleportMode");
+
         if (this.updateConnected === true) {
             Script.update.disconnect(this, this.update);
         }
@@ -201,21 +216,28 @@ function Teleporter() {
         this.updateConnected = null;
         this.state = TELEPORTER_STATES.IDLE;
         inTeleportMode = false;
+
+        Script.endProfileRange("controllerScripts.teleport.exitTeleportMode");
     };
 
     this.deleteOverlayBeams = function() {
+        Script.beginProfileRange("controllerScripts.teleport.deleteOverlayBeams");
         for (var key in this.overlayLines) {
             if (this.overlayLines[key] !== null) {
                 Overlays.deleteOverlay(this.overlayLines[key]);
                 this.overlayLines[key] = null;
             }
         }
+
+        Script.endProfileRange("controllerScripts.teleport.deleteOverlayBeams");
     };
 
     this.update = function() {
         if (_this.state === TELEPORTER_STATES.IDLE) {
             return;
         }
+
+        Script.beginProfileRange("controllerScripts.teleport.update");
 
         // Get current hand pose information so that we can get the direction of the teleport beam
         var pose = Controller.getPoseValue(handInfo[_this.activeHand].controllerInput);
@@ -306,9 +328,13 @@ function Teleporter() {
                 MyAvatar.centerBody();
             }
         }
+
+        Script.endProfileRange("controllerScripts.teleport.update");
     };
 
     this.updateLineOverlay = function(hand, closePoint, farPoint, color) {
+        Script.beginProfileRange("controllerScripts.teleport.updateLineOverlay");
+
         if (this.overlayLines[hand] === null) {
             var lineProperties = {
                 start: closePoint,
@@ -331,21 +357,29 @@ function Teleporter() {
                 color: color
             });
         }
+        Script.endProfileRange("controllerScripts.teleport.updateLineOverlay");
     };
 
     this.hideCancelOverlay = function() {
+        Script.beginProfileRange("controllerScripts.teleport.hideCancelOverlay");
         Overlays.editOverlay(this.cancelOverlay, { visible: false });
+        Script.endProfileRange("controllerScripts.teleport.hideCancelOverlay");
     };
 
     this.hideTargetOverlay = function() {
+        Script.beginProfileRange("controllerScripts.teleport.hideTargetOverlay");
         Overlays.editOverlay(this.targetOverlay, { visible: false });
+        Script.endProfileRange("controllerScripts.teleport.hideTargetOverlay");
     };
 
     this.hideSeatOverlay = function() {
+        Script.beginProfileRange("controllerScripts.teleport.hideSeatOverlay");
         Overlays.editOverlay(this.seatOverlay, { visible: false });
+        Script.endProfileRange("controllerScripts.teleport.hideSeatOverlay");
     };
 
     this.updateDestinationOverlay = function(overlayID, intersection) {
+        Script.beginProfileRange("controllerScripts.teleport.updateDestinationOverlay");
         var rotation = Quat.lookAt(intersection.intersection, MyAvatar.position, Vec3.UP);
         var euler = Quat.safeEulerAngles(rotation);
         var position = {
@@ -361,7 +395,7 @@ function Teleporter() {
             position: position,
             rotation: towardUs
         });
-
+        Script.endProfileRange("controllerScripts.teleport.updateDestinationOverlay");
     };
 }
 
@@ -369,6 +403,7 @@ function Teleporter() {
 var FOOT_JOINT_NAMES = ["RightToe_End", "RightToeBase", "RightFoot"];
 var DEFAULT_ROOT_TO_FOOT_OFFSET = 0.5;
 function getAvatarFootOffset() {
+    Script.beginProfileRange("controllerScripts.teleport.getAvatarFootOffset");
 
     // find a valid foot jointIndex
     var footJointIndex = -1;
@@ -381,8 +416,10 @@ function getAvatarFootOffset() {
     }
     if (footJointIndex != -1) {
         // default vertical offset from foot to avatar root.
+        Script.endProfileRange("controllerScripts.teleport.getAvatarFootOffset");
         return -MyAvatar.getAbsoluteDefaultJointTranslationInObjectFrame(footJointIndex).y;
     } else {
+        Script.endProfileRange("controllerScripts.teleport.getAvatarFootOffset");
         return DEFAULT_ROOT_TO_FOOT_OFFSET * MyAvatar.scale;
     }
 }
@@ -397,19 +434,26 @@ var mappingName, teleportMapping;
 var TELEPORT_DELAY = 0;
 
 function isMoving() {
+    Script.beginProfileRange("controllerScripts.teleport.isMoving");
+
     var LY = Controller.getValue(Controller.Standard.LY);
     var LX = Controller.getValue(Controller.Standard.LX);
     if (LY !== 0 || LX !== 0) {
+        Script.endProfileRange("controllerScripts.teleport.isMoving");
         return true;
     } else {
+        Script.endProfileRange("controllerScripts.teleport.isMoving");
         return false;
     }
 }
 
 function parseJSON(json) {
+    Script.beginProfileRange("controllerScripts.teleport.parseJSON");
     try {
+        Script.endProfileRange("controllerScripts.teleport.parseJSON");
         return JSON.parse(json);
     } catch (e) {
+        Script.endProfileRange("controllerScripts.teleport.parseJSON");
         return undefined;
     }
 }
@@ -419,7 +463,10 @@ function parseJSON(json) {
 // you can't teleport there.
 var MAX_ANGLE_FROM_UP_TO_TELEPORT = 70;
 function getTeleportTargetType(intersection) {
+    Script.beginProfileRange("controllerScripts.teleport.getTeleportTargetType");
+
     if (!intersection.intersects) {
+        Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
         return TARGET.NONE;
     }
 
@@ -428,13 +475,16 @@ function getTeleportTargetType(intersection) {
     if (data !== undefined && data.seat !== undefined) {
         var avatarUuid = Uuid.fromString(data.seat.user);
         if (Uuid.isNull(avatarUuid) || !AvatarList.getAvatar(avatarUuid)) {
+            Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
             return TARGET.SEAT;
         } else {
+            Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
             return TARGET.INVALID;
         }
     }
 
     if (!props.visible) {
+        Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
         return TARGET.INVISIBLE;
     }
 
@@ -445,13 +495,17 @@ function getTeleportTargetType(intersection) {
     if (angleUp < (90 - MAX_ANGLE_FROM_UP_TO_TELEPORT) ||
             angleUp > (90 + MAX_ANGLE_FROM_UP_TO_TELEPORT) ||
             Vec3.distance(MyAvatar.position, intersection.intersection) <= TELEPORT_CANCEL_RANGE) {
+        Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
         return TARGET.INVALID;
     } else {
+        Script.endProfileRange("controllerScripts.teleport.getTeleportTargetType");
         return TARGET.SURFACE;
     }
 }
 
 function registerMappings() {
+    Script.beginProfileRange("controllerScripts.teleport.registerMappings");
+
     mappingName = 'Hifi-Teleporter-Dev-' + Math.random();
     teleportMapping = Controller.newMapping(mappingName);
     teleportMapping.from(Controller.Standard.RT).peek().to(rightTrigger.buttonPress);
@@ -489,6 +543,7 @@ function registerMappings() {
             teleporter.enterTeleportMode('right');
             return;
         });
+    Script.endProfileRange("controllerScripts.teleport.registerMappings");
 }
 
 registerMappings();
@@ -505,6 +560,7 @@ Script.scriptEnding.connect(cleanup);
 
 var isDisabled = false;
 var handleTeleportMessages = function(channel, message, sender) {
+    Script.beginProfileRange("controllerScripts.teleport.handleTeleportMessages");
     if (sender === MyAvatar.sessionUUID) {
         if (channel === 'Hifi-Teleport-Disabler') {
             if (message === 'both') {
@@ -528,6 +584,7 @@ var handleTeleportMessages = function(channel, message, sender) {
             }
         }
     }
+    Script.endProfileRange("controllerScripts.teleport.handleTeleportMessages");
 };
 
 Messages.subscribe('Hifi-Teleport-Disabler');

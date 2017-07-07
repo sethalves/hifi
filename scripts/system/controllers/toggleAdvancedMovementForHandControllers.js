@@ -30,26 +30,31 @@ if (previousSetting === true) {
 }
 
 function addAdvancedMovementItemToSettingsMenu() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.addAdvancedMovementItemToSettingsMenu");
     Menu.addMenuItem({
         menuName: "Settings",
         menuItemName: MENU_ITEM_NAME,
         isCheckable: true,
         isChecked: previousSetting
     });
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.addAdvancedMovementItemToSettingsMenu");
 }
 
 function rotate180() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.rotate180");
     var newOrientation = Quat.multiply(MyAvatar.orientation, Quat.angleAxis(180, {
         x: 0,
         y: 1,
         z: 0
     }))
     MyAvatar.orientation = newOrientation
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.rotate180");
 }
 
 var inFlipTurn = false;
 
 function registerBasicMapping() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.registerBasicMapping");
     mappingName = 'Hifi-AdvancedMovement-Dev-' + Math.random();
     basicMapping = Controller.newMapping(mappingName);
     basicMapping.from(Controller.Standard.LY).to(function(value) {
@@ -88,24 +93,32 @@ function registerBasicMapping() {
         }
         return;
     })
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.registerBasicMapping");
 }
 
 
 function enableMappings() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.enableMappings");
     Controller.enableMapping(mappingName);
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.enableMappings");
 }
 
 function disableMappings() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.disableMappings");
     Controller.disableMapping(mappingName);
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.disableMappings");
 }
 
 function scriptEnding() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.scriptEnding");
     Menu.removeMenuItem("Settings", MENU_ITEM_NAME);
     disableMappings();
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.scriptEnding");
 }
 
 
 function menuItemEvent(menuItem) {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.menuItemEvent");
     if (menuItem == MENU_ITEM_NAME) {
         isChecked = Menu.isOptionChecked(MENU_ITEM_NAME);
         if (isChecked === true) {
@@ -116,6 +129,7 @@ function menuItemEvent(menuItem) {
             enableMappings();
         }
     }
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.menuItemEvent");
 }
 
 addAdvancedMovementItemToSettingsMenu();
@@ -127,15 +141,18 @@ Menu.menuItemEvent.connect(menuItemEvent);
 registerBasicMapping();
 
 Script.setTimeout(function() {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.timeout");
     if (previousSetting === true) {
         disableMappings();
     } else {
         enableMappings();
     }
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.tgimeout");
 }, 100)
 
 
 HMD.displayModeChanged.connect(function(isHMDMode) {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.displayModeChanged");
     if (isHMDMode) {
         if (Controller.Hardware.Vive !== undefined || Controller.Hardware.OculusTouch !== undefined) {
             if (isChecked === true) {
@@ -146,11 +163,13 @@ HMD.displayModeChanged.connect(function(isHMDMode) {
 
         }
     }
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.displayModeChanged");
 });
 
 
 var HIFI_ADVANCED_MOVEMENT_DISABLER_CHANNEL = 'Hifi-Advanced-Movement-Disabler';
 function handleMessage(channel, message, sender) {
+    Script.beginProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.handleMessage");
     if (channel == HIFI_ADVANCED_MOVEMENT_DISABLER_CHANNEL) {
         if (message == 'disable') {
             isDisabled = true;
@@ -158,6 +177,7 @@ function handleMessage(channel, message, sender) {
             isDisabled = false;
         }
     }
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.handleMessage");
 }
 
 Messages.subscribe(HIFI_ADVANCED_MOVEMENT_DISABLER_CHANNEL);

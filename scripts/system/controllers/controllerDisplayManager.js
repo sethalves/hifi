@@ -29,18 +29,24 @@ ControllerDisplayManager = function() {
     var controllerCheckerIntervalID = null;
 
     this.setLeftVisible = function(visible) {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.setLeftVisible");
         if (controllerLeft) {
             controllerLeft.setVisible(visible);
         }
+        Script.endProfileRange("controllerScripts.squeezeHands.setLeftVisible");
     };
 
     this.setRightVisible = function(visible) {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.setRightVisible");
         if (controllerRight) {
             controllerRight.setVisible(visible);
         }
+        Script.endProfileRange("controllerScripts.squeezeHands.setRightVisible");
     };
 
     function updateControllers() {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.updateControllers");
+
         if (HMD.active && HMD.shouldShowHandControllers()) {
             var leftConfig = null;
             var rightConfig = null;
@@ -84,11 +90,14 @@ ControllerDisplayManager = function() {
             }
             self.deleteControllerDisplays();
         }
+        Script.endProfileRange("controllerScripts.squeezeHands.updateControllers");
     }
 
     var handleMessages = function(channel, message, sender) {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.handleMessages");
         var i, data, name, visible;
         if (!controllerLeft && !controllerRight) {
+            Script.endProfileRange("controllerScripts.squeezeHands.handleMessages");
             return;
         }
 
@@ -145,11 +154,13 @@ ControllerDisplayManager = function() {
                 }
             }
         }
+        Script.endProfileRange("controllerScripts.squeezeHands.handleMessages");
     };
 
     Messages.messageReceived.connect(handleMessages);
 
     this.deleteControllerDisplays = function() {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.deleteControllerDisplays");
         if (controllerLeft) {
             deleteControllerDisplay(controllerLeft);
             controllerLeft = null;
@@ -158,15 +169,20 @@ ControllerDisplayManager = function() {
             deleteControllerDisplay(controllerRight);
             controllerRight = null;
         }
+        Script.endProfileRange("controllerScripts.squeezeHands.deleteControllerDisplays");
     };
 
     this.destroy = function() {
+        Script.beginProfileRange("controllerScripts.controllerDisplayManager.destroy");
+
         Messages.messageReceived.disconnect(handleMessages);
 
         HMD.displayModeChanged.disconnect(updateControllers);
         HMD.shouldShowHandControllersChanged.disconnect(updateControllers);
 
         self.deleteControllerDisplays();
+
+        Script.endProfileRange("controllerScripts.squeezeHands.destroy");
     };
 
     HMD.displayModeChanged.connect(updateControllers);
