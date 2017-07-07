@@ -1766,6 +1766,7 @@ function MyController(hand) {
             return;
         }
 
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.a");
         var controllerLocation = getControllerWorldLocation(this.handToController(), true);
         var worldHandPosition = controllerLocation.position;
 
@@ -1781,7 +1782,9 @@ function MyController(hand) {
         if (potentialEquipHotspot) {
             equipHotspotBuddy.highlightHotspot(potentialEquipHotspot);
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.a");
 
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.b");
         // when the grab-point enters a grabable entity, give a haptic pulse
         candidateEntities = Entities.findEntities(worldHandPosition, NEAR_GRAB_RADIUS);
         var grabbableEntities = candidateEntities.filter(function(entity) {
@@ -1809,7 +1812,9 @@ function MyController(hand) {
             this.grabPointIntersectsEntity = false;
             this.grabPointSphereOff();
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.b");
 
+        Script.beginProfileRange("controllerScripts.handControllerGrab.off.c");
         this.processStylus();
 
         if (isInEditMode() && !this.isNearStylusTarget && HMD.isHandControllerAvailable()) {
@@ -1820,6 +1825,8 @@ function MyController(hand) {
         } else {
             this.searchIndicatorOff();
         }
+        Script.endProfileRange("controllerScripts.handControllerGrab.off.c");
+
         Script.endProfileRange("controllerScripts.handControllerGrab.off");
     };
 
