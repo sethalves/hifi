@@ -147,7 +147,7 @@ Script.setTimeout(function() {
     } else {
         enableMappings();
     }
-    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.tgimeout");
+    Script.endProfileRange("controllerScripts.toggleAdvancedMovementForHandControllers.timeout");
 }, 100)
 
 

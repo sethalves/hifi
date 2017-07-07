@@ -510,7 +510,7 @@ function setColoredLaser() { // answer trigger state if lasers supported, else f
 // MAIN OPERATIONS -----------
 //
 function update() {
-    Script.beginProfileRange("controllerScripts.handControllerPointer.udpate");
+    Script.beginProfileRange("controllerScripts.handControllerPointer.update");
 
     var now = Date.now();
     function off() {

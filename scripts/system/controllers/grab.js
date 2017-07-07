@@ -457,10 +457,10 @@ Grabber.prototype.releaseEvent = function(event) {
 };
 
 Grabber.prototype.moveEvent = function(event) {
-    Script.beginProfileRange("controllerScripts.grab.moveEvent");
+    Script.beginProfileRange("controllerScripts.grab.ptMoveEvent");
 
     if (!this.isGrabbing) {
-        Script.endProfileRange("controllerScripts.grab.moveEvent");
+        Script.endProfileRange("controllerScripts.grab.ptMoveEvent");
         return;
     }
     mouse.updateDrag(event);
@@ -468,7 +468,7 @@ Grabber.prototype.moveEvent = function(event) {
     // see if something added/restored gravity
     var entityProperties = Entities.getEntityProperties(this.entityID);
     if (!entityProperties || !entityProperties.gravity) {
-        Script.endProfileRange("controllerScripts.grab.moveEvent");
+        Script.endProfileRange("controllerScripts.grab.ptMoveEvent");
         return;
     }
 
@@ -560,7 +560,7 @@ Grabber.prototype.moveEvent = function(event) {
         Entities.updateAction(this.entityID, this.actionID, actionArgs);
     }
 
-    Script.endProfileRange("controllerScripts.grab.moveEvent");
+    Script.endProfileRange("controllerScripts.grab.ptMoveEvent");
 };
 
 Grabber.prototype.keyReleaseEvent = function(event) {
