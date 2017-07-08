@@ -353,20 +353,21 @@ function projectOntoEntityXYPlane(entityID, worldPos) {
 }
 
 function projectOntoOverlayXYPlane(overlayID, worldPos) {
-    var position = Overlays.getProperty(overlayID, "position");
-    var rotation = Overlays.getProperty(overlayID, "rotation");
+    var overlayProps = Overlays.getProperties(overlayID, ["position", "rotation", "dpi", "resolution", "dimensions"]);
+    var position = overlayProps.position;
+    var rotation = overlayProps.rotation;
     var dimensions;
 
-    var dpi = Overlays.getProperty(overlayID, "dpi");
+    var dpi = overlayProps.dpi;
     if (dpi) {
         // Calculate physical dimensions for web3d overlay from resolution and dpi; "dimensions" property is used as a scale.
-        var resolution = Overlays.getProperty(overlayID, "resolution");
+        var resolution = overlayProps.resolution;
         resolution.z = 1;  // Circumvent divide-by-zero.
-        var scale = Overlays.getProperty(overlayID, "dimensions");
+        var scale = overlayProps.dimensions;
         scale.z = 0.01;    // overlay dimensions are 2D, not 3D.
         dimensions = Vec3.multiplyVbyV(Vec3.multiply(resolution, INCHES_TO_METERS / dpi), scale);
     } else {
-        dimensions = Overlays.getProperty(overlayID, "dimensions");
+        dimensions = overlayProps.dimensions;
         dimensions.z = 0.01;    // overlay dimensions are 2D, not 3D.
     }
 
@@ -708,13 +709,15 @@ function calculateStylusTargetFromEntity(stylusTip, entityID) {
 
 // will return undefined if overlayID does not exist.
 function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
-    var overlayPosition = Overlays.getProperty(overlayID, "position");
+    var overlayProps = Overlays.getProperties(overlayID, ["position", "rotation", "dpi", "resolution", "dimensions"]);
+
+    var overlayPosition = overlayProps.position;
     if (overlayPosition === undefined) {
         return;
     }
 
     // project stylusTip onto overlay plane.
-    var overlayRotation = Overlays.getProperty(overlayID, "rotation");
+    var overlayRotation = overlayProps.rotation;
     if (overlayRotation === undefined) {
         return;
     }
@@ -725,24 +728,24 @@ function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
     // calclulate normalized position
     var invRot = Quat.inverse(overlayRotation);
     var localPos = Vec3.multiplyQbyV(invRot, Vec3.subtract(position, overlayPosition));
-    var dpi = Overlays.getProperty(overlayID, "dpi");
+    var dpi = overlayProps.dpi;
 
     var dimensions;
     if (dpi) {
         // Calculate physical dimensions for web3d overlay from resolution and dpi; "dimensions" property is used as a scale.
-        var resolution = Overlays.getProperty(overlayID, "resolution");
+        var resolution = overlayProps.resolution;
         if (resolution === undefined) {
             return;
         }
         resolution.z = 1;  // Circumvent divide-by-zero.
-        var scale = Overlays.getProperty(overlayID, "dimensions");
+        var scale = overlayProps.dimensions;
         if (scale === undefined) {
             return;
         }
         scale.z = 0.01;    // overlay dimensions are 2D, not 3D.
         dimensions = Vec3.multiplyVbyV(Vec3.multiply(resolution, INCHES_TO_METERS / dpi), scale);
     } else {
-        dimensions = Overlays.getProperty(overlayID, "dimensions");
+        dimensions = overlayProps.dimensions;
         if (dimensions === undefined) {
             return;
         }
