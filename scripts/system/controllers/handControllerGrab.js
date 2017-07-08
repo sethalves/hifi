@@ -1706,10 +1706,19 @@ function MyController(hand) {
         Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.1");
 
         // add the tabletScreen, if it is valid
-        if (HMD.tabletScreenID && HMD.tabletScreenID !== NULL_UUID && Overlays.getProperty(HMD.tabletScreenID, "visible")) {
-            stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.tabletScreenID);
-            if (stylusTarget) {
-                stylusTargets.push(stylusTarget);
+        if (HMD.tabletScreenID && HMD.tabletScreenID !== NULL_UUID) {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.11");
+            if (Overlays.getProperty(HMD.tabletScreenID, "visible")) {
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.11");
+
+                Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.12");
+                stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.tabletScreenID);
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.12");
+                if (stylusTarget) {
+                    stylusTargets.push(stylusTarget);
+                }
+            } else {
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.11");
             }
         }
 
@@ -1718,10 +1727,18 @@ function MyController(hand) {
 
 
         // add the tablet home button.
-        if (HMD.homeButtonID && HMD.homeButtonID !== NULL_UUID && Overlays.getProperty(HMD.homeButtonID, "visible")) {
-            stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.homeButtonID);
-            if (stylusTarget) {
-                stylusTargets.push(stylusTarget);
+        if (HMD.homeButtonID && HMD.homeButtonID !== NULL_UUID) {
+            Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.21");
+            if (Overlays.getProperty(HMD.homeButtonID, "visible")) {
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.21");
+                Script.beginProfileRange("controllerScripts.handControllerGrab.processStylus.b.22");
+                stylusTarget = calculateStylusTargetFromOverlay(this.stylusTip, HMD.homeButtonID);
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.22");
+                if (stylusTarget) {
+                    stylusTargets.push(stylusTarget);
+                }
+            } else {
+                Script.endProfileRange("controllerScripts.handControllerGrab.processStylus.b.21");
             }
         }
 
