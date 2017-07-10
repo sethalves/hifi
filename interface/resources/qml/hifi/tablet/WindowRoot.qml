@@ -18,7 +18,6 @@ Windows.ScrollingWindow {
     id: tabletRoot
     objectName: "tabletRoot"
     property string username: "Unknown user"
-    property var eventBridge;
 
     property var rootMenu;
     property string subMenu: ""
@@ -53,8 +52,10 @@ Windows.ScrollingWindow {
 
     // used to receive messages from interface script
     function fromScript(message) {
-        if (loader.item.hasOwnProperty("fromScript")) {
-            loader.item.fromScript(message);
+        if (loader.item !== null) {
+            if (loader.item.hasOwnProperty("fromScript")) {
+                loader.item.fromScript(message);
+            }
         }
     }
 
@@ -70,10 +71,6 @@ Windows.ScrollingWindow {
         if (typeof globalPosition !== 'undefined') {
             buttonClickSound.play(globalPosition);
         }
-    }
-
-    function toggleMicEnabled() {
-        ApplicationInterface.toggleMuteAudio();
     }
 
     function setUsername(newUsername) {
@@ -93,7 +90,7 @@ Windows.ScrollingWindow {
         // Hook up callback for clara.io download from the marketplace.
         Connections {
             id: eventBridgeConnection
-            target: null
+            target: eventBridge
             onWebEventReceived: {
                 if (message.slice(0, 17) === "CLARA.IO DOWNLOAD") {
                     ApplicationInterface.addAssetToWorldFromURL(message.slice(18));
@@ -102,10 +99,6 @@ Windows.ScrollingWindow {
         }
 
         onLoaded: {
-            if (loader.item.hasOwnProperty("eventBridge")) {
-                loader.item.eventBridge = eventBridge;
-                eventBridgeConnection.target = eventBridge
-            }
             if (loader.item.hasOwnProperty("sendToScript")) {
                 loader.item.sendToScript.connect(tabletRoot.sendToScript);
             }

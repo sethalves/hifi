@@ -44,7 +44,6 @@ Rectangle {
     property var activeTab: "nearbyTab";
     property bool currentlyEditingDisplayName: false
     property bool punctuationMode: false;
-    property var eventBridge;
 
     HifiConstants { id: hifi; }
 
@@ -129,7 +128,7 @@ Rectangle {
         pal.sendToScript({method: 'refreshNearby', params: params});
     }
 
-    Item {
+    Rectangle {
         id: palTabContainer;
         // Anchors
         anchors {
@@ -138,6 +137,7 @@ Rectangle {
             left: parent.left;
             right: parent.right;
         }
+        color: "white";
         Rectangle {
             id: tabSelectorContainer;
             // Anchors
@@ -473,6 +473,7 @@ Rectangle {
                     visible: !isCheckBox && !isButton && !isAvgAudio;
                     uuid: model ? model.sessionId : "";
                     selected: styleData.selected;
+                    isReplicated: model.isReplicated;
                     isAdmin: model && model.admin;
                     isPresent: model && model.isPresent;
                     // Size
@@ -553,6 +554,7 @@ Rectangle {
                     id: actionButton;
                     color: 2; // Red
                     visible: isButton;
+                    enabled: !nameCard.isReplicated;
                     anchors.centerIn: parent;
                     width: 32;
                     height: 32;
@@ -1043,7 +1045,6 @@ Rectangle {
         } // Keyboard
 
         HifiControls.TabletWebView {
-            eventBridge: pal.eventBridge;
             id: userInfoViewer;
             anchors {
                 top: parent.top;
@@ -1100,9 +1101,9 @@ Rectangle {
         case 'nearbyUsers':
             var data = message.params;
             var index = -1;
+            iAmAdmin = Users.canKick;
             index = findNearbySessionIndex('', data);
             if (index !== -1) {
-                iAmAdmin = Users.canKick;
                 myData = data[index];
                 data.splice(index, 1);
             } else {

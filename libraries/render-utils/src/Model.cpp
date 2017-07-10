@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "Model.h"
+
 #include <QMetaType>
 #include <QRunnable>
 #include <QThreadPool>
@@ -16,6 +18,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/norm.hpp>
 
+#include <shared/QtHelpers.h>
 #include <GeometryUtil.h>
 #include <PathUtils.h>
 #include <PerfStat.h>
@@ -24,7 +27,6 @@
 
 #include "AbstractViewStateInterface.h"
 #include "MeshPartPayload.h"
-#include "Model.h"
 
 #include "RenderUtilsLogging.h"
 #include <Trace.h>
@@ -871,14 +873,10 @@ bool Model::getRelativeDefaultJointTranslation(int jointIndex, glm::vec3& transl
     return _rig.getRelativeDefaultJointTranslation(jointIndex, translationOut);
 }
 
-bool Model::getJointCombinedRotation(int jointIndex, glm::quat& rotation) const {
-    return _rig.getJointCombinedRotation(jointIndex, rotation, _rotation);
-}
-
 QStringList Model::getJointNames() const {
     if (QThread::currentThread() != thread()) {
         QStringList result;
-        QMetaObject::invokeMethod(const_cast<Model*>(this), "getJointNames", Qt::BlockingQueuedConnection,
+        BLOCKING_INVOKE_METHOD(const_cast<Model*>(this), "getJointNames",
             Q_RETURN_ARG(QStringList, result));
         return result;
     }

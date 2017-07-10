@@ -52,15 +52,16 @@ typedef unsigned long long quint64;
 #include <JointData.h>
 #include <NLPacket.h>
 #include <Node.h>
-#include <RegisteredMetaTypes.h>
-#include <SimpleMovingAverage.h>
-#include <SpatiallyNestable.h>
 #include <NumericalConstants.h>
 #include <Packed.h>
-#include <ThreadSafeValueCache.h>
+#include <RegisteredMetaTypes.h>
 #include <SharedUtil.h>
-#include <shared/RateCounter.h>
+#include <SimpleMovingAverage.h>
+#include <SpatiallyNestable.h>
+#include <ThreadSafeValueCache.h>
 #include <ViewFrustum.h>
+#include <shared/RateCounter.h>
+#include <udt/SequenceNumber.h>
 
 #include "AABox.h"
 #include "HeadData.h"
@@ -370,6 +371,7 @@ public:
     virtual ~AvatarData();
 
     static const QUrl& defaultFullAvatarModelUrl();
+    QUrl cannonicalSkeletonModelURL(const QUrl& empty) const;
 
     virtual bool isMyAvatar() const { return false; }
 
@@ -527,22 +529,20 @@ public:
     const HeadData* getHeadData() const { return _headData; }
 
     struct Identity {
-        QUuid uuid;
         QUrl skeletonModelURL;
         QVector<AttachmentData> attachmentData;
         QString displayName;
         QString sessionDisplayName;
+        bool isReplicated;
         AvatarEntityMap avatarEntityData;
-        quint64 sequenceId;
     };
 
-    static void parseAvatarIdentityPacket(const QByteArray& data, Identity& identityOut);
-
     // identityChanged returns true if identity has changed, false otherwise.
-    // displayNameChanged returns true if displayName has changed, false otherwise.
-    void processAvatarIdentity(const Identity& identity, bool& identityChanged, bool& displayNameChanged);
+    // identityChanged returns true if identity has changed, false otherwise. Similarly for displayNameChanged and skeletonModelUrlChange.
+    void processAvatarIdentity(const QByteArray& identityData, bool& identityChanged,
+                               bool& displayNameChanged, bool& skeletonModelUrlChanged);
 
-    QByteArray identityByteArray() const;
+    QByteArray identityByteArray(bool setIsReplicated = false) const;
 
     const QUrl& getSkeletonModelURL() const { return _skeletonModelURL; }
     const QString& getDisplayName() const { return _displayName; }
@@ -629,12 +629,14 @@ public:
     static float _avatarSortCoefficientAge;
 
     bool getIdentityDataChanged() const { return _identityDataChanged; } // has the identity data changed since the last time sendIdentityPacket() was called
-    void markIdentityDataChanged() {
-        _identityDataChanged = true;
-        _identitySequenceId++;
-    }
+    void markIdentityDataChanged() { _identityDataChanged = true; }
+
+    void pushIdentitySequenceNumber() { ++_identitySequenceNumber; };
+    bool hasProcessedFirstIdentity() const { return _hasProcessedFirstIdentity; }
 
     float getDensity() const { return _density; }
+
+    bool getIsReplicated() const { return _isReplicated; }
 
 signals:
     void displayNameChanged();
@@ -673,6 +675,10 @@ protected:
     bool hasParent() const { return !getParentID().isNull(); }
     bool hasFaceTracker() const { return _headData ? _headData->_isFaceTrackerConnected : false; }
 
+    // isReplicated will be true on downstream Avatar Mixers and their clients, but false on the upstream "master"
+    // Audio Mixer that the replicated avatar is connected to.
+    bool _isReplicated{ false };
+
     glm::vec3 _handPosition;
     virtual const QString& getSessionDisplayNameForTransport() const { return _sessionDisplayName; }
     virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) { } // No-op in AvatarMixer
@@ -703,10 +709,9 @@ protected:
     QVector<AttachmentData> _attachmentData;
     QString _displayName;
     QString _sessionDisplayName { };
-    QUrl cannonicalSkeletonModelURL(const QUrl& empty) const;
 
-    QHash<QString, int> _jointIndices; ///< 1-based, since zero is returned for missing keys
-    QStringList _jointNames; ///< in order of depth-first traversal
+    QHash<QString, int> _fstJointIndices; ///< 1-based, since zero is returned for missing keys
+    QStringList _fstJointNames; ///< in order of depth-first traversal
 
     quint64 _errorLogExpiry; ///< time in future when to log an error
 
@@ -794,7 +799,8 @@ protected:
     float _audioAverageLoudness { 0.0f };
 
     bool _identityDataChanged { false };
-    quint64 _identitySequenceId { 0 };
+    udt::SequenceNumber _identitySequenceNumber { 0 };
+    bool _hasProcessedFirstIdentity { false };
     float _density;
 
 private:
