@@ -208,7 +208,7 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
         assert(avatarNode); // we can't have gotten here without the avatarData being a valid key in the map
         return nodeData->getLastBroadcastTime(avatarNode->getUUID());
     }, [&](AvatarSharedPointer avatar)->float{
-        glm::vec3 nodeBoxHalfScale = (avatar->getPosition() - avatar->getGlobalBoundingBoxCorner());
+        glm::vec3 nodeBoxHalfScale = (avatar->getClientGlobalPosition() - avatar->getGlobalBoundingBoxCorner());
         return glm::max(nodeBoxHalfScale.x, glm::max(nodeBoxHalfScale.y, nodeBoxHalfScale.z));
     }, [&](AvatarSharedPointer avatar)->bool {
         if (avatar == thisAvatar) {
@@ -261,129 +261,6 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
                     shouldIgnore = !getsAnyIgnored;
                 }
             }
-<<<<<<< HEAD
-        });
-
-        AvatarSharedPointer thisAvatar = nodeData->getAvatarSharedPointer();
-        ViewFrustum cameraView = nodeData->getViewFrustom();
-        std::priority_queue<AvatarPriority> sortedAvatars;
-        AvatarData::sortAvatars(avatarList, cameraView, sortedAvatars,
-
-                [&](AvatarSharedPointer avatar)->uint64_t{
-                    auto avatarNode = avatarDataToNodes[avatar];
-                    assert(avatarNode); // we can't have gotten here without the avatarData being a valid key in the map
-                    return nodeData->getLastBroadcastTime(avatarNode->getUUID());
-                },
-
-                [&](AvatarSharedPointer avatar)->float{
-                    glm::vec3 nodeBoxHalfScale = (avatar->getClientGlobalPosition() - avatar->getGlobalBoundingBoxCorner());
-                    return glm::max(nodeBoxHalfScale.x, glm::max(nodeBoxHalfScale.y, nodeBoxHalfScale.z));
-                },
-
-                [&](AvatarSharedPointer avatar)->bool{
-                    if (avatar == thisAvatar) {
-                        return true; // ignore ourselves...
-                    }
-
-                    bool shouldIgnore = false;
-
-                    // We will also ignore other nodes for a couple of different reasons:
-                    //   1) ignore bubbles and ignore specific node
-                    //   2) the node hasn't really updated it's frame data recently, this can
-                    //      happen if for example the avatar is connected on a desktop and sending
-                    //      updates at ~30hz. So every 3 frames we skip a frame.
-                    auto avatarNode = avatarDataToNodes[avatar];
-
-                    assert(avatarNode); // we can't have gotten here without the avatarData being a valid key in the map
-
-                    const AvatarMixerClientData* avatarNodeData = reinterpret_cast<const AvatarMixerClientData*>(avatarNode->getLinkedData());
-                    assert(avatarNodeData); // we can't have gotten here without avatarNode having valid data
-                    quint64 startIgnoreCalculation = usecTimestampNow();
-
-                    // make sure we have data for this avatar, that it isn't the same node,
-                    // and isn't an avatar that the viewing node has ignored
-                    // or that has ignored the viewing node
-                    if (!avatarNode->getLinkedData()
-                        || avatarNode->getUUID() == node->getUUID()
-                        || (node->isIgnoringNodeWithID(avatarNode->getUUID()) && !PALIsOpen)
-                        || (avatarNode->isIgnoringNodeWithID(node->getUUID()) && !getsAnyIgnored)) {
-                        shouldIgnore = true;
-                    } else {
-
-                        // Check to see if the space bubble is enabled
-                        // Don't bother with these checks if the other avatar has their bubble enabled and we're gettingAnyIgnored
-                        if (node->isIgnoreRadiusEnabled() || (avatarNode->isIgnoreRadiusEnabled() && !getsAnyIgnored)) {
-
-                            // Define the scale of the box for the current other node
-                            glm::vec3 otherNodeBoxScale = (avatarNodeData->getClientGlobalPosition() - avatarNodeData->getGlobalBoundingBoxCorner()) * 2.0f;
-                            // Set up the bounding box for the current other node
-                            AABox otherNodeBox(avatarNodeData->getGlobalBoundingBoxCorner(), otherNodeBoxScale);
-                            // Clamp the size of the bounding box to a minimum scale
-                            if (glm::any(glm::lessThan(otherNodeBoxScale, minBubbleSize))) {
-                                otherNodeBox.setScaleStayCentered(minBubbleSize);
-                            }
-                            // Quadruple the scale of both bounding boxes
-                            otherNodeBox.embiggen(4.0f);
-
-                            // Perform the collision check between the two bounding boxes
-                            if (nodeBox.touches(otherNodeBox)) {
-                                nodeData->ignoreOther(node, avatarNode);
-                                shouldIgnore = !getsAnyIgnored;
-                            }
-                        }
-                        // Not close enough to ignore
-                        if (!shouldIgnore) {
-                            nodeData->removeFromRadiusIgnoringSet(node, avatarNode->getUUID());
-                        }
-                    }
-                    quint64 endIgnoreCalculation = usecTimestampNow();
-                    _stats.ignoreCalculationElapsedTime += (endIgnoreCalculation - startIgnoreCalculation);
-
-                    if (!shouldIgnore) {
-                        AvatarDataSequenceNumber lastSeqToReceiver = nodeData->getLastBroadcastSequenceNumber(avatarNode->getUUID());
-                        AvatarDataSequenceNumber lastSeqFromSender = avatarNodeData->getLastReceivedSequenceNumber();
-
-                        // FIXME - This code does appear to be working. But it seems brittle.
-                        //         It supports determining if the frame of data for this "other"
-                        //         avatar has already been sent to the reciever. This has been
-                        //         verified to work on a desktop display that renders at 60hz and
-                        //         therefore sends to mixer at 30hz. Each second you'd expect to
-                        //         have 15 (45hz-30hz) duplicate frames. In this case, the stat
-                        //         avg_other_av_skips_per_second does report 15.
-                        //
-                        // make sure we haven't already sent this data from this sender to this receiver
-                        // or that somehow we haven't sent
-                        if (lastSeqToReceiver == lastSeqFromSender && lastSeqToReceiver != 0) {
-                            ++numAvatarsHeldBack;
-                            shouldIgnore = true;
-                        } else if (lastSeqFromSender - lastSeqToReceiver > 1) {
-                            // this is a skip - we still send the packet but capture the presence of the skip so we see it happening
-                            ++numAvatarsWithSkippedFrames;
-                        }
-                    }
-                    return shouldIgnore;
-                });
-
-        // loop through our sorted avatars and allocate our bandwidth to them accordingly
-        int avatarRank = 0;
-
-        // this is overly conservative, because it includes some avatars we might not consider
-        int remainingAvatars = (int)sortedAvatars.size();
-
-        while (!sortedAvatars.empty()) {
-            AvatarPriority sortData = sortedAvatars.top();
-            sortedAvatars.pop();
-            const auto& avatarData = sortData.avatar;
-            avatarRank++;
-            remainingAvatars--;
-
-            auto otherNode = avatarDataToNodes[avatarData];
-            assert(otherNode); // we can't have gotten here without the avatarData being a valid key in the map
-
-            // NOTE: Here's where we determine if we are over budget and drop to bare minimum data
-            int minimRemainingAvatarBytes = minimumBytesPerAvatar * remainingAvatars;
-            bool overBudget = (identityBytesSent + numAvatarDataBytes + minimRemainingAvatarBytes) > maxAvatarBytesPerFrame;
-=======
             // Not close enough to ignore
             if (!shouldIgnore) {
                 nodeData->removeFromRadiusIgnoringSet(node, avatarNode->getUUID());
@@ -416,7 +293,6 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
         }
         return shouldIgnore;
     });
->>>>>>> 4a35ad105b369ad0750c142870d107a996478af1
 
     // loop through our sorted avatars and allocate our bandwidth to them accordingly
     int avatarRank = 0;
