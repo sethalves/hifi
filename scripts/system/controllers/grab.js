@@ -14,13 +14,16 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-/* global MyAvatar, Entities, Script, Camera, Vec3, Reticle, Overlays, getEntityCustomData, Messages, Quat, Controller */
+/* global MyAvatar, Entities, Script, Camera, Vec3, Reticle, Overlays, getEntityCustomData, Messages, Quat, Controller,
+   isInEditMode, HMD */
 
 
 (function() { // BEGIN LOCAL_SCOPE
 
 Script.include("/~/system/libraries/utils.js");
 var MAX_SOLID_ANGLE = 0.01; // objects that appear smaller than this can't be grabbed
+
+var DELAY_FOR_30HZ = 33; // milliseconds
 
 var ZERO_VEC3 = {
     x: 0,
@@ -46,7 +49,7 @@ var ACTION_TTL = 10; // seconds
 function getTag() {
     return "grab-" + MyAvatar.sessionUUID;
 }
-  
+
 var DISTANCE_HOLDING_ACTION_TIMEFRAME = 0.1; // how quickly objects move to their new position
 var DISTANCE_HOLDING_UNITY_MASS = 1200; //  The mass at which the distance holding action timeframe is unmodified
 var DISTANCE_HOLDING_UNITY_DISTANCE = 6; //  The distance at which the distance holding action timeframe is unmodified
@@ -425,9 +428,14 @@ Grabber.prototype.pressEvent = function(event) {
 Grabber.prototype.releaseEvent = function(event) {
     Script.beginProfileRange("controllerScripts.grab.releaseEvent");
 
-    if (event.isLeftButton!==true ||event.isRightButton===true || event.isMiddleButton===true) {
+    if (event.isLeftButton!==true || event.isRightButton===true || event.isMiddleButton===true) {
         Script.endProfileRange("controllerScripts.grab.releaseEvent");
         return;
+    }
+
+    if (this.moveEventTimer) {
+        Script.clearTimeout(this.moveEventTimer);
+        this.moveEventTimer = null;
     }
 
     if (this.isGrabbing) {
@@ -456,15 +464,31 @@ Grabber.prototype.releaseEvent = function(event) {
     Script.endProfileRange("controllerScripts.grab.releaseEvent");
 };
 
+Grabber.prototype.scheduleMouseMoveProcessor = function(event) {
+    var _this = this;
+    if (!this.moveEventTimer) {
+        this.moveEventTimer = Script.setTimeout(function() {
+            _this.moveEventProcess();
+        }, DELAY_FOR_30HZ);
+    }
+};
+
 Grabber.prototype.moveEvent = function(event) {
     Script.beginProfileRange("controllerScripts.grab.ptMoveEvent");
 
+    // during the handling of the event, do as little as possible.  We save the updated mouse position,
+    // and start a timer to react to the change.  If more changes arrive before the timer fires, only
+    // the last update will be considered.  This is done to avoid backing-up Qt's event queue.
     if (!this.isGrabbing) {
         Script.endProfileRange("controllerScripts.grab.ptMoveEvent");
         return;
     }
     mouse.updateDrag(event);
+    this.scheduleMouseMoveProcessor();
+};
 
+Grabber.prototype.moveEventProcess = function() {
+    this.moveEventTimer = null;
     // see if something added/restored gravity
     var entityProperties = Entities.getEntityProperties(this.entityID);
     if (!entityProperties || !entityProperties.gravity) {
@@ -510,7 +534,7 @@ Grabber.prototype.moveEvent = function(event) {
 
     } else {
         var newPointOnPlane;
-        
+
         if (this.mode === "verticalCylinder") {
             // for this mode we recompute the plane based on current Camera
             var planeNormal = Quat.getForward(Camera.getOrientation());
@@ -526,7 +550,7 @@ Grabber.prototype.moveEvent = function(event) {
             };
 
         } else {
-            
+
             newPointOnPlane = mouseIntersectionWithPlane(
                     this.pointOnPlane, this.planeNormal, mouse.current, this.maxDistance);
             var relativePosition = Vec3.subtract(newPointOnPlane, cameraPosition);
@@ -560,6 +584,7 @@ Grabber.prototype.moveEvent = function(event) {
         Entities.updateAction(this.entityID, this.actionID, actionArgs);
     }
 
+    this.scheduleMouseMoveProcessor();
     Script.endProfileRange("controllerScripts.grab.ptMoveEvent");
 };
 
