@@ -708,14 +708,18 @@ function calculateStylusTargetFromEntity(stylusTip, entityID) {
 
 // will return undefined if overlayID does not exist.
 function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
+    Script.beginProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
+
     var overlayPosition = Overlays.getProperty(overlayID, "position");
     if (overlayPosition === undefined) {
+        Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
         return;
     }
 
     // project stylusTip onto overlay plane.
     var overlayRotation = Overlays.getProperty(overlayID, "rotation");
     if (overlayRotation === undefined) {
+        Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
         return;
     }
     var normal = Vec3.multiplyQbyV(overlayRotation, {x: 0, y: 0, z: 1});
@@ -732,11 +736,13 @@ function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
         // Calculate physical dimensions for web3d overlay from resolution and dpi; "dimensions" property is used as a scale.
         var resolution = Overlays.getProperty(overlayID, "resolution");
         if (resolution === undefined) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
             return;
         }
         resolution.z = 1;  // Circumvent divide-by-zero.
         var scale = Overlays.getProperty(overlayID, "dimensions");
         if (scale === undefined) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
             return;
         }
         scale.z = 0.01;    // overlay dimensions are 2D, not 3D.
@@ -744,6 +750,7 @@ function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
     } else {
         dimensions = Overlays.getProperty(overlayID, "dimensions");
         if (dimensions === undefined) {
+            Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
             return;
         }
         if (!dimensions.z) {
@@ -756,7 +763,7 @@ function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
     // 2D position on overlay plane in meters, relative to the bounding box upper-left hand corner.
     var position2D = { x: normalizedPosition.x * dimensions.x, y: (1 - normalizedPosition.y) * dimensions.y }; // flip y-axis
 
-    return {
+    result = {
         entityID: null,
         overlayID: overlayID,
         distance: distance,
@@ -767,6 +774,9 @@ function calculateStylusTargetFromOverlay(stylusTip, overlayID) {
         dimensions: dimensions,
         valid: true
     };
+
+    Script.endProfileRange("controllerScripts.handControllerGrab.calculateStylusTargetFromOverlay");
+    return result;
 }
 
 function isNearStylusTarget(stylusTargets, edgeBorder, minNormalDistance, maxNormalDistance) {
