@@ -453,26 +453,6 @@ OverlayPropertyResult Overlays::getOverlaysProperties(const QVariant& properties
     return result;
 }
 
-OverlayPropertyResult Overlays::getOverlaysProperties(const QVariant& propertiesById) {
-    QVariantMap map = propertiesById.toMap();
-    OverlayPropertyResult result;
-    QVariantMap resultMap;
-    for (const auto& key : map.keys()) {
-        OverlayID id = OverlayID(key);
-        QVariantMap overlayResult;
-        Overlay::Pointer thisOverlay = getOverlay(id);
-        if (thisOverlay && thisOverlay->supportsGetProperty()) {
-            QStringList propertiesToFetch = map[key].toStringList();
-            for (const auto& property : propertiesToFetch) {
-                overlayResult[property] = thisOverlay->getProperty(property);
-            }
-        }
-        resultMap[key] = overlayResult;
-    }
-    result.value = resultMap;
-    return result;
-}
-
 OverlayPropertyResult::OverlayPropertyResult() {
 }
 
