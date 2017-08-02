@@ -90,7 +90,8 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 
 EntityItem::~EntityItem() {
     // clear out any left-over actions
-    EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
+    EntityTreeElementPointer element = _element; // use local copy of _element for logic below
+    EntityTreePointer entityTree = element ? element->getTree() : nullptr;
     EntitySimulationPointer simulation = entityTree ? entityTree->getSimulation() : nullptr;
     if (simulation) {
         clearActions(simulation);
@@ -191,13 +192,14 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
 
     EntityPropertyFlags propertyFlags(PROP_LAST_ITEM);
     EntityPropertyFlags requestedProperties = getEntityProperties(params);
-    EntityPropertyFlags propertiesDidntFit = requestedProperties;
 
     // If we are being called for a subsequent pass at appendEntityData() that failed to completely encode this item,
     // then our entityTreeElementExtraEncodeData should include data about which properties we need to append.
     if (entityTreeElementExtraEncodeData && entityTreeElementExtraEncodeData->entities.contains(getEntityItemID())) {
         requestedProperties = entityTreeElementExtraEncodeData->entities.value(getEntityItemID());
     }
+
+    EntityPropertyFlags propertiesDidntFit = requestedProperties;
 
     LevelDetails entityLevel = packetData->startLevel();
 
@@ -890,8 +892,9 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     // Tracking for editing roundtrips here. We will tell our EntityTree that we just got incoming data about
     // and entity that was edited at some time in the past. The tree will determine how it wants to track this
     // information.
-    if (_element && _element->getTree()) {
-        _element->getTree()->trackIncomingEntityLastEdited(lastEditedFromBufferAdjusted, bytesRead);
+    EntityTreeElementPointer element = _element; // use local copy of _element for logic below
+    if (element && element->getTree()) {
+        element->getTree()->trackIncomingEntityLastEdited(lastEditedFromBufferAdjusted, bytesRead);
     }
 
 
@@ -1362,8 +1365,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(lastEditedBy, setLastEditedBy);
 
     AACube saveQueryAACube = _queryAACube;
-    checkAndAdjustQueryAACube();
-    if (saveQueryAACube != _queryAACube) {
+    if (checkAndMaybeUpdateQueryAACube() && saveQueryAACube != _queryAACube) {
         somethingChanged = true;
     }
 
@@ -1431,26 +1433,20 @@ void EntityItem::setDimensions(const glm::vec3& value) {
 ///
 AACube EntityItem::getMaximumAACube(bool& success) const {
     if (_recalcMaxAACube) {
-        // * we know that the position is the center of rotation
         glm::vec3 centerOfRotation = getPosition(success); // also where _registration point is
         if (success) {
             _recalcMaxAACube = false;
-            // * we know that the registration point is the center of rotation
-            // * we can calculate the length of the furthest extent from the registration point
-            //   as the dimensions * max (registrationPoint, (1.0,1.0,1.0) - registrationPoint)
-            glm::vec3 dimensions = getDimensions();
-            glm::vec3 registrationPoint = (dimensions * _registrationPoint);
-            glm::vec3 registrationRemainder = (dimensions * (glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint));
-            glm::vec3 furthestExtentFromRegistration = glm::max(registrationPoint, registrationRemainder);
+            // we want to compute the furthestExtent that an entity can extend out from its "position"
+            // to do this we compute the max of these two vec3s: registration and 1-registration
+            // and then scale by dimensions
+            glm::vec3 maxExtents = getDimensions() * glm::max(_registrationPoint, glm::vec3(1.0f) - _registrationPoint);
 
-            // * we know that if you rotate in any direction you would create a sphere
-            //   that has a radius of the length of furthest extent from registration point
-            float radius = glm::length(furthestExtentFromRegistration);
+            // there exists a sphere that contains maxExtents for all rotations
+            float radius = glm::length(maxExtents);
 
-            // * we know that the minimum bounding cube of this maximum possible sphere is
-            //   (center - radius) to (center + radius)
+            // put a cube around the sphere
+            // TODO? replace _maxAACube with _boundingSphereRadius
             glm::vec3 minimumCorner = centerOfRotation - glm::vec3(radius, radius, radius);
-
             _maxAACube = AACube(minimumCorner, radius * 2.0f);
         }
     } else {
@@ -1642,6 +1638,8 @@ void EntityItem::updateDimensions(const glm::vec3& value) {
     if (getDimensions() != value) {
         setDimensions(value);
         markDirtyFlags(Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS);
+        _queryAACubeSet = false;
+        dimensionsChanged();
     }
 }
 
@@ -2090,7 +2088,8 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
     _previouslyDeletedActions.insert(actionID, usecTimestampNow());
     if (_objectActions.contains(actionID)) {
         if (!simulation) {
-            EntityTreePointer entityTree = _element ? _element->getTree() : nullptr;
+        EntityTreeElementPointer element = _element; // use local copy of _element for logic below
+            EntityTreePointer entityTree = element ? element->getTree() : nullptr;
             simulation = entityTree ? entityTree->getSimulation() : nullptr;
         }
 

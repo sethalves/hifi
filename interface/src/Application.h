@@ -55,6 +55,7 @@
 #include "BandwidthRecorder.h"
 #include "FancyCamera.h"
 #include "ConnectionMonitor.h"
+#include "CursorManager.h"
 #include "gpu/Context.h"
 #include "Menu.h"
 #include "octree/OctreePacketProcessor.h"
@@ -165,7 +166,7 @@ public:
     QSize getDeviceSize() const;
     bool hasFocus() const;
 
-    void showCursor(const QCursor& cursor);
+    void showCursor(const Cursor::Icon& cursor);
 
     bool isThrottleRendering() const;
 
@@ -402,6 +403,9 @@ public slots:
     void loadDomainConnectionDialog();
     void showScriptLogs();
 
+    const QString getPreferredCursor() const { return _preferredCursor.get(); }
+    void setPreferredCursor(const QString& cursor);
+
 private slots:
     void showDesktop();
     void clearDomainOctreeDetails();
@@ -565,6 +569,7 @@ private:
     Setting::Handle<bool> _hmdTabletBecomesToolbarSetting;
     Setting::Handle<bool> _preferAvatarFingerOverStylusSetting;
     Setting::Handle<bool> _constrainToolbarPosition;
+    Setting::Handle<QString> _preferredCursor;
 
     float _scaleMirror;
     float _rotateMirror;
@@ -638,7 +643,7 @@ private:
 
     void checkChangeCursor();
     mutable QMutex _changeCursorLock { QMutex::Recursive };
-    QCursor _desiredCursor{ Qt::BlankCursor };
+    Qt::CursorShape _desiredCursor{ Qt::BlankCursor };
     bool _cursorNeedsChanging { false };
 
     QThread* _deadlockWatchdogThread;
@@ -679,7 +684,7 @@ private:
     QTimer _addAssetToWorldErrorTimer;
 
     FileScriptingInterface* _fileDownload;
-    AudioInjector* _snapshotSoundInjector { nullptr };
+    AudioInjectorPointer _snapshotSoundInjector;
     SharedSoundPointer _snapshotSound;
 
     DisplayPluginPointer _autoSwitchDisplayModeSupportedHMDPlugin;

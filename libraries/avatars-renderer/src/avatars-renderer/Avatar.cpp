@@ -158,11 +158,6 @@ glm::vec3 Avatar::getNeckPosition() const {
     return _skeletonModel->getNeckPosition(neckPosition) ? neckPosition : getPosition();
 }
 
-
-glm::quat Avatar::getWorldAlignedOrientation () const {
-    return computeRotationFromBodyToWorldUp() * getOrientation();
-}
-
 AABox Avatar::getBounds() const {
     if (!_skeletonModel->isRenderable() || _skeletonModel->needsFixupInScene()) {
         // approximately 2m tall, scaled to user request.
@@ -443,6 +438,11 @@ void Avatar::slamPosition(const glm::vec3& newPosition) {
     _lastVelocity = glm::vec3(0.0f);
 }
 
+void Avatar::updateAttitude(const glm::quat& orientation) {
+    _skeletonModel->updateAttitude(orientation);
+	_worldUpDirection = orientation * Vectors::UNIT_Y;
+}
+
 void Avatar::applyPositionDelta(const glm::vec3& delta) {
     setPosition(getPosition() + delta);
     _positionDeltaAccumulator += delta;
@@ -639,22 +639,6 @@ void Avatar::locationChanged(bool tellPhysics) {
     PerformanceTimer pertTimer("locationChanged");
     SpatiallyNestable::locationChanged(tellPhysics);
     _skeletonModel->updateRenderItems();
-}
-
-glm::quat Avatar::computeRotationFromBodyToWorldUp(float proportion) const {
-    glm::quat orientation = getOrientation();
-    glm::vec3 currentUp = orientation * IDENTITY_UP;
-    float angle = acosf(glm::clamp(glm::dot(currentUp, _worldUpDirection), -1.0f, 1.0f));
-    if (angle < EPSILON) {
-        return glm::quat();
-    }
-    glm::vec3 axis;
-    if (angle > 179.99f * RADIANS_PER_DEGREE) { // 180 degree rotation; must use another axis
-        axis = orientation * IDENTITY_RIGHT;
-    } else {
-        axis = glm::normalize(glm::cross(currentUp, _worldUpDirection));
-    }
-    return glm::angleAxis(angle * proportion, axis);
 }
 
 void Avatar::fixupModelsInScene(const render::ScenePointer& scene) {
@@ -1063,7 +1047,34 @@ int Avatar::getJointIndex(const QString& name) const {
 QStringList Avatar::getJointNames() const {
     QStringList result;
     withValidJointIndicesCache([&]() {
-        result = _modelJointIndicesCache.keys();
+        // find out how large the vector needs to be
+        int maxJointIndex = -1;
+        QHashIterator<QString, int> k(_modelJointIndicesCache);
+        while (k.hasNext()) {
+            k.next();
+            int index = k.value();
+            if (index > maxJointIndex) {
+                maxJointIndex = index;
+            }
+        }
+        // iterate through the hash and put joint names
+        // into the vector at their indices
+        QVector<QString> resultVector(maxJointIndex+1);
+        QHashIterator<QString, int> i(_modelJointIndicesCache);
+        while (i.hasNext()) {
+            i.next();
+            int index = i.value();
+            resultVector[index] = i.key();
+        }
+        // convert to QList and drop out blanks
+        result = resultVector.toList();
+        QMutableListIterator<QString> j(result);
+        while (j.hasNext()) {
+            QString jointName = j.next();
+            if (jointName.isEmpty()) {
+                j.remove();
+            }
+        }
     });
     return result;
 }
@@ -1387,14 +1398,14 @@ glm::quat Avatar::getUncachedRightPalmRotation() const {
     return rightPalmRotation;
 }
 
-void Avatar::setPosition(const glm::vec3& position) {
-    AvatarData::setPosition(position);
-    updateAttitude();
+void Avatar::setPositionViaScript(const glm::vec3& position) {
+    setPosition(position);
+    updateAttitude(getOrientation());
 }
 
-void Avatar::setOrientation(const glm::quat& orientation) {
-    AvatarData::setOrientation(orientation);
-    updateAttitude();
+void Avatar::setOrientationViaScript(const glm::quat& orientation) {
+    setOrientation(orientation);
+    updateAttitude(orientation);
 }
 
 void Avatar::updatePalms() {
@@ -1483,8 +1494,7 @@ void Avatar::addToScene(AvatarSharedPointer myHandle, const render::ScenePointer
     if (scene) {
         auto nodelist = DependencyManager::get<NodeList>();
         if (showAvatars
-            && !nodelist->isIgnoringNode(getSessionUUID())
-            && !nodelist->isRadiusIgnoringNode(getSessionUUID())) {
+            && !nodelist->isIgnoringNode(getSessionUUID())) {
             render::Transaction transaction;
             addToScene(myHandle, scene, transaction);
             scene->enqueueTransaction(transaction);

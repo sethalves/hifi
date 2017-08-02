@@ -61,6 +61,7 @@
 #include <AssetClient.h>
 #include <AssetUpload.h>
 #include <AutoUpdater.h>
+#include <Midi.h>
 #include <AudioInjectorManager.h>
 #include <AvatarBookmarks.h>
 #include <CursorManager.h>
@@ -69,6 +70,7 @@
 #include <EntityScriptClient.h>
 #include <EntityScriptServerLogClient.h>
 #include <EntityScriptingInterface.h>
+#include <HoverOverlayInterface.h>
 #include <ErrorDialog.h>
 #include <FileScriptingInterface.h>
 #include <Finally.h>
@@ -167,6 +169,7 @@
 #if defined(Q_OS_MAC) || defined(Q_OS_WIN)
 #include "SpeechRecognizer.h"
 #endif
+#include "ui/ResourceImageItem.h"
 #include "ui/AddressBarDialog.h"
 #include "ui/AvatarInputs.h"
 #include "ui/DialogsManager.h"
@@ -397,6 +400,10 @@ public:
                     return true;
                 }
             }
+
+            if (message->message == WM_DEVICECHANGE) {
+                Midi::USBchanged();                // re-scan the MIDI bus
+            }
         }
         return false;
     }
@@ -567,6 +574,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<SceneScriptingInterface>();
     DependencyManager::set<OffscreenUi>();
     DependencyManager::set<AutoUpdater>();
+    DependencyManager::set<Midi>();
     DependencyManager::set<PathUtils>();
     DependencyManager::set<InterfaceDynamicFactory>();
     DependencyManager::set<AudioInjectorManager>();
@@ -590,6 +598,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<Snapshot>();
     DependencyManager::set<CloseEventSender>();
     DependencyManager::set<ResourceManager>();
+    DependencyManager::set<HoverOverlayInterface>();
 
     return previousSessionCrashed;
 }
@@ -618,6 +627,7 @@ const float DEFAULT_DESKTOP_TABLET_SCALE_PERCENT = 75.0f;
 const bool DEFAULT_DESKTOP_TABLET_BECOMES_TOOLBAR = true;
 const bool DEFAULT_HMD_TABLET_BECOMES_TOOLBAR = false;
 const bool DEFAULT_PREFER_AVATAR_FINGER_OVER_STYLUS = false;
+const QString DEFAULT_CURSOR_NAME = "DEFAULT";
 
 Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bool runningMarkerExisted) :
     QApplication(argc, argv),
@@ -636,6 +646,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _hmdTabletBecomesToolbarSetting("hmdTabletBecomesToolbar", DEFAULT_HMD_TABLET_BECOMES_TOOLBAR),
     _preferAvatarFingerOverStylusSetting("preferAvatarFingerOverStylus", DEFAULT_PREFER_AVATAR_FINGER_OVER_STYLUS),
     _constrainToolbarPosition("toolbar/constrainToolbarToCenterX", true),
+    _preferredCursor("preferredCursor", DEFAULT_CURSOR_NAME),
     _scaleMirror(1.0f),
     _rotateMirror(0.0f),
     _raiseMirror(0.0f),
@@ -931,14 +942,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _glWidget->setFocusPolicy(Qt::StrongFocus);
     _glWidget->setFocus();
 
-#ifdef Q_OS_MAC
-    auto cursorTarget = _window; // OSX doesn't seem to provide for hiding the cursor only on the GL widget
-#else
-    // On windows and linux, hiding the top level cursor also means it's invisible when hovering over the
-    // window menu, which is a pain, so only hide it for the GL surface
-    auto cursorTarget = _glWidget;
-#endif
-    cursorTarget->setCursor(Qt::BlankCursor);
+    showCursor(Cursor::Manager::lookupIcon(_preferredCursor.get()));
 
     // enable mouse tracking; otherwise, we only get drag events
     _glWidget->setMouseTracking(true);
@@ -1005,7 +1009,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
             properties["processor_l2_cache_count"] = procInfo.numProcessorCachesL2;
             properties["processor_l3_cache_count"] = procInfo.numProcessorCachesL3;
         }
-        
+
         properties["first_run"] = firstRun.get();
 
         // add the user's machine ID to the launch event
@@ -1468,6 +1472,14 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         properties["atp_mapping_requests"] = atpMappingRequests;
 
         properties["throttled"] = _displayPlugin ? _displayPlugin->isThrottled() : false;
+        
+        QJsonObject bytesDownloaded;
+        bytesDownloaded["atp"] = statTracker->getStat(STAT_ATP_RESOURCE_TOTAL_BYTES).toInt();
+        bytesDownloaded["http"] = statTracker->getStat(STAT_HTTP_RESOURCE_TOTAL_BYTES).toInt();
+        bytesDownloaded["file"] = statTracker->getStat(STAT_FILE_RESOURCE_TOTAL_BYTES).toInt();
+        bytesDownloaded["total"] = bytesDownloaded["atp"].toInt() + bytesDownloaded["http"].toInt()
+            + bytesDownloaded["file"].toInt();
+        properties["bytesDownloaded"] = bytesDownloaded;
 
         auto myAvatar = getMyAvatar();
         glm::vec3 avatarPosition = myAvatar->getPosition();
@@ -1706,9 +1718,7 @@ QString Application::getUserAgent() {
 void Application::toggleTabletUI(bool shouldOpen) const {
     auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
     auto hmd = DependencyManager::get<HMDScriptingInterface>();
-    TabletProxy* tablet = dynamic_cast<TabletProxy*>(tabletScriptingInterface->getTablet(SYSTEM_TABLET));
-    bool messageOpen = tablet->isMessageDialogOpen();
-    if ((!messageOpen || (messageOpen && !hmd->getShouldShowTablet())) && !(shouldOpen && hmd->getShouldShowTablet())) {
+    if (!(shouldOpen && hmd->getShouldShowTablet())) {
         auto HMD = DependencyManager::get<HMDScriptingInterface>();
         HMD->toggleShouldShowTablet();
     }
@@ -1730,9 +1740,16 @@ void Application::checkChangeCursor() {
     }
 }
 
-void Application::showCursor(const QCursor& cursor) {
+void Application::showCursor(const Cursor::Icon& cursor) {
     QMutexLocker locker(&_changeCursorLock);
-    _desiredCursor = cursor;
+
+    auto managedCursor = Cursor::Manager::instance().getCursor();
+    auto curIcon = managedCursor->getIcon();
+    if (curIcon != cursor) {
+        managedCursor->setIcon(cursor);
+        curIcon = cursor;
+    }
+    _desiredCursor = cursor == Cursor::Icon::SYSTEM ? Qt::ArrowCursor : Qt::BlankCursor;
     _cursorNeedsChanging = true;
 }
 
@@ -1977,7 +1994,7 @@ void Application::initializeGL() {
     static const QString RENDER_FORWARD = "HIFI_RENDER_FORWARD";
     bool isDeferred = !QProcessEnvironment::systemEnvironment().contains(RENDER_FORWARD);
     _renderEngine->addJob<UpdateSceneTask>("UpdateScene");
-    _renderEngine->addJob<SecondaryCameraRenderTask>("SecondaryCameraFrame", cullFunctor);
+    _renderEngine->addJob<SecondaryCameraRenderTask>("SecondaryCameraJob", cullFunctor);
     _renderEngine->addJob<RenderViewTask>("RenderMainView", cullFunctor, isDeferred);
     _renderEngine->load();
     _renderEngine->registerScene(_main3DScene);
@@ -2025,6 +2042,7 @@ void Application::initializeUi() {
     LoginDialog::registerType();
     Tooltip::registerType();
     UpdateDialog::registerType();
+    qmlRegisterType<ResourceImageItem>("Hifi", 1, 0, "ResourceImageItem");
     qmlRegisterType<Preference>("Hifi", 1, 0, "Preference");
 
     auto offscreenUi = DependencyManager::get<OffscreenUi>();
@@ -2110,7 +2128,6 @@ void Application::initializeUi() {
     surfaceContext->setContextProperty("AvatarManager", DependencyManager::get<AvatarManager>().data());
     surfaceContext->setContextProperty("UndoStack", &_undoStackScriptingInterface);
     surfaceContext->setContextProperty("LODManager", DependencyManager::get<LODManager>().data());
-    surfaceContext->setContextProperty("Paths", DependencyManager::get<PathUtils>().data());
     surfaceContext->setContextProperty("HMD", DependencyManager::get<HMDScriptingInterface>().data());
     surfaceContext->setContextProperty("Scene", DependencyManager::get<SceneScriptingInterface>().data());
     surfaceContext->setContextProperty("Render", _renderEngine->getConfiguration().get());
@@ -2120,6 +2137,7 @@ void Application::initializeUi() {
     surfaceContext->setContextProperty("ApplicationCompositor", &getApplicationCompositor());
 
     surfaceContext->setContextProperty("AvatarInputs", AvatarInputs::getInstance());
+    surfaceContext->setContextProperty("HoverOverlay", DependencyManager::get<HoverOverlayInterface>().data());
 
     if (auto steamClient = PluginManager::getInstance()->getSteamClientPlugin()) {
         surfaceContext->setContextProperty("Steam", new SteamScriptingInterface(engine, steamClient.get()));
@@ -2155,9 +2173,11 @@ void Application::initializeUi() {
     _window->setMenuBar(new Menu());
 
     auto compositorHelper = DependencyManager::get<CompositorHelper>();
-    connect(compositorHelper.data(), &CompositorHelper::allowMouseCaptureChanged, [=] {
+    connect(compositorHelper.data(), &CompositorHelper::allowMouseCaptureChanged, this, [=] {
         if (isHMDMode()) {
-            showCursor(compositorHelper->getAllowMouseCapture() ? Qt::BlankCursor : Qt::ArrowCursor);
+            showCursor(compositorHelper->getAllowMouseCapture() ?
+                       Cursor::Manager::lookupIcon(_preferredCursor.get()) :
+                       Cursor::Icon::SYSTEM);
         }
     });
 
@@ -2309,7 +2329,7 @@ void Application::paintGL() {
                 }
             } else if (_myCamera.getMode() == CAMERA_MODE_MIRROR) {
                 if (isHMDMode()) {
-                    auto mirrorBodyOrientation = myAvatar->getWorldAlignedOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f));
+                    auto mirrorBodyOrientation = myAvatar->getOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f));
 
                     glm::quat hmdRotation = extractRotation(myAvatar->getHMDSensorMatrix());
                     // Mirror HMD yaw and roll
@@ -2331,7 +2351,7 @@ void Application::paintGL() {
                         + mirrorBodyOrientation * glm::vec3(0.0f, 0.0f, 1.0f) * MIRROR_FULLSCREEN_DISTANCE * _scaleMirror
                         + mirrorBodyOrientation * hmdOffset);
                 } else {
-                    _myCamera.setOrientation(myAvatar->getWorldAlignedOrientation()
+                    _myCamera.setOrientation(myAvatar->getOrientation()
                         * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f)));
                     _myCamera.setPosition(myAvatar->getDefaultEyePosition()
                         + glm::vec3(0, _raiseMirror * myAvatar->getUniformScale(), 0)
@@ -2497,6 +2517,12 @@ void Application::setHmdTabletBecomesToolbarSetting(bool value) {
 
 void Application::setPreferAvatarFingerOverStylus(bool value) {
     _preferAvatarFingerOverStylusSetting.set(value);
+}
+
+void Application::setPreferredCursor(const QString& cursorName) {
+    qCDebug(interfaceapp) << "setPreferredCursor" << cursorName;
+    _preferredCursor.set(cursorName.isEmpty() ? DEFAULT_CURSOR_NAME : cursorName);
+    showCursor(Cursor::Manager::lookupIcon(_preferredCursor.get()));
 }
 
 void Application::setSettingConstrainToolbarPosition(bool setting) {
@@ -2746,6 +2772,16 @@ bool Application::event(QEvent* event) {
             static_cast<LambdaEvent*>(event)->call();
             return true;
 
+        // Explicit idle keeps the idle running at a lower interval, but without any rendering
+        // see (windowMinimizedChanged)
+        case Event::Idle:
+            {
+                float nsecsElapsed = (float)_lastTimeUpdated.nsecsElapsed();
+                _lastTimeUpdated.start();
+                idle(nsecsElapsed);
+            }
+            return true;
+
         case Event::Present:
             if (!_renderRequested) {
                 float nsecsElapsed = (float)_lastTimeUpdated.nsecsElapsed();
@@ -2755,7 +2791,7 @@ bool Application::event(QEvent* event) {
                     idle(nsecsElapsed);
                     postEvent(this, new QEvent(static_cast<QEvent::Type>(Paint)), Qt::HighEventPriority);
                 }
-            } 
+            }
             return true;
 
         case Event::Paint:
@@ -3005,9 +3041,11 @@ void Application::keyPressEvent(QKeyEvent* event) {
                 break;
 
             case Qt::Key_F: {
-                forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine){
-                    physicsEngine->dumpNextStats();
-                });
+                if (isOption) {
+                    forEachPhysicsEngine([](PhysicsEnginePointer physicsEngine){
+                        physicsEngine->dumpNextStats();
+                    });
+                }
                 break;
             }
 
@@ -3051,9 +3089,13 @@ void Application::keyPressEvent(QKeyEvent* event) {
                     auto cursor = Cursor::Manager::instance().getCursor();
                     auto curIcon = cursor->getIcon();
                     if (curIcon == Cursor::Icon::DEFAULT) {
-                        cursor->setIcon(Cursor::Icon::LINK);
+                        showCursor(Cursor::Icon::RETICLE);
+                    } else if (curIcon == Cursor::Icon::RETICLE) {
+                        showCursor(Cursor::Icon::SYSTEM);
+                    } else if (curIcon == Cursor::Icon::SYSTEM) {
+                        showCursor(Cursor::Icon::LINK);
                     } else {
-                        cursor->setIcon(Cursor::Icon::DEFAULT);
+                        showCursor(Cursor::Icon::DEFAULT);
                     }
                 } else {
                     resetSensors(true);
@@ -3733,8 +3775,8 @@ void updateCpuInformation() {
         // Update friendly structure
         auto& myCpuInfo = myCpuInfos[i];
         myCpuInfo.update(cpuInfo);
-        PROFILE_COUNTER(app, myCpuInfo.name.c_str(), { 
-            { "kernel", myCpuInfo.kernelUsage }, 
+        PROFILE_COUNTER(app, myCpuInfo.name.c_str(), {
+            { "kernel", myCpuInfo.kernelUsage },
             { "user", myCpuInfo.userUsage }
         });
     }
@@ -3801,7 +3843,7 @@ void getCpuUsage(vec3& systemAndUser) {
 void setupCpuMonitorThread() {
     initCpuUsage();
     auto cpuMonitorThread = QThread::currentThread();
-    
+
     QTimer* timer = new QTimer();
     timer->setInterval(50);
     QObject::connect(timer, &QTimer::timeout, [] {
@@ -4451,27 +4493,29 @@ void Application::cameraModeChanged() {
 
 
 void Application::cameraMenuChanged() {
-    if (Menu::getInstance()->isOptionChecked(MenuOption::FullscreenMirror)) {
+    auto menu = Menu::getInstance();
+    if (menu->isOptionChecked(MenuOption::FullscreenMirror)) {
         if (_myCamera.getMode() != CAMERA_MODE_MIRROR) {
             _myCamera.setMode(CAMERA_MODE_MIRROR);
+            getMyAvatar()->reset(false, false, false); // to reset any active MyAvatar::FollowHelpers
         }
-    } else if (Menu::getInstance()->isOptionChecked(MenuOption::FirstPerson)) {
+    } else if (menu->isOptionChecked(MenuOption::FirstPerson)) {
         if (_myCamera.getMode() != CAMERA_MODE_FIRST_PERSON) {
             _myCamera.setMode(CAMERA_MODE_FIRST_PERSON);
             getMyAvatar()->setBoomLength(MyAvatar::ZOOM_MIN);
         }
-    } else if (Menu::getInstance()->isOptionChecked(MenuOption::ThirdPerson)) {
+    } else if (menu->isOptionChecked(MenuOption::ThirdPerson)) {
         if (_myCamera.getMode() != CAMERA_MODE_THIRD_PERSON) {
             _myCamera.setMode(CAMERA_MODE_THIRD_PERSON);
             if (getMyAvatar()->getBoomLength() == MyAvatar::ZOOM_MIN) {
                 getMyAvatar()->setBoomLength(MyAvatar::ZOOM_DEFAULT);
             }
         }
-    } else if (Menu::getInstance()->isOptionChecked(MenuOption::IndependentMode)) {
+    } else if (menu->isOptionChecked(MenuOption::IndependentMode)) {
         if (_myCamera.getMode() != CAMERA_MODE_INDEPENDENT) {
             _myCamera.setMode(CAMERA_MODE_INDEPENDENT);
         }
-    } else if (Menu::getInstance()->isOptionChecked(MenuOption::CameraEntityMode)) {
+    } else if (menu->isOptionChecked(MenuOption::CameraEntityMode)) {
         if (_myCamera.getMode() != CAMERA_MODE_ENTITY) {
             _myCamera.setMode(CAMERA_MODE_ENTITY);
         }
@@ -5505,6 +5549,10 @@ void Application::updateWindowTitle() const {
     qCDebug(interfaceapp, "Application title set to: %s", title.toStdString().c_str());
 #endif
     _window->setWindowTitle(title);
+
+    // updateTitleWindow gets called whenever there's a change regarding the domain, so rather
+    // than placing this within domainChanged, it's placed here to cover the other potential cases.
+    DependencyManager::get< MessagesClient >()->sendLocalMessage("Toolbar-DomainChanged", "");
 }
 
 void Application::clearDomainOctreeDetails() {
@@ -5890,6 +5938,7 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEngine* scri
     auto entityScriptServerLog = DependencyManager::get<EntityScriptServerLogClient>();
     scriptEngine->registerGlobalObject("EntityScriptServerLog", entityScriptServerLog.data());
     scriptEngine->registerGlobalObject("AvatarInputs", AvatarInputs::getInstance());
+    scriptEngine->registerGlobalObject("HoverOverlay", DependencyManager::get<HoverOverlayInterface>().data());
 
     qScriptRegisterMetaType(scriptEngine, OverlayIDtoScriptValue, OverlayIDfromScriptValue);
 
@@ -6661,11 +6710,11 @@ void Application::setPreviousScriptLocation(const QString& location) {
 }
 
 void Application::loadScriptURLDialog() const {
-    auto newScript = OffscreenUi::getText(OffscreenUi::ICON_NONE, "Open and Run Script", "Script URL");
+    QString newScript = OffscreenUi::getText(OffscreenUi::ICON_NONE, "Open and Run Script", "Script URL");
     if (QUrl(newScript).scheme() == "atp") {
         OffscreenUi::warning("Error Loading Script", "Cannot load client script over ATP");
     } else if (!newScript.isEmpty()) {
-        DependencyManager::get<ScriptEngines>()->loadScript(newScript);
+        DependencyManager::get<ScriptEngines>()->loadScript(newScript.trimmed());
     }
 }
 
