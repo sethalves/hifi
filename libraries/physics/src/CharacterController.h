@@ -52,7 +52,7 @@ public:
     btCollisionObject* getCollisionObject() { return _rigidBody; }
 
     virtual void updateShapeIfNecessary() = 0;
-    virtual void flagAsNeedsAddtiion() { _pendingFlags |= PENDING_FLAG_ADD_TO_SIMULATION; }
+    virtual void flagAsNeedsAddition() { _pendingFlags |= PENDING_FLAG_ADD_TO_SIMULATION; }
 
     // overrides from btCharacterControllerInterface
     virtual void setWalkDirection(const btVector3 &walkDirection) override { assert(false); }

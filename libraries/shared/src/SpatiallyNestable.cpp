@@ -761,14 +761,14 @@ const Transform SpatiallyNestable::getTransform(int jointIndex, bool& success, i
     return jointInWorldFrame;
 }
 
-void SpatiallyNestable::setTransform(const Transform& transform, bool& success) {
+void SpatiallyNestable::setTransform(const Transform& transform, bool& success, bool inSimulationFrame) {
     if (transform.containsNaN()) {
         success = false;
         return;
     }
 
     bool changed = false;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     _transformLock.withWriteLock([&] {
         Transform beforeTransform = _transform;
         Transform::inverseMult(_transform, parentTransform, transform);
@@ -1303,6 +1303,12 @@ void SpatiallyNestable::setPositionInSimulationFrame(const glm::vec3& position) 
         qDebug() << "Warning -- setPositionInSimulationFrame failed" << getID();
     }
 #endif
+}
+
+bool SpatiallyNestable::setTransformInSimulationFrame(const Transform& transform) {
+    bool success;
+    setTransform(transform, success, true);
+    return success;
 }
 
 glm::quat SpatiallyNestable::getOrientationInSimulationFrame() const {

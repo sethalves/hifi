@@ -1745,11 +1745,16 @@ void MyAvatar::nextAttitude(glm::vec3 position, glm::quat orientation) {
     }
     trans.setTranslation(position);
     trans.setRotation(orientation);
-    SpatiallyNestable::setTransform(trans, success);
-    if (!success) {
+    if (!SpatiallyNestable::setTransformInSimulationFrame(trans)) {
         qCWarning(interfaceapp) << "Warning -- MyAvatar::nextAttitude failed";
     }
-    updateAttitude(orientation);
+
+    glm::quat worldOrientation = localToWorld(orientation, _currentZoneID, -1, success);
+    if (!success) {
+        qCWarning(interfaceapp) << "Warning -- in MyAvatar::nextAttitude, localToWorld failed";
+        return;
+    }
+    updateAttitude(worldOrientation);
 }
 
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
@@ -3108,9 +3113,14 @@ void MyAvatar::handleZoneChange() {
         // add character controller to new simulation
         PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
         if (afterPhysicsEngine) {
-            afterPhysicsEngine->setCharacterController(&_characterController);
-            _characterController.flagAsNeedsAddtiion();
+            const Transform inSimTrans = getTransformInSimulationFrame();
+            const glm::vec3& inSimTranslation = inSimTrans.getTranslation();
+            const glm::quat& inSimRotation = inSimTrans.getRotation();
+            _characterController.setPositionAndOrientation(inSimTranslation, inSimRotation);
             _characterController.setVelocity(getVelocityInSimulationFrame());
+
+            afterPhysicsEngine->setCharacterController(&_characterController);
+            _characterController.flagAsNeedsAddition();
         } else {
             qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
         }
