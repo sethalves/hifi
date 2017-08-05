@@ -581,11 +581,11 @@ glm::vec3 SpatiallyNestable::getVelocity() const {
 void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame) {
     glm::vec3 parentVelocity = getParentVelocity(success, inSimulationFrame);
     if (!success) {
-        qDebug() << "Warning -- setVelocity failed on getParentVelocity" << getID();
+        qCDebug(shared) << "Warning -- setVelocity failed on getParentVelocity" << getID();
     }
     Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     if (!success) {
-        qDebug() << "Warning -- setVelocity failed on getParentTransform" << getID();
+        qCDebug(shared) << "Warning -- setVelocity failed on getParentTransform" << getID();
     }
     _velocityLock.withWriteLock([&] {
         // HACK: until we are treating _velocity the same way we treat _position (meaning,
@@ -1289,7 +1289,7 @@ glm::vec3 SpatiallyNestable::getPositionInSimulationFrame() const {
     auto result = getTransform(success, 0, true).getTranslation();
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- getPositionInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- getPositionInSimulationFrame failed" << getID();
     }
 #endif
     return result;
@@ -1300,7 +1300,7 @@ void SpatiallyNestable::setPositionInSimulationFrame(const glm::vec3& position) 
     setPosition(position, success, false, true);
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- setPositionInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- setPositionInSimulationFrame failed" << getID();
     }
 #endif
 }
@@ -1316,7 +1316,7 @@ glm::quat SpatiallyNestable::getOrientationInSimulationFrame() const {
     auto result = getTransform(success, 0, true).getRotation();
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- getOrientationInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- getOrientationInSimulationFrame failed" << getID();
     }
 #endif
     return result;
@@ -1328,7 +1328,7 @@ void SpatiallyNestable::setOrientationInSimulationFrame(const glm::quat& orienta
     setOrientation(orientation, success, false, true);
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- setOrientationInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- setOrientationInSimulationFrame failed" << getID();
     }
 #endif
 }
@@ -1338,7 +1338,7 @@ glm::vec3 SpatiallyNestable::getVelocityInSimulationFrame() const {
     glm::vec3 result = getVelocity(success, true);
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- getVelocityInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- getVelocityInSimulationFrame failed" << getID();
     }
 #endif
     return result;
@@ -1349,7 +1349,7 @@ void SpatiallyNestable::setVelocityInSimulationFrame(const glm::vec3& velocity) 
     setVelocity(velocity, success, true);
 #ifdef WANT_DEBUG
     if (!success) {
-        qDebug() << "Warning -- setVelocityInSimulationFrame failed" << getID();
+        qCDebug(shared) << "Warning -- setVelocityInSimulationFrame failed" << getID();
     }
 #endif
 }
