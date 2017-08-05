@@ -129,8 +129,7 @@ public:
     virtual DisplayPluginPointer getActiveDisplayPlugin() const override;
 
     enum Event {
-        Present = DisplayPlugin::Present,
-        Paint,
+        Paint = QEvent::User + 1,
         Idle,
         Lambda
     };
@@ -411,6 +410,7 @@ private slots:
     void clearDomainOctreeDetails();
     void clearDomainAvatars();
     void onAboutToQuit();
+    void onPresent(quint32 frameCount);
 
     void resettingDomain();
 
@@ -457,8 +457,8 @@ private:
 
     void cleanupBeforeQuit();
 
-    bool shouldPaint(float nsecsElapsed);
-    void idle(float nsecsElapsed);
+    bool shouldPaint();
+    void idle();
     void update(float deltaTime);
 
     // Various helper functions called during update()
@@ -520,6 +520,7 @@ private:
 
     OffscreenGLCanvas* _offscreenContext { nullptr };
     DisplayPluginPointer _displayPlugin;
+    QMetaObject::Connection _displayPluginPresentConnection;
     mutable std::mutex _displayPluginLock;
     InputPluginList _activeInputPlugins;
 
