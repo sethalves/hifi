@@ -24,7 +24,7 @@ PhysicsEngine::PhysicsEngine(QUuid id, const glm::vec3& offset) :
     _id(id),
     _originOffset(offset),
     _myAvatarController(nullptr) {
-    qDebug() << "NEW PHYSICS ENGINE: " << id;
+    qCDebug(physics) << "new physics engine:" << id;
 }
 
 PhysicsEngine::~PhysicsEngine() {

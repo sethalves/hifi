@@ -1678,7 +1678,7 @@ void MyAvatar::updateMotors() {
     // legacy support for 'MyAvatar::applyThrust()', which has always been implemented as a
     // short-lived linearAcceleration
     _characterController.setLinearAcceleration(_thrust);
-    _thrust = Vectors::ZERO; // ?
+    _thrust = Vectors::ZERO;
 }
 
 void MyAvatar::prepareForPhysicsSimulation() {
@@ -3021,7 +3021,7 @@ glm::mat4 MyAvatar::FollowHelper::postPhysicsUpdate(const MyAvatar& myAvatar, co
 
         glm::mat4 sensorToWorldTrans = myAvatar.getSensorToWorldMatrix();
 
-        // XXX this getParentTransform should be getSimulationTransform or something
+        // TODO -- should this getParentTransform be getSimulationTransform ?
         bool success;
         glm::mat4 simToWorldTrans = unconstMyAvatar->getParentTransform(success).getMatrix();
 
@@ -3079,13 +3079,13 @@ void MyAvatar::handleZoneChange() {
 
     if (zoneID != _currentZoneID) {
 
-        // #ifdef WANT_DEBUG
+        #ifdef WANT_DEBUG
         bool findSuccess;
         SpatiallyNestablePointer beforeZone = SpatiallyNestable::findByID(_currentZoneID, findSuccess);
         QString beforeZoneName = findSuccess && beforeZone ? beforeZone->toString() : "null";
         QString afterZoneName = simulationZone ? simulationZone->toString() : "null";
-        qDebug() << "MyAvatar is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
-        // #endif
+        qCDebug(interfaceapp) << "MyAvatar is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
+        #endif
 
         // remove character controller from old simulation
         PhysicsEnginePointer beforePhysicsEngine = getPhysicsEngine();
@@ -3095,7 +3095,7 @@ void MyAvatar::handleZoneChange() {
 
         // adjust position and velocity for new frame
         _currentZoneID = zoneID;
-        qDebug() << "_currentZoneID =" << _currentZoneID;
+        qCDebug(interfaceapp) << "_currentZoneID =" << _currentZoneID;
         bool success;
         Transform beforeTransform = getTransform(success);
         glm::vec3 beforeVelocity = getVelocity();
@@ -3107,7 +3107,7 @@ void MyAvatar::handleZoneChange() {
             setVelocity(beforeVelocity);
             setAngularVelocity(beforeAngularVelocity);
         } else {
-            qDebug() << "MyAvatar::handleZoneChange -- unable to set new transform";
+            qCDebug(interfaceapp) << "MyAvatar::handleZoneChange -- unable to set new transform";
         }
 
         // add character controller to new simulation
@@ -3122,7 +3122,7 @@ void MyAvatar::handleZoneChange() {
             afterPhysicsEngine->setCharacterController(&_characterController);
             _characterController.flagAsNeedsAddition();
         } else {
-            qDebug() << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
+            qCDebug(interfaceapp) << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
         }
     }
 

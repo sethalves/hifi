@@ -31,12 +31,6 @@
 #include <shared/Camera.h>
 #include <SoftAttachmentModel.h>
 
-// #include "AvatarMotionState.h"
-// #include "Camera.h"
-// #include "InterfaceLogging.h"
-// #include "SceneScriptingInterface.h"
-// #include "SoftAttachmentModel.h"
-// #include <Rig.h>
 #include "PhysicsEngineTracker.h"
 #include "Logging.h"
 
@@ -1479,9 +1473,6 @@ PhysicsEnginePointer Avatar::getPhysicsEngine() {
 
 void Avatar::hierarchyChanged() {
     SpatiallyNestable::hierarchyChanged();
-    // if (_motionState) {
-    //     _motionState->maybeSwitchPhysicsEngines();
-    // }
     addPhysicsFlags(Simulation::DIRTY_HIERARCHY);
 }
 

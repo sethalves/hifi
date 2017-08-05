@@ -3082,7 +3082,7 @@ function MyController(hand) {
         var isPhysical = propsArePhysical(grabbedProperties) ||
             (!this.grabbedIsOverlay && entityHasActions(this.grabbedThingID));
         if (isPhysical && this.state == STATE_NEAR_GRABBING // &&
-            // XXX check for EntityItem::findAncestorZone
+            // TODO -- check for EntityItem::findAncestorZone
             // grabbedProperties.parentID === NULL_UUID
            ) {
             // grab entity via action

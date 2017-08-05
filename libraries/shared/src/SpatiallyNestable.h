@@ -254,8 +254,6 @@ private:
     glm::vec3 _angularVelocity;
     mutable bool _parentKnowsMe { false };
     bool _isDead { false };
-
-
 };
 
 

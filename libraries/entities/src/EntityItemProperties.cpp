@@ -2146,7 +2146,6 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (queryAACubeChanged()) {
         out += "queryAACube";
     }
-
     if (clientOnlyChanged()) {
         out += "clientOnly";
     }
@@ -2159,7 +2158,6 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (ghostingAllowedChanged()) {
         out += "ghostingAllowed";
     }
-
     if (localizedSimulationChanged()) {
         out += "localizedSimulation";
     }

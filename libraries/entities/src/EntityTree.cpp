@@ -28,7 +28,6 @@
 #include "EntitiesLogging.h"
 #include "RecurseOctreeToMapOperator.h"
 #include "LogHandler.h"
-#include "PhysicsEngineTrackerInterface.h"
 #include "EntityEditFilters.h"
 #include "EntityDynamicFactoryInterface.h"
 
