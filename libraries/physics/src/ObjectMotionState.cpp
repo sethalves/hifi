@@ -38,16 +38,20 @@ const glm::vec3& ObjectMotionState::getWorldOffset() {
     return _worldOffset;
 }
 
-// static
-uint32_t worldSimulationStep = 0;
 void ObjectMotionState::setWorldSimulationStep(uint32_t step) {
-    assert(step > worldSimulationStep);
-    worldSimulationStep = step;
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+    physicsEngine->setWorldSimulationStep(step);
 }
 
-// static
-uint32_t ObjectMotionState::getWorldSimulationStep() {
-    return worldSimulationStep;
+uint32_t ObjectMotionState::getWorldSimulationStep() const {
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return -1;
+    }
+    return physicsEngine->getWorldSimulationStep();
 }
 
 // static
@@ -62,9 +66,12 @@ ShapeManager* ObjectMotionState::getShapeManager() {
     return shapeManager;
 }
 
-ObjectMotionState::ObjectMotionState(const btCollisionShape* shape) :
+ObjectMotionState::ObjectMotionState(const btCollisionShape* shape,
+                                     EntitySimulationPointer simulation,
+                                     uint32_t worldSimulationStep) :
     _shape(shape),
-    _lastKinematicStep(worldSimulationStep)
+    _lastKinematicStep(worldSimulationStep),
+    _simulation(simulation)
 {
 }
 
@@ -352,4 +359,3 @@ void ObjectMotionState::updateBodyMassProperties() {
     _body->setMassProps(mass, inertia);
     _body->updateInertiaTensor();
 }
-

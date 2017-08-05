@@ -16,7 +16,7 @@ class CauterizedModel : public Model {
     Q_OBJECT
 
 public:
-    CauterizedModel(QObject* parent);
+    CauterizedModel(QObject* parent, SpatiallyNestable* spatiallyNestableOverride = nullptr);
     virtual ~CauterizedModel();
 
     void flagAsCauterized() { _isCauterized = true; }

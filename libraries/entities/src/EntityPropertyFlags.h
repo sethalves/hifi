@@ -183,6 +183,7 @@ enum EntityPropertyList {
     PROP_LOCAL_ANGULAR_VELOCITY, // only used to convert values to and from scripts
 
     PROP_LAST_EDITED_BY,
+    PROP_LOCALIZED_SIMULATION, // does a zone localize the physics of its children?
 
     PROP_SERVER_SCRIPTS,
 

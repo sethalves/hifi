@@ -172,7 +172,7 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
     // Define the minimum bubble size
     static const glm::vec3 minBubbleSize = glm::vec3(0.3f, 1.3f, 0.3f);
     // Define the scale of the box for the current node
-    glm::vec3 nodeBoxScale = (nodeData->getPosition() - nodeData->getGlobalBoundingBoxCorner()) * 2.0f;
+    glm::vec3 nodeBoxScale = (nodeData->getClientGlobalPosition() - nodeData->getGlobalBoundingBoxCorner()) * 2.0f;
     // Set up the bounding box for the current node
     AABox nodeBox(nodeData->getGlobalBoundingBoxCorner(), nodeBoxScale);
     // Clamp the size of the bounding box to a minimum scale
@@ -181,7 +181,6 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
     }
     // Quadruple the scale of both bounding boxes
     nodeBox.embiggen(4.0f);
-
 
     // setup list of AvatarData as well as maps to map betweeen the AvatarData and the original nodes
     // for calling the AvatarData::sortAvatars() function and getting our sorted list of client nodes
@@ -209,7 +208,7 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
         assert(avatarNode); // we can't have gotten here without the avatarData being a valid key in the map
         return nodeData->getLastBroadcastTime(avatarNode->getUUID());
     }, [&](AvatarSharedPointer avatar)->float{
-        glm::vec3 nodeBoxHalfScale = (avatar->getPosition() - avatar->getGlobalBoundingBoxCorner());
+        glm::vec3 nodeBoxHalfScale = (avatar->getClientGlobalPosition() - avatar->getGlobalBoundingBoxCorner());
         return glm::max(nodeBoxHalfScale.x, glm::max(nodeBoxHalfScale.y, nodeBoxHalfScale.z));
     }, [&](AvatarSharedPointer avatar)->bool {
         if (avatar == thisAvatar) {

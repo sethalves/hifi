@@ -27,6 +27,7 @@
 #include "AtRestDetector.h"
 #include "MyCharacterController.h"
 #include <ThreadSafeValueCache.h>
+#include <ZoneEntityItem.h>
 
 class AvatarActionHold;
 class ModelItemID;
@@ -349,6 +350,8 @@ public:
     Q_INVOKABLE void setHMDLeanRecenterEnabled(bool value) { _hmdLeanRecenterEnabled = value; }
     Q_INVOKABLE bool getHMDLeanRecenterEnabled() const { return _hmdLeanRecenterEnabled; }
 
+    virtual void handleZoneChange() override;
+
     bool useAdvancedMovementControls() const { return _useAdvancedMovementControls.get(); }
     void setUseAdvancedMovementControls(bool useAdvancedMovementControls)
         { _useAdvancedMovementControls.set(useAdvancedMovementControls); }
@@ -478,6 +481,8 @@ public:
     controller::Pose getRightHandControllerPoseInSensorFrame() const;
     controller::Pose getLeftHandControllerPoseInWorldFrame() const;
     controller::Pose getRightHandControllerPoseInWorldFrame() const;
+    controller::Pose getLeftHandControllerPoseInSimulationFrame() const;
+    controller::Pose getRightHandControllerPoseInSimulationFrame() const;
     controller::Pose getLeftHandControllerPoseInAvatarFrame() const;
     controller::Pose getRightHandControllerPoseInAvatarFrame() const;
 
@@ -491,6 +496,8 @@ public:
     controller::Pose getRightFootControllerPoseInSensorFrame() const;
     controller::Pose getLeftFootControllerPoseInWorldFrame() const;
     controller::Pose getRightFootControllerPoseInWorldFrame() const;
+    controller::Pose getLeftFootControllerPoseInSimulationFrame() const;
+    controller::Pose getRightFootControllerPoseInSimulationFrame() const;
     controller::Pose getLeftFootControllerPoseInAvatarFrame() const;
     controller::Pose getRightFootControllerPoseInAvatarFrame() const;
 
@@ -603,6 +610,8 @@ public slots:
 
     glm::vec3 getPositionForAudio();
     glm::quat getOrientationForAudio();
+
+    virtual void locationChanged(bool tellPhysics = true) override;
 
 signals:
     void audioListenerModeChanged();
@@ -738,6 +747,7 @@ private:
 
     // working copies -- see AvatarData for thread-safe _sensorToWorldMatrixCache, used for outward facing access
     glm::mat4 _sensorToWorldMatrix { glm::mat4() };
+    glm::mat4 _sensorToSimulationMatrix { glm::mat4() };
 
     // cache of the current HMD sensor position and orientation in sensor space.
     glm::mat4 _hmdSensorMatrix;
@@ -782,6 +792,7 @@ private:
     bool _physicsSafetyPending { false };
     glm::vec3 _goToPosition;
     glm::quat _goToOrientation;
+    QUuid _currentZoneID;
 
     std::unordered_set<int> _headBoneSet;
     bool _prevShouldDrawHead;
@@ -821,6 +832,9 @@ private:
     AnimPose _prePhysicsRoomPose;
     std::mutex _holdActionsMutex;
     std::vector<AvatarActionHold*> _holdActions;
+
+    glm::quat _previousParentRotation;
+    bool _previousParentLocationSet { false };
 
     float AVATAR_MOVEMENT_ENERGY_CONSTANT { 0.001f };
     float AUDIO_ENERGY_CONSTANT { 0.000001f };

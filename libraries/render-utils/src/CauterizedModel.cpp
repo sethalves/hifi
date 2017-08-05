@@ -16,8 +16,8 @@
 #include "RenderUtilsLogging.h"
 
 
-CauterizedModel::CauterizedModel(QObject* parent) :
-        Model(parent) {
+CauterizedModel::CauterizedModel(QObject* parent, SpatiallyNestable* spatiallyNestableOverride) :
+    Model(parent, spatiallyNestableOverride) {
 }
 
 CauterizedModel::~CauterizedModel() {

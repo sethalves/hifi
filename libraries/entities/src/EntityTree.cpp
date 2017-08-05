@@ -316,7 +316,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
                     _simulation->changeEntity(entity);
                 }
             } else {
-                // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
+                // normally the _simulation clears ALL updateFlags, but since there are none we do it explicitly
                 entity->clearDirtyFlags();
             }
         }

@@ -26,6 +26,10 @@ using SpatiallyNestableWeakConstPointer = std::weak_ptr<const SpatiallyNestable>
 using SpatiallyNestablePointer = std::shared_ptr<SpatiallyNestable>;
 using SpatiallyNestableConstPointer = std::shared_ptr<const SpatiallyNestable>;
 
+class EntitySimulation;
+using EntitySimulationPointer = std::shared_ptr<EntitySimulation>;
+using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
+
 static const uint16_t INVALID_JOINT_INDEX = -1;
 
 enum class NestableType {
@@ -52,6 +56,7 @@ public:
 
     static glm::vec3 worldToLocal(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::quat worldToLocal(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
+    static glm::mat4 worldToLocal(const glm::mat4& trans, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::vec3 worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                           int parentJointIndex, bool& success);
     static glm::vec3 worldToLocalAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
@@ -59,6 +64,7 @@ public:
 
     static glm::vec3 localToWorld(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::quat localToWorld(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
+    static glm::mat4 localToWorld(const glm::mat4& trns, const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::vec3 localToWorldVelocity(const glm::vec3& velocity,
                                           const QUuid& parentID, int parentJointIndex, bool& success);
     static glm::vec3 localToWorldAngularVelocity(const glm::vec3& angularVelocity,
@@ -67,39 +73,46 @@ public:
     static QString nestableTypeToString(NestableType nestableType);
 
     // world frame
-    virtual const Transform getTransform(bool& success, int depth = 0) const;
+    virtual const Transform getTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
     virtual const Transform getTransform() const;
-    virtual void setTransform(const Transform& transform, bool& success);
+    virtual void setTransform(const Transform& transform, bool& success, bool inSimulationFrame = false);
     virtual bool setTransform(const Transform& transform);
+    virtual bool setTransformInSimulationFrame(const Transform& transform);
 
-    virtual Transform getParentTransform(bool& success, int depth = 0) const;
+    virtual const Transform getTransformInSimulationFrame() const;
+
+    virtual Transform getParentTransform(bool& success, int depth = 0, bool inSimulationFrame = false) const;
 
     virtual glm::vec3 getPosition(bool& success) const;
     virtual glm::vec3 getPosition() const;
-    virtual void setPosition(const glm::vec3& position, bool& success, bool tellPhysics = true);
+    virtual void setPosition(const glm::vec3& position, bool& success, bool tellPhysics = true, bool inSimulationFrame = false);
     virtual void setPosition(const glm::vec3& position);
 
     virtual glm::quat getOrientation(bool& success) const;
     virtual glm::quat getOrientation() const;
     virtual glm::quat getOrientation(int jointIndex, bool& success) const;
-    virtual void setOrientation(const glm::quat& orientation, bool& success, bool tellPhysics = true);
+    virtual void setOrientation(const glm::quat& orientation, bool& success,
+                                bool tellPhysics = true, bool inSimulationFrame = false);
     virtual void setOrientation(const glm::quat& orientation);
 
     // these are here because some older code uses rotation rather than orientation
     virtual const glm::quat getRotation() const { return getOrientation(); }
     virtual void setRotation(glm::quat orientation) { setOrientation(orientation); }
 
-    virtual glm::vec3 getVelocity(bool& success) const;
+    virtual glm::vec3 getVelocity(bool& success, bool inSimulationFrame = false) const;
     virtual glm::vec3 getVelocity() const;
-    virtual void setVelocity(const glm::vec3& velocity, bool& success);
+    virtual void setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame = false);
     virtual void setVelocity(const glm::vec3& velocity);
-    virtual glm::vec3 getParentVelocity(bool& success) const;
+
+    virtual glm::vec3 getParentVelocity(bool& success, bool inSimulationFrame = false) const;
+    virtual glm::vec3 getParentVelocity() const;
 
     virtual glm::vec3 getAngularVelocity(bool& success) const;
     virtual glm::vec3 getAngularVelocity() const;
     virtual void setAngularVelocity(const glm::vec3& angularVelocity, bool& success);
     virtual void setAngularVelocity(const glm::vec3& angularVelocity);
     virtual glm::vec3 getParentAngularVelocity(bool& success) const;
+    virtual glm::vec3 getParentAngularVelocity() const;
 
     virtual AACube getMaximumAACube(bool& success) const;
     bool checkAndMaybeUpdateQueryAACube();
@@ -170,7 +183,24 @@ public:
     bool hasAncestorOfType(NestableType nestableType) const;
     const QUuid findAncestorOfType(NestableType nestableType) const;
     SpatiallyNestablePointer getParentPointer(bool& success) const;
+
     static SpatiallyNestablePointer findByID(QUuid id, bool& success);
+    virtual bool isSimulationParent() { return false; }
+    bool parentIsSimulationParent() const;
+
+    // in the frame of the simulation for this object
+    virtual glm::vec3 getPositionInSimulationFrame() const;
+    virtual void setPositionInSimulationFrame(const glm::vec3& position);
+    virtual glm::quat getOrientationInSimulationFrame() const;
+    virtual void setOrientationInSimulationFrame(const glm::quat& orientation);
+    virtual glm::vec3 getVelocityInSimulationFrame() const;
+    virtual void setVelocityInSimulationFrame(const glm::vec3& velocity);
+    virtual glm::vec3 getAngularVelocityInSimulationFrame() const;
+    virtual void setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity);
+
+    virtual QString toString() const { return getID().toString(); }
+
+    virtual void hierarchyChanged(); // path through ancestors to root has changed
 
     void getLocalTransformAndVelocities(Transform& localTransform,
                                         glm::vec3& localVelocity,
@@ -191,7 +221,7 @@ protected:
     mutable SpatiallyNestableWeakPointer _parent;
 
     virtual void beParentOfChild(SpatiallyNestablePointer newChild) const;
-    virtual void forgetChild(SpatiallyNestablePointer newChild) const;
+    virtual void forgetChild(SpatiallyNestablePointer noLongerChild) const;
 
     mutable ReadWriteLockable _childrenLock;
     mutable QHash<QUuid, SpatiallyNestableWeakPointer> _children;
@@ -207,6 +237,9 @@ protected:
     quint64 _scaleChanged { 0 };
     quint64 _translationChanged { 0 };
     quint64 _rotationChanged { 0 };
+
+    EntitySimulationWeakPointer _simulation;
+    bool _simulationMayHaveChanged { false };
 
 private:
     QUuid _parentID; // what is this thing's transform relative to?

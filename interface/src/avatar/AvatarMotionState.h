@@ -19,9 +19,19 @@
 #include <BulletUtil.h>
 
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
+using PhysicsEngineWeakPointer = std::weak_ptr<PhysicsEngine>;
+
+
 class AvatarMotionState : public ObjectMotionState {
 public:
-    AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape);
+    AvatarMotionState(AvatarSharedPointer avatar, const btCollisionShape* shape,
+                      EntitySimulationPointer simulation, PhysicsEnginePointer physicsEngine);
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) override { _physicsEngine = physicsEngine; }
+
+    virtual QString getName() const override { return "avatar"; }
 
     virtual PhysicsMotionType getMotionType() const override { return _motionType; }
 
@@ -67,6 +77,11 @@ public:
     friend class AvatarManager;
     friend class Avatar;
 
+    AvatarSharedPointer getAvatar() const { return _avatar; }
+    virtual PhysicsEnginePointer getPhysicsEngine() const override;
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const override;
+    virtual void maybeSwitchPhysicsEngines() override;
+
 protected:
     // the dtor had been made protected to force the compiler to verify that it is only
     // ever called by the Avatar class dtor.
@@ -76,6 +91,7 @@ protected:
     virtual const btCollisionShape* computeNewShape() override;
 
     AvatarSharedPointer _avatar;
+    PhysicsEngineWeakPointer _physicsEngine;
 
     uint32_t _dirtyFlags;
 };

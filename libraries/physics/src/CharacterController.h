@@ -52,6 +52,7 @@ public:
     btCollisionObject* getCollisionObject() { return _rigidBody; }
 
     virtual void updateShapeIfNecessary() = 0;
+    virtual void flagAsNeedsAddition() { _pendingFlags |= PENDING_FLAG_ADD_TO_SIMULATION; }
 
     // overrides from btCharacterControllerInterface
     virtual void setWalkDirection(const btVector3 &walkDirection) override { assert(false); }
@@ -81,9 +82,11 @@ public:
     void postSimulation();
 
     void setPositionAndOrientation( const glm::vec3& position, const glm::quat& orientation);
-    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const;
+    void getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const;
 
-    void setParentVelocity(const glm::vec3& parentVelocity);
+    void setParentInducedVelocity(glm::vec3 parentInducedVelocity);
+
+    void setVelocity(const glm::vec3& velocity);
     void setFollowParameters(const glm::mat4& desiredWorldMatrix, float timeRemaining);
     float getFollowTime() const { return _followTime; }
     glm::vec3 getFollowLinearDisplacement() const;
@@ -148,7 +151,7 @@ protected:
     CharacterGhostObject _ghost;
     btVector3 _currentUp;
     btVector3 _targetVelocity;
-    btVector3 _parentVelocity;
+    btVector3 _parentInducedVelocity;
     btVector3 _preSimulationVelocity;
     btVector3 _velocityChange;
     btTransform _followDesiredBodyTransform;
@@ -191,7 +194,7 @@ protected:
     btQuaternion _followAngularDisplacement;
     btVector3 _linearAcceleration;
 
-    State _state;
+    State _state { State::Hover };
     bool _isPushingUp;
     bool _isStuck { false };
 

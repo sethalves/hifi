@@ -670,6 +670,7 @@ function loaded() {
 
         var elZoneFlyingAllowed = document.getElementById("property-zone-flying-allowed");
         var elZoneGhostingAllowed = document.getElementById("property-zone-ghosting-allowed");
+        var elZoneLocalizedSimulation = document.getElementById("property-zone-localized-simulation");
         var elZoneFilterURL = document.getElementById("property-zone-filter-url");
 
         var elPolyVoxSections = document.querySelectorAll(".poly-vox-section");
@@ -1028,6 +1029,7 @@ function loaded() {
 
                             elZoneFlyingAllowed.checked = properties.flyingAllowed;
                             elZoneGhostingAllowed.checked = properties.ghostingAllowed;
+                            elZoneLocalizedSimulation.checked = properties.localizedSimulation;
                             elZoneFilterURL.value = properties.filterURL;
 
                             showElements(document.getElementsByClassName('skybox-section'), elZoneBackgroundMode.value == 'skybox');
@@ -1412,6 +1414,9 @@ function loaded() {
 
         elZoneFlyingAllowed.addEventListener('change', createEmitCheckedPropertyUpdateFunction('flyingAllowed'));
         elZoneGhostingAllowed.addEventListener('change', createEmitCheckedPropertyUpdateFunction('ghostingAllowed'));
+        elZoneLocalizedSimulation.addEventListener('change',
+                                                   createEmitCheckedPropertyUpdateFunction('localizedSimulation'));
+
         elZoneFilterURL.addEventListener('change', createEmitTextPropertyUpdateFunction('filterURL'));
 
         var voxelVolumeSizeChangeFunction = createEmitVec3PropertyUpdateFunction(

@@ -47,7 +47,7 @@ void PIDController::updateHistory(float measuredValue, float dt, float error, fl
     // Don't report each update(), as the I/O messes with the results a lot.
     // Instead, add to history, and then dump out at once when full.
     // Typically, the first few values reported in each batch should be ignored.
-    const int n = _history.size();
+    const unsigned int n = _history.size();
     _history.resize(n + 1);
     Row& next = _history[n];
     next.measured = measuredValue;

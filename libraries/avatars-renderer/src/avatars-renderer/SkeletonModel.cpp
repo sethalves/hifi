@@ -23,7 +23,7 @@
 #include "Logging.h"
 
 SkeletonModel::SkeletonModel(Avatar* owningAvatar, QObject* parent) :
-    CauterizedModel(parent),
+    CauterizedModel(parent, owningAvatar),
     _owningAvatar(owningAvatar),
     _boundingCapsuleLocalOffset(0.0f),
     _boundingCapsuleRadius(0.0f),

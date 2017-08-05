@@ -492,6 +492,8 @@ void MyAvatar::update(float deltaTime) {
     emit energyChanged(currentEnergy);
 
     updateEyeContactTarget(deltaTime);
+
+    handleZoneChange();
 }
 
 void MyAvatar::updateEyeContactTarget(float deltaTime) {
@@ -689,8 +691,13 @@ void MyAvatar::updateJointFromController(controller::Action poseKey, ThreadSafeV
 void MyAvatar::updateSensorToWorldMatrix() {
     // update the sensor mat so that the body position will end up in the desired
     // position when driven from the head.
+    glm::mat4 bodySensorMatrixInv = glm::inverse(_bodySensorMatrix);
     glm::mat4 desiredMat = createMatFromQuatAndPos(getOrientation(), getPosition());
-    _sensorToWorldMatrix = desiredMat * glm::inverse(_bodySensorMatrix);
+    _sensorToWorldMatrix = desiredMat * bodySensorMatrixInv;
+
+    glm::mat4 desiredSimulationMat = createMatFromQuatAndPos(getOrientationInSimulationFrame(),
+                                                             getPositionInSimulationFrame());
+    _sensorToSimulationMatrix = desiredSimulationMat * bodySensorMatrixInv;;
 
     lateUpdatePalms();
 
@@ -700,6 +707,8 @@ void MyAvatar::updateSensorToWorldMatrix() {
     }
 
     _sensorToWorldMatrixCache.set(_sensorToWorldMatrix);
+
+    _sensorToSimulationMatrixCache.set(_sensorToSimulationMatrix);
 
     updateJointFromController(controller::Action::LEFT_HAND, _controllerLeftHandMatrixCache);
     updateJointFromController(controller::Action::RIGHT_HAND, _controllerRightHandMatrixCache);
@@ -883,6 +892,12 @@ void MyAvatar::render(RenderArgs* renderArgs) {
         return; // exit early
     }
     Avatar::render(renderArgs);
+}
+
+void MyAvatar::locationChanged(bool tellPhysics) {
+    PerformanceTimer pertTimer("locationChanged");
+    // jump over Avatar::locationChanged
+    SpatiallyNestable::locationChanged(tellPhysics);
 }
 
 void MyAvatar::overrideAnimation(const QString& url, float fps, bool loop, float firstFrame, float lastFrame) {
@@ -1452,6 +1467,14 @@ controller::Pose MyAvatar::getRightHandControllerPoseInWorldFrame() const {
     return _rightHandControllerPoseInSensorFrameCache.get().transform(getSensorToWorldMatrix());
 }
 
+controller::Pose MyAvatar::getLeftHandControllerPoseInSimulationFrame() const {
+    return _leftHandControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
+controller::Pose MyAvatar::getRightHandControllerPoseInSimulationFrame() const {
+    return _rightHandControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
 controller::Pose MyAvatar::getLeftHandControllerPoseInAvatarFrame() const {
     glm::mat4 invAvatarMatrix = glm::inverse(createMatFromQuatAndPos(getOrientation(), getPosition()));
     return getLeftHandControllerPoseInWorldFrame().transform(invAvatarMatrix);
@@ -1494,6 +1517,14 @@ controller::Pose MyAvatar::getLeftFootControllerPoseInWorldFrame() const {
 
 controller::Pose MyAvatar::getRightFootControllerPoseInWorldFrame() const {
     return _rightFootControllerPoseInSensorFrameCache.get().transform(getSensorToWorldMatrix());
+}
+
+controller::Pose MyAvatar::getLeftFootControllerPoseInSimulationFrame() const {
+    return _leftFootControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
+}
+
+controller::Pose MyAvatar::getRightFootControllerPoseInSimulationFrame() const {
+    return _rightFootControllerPoseInSensorFrameCache.get().transform(getSensorToSimulationMatrix());
 }
 
 controller::Pose MyAvatar::getLeftFootControllerPoseInAvatarFrame() const {
@@ -1587,6 +1618,12 @@ controller::Pose MyAvatar::getRightArmControllerPoseInAvatarFrame() const {
 
 void MyAvatar::updateMotors() {
     _characterController.clearMotors();
+
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+
     glm::quat motorRotation;
     if (_motionBehaviors & AVATAR_MOTION_ACTION_MOTOR_ENABLED) {
         if (_characterController.getState() == CharacterController::State::Hover ||
@@ -1606,11 +1643,20 @@ void MyAvatar::updateMotors() {
         const float DEFAULT_MOTOR_TIMESCALE = 0.2f;
         const float INVALID_MOTOR_TIMESCALE = 1.0e6f;
         if (_isPushing || _isBraking || !_isBeingPushed) {
-            _characterController.addMotor(_actionMotorVelocity, motorRotation, DEFAULT_MOTOR_TIMESCALE, INVALID_MOTOR_TIMESCALE);
+            bool success;
+            _characterController.addMotor(
+                _actionMotorVelocity,
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+                DEFAULT_MOTOR_TIMESCALE,
+                INVALID_MOTOR_TIMESCALE);
         } else {
             // _isBeingPushed must be true --> disable action motor by giving it a long timescale,
-            // otherwise it's attempt to "stand in in place" could defeat scripted motor/thrusts
-            _characterController.addMotor(_actionMotorVelocity, motorRotation, INVALID_MOTOR_TIMESCALE);
+            // otherwise its attempt to "stand in in place" could defeat scripted motor/thrusts
+            bool success;
+            _characterController.addMotor(
+                _actionMotorVelocity,
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+                INVALID_MOTOR_TIMESCALE);
         }
     }
     if (_motionBehaviors & AVATAR_MOTION_SCRIPTED_MOTOR_ENABLED) {
@@ -1622,7 +1668,11 @@ void MyAvatar::updateMotors() {
             // world-frame
             motorRotation = glm::quat();
         }
-        _characterController.addMotor(_scriptedMotorVelocity, motorRotation, _scriptedMotorTimescale);
+        bool success;
+        _characterController.addMotor(
+            _scriptedMotorVelocity,
+            SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+            _scriptedMotorTimescale);
     }
 
     // legacy support for 'MyAvatar::applyThrust()', which has always been implemented as a
@@ -1632,19 +1682,49 @@ void MyAvatar::updateMotors() {
 }
 
 void MyAvatar::prepareForPhysicsSimulation() {
+    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+
     relayDriveKeysToCharacterController();
     updateMotors();
 
-    bool success;
-    glm::vec3 parentVelocity = getParentVelocity(success);
-    if (!success) {
-        qDebug() << "Warning: getParentVelocity failed" << getID();
-        parentVelocity = glm::vec3();
-    }
-    _characterController.handleChangedCollisionGroup();
-    _characterController.setParentVelocity(parentVelocity);
+    // attempt to keep the avatar stuck to its parent by matching velocities
+    QUuid parentID = getParentID();
+    glm::vec3 parentInducedVelocity;
+    glm::vec3 parentInducedAngularVelocity;
+    if (parentID != QUuid() && parentID != physicsEngine->getID()) {
+        bool success;
+        Transform parentTransform = getParentTransform(success);
+        if (success) {
+            glm::vec3 parentPosition = parentTransform.getTranslation();
+            glm::quat parentRotation = parentTransform.getRotation();
+            glm::vec3 parentVelocity = getParentVelocity();
+            glm::vec3 parentAngularVelocity = getParentAngularVelocity();
+            glm::quat qParentAngularVelocity = glm::quat(parentAngularVelocity);
 
-    _characterController.setPositionAndOrientation(getPosition(), getOrientation());
+            glm::vec3 childPosition = getPosition();
+            parentInducedVelocity = parentVelocity + qParentAngularVelocity * (childPosition - parentPosition);
+
+            if (_previousParentLocationSet) {
+                glm::quat deltaRot = parentRotation * glm::inverse(_previousParentRotation);
+                glm::vec3 deltaRotEu = glm::eulerAngles(deltaRot);
+                deltaRotEu.x = 0.0f;
+                deltaRotEu.z = 0.0f;
+                glm::quat newRot = getOrientation() * glm::quat(deltaRotEu);
+                setOrientation(newRot);
+            }
+            _previousParentRotation = parentRotation;
+            _previousParentLocationSet = true;
+        }
+    } else {
+        _previousParentLocationSet = false;
+    }
+    _characterController.setParentInducedVelocity(parentInducedVelocity);
+    _characterController.handleChangedCollisionGroup();
+
+    _characterController.setPositionAndOrientation(getPositionInSimulationFrame(), getOrientationInSimulationFrame());
     auto headPose = getHeadControllerPoseInAvatarFrame();
     if (headPose.isValid()) {
         _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput());
@@ -1652,7 +1732,7 @@ void MyAvatar::prepareForPhysicsSimulation() {
         _follow.deactivate();
     }
 
-    _prePhysicsRoomPose = AnimPose(_sensorToWorldMatrix);
+    _prePhysicsRoomPose = AnimPose(_sensorToSimulationMatrix);
 }
 
 // There are a number of possible strategies for this set of tools through endRender, below.
@@ -1665,33 +1745,40 @@ void MyAvatar::nextAttitude(glm::vec3 position, glm::quat orientation) {
     }
     trans.setTranslation(position);
     trans.setRotation(orientation);
-    SpatiallyNestable::setTransform(trans, success);
-    if (!success) {
+    if (!SpatiallyNestable::setTransformInSimulationFrame(trans)) {
         qCWarning(interfaceapp) << "Warning -- MyAvatar::nextAttitude failed";
     }
-    updateAttitude(orientation);
+
+    glm::quat worldOrientation = localToWorld(orientation, _currentZoneID, -1, success);
+    if (!success) {
+        qCWarning(interfaceapp) << "Warning -- in MyAvatar::nextAttitude, localToWorld failed";
+        return;
+    }
+    updateAttitude(worldOrientation);
 }
 
 void MyAvatar::harvestResultsFromPhysicsSimulation(float deltaTime) {
     glm::vec3 position;
     glm::quat orientation;
     if (_characterController.isEnabledAndReady()) {
-        _characterController.getPositionAndOrientation(position, orientation);
+        bool success;
+        _characterController.getPositionAndOrientation(position, orientation, success);
     } else {
-        position = getPosition();
-        orientation = getOrientation();
+        position = getPositionInSimulationFrame();
+        orientation = getOrientationInSimulationFrame();
     }
+
     nextAttitude(position, orientation);
     _bodySensorMatrix = _follow.postPhysicsUpdate(*this, _bodySensorMatrix);
 
     if (_characterController.isEnabledAndReady()) {
-        setVelocity(_characterController.getLinearVelocity() + _characterController.getFollowVelocity());
+        setVelocityInSimulationFrame(_characterController.getLinearVelocity() + _characterController.getFollowVelocity());
         if (_characterController.isStuck()) {
             _physicsSafetyPending = true;
             _goToPosition = getPosition();
         }
     } else {
-        setVelocity(getVelocity() + _characterController.getFollowVelocity());
+        setVelocityInSimulationFrame(getVelocityInSimulationFrame() + _characterController.getFollowVelocity());
     }
 }
 
@@ -1918,7 +2005,7 @@ void MyAvatar::postUpdate(float deltaTime) {
     DebugDraw::getInstance().updateMyAvatarPos(getPosition());
     DebugDraw::getInstance().updateMyAvatarRot(getOrientation());
 
-    AnimPose postUpdateRoomPose(_sensorToWorldMatrix);
+    AnimPose postUpdateRoomPose(_sensorToSimulationMatrix);
 
     updateHoldActions(_prePhysicsRoomPose, postUpdateRoomPose);
 }
@@ -2140,7 +2227,7 @@ void MyAvatar::updatePosition(float deltaTime) {
         updateActionMotor(deltaTime);
     }
 
-    vec3 velocity = getVelocity();
+    vec3 velocity = getVelocityInSimulationFrame();
     const float MOVING_SPEED_THRESHOLD_SQUARED = 0.0001f; // 0.01 m/s
     if (!_characterController.isEnabledAndReady()) {
         // _characterController is not in physics simulation but it can still compute its target velocity
@@ -2874,6 +2961,11 @@ bool MyAvatar::FollowHelper::shouldActivateVertical(const MyAvatar& myAvatar, co
 void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat4& desiredBodyMatrix,
                                               const glm::mat4& currentBodyMatrix, bool hasDriveInput) {
 
+    PhysicsEnginePointer physicsEngine = myAvatar.getPhysicsEngine();
+    if (!physicsEngine) {
+        return;
+    }
+
     if (myAvatar.getHMDLeanRecenterEnabled() &&
         qApp->getCamera().getMode() != CAMERA_MODE_MIRROR) {
         if (!isActive(Rotation) && (shouldActivateRotation(myAvatar, desiredBodyMatrix, currentBodyMatrix) || hasDriveInput)) {
@@ -2890,17 +2982,21 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     glm::mat4 desiredWorldMatrix = myAvatar.getSensorToWorldMatrix() * desiredBodyMatrix;
     glm::mat4 currentWorldMatrix = myAvatar.getSensorToWorldMatrix() * currentBodyMatrix;
 
-    AnimPose followWorldPose(currentWorldMatrix);
+    bool success;
+    glm::mat4 SFdesiredWorldMatrix = SpatiallyNestable::worldToLocal(desiredWorldMatrix, physicsEngine->getID(), -1, success);
+    glm::mat4 SFcurrentWorldMatrix = SpatiallyNestable::worldToLocal(currentWorldMatrix, physicsEngine->getID(), -1, success);
+
+    AnimPose followWorldPose(SFcurrentWorldMatrix);
     if (isActive(Rotation)) {
-        followWorldPose.rot() = glmExtractRotation(desiredWorldMatrix);
+        followWorldPose.rot() = glmExtractRotation(SFdesiredWorldMatrix);
     }
     if (isActive(Horizontal)) {
-        glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
+        glm::vec3 desiredTranslation = extractTranslation(SFdesiredWorldMatrix);
         followWorldPose.trans().x = desiredTranslation.x;
         followWorldPose.trans().z = desiredTranslation.z;
     }
     if (isActive(Vertical)) {
-        glm::vec3 desiredTranslation = extractTranslation(desiredWorldMatrix);
+        glm::vec3 desiredTranslation = extractTranslation(SFdesiredWorldMatrix);
         followWorldPose.trans().y = desiredTranslation.y;
     }
 
@@ -2909,17 +3005,34 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
 
 glm::mat4 MyAvatar::FollowHelper::postPhysicsUpdate(const MyAvatar& myAvatar, const glm::mat4& currentBodyMatrix) {
     if (isActive()) {
+        MyAvatar *unconstMyAvatar = const_cast<MyAvatar*>(&myAvatar);
+        PhysicsEnginePointer physicsEngine = unconstMyAvatar->getPhysicsEngine();
+        if (!physicsEngine) {
+            return currentBodyMatrix;
+        }
+
         float dt = myAvatar.getCharacterController()->getFollowTime();
         decrementTimeRemaining(dt);
 
         // apply follow displacement to the body matrix.
-        glm::vec3 worldLinearDisplacement = myAvatar.getCharacterController()->getFollowLinearDisplacement();
-        glm::quat worldAngularDisplacement = myAvatar.getCharacterController()->getFollowAngularDisplacement();
-        glm::quat sensorToWorld = glmExtractRotation(myAvatar.getSensorToWorldMatrix());
-        glm::quat worldToSensor = glm::inverse(sensorToWorld);
+        glm::vec3 SFlinearDisplacement = myAvatar.getCharacterController()->getFollowLinearDisplacement();
+        glm::quat SFangularDisplacement = myAvatar.getCharacterController()->getFollowAngularDisplacement();
 
-        glm::vec3 sensorLinearDisplacement = worldToSensor * worldLinearDisplacement;
-        glm::quat sensorAngularDisplacement = worldToSensor * worldAngularDisplacement * sensorToWorld;
+
+        glm::mat4 sensorToWorldTrans = myAvatar.getSensorToWorldMatrix();
+
+        // TODO -- should this getParentTransform be getSimulationTransform ?
+        bool success;
+        glm::mat4 simToWorldTrans = unconstMyAvatar->getParentTransform(success).getMatrix();
+
+        glm::mat4 worldToSimTrans = glm::inverse(simToWorldTrans);
+        glm::mat4 sensorToSimTrans = worldToSimTrans * sensorToWorldTrans;
+
+        glm::quat sensorToSim = glmExtractRotation(sensorToSimTrans);
+        glm::quat simToSensor = glm::inverse(sensorToSim);
+
+        glm::vec3 sensorLinearDisplacement = simToSensor * SFlinearDisplacement;
+        glm::quat sensorAngularDisplacement = simToSensor * SFangularDisplacement * sensorToSim;
 
         glm::mat4 newBodyMat = createMatFromQuatAndPos(sensorAngularDisplacement * glmExtractRotation(currentBodyMatrix),
                                                        sensorLinearDisplacement + extractTranslation(currentBodyMatrix));
@@ -2956,6 +3069,65 @@ bool MyAvatar::didTeleport() {
     glm::vec3 changeInPosition = pos - lastPosition;
     lastPosition = pos;
     return (changeInPosition.length() > MAX_AVATAR_MOVEMENT_PER_FRAME);
+}
+
+void MyAvatar::handleZoneChange() {
+    auto treeRenderer = qApp->getEntities();
+    std::shared_ptr<ZoneEntityItem> zone = treeRenderer->myAvatarZone();
+    EntityItemPointer simulationZone = zone ? EntityItem::findAncestorZone(zone->getID()) : nullptr;
+    QUuid zoneID = simulationZone ? simulationZone->getID() : QUuid();
+
+    if (zoneID != _currentZoneID) {
+
+        #ifdef WANT_DEBUG
+        bool findSuccess;
+        SpatiallyNestablePointer beforeZone = SpatiallyNestable::findByID(_currentZoneID, findSuccess);
+        QString beforeZoneName = findSuccess && beforeZone ? beforeZone->toString() : "null";
+        QString afterZoneName = simulationZone ? simulationZone->toString() : "null";
+        qCDebug(interfaceapp) << "MyAvatar is leaving zone" << beforeZoneName << "and entering zone" << afterZoneName;
+        #endif
+
+        // remove character controller from old simulation
+        PhysicsEnginePointer beforePhysicsEngine = getPhysicsEngine();
+        if (beforePhysicsEngine) {
+            beforePhysicsEngine->setCharacterController(nullptr);
+        }
+
+        // adjust position and velocity for new frame
+        _currentZoneID = zoneID;
+        qCDebug(interfaceapp) << "_currentZoneID =" << _currentZoneID;
+        bool success;
+        Transform beforeTransform = getTransform(success);
+        glm::vec3 beforeVelocity = getVelocity();
+        glm::vec3 beforeAngularVelocity = getAngularVelocity();
+        if (success) {
+            setParentID(_currentZoneID);
+            // these will reset world-frame properties, which will be "backed-into" the local transform for the new parent
+            setTransform(beforeTransform, success);
+            setVelocity(beforeVelocity);
+            setAngularVelocity(beforeAngularVelocity);
+        } else {
+            qCDebug(interfaceapp) << "MyAvatar::handleZoneChange -- unable to set new transform";
+        }
+
+        // add character controller to new simulation
+        PhysicsEnginePointer afterPhysicsEngine = getPhysicsEngine();
+        if (afterPhysicsEngine) {
+            const Transform inSimTrans = getTransformInSimulationFrame();
+            const glm::vec3& inSimTranslation = inSimTrans.getTranslation();
+            const glm::quat& inSimRotation = inSimTrans.getRotation();
+            _characterController.setPositionAndOrientation(inSimTranslation, inSimRotation);
+            _characterController.setVelocity(getVelocityInSimulationFrame());
+
+            afterPhysicsEngine->setCharacterController(&_characterController);
+            _characterController.flagAsNeedsAddition();
+        } else {
+            qCDebug(interfaceapp) << "MyAvatar::handleZoneChange -- no destination PhysicsEngine";
+        }
+    }
+
+    auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
+    entityScriptingInterface->setDefaultParentID(_currentZoneID);
 }
 
 bool MyAvatar::hasDriveInput() const {

@@ -47,8 +47,15 @@ ObjectActionTractor::~ObjectActionTractor() {
 bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, glm::vec3& position,
                                    glm::vec3& linearVelocity, glm::vec3& angularVelocity,
                                    float& linearTimeScale, float& angularTimeScale) {
+    auto ownerEntity = _ownerEntity.lock();
+    if (!ownerEntity) {
+        return false;
+    }
     SpatiallyNestablePointer other = getOther();
+    EntityItemPointer ancestorZone = ownerEntity->findAncestorZone(ownerEntity->getParentID());
+
     withReadLock([&]{
+
         linearTimeScale = _linearTimeScale;
         angularTimeScale = _angularTimeScale;
 
@@ -65,6 +72,19 @@ bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, gl
             rotation = _desiredRotationalTarget;
             position = _desiredPositionalTarget;
         }
+
+        if (ancestorZone) {
+            // convert from world-frame to simulation-frame
+            bool rSuccess;
+            rotation = SpatiallyNestable::worldToLocal(rotation, ancestorZone->getID(), -1, rSuccess);
+            bool pSuccess;
+            position = SpatiallyNestable::worldToLocal(position, ancestorZone->getID(), -1, pSuccess);
+            if (!rSuccess || !pSuccess) {
+                rotation = _desiredRotationalTarget;
+                position = _desiredPositionalTarget;
+            }
+        }
+
         linearVelocity = glm::vec3();
         angularVelocity = glm::vec3();
     });
@@ -166,11 +186,10 @@ void ObjectActionTractor::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        void* physicsInfo = ownerEntity->getPhysicsInfo();
-        if (!physicsInfo) {
+        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+        if (!motionState) {
             return;
         }
-        ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
         btRigidBody* rigidBody = motionState->getRigidBody();
         if (!rigidBody) {
             qCDebug(physics) << "ObjectActionTractor::updateActionWorker no rigidBody";

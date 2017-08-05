@@ -249,7 +249,7 @@ const btScalar MIN_TARGET_SPEED_SQUARED = MIN_TARGET_SPEED * MIN_TARGET_SPEED;
 void CharacterController::playerStep(btCollisionWorld* collisionWorld, btScalar dt) {
     _stepHeight = _minStepHeight; // clears memory of last step obstacle
     _hasSupport = checkForSupport(collisionWorld);
-    btVector3 velocity = _rigidBody->getLinearVelocity() - _parentVelocity;
+    btVector3 velocity = _rigidBody->getLinearVelocity() - _parentInducedVelocity;
     computeNewVelocity(dt, velocity);
 
     const float MINIMUM_TIME_REMAINING = 0.005f;
@@ -323,7 +323,7 @@ void CharacterController::playerStep(btCollisionWorld* collisionWorld, btScalar 
             }
         }
     }
-    _rigidBody->setLinearVelocity(velocity + _parentVelocity);
+    _rigidBody->setLinearVelocity(velocity + _parentInducedVelocity);
     _ghost.setWorldTransform(_rigidBody->getWorldTransform());
 }
 
@@ -458,16 +458,23 @@ void CharacterController::setPositionAndOrientation(
     _position = glmToBullet(position + orientation * _shapeLocalOffset);
 }
 
-void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation) const {
+void CharacterController::getPositionAndOrientation(glm::vec3& position, glm::quat& rotation, bool& success) const {
     if (_rigidBody) {
         const btTransform& avatarTransform = _rigidBody->getWorldTransform();
         rotation = bulletToGLM(avatarTransform.getRotation());
         position = bulletToGLM(avatarTransform.getOrigin()) - rotation * _shapeLocalOffset;
+        success = true;
+    } else {
+        success = false;
     }
 }
 
-void CharacterController::setParentVelocity(const glm::vec3& velocity) {
-    _parentVelocity = glmToBullet(velocity);
+void CharacterController::setParentInducedVelocity(glm::vec3 parentInducedVelocity) {
+    _parentInducedVelocity = glmToBullet(parentInducedVelocity);
+}
+
+void CharacterController::setVelocity(const glm::vec3& velocity) {
+    _rigidBody->setLinearVelocity(glmToBullet(velocity));
 }
 
 void CharacterController::setFollowParameters(const glm::mat4& desiredWorldBodyMatrix, float timeRemaining) {
@@ -514,7 +521,8 @@ void CharacterController::addMotor(const glm::vec3& velocity, const glm::quat& r
     _motors.push_back(CharacterController::CharacterMotor(velocity, rotation, horizTimescale, vertTimescale));
 }
 
-void CharacterController::applyMotor(int index, btScalar dt, btVector3& worldVelocity, std::vector<btVector3>& velocities, std::vector<btScalar>& weights) {
+void CharacterController::applyMotor(int index, btScalar dt, btVector3& worldVelocity,
+                                     std::vector<btVector3>& velocities, std::vector<btScalar>& weights) {
     assert(index < (int)(_motors.size()));
     CharacterController::CharacterMotor& motor = _motors[index];
     if (motor.hTimescale >= MAX_CHARACTER_MOTOR_TIMESCALE && motor.vTimescale >= MAX_CHARACTER_MOTOR_TIMESCALE) {

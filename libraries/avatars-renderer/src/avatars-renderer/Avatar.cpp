@@ -31,6 +31,7 @@
 #include <shared/Camera.h>
 #include <SoftAttachmentModel.h>
 
+#include "PhysicsEngineTracker.h"
 #include "Logging.h"
 
 using namespace std;
@@ -628,6 +629,12 @@ void Avatar::render(RenderArgs* renderArgs) {
     }
 }
 
+void Avatar::locationChanged(bool tellPhysics) {
+    PerformanceTimer pertTimer("locationChanged");
+    SpatiallyNestable::locationChanged(tellPhysics);
+    _skeletonModel->updateRenderItems();
+}
+
 void Avatar::fixupModelsInScene(const render::ScenePointer& scene) {
     _attachmentsToDelete.clear();
 
@@ -1185,12 +1192,12 @@ int Avatar::parseDataFromBuffer(const QByteArray& buffer) {
     }
 
     // change in position implies movement
-    glm::vec3 oldPosition = getPosition();
+    glm::vec3 oldPosition = getPositionInSimulationFrame();
 
     int bytesRead = AvatarData::parseDataFromBuffer(buffer);
 
     const float MOVE_DISTANCE_THRESHOLD = 0.001f;
-    _moving = glm::distance(oldPosition, getPosition()) > MOVE_DISTANCE_THRESHOLD;
+    _moving = glm::distance(oldPosition, getPositionInSimulationFrame()) > MOVE_DISTANCE_THRESHOLD;
     if (_moving) {
         addPhysicsFlags(Simulation::DIRTY_POSITION);
     }
@@ -1453,6 +1460,20 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
             qCDebug(avatars_renderer) << "Avatar::setParentJointIndex failed to reset avatar's location.";
         }
     }
+}
+
+PhysicsEnginePointer Avatar::getPhysicsEngine() {
+    EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
+    if (ancestorZone) {
+        return ancestorZone->getChildPhysicsEngine();
+    }
+    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
+    return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTracker::DEFAULT_PHYSICS_ENGINE_ID);
+}
+
+void Avatar::hierarchyChanged() {
+    SpatiallyNestable::hierarchyChanged();
+    addPhysicsFlags(Simulation::DIRTY_HIERARCHY);
 }
 
 QList<QVariant> Avatar::getSkeleton() {

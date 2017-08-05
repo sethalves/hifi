@@ -64,6 +64,9 @@ const uint32_t OUTGOING_DIRTY_PHYSICS_FLAGS = Simulation::DIRTY_TRANSFORM | Simu
 class OctreeEditPacketSender;
 class PhysicsEngine;
 
+class EntitySimulation;
+using EntitySimulationWeakPointer = std::weak_ptr<EntitySimulation>;
+
 class ObjectMotionState : public btMotionState {
 public:
     // These poroperties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
@@ -72,14 +75,16 @@ public:
     static void setWorldOffset(const glm::vec3& offset);
     static const glm::vec3& getWorldOffset();
 
-    static void setWorldSimulationStep(uint32_t step);
-    static uint32_t getWorldSimulationStep();
-
     static void setShapeManager(ShapeManager* manager);
     static ShapeManager* getShapeManager();
 
-    ObjectMotionState(const btCollisionShape* shape);
+    ObjectMotionState(const btCollisionShape* shape, EntitySimulationPointer simulation, uint32_t worldSimulationStep);
     virtual ~ObjectMotionState();
+
+    virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
+
+    void setWorldSimulationStep(uint32_t step);
+    uint32_t getWorldSimulationStep() const;
 
     virtual void handleEasyChanges(uint32_t& flags);
     virtual bool handleHardAndEasyChanges(uint32_t& flags, PhysicsEngine* engine);
@@ -146,6 +151,9 @@ public:
     void dirtyInternalKinematicChanges() { _hasInternalKinematicChanges = true; }
     void clearInternalKinematicChanges() { _hasInternalKinematicChanges = false; }
 
+    virtual PhysicsEnginePointer getPhysicsEngine() const { return nullptr; }
+    virtual PhysicsEnginePointer getShouldBeInPhysicsEngine() const { return nullptr; }
+    virtual void maybeSwitchPhysicsEngines() { };
     virtual bool isLocallyOwned() const { return false; }
     virtual bool shouldBeLocallyOwned() const { return false; }
 
@@ -169,6 +177,8 @@ protected:
 
     uint32_t _lastKinematicStep;
     bool _hasInternalKinematicChanges { false };
+
+    EntitySimulationWeakPointer _simulation;
 };
 
 using SetOfMotionStates = QSet<ObjectMotionState*>;

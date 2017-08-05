@@ -134,9 +134,9 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
             // fetch the hand controller pose
             controller::Pose pose;
             if (isRightHand) {
-                pose = myAvatar->getRightHandControllerPoseInWorldFrame();
+                pose = myAvatar->getRightHandControllerPoseInSimulationFrame();
             } else {
-                pose = myAvatar->getLeftHandControllerPoseInWorldFrame();
+                pose = myAvatar->getLeftHandControllerPoseInSimulationFrame();
             }
 
             if (pose.isValid()) {
@@ -164,7 +164,7 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
                 glm::quat camRelRot = myAvatar->getAbsoluteJointRotationInObjectFrame(camRelIndex);
 
                 Transform avatarTransform;
-                avatarTransform = myAvatar->getTransform();
+                avatarTransform = myAvatar->getTransformInSimulationFrame();
                 palmPosition = avatarTransform.transform(camRelPos / myAvatar->getDomainLimitedScale());
                 palmRotation = avatarTransform.getRotation() * camRelRot;
             } else {
@@ -196,13 +196,13 @@ bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::
         } else { // regular avatar
             if (isRightHand) {
                 Transform controllerRightTransform = Transform(holdingAvatar->getControllerRightHandMatrix());
-                Transform avatarTransform = holdingAvatar->getTransform();
+                Transform avatarTransform = holdingAvatar->getTransformInSimulationFrame();
                 palmRotation = avatarTransform.getRotation() * controllerRightTransform.getRotation();
                 palmPosition = avatarTransform.getTranslation() +
                     (avatarTransform.getRotation() * controllerRightTransform.getTranslation());
             } else {
                 Transform controllerLeftTransform = Transform(holdingAvatar->getControllerLeftHandMatrix());
-                Transform avatarTransform = holdingAvatar->getTransform();
+                Transform avatarTransform = holdingAvatar->getTransformInSimulationFrame();
                 palmRotation = avatarTransform.getRotation() * controllerLeftTransform.getRotation();
                 palmPosition = avatarTransform.getTranslation() +
                     (avatarTransform.getRotation() * controllerLeftTransform.getTranslation());
@@ -244,12 +244,11 @@ void AvatarActionHold::doKinematicUpdate(float deltaTimeStep) {
         return;
     }
 
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    if (!physicsInfo) {
-        qDebug() << "AvatarActionHold::doKinematicUpdate -- no owning physics info";
+    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    if (!motionState) {
+        qDebug() << "AvatarActionHold::doKinematicUpdate -- no owning-entity motionState";
         return;
     }
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
     btRigidBody* rigidBody = motionState ? motionState->getRigidBody() : nullptr;
     if (!rigidBody) {
         qDebug() << "AvatarActionHold::doKinematicUpdate -- no rigidBody";
@@ -502,11 +501,11 @@ void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, cons
     if (!ownerEntity) {
         return;
     }
-    void* physicsInfo = ownerEntity->getPhysicsInfo();
-    if (!physicsInfo) {
+    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(ownerEntity->getPhysicsInfo());
+    if (!motionState) {
         return;
     }
-    ObjectMotionState* motionState = static_cast<ObjectMotionState*>(physicsInfo);
+
     btRigidBody* rigidBody = motionState ? motionState->getRigidBody() : nullptr;
     if (!rigidBody) {
         return;
@@ -529,7 +528,8 @@ void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, cons
     rigidBody->setWorldTransform(worldTrans);
 
     bool positionSuccess;
-    ownerEntity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(), positionSuccess, false);
+    ownerEntity->setPosition(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset(),
+                             positionSuccess, false, true);
     bool orientationSuccess;
-    ownerEntity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false);
+    ownerEntity->setOrientation(bulletToGLM(worldTrans.getRotation()), orientationSuccess, false, true);
 }

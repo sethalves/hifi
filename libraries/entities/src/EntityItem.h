@@ -47,9 +47,8 @@ class btCollisionShape;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
 typedef std::shared_ptr<EntityDynamicInterface> EntityDynamicPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
+typedef std::weak_ptr<EntitySimulation> EntitySimulationWeakPointer;
 using EntityTreeElementExtraEncodeDataPointer = std::shared_ptr<EntityTreeElementExtraEncodeData>;
-
-
 
 #define DONT_ALLOW_INSTANTIATION virtual void pureVirtualFunctionPlaceHolder() = 0;
 #define ALLOW_INSTANTIATION virtual void pureVirtualFunctionPlaceHolder() override { };
@@ -58,6 +57,8 @@ using EntityTreeElementExtraEncodeDataPointer = std::shared_ptr<EntityTreeElemen
 #define debugTimeOnly(T) qPrintable(QString("%1").arg(T, 16, 10))
 #define debugTreeVector(V) V << "[" << V << " in meters ]"
 
+class PhysicsEngine;
+using PhysicsEnginePointer = std::shared_ptr<PhysicsEngine>;
 class MeshProxyList;
 
 class RenderableEntityInterface;
@@ -447,6 +448,15 @@ public:
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
 
+    static EntityItemPointer findAncestorZone(QUuid parentID);
+
+    virtual PhysicsEnginePointer getChildPhysicsEngine() { return nullptr; } // overridden in ZoneEntityItem
+
+    virtual QString toString() const override;
+
+    PhysicsEnginePointer getPhysicsEngine();
+    virtual void hierarchyChanged() override;
+
     static void setEntitiesShouldFadeFunction(std::function<bool()> func) { _entitiesShouldFadeFunction = func; }
     static std::function<bool()> getEntitiesShouldFadeFunction() { return _entitiesShouldFadeFunction; }
     virtual bool isTransparent() { return _isFading ? Interpolate::calculateFadeRatio(_fadeStartTime) < 1.0f : false; }
@@ -565,7 +575,7 @@ protected:
     bool _simulated; // set by EntitySimulation
 
     bool addActionInternal(EntitySimulationPointer simulation, EntityDynamicPointer action);
-    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation = nullptr);
+    bool removeActionInternal(const QUuid& actionID, EntitySimulationPointer simulation);
     void deserializeActionsInternal();
     void serializeActions(bool& success, QByteArray& result) const;
     QHash<QUuid, EntityDynamicPointer> _objectActions;

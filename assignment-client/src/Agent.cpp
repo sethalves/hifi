@@ -50,6 +50,7 @@
 #include "entities/AssignmentParentFinder.h"
 #include "RecordingScriptingInterface.h"
 #include "AbstractAudioInterface.h"
+#include "PhysicsEngineTracker.h"
 
 
 static const int RECEIVED_AUDIO_STREAM_CAPACITY_FRAMES = 10;
@@ -74,6 +75,8 @@ Agent::Agent(ReceivedMessage& message) :
 
     DependencyManager::set<recording::Deck>();
     DependencyManager::set<recording::Recorder>();
+    DependencyManager::set<RecordingScriptingInterface>();
+    DependencyManager::set<PhysicsEngineTracker>();
     DependencyManager::set<recording::ClipCache>();
 
     DependencyManager::set<ScriptCache>();

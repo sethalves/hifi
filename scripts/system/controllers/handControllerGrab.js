@@ -3081,7 +3081,10 @@ function MyController(hand) {
         var isClone = false;
         var isPhysical = propsArePhysical(grabbedProperties) ||
             (!this.grabbedIsOverlay && entityHasActions(this.grabbedThingID));
-        if (isPhysical && this.state == STATE_NEAR_GRABBING && grabbedProperties.parentID === NULL_UUID) {
+        if (isPhysical && this.state == STATE_NEAR_GRABBING // &&
+            // TODO -- check for EntityItem::findAncestorZone
+            // grabbedProperties.parentID === NULL_UUID
+           ) {
             // grab entity via action
             if (!this.setupHoldAction()) {
                 return;

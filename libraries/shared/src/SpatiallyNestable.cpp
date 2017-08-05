@@ -75,13 +75,16 @@ void SpatiallyNestable::setParentID(const QUuid& parentID) {
     getParentPointer(success);
 }
 
-Transform SpatiallyNestable::getParentTransform(bool& success, int depth) const {
+Transform SpatiallyNestable::getParentTransform(bool& success, int depth, bool inSimulationFrame) const {
     Transform result;
     SpatiallyNestablePointer parent = getParentPointer(success);
     if (!success) {
         return result;
     }
     if (parent) {
+        if (inSimulationFrame && parent->isSimulationParent()) {
+            return Transform();
+        }
         Transform parentTransform = parent->getTransform(_parentJointIndex, success, depth + 1);
         result = parentTransform.setScale(1.0f); // TODO: scaling
     }
@@ -132,6 +135,8 @@ SpatiallyNestablePointer SpatiallyNestable::getParentPointer(bool& success) cons
         _parentKnowsMe = true;
     }
 
+    getThisPointer()->hierarchyChanged();
+
     success = (parent || parentID.isNull());
     return parent;
 }
@@ -142,9 +147,9 @@ void SpatiallyNestable::beParentOfChild(SpatiallyNestablePointer newChild) const
     });
 }
 
-void SpatiallyNestable::forgetChild(SpatiallyNestablePointer newChild) const {
+void SpatiallyNestable::forgetChild(SpatiallyNestablePointer noLongerChild) const {
     _childrenLock.withWriteLock([&] {
-        _children.remove(newChild->getID());
+        _children.remove(noLongerChild->getID());
     });
 }
 
@@ -230,6 +235,41 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
     myWorldTransform.setRotation(orientation);
     Transform::inverseMult(result, parentTransform, myWorldTransform);
     return result.getRotation();
+}
+
+glm::mat4 SpatiallyNestable::worldToLocal(const glm::mat4& trans,
+                                          const QUuid& parentID, int parentJointIndex,
+                                          bool& success) {
+    Transform result;
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return glm::mat4();
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return glm::mat4();
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return glm::mat4();
+    }
+
+    if (parent) {
+        parentTransform = parent->getTransform(parentJointIndex, success);
+        if (!success) {
+            return glm::mat4();
+        }
+        parentTransform.setScale(1.0f); // TODO: scale
+    }
+    success = true;
+
+    Transform::inverseMult(result, parentTransform, trans);
+    return result.getMatrix();
 }
 
 glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
@@ -338,6 +378,41 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
     return result.getRotation();
 }
 
+glm::mat4 SpatiallyNestable::localToWorld(const glm::mat4& trans,
+                                          const QUuid& parentID, int parentJointIndex,
+                                          bool& success) {
+    Transform result;
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return glm::mat4();
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return glm::mat4();
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return glm::mat4();
+    }
+
+    if (parent) {
+        parentTransform = parent->getTransform(parentJointIndex, success);
+        if (!success) {
+            return glm::mat4();
+        }
+        parentTransform.setScale(1.0f);
+    }
+    success = true;
+
+    Transform::mult(result, parentTransform, trans);
+    return result.getMatrix();
+}
+
 glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, const QUuid& parentID,
                                                   int parentJointIndex, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
@@ -389,7 +464,7 @@ glm::vec3 SpatiallyNestable::getPosition(int jointIndex, bool& success) const {
     return getTransform(jointIndex, success).getTranslation();
 }
 
-void SpatiallyNestable::setPosition(const glm::vec3& position, bool& success, bool tellPhysics) {
+void SpatiallyNestable::setPosition(const glm::vec3& position, bool& success, bool tellPhysics, bool inSimulationFrame) {
     // guard against introducing NaN into the transform
     if (isNaN(position)) {
         success = false;
@@ -397,7 +472,7 @@ void SpatiallyNestable::setPosition(const glm::vec3& position, bool& success, bo
     }
 
     bool changed = false;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     Transform myWorldTransform;
     _transformLock.withWriteLock([&] {
         Transform::mult(myWorldTransform, parentTransform, _transform);
@@ -442,7 +517,7 @@ glm::quat SpatiallyNestable::getOrientation(int jointIndex, bool& success) const
     return getTransform(jointIndex, success).getRotation();
 }
 
-void SpatiallyNestable::setOrientation(const glm::quat& orientation, bool& success, bool tellPhysics) {
+void SpatiallyNestable::setOrientation(const glm::quat& orientation, bool& success, bool tellPhysics, bool inSimulationFrame) {
     // guard against introducing NaN into the transform
     if (isNaN(orientation)) {
         success = false;
@@ -450,7 +525,7 @@ void SpatiallyNestable::setOrientation(const glm::quat& orientation, bool& succe
     }
 
     bool changed = false;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     Transform myWorldTransform;
     _transformLock.withWriteLock([&] {
         Transform::mult(myWorldTransform, parentTransform, _transform);
@@ -476,13 +551,14 @@ void SpatiallyNestable::setOrientation(const glm::quat& orientation) {
     #endif
 }
 
-glm::vec3 SpatiallyNestable::getVelocity(bool& success) const {
+glm::vec3 SpatiallyNestable::getVelocity(bool& success, bool inSimulationFrame) const {
     glm::vec3 result;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     if (!success) {
         return result;
     }
-    glm::vec3 parentVelocity = getParentVelocity(success);
+
+    glm::vec3 parentVelocity = getParentVelocity(success, inSimulationFrame);
     if (!success) {
         return result;
     }
@@ -502,9 +578,15 @@ glm::vec3 SpatiallyNestable::getVelocity() const {
     return result;
 }
 
-void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success) {
-    glm::vec3 parentVelocity = getParentVelocity(success);
-    Transform parentTransform = getParentTransform(success);
+void SpatiallyNestable::setVelocity(const glm::vec3& velocity, bool& success, bool inSimulationFrame) {
+    glm::vec3 parentVelocity = getParentVelocity(success, inSimulationFrame);
+    if (!success) {
+        qDebug() << "Warning -- setVelocity failed on getParentVelocity" << getID();
+    }
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
+    if (!success) {
+        qDebug() << "Warning -- setVelocity failed on getParentTransform" << getID();
+    }
     _velocityLock.withWriteLock([&] {
         // HACK: until we are treating _velocity the same way we treat _position (meaning,
         // _velocity is a vs parent value and any request for a world-frame velocity must
@@ -529,14 +611,29 @@ void SpatiallyNestable::setVelocity(const glm::vec3& velocity) {
     }
 }
 
-glm::vec3 SpatiallyNestable::getParentVelocity(bool& success) const {
+glm::vec3 SpatiallyNestable::getParentVelocity(bool& success, bool inSimulationFrame) const {
     glm::vec3 result;
+
     SpatiallyNestablePointer parent = getParentPointer(success);
     if (!success) {
         return result;
     }
     if (parent) {
+        if (inSimulationFrame && parent->isSimulationParent()) {
+            return result;
+        }
         result = parent->getVelocity(success);
+    }
+    return result;
+}
+
+glm::vec3 SpatiallyNestable::getParentVelocity() const {
+    glm::vec3 result;
+    bool success;
+    result = getParentVelocity(success);
+    if (!success) {
+        qCDebug(shared) << "Warning -- getParentVelocity failed" << getID();
+        return glm::vec3();
     }
     return result;
 }
@@ -594,10 +691,21 @@ glm::vec3 SpatiallyNestable::getParentAngularVelocity(bool& success) const {
     return result;
 }
 
-const Transform SpatiallyNestable::getTransform(bool& success, int depth) const {
+glm::vec3 SpatiallyNestable::getParentAngularVelocity() const {
+    glm::vec3 result;
+    bool success;
+    result = getParentAngularVelocity(success);
+    if (!success) {
+        qCDebug(shared) << "Warning -- getParentAngularVelocity failed" << getID();
+        return glm::vec3();
+    }
+    return result;
+}
+
+const Transform SpatiallyNestable::getTransform(bool& success, int depth, bool inSimulationFrame) const {
     Transform result;
     // return a world-space transform for this object's location
-    Transform parentTransform = getParentTransform(success, depth);
+    Transform parentTransform = getParentTransform(success, depth, inSimulationFrame);
     _transformLock.withReadLock([&] {
         Transform::mult(result, parentTransform, _transform);
     });
@@ -607,6 +715,15 @@ const Transform SpatiallyNestable::getTransform(bool& success, int depth) const 
 const Transform SpatiallyNestable::getTransform() const {
     bool success;
     Transform result = getTransform(success);
+    if (!success) {
+        qCDebug(shared) << "getTransform failed for" << getID();
+    }
+    return result;
+}
+
+const Transform SpatiallyNestable::getTransformInSimulationFrame() const {
+    bool success;
+    Transform result = getTransform(success, 0, true);
     if (!success) {
         qCDebug(shared) << "getTransform failed for" << getID();
     }
@@ -644,14 +761,14 @@ const Transform SpatiallyNestable::getTransform(int jointIndex, bool& success, i
     return jointInWorldFrame;
 }
 
-void SpatiallyNestable::setTransform(const Transform& transform, bool& success) {
+void SpatiallyNestable::setTransform(const Transform& transform, bool& success, bool inSimulationFrame) {
     if (transform.containsNaN()) {
         success = false;
         return;
     }
 
     bool changed = false;
-    Transform parentTransform = getParentTransform(success);
+    Transform parentTransform = getParentTransform(success, 0, inSimulationFrame);
     _transformLock.withWriteLock([&] {
         Transform beforeTransform = _transform;
         Transform::inverseMult(_transform, parentTransform, transform);
@@ -942,6 +1059,13 @@ void SpatiallyNestable::locationChanged(bool tellPhysics) {
     });
 }
 
+void SpatiallyNestable::hierarchyChanged() {
+    forEachChild([&](SpatiallyNestablePointer object) {
+        object->hierarchyChanged();
+    });
+}
+
+
 AACube SpatiallyNestable::getMaximumAACube(bool& success) const {
     return AACube(getPosition(success) - glm::vec3(defaultAACubeSize / 2.0f), defaultAACubeSize);
 }
@@ -1151,6 +1275,94 @@ SpatiallyNestablePointer SpatiallyNestable::findByID(QUuid id, bool& success) {
     return parentWP.lock();
 }
 
+bool SpatiallyNestable::parentIsSimulationParent() const {
+    bool success;
+    SpatiallyNestablePointer parent = getParentPointer(success);
+    if (!success || !parent) {
+        return false;
+    }
+    return parent->isSimulationParent();
+}
+
+glm::vec3 SpatiallyNestable::getPositionInSimulationFrame() const {
+    bool success;
+    auto result = getTransform(success, 0, true).getTranslation();
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- getPositionInSimulationFrame failed" << getID();
+    }
+#endif
+    return result;
+}
+
+void SpatiallyNestable::setPositionInSimulationFrame(const glm::vec3& position) {
+    bool success;
+    setPosition(position, success, false, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- setPositionInSimulationFrame failed" << getID();
+    }
+#endif
+}
+
+bool SpatiallyNestable::setTransformInSimulationFrame(const Transform& transform) {
+    bool success;
+    setTransform(transform, success, true);
+    return success;
+}
+
+glm::quat SpatiallyNestable::getOrientationInSimulationFrame() const {
+    bool success;
+    auto result = getTransform(success, 0, true).getRotation();
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- getOrientationInSimulationFrame failed" << getID();
+    }
+#endif
+    return result;
+
+}
+
+void SpatiallyNestable::setOrientationInSimulationFrame(const glm::quat& orientation) {
+    bool success;
+    setOrientation(orientation, success, false, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- setOrientationInSimulationFrame failed" << getID();
+    }
+#endif
+}
+
+glm::vec3 SpatiallyNestable::getVelocityInSimulationFrame() const {
+    bool success;
+    glm::vec3 result = getVelocity(success, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- getVelocityInSimulationFrame failed" << getID();
+    }
+#endif
+    return result;
+}
+
+void SpatiallyNestable::setVelocityInSimulationFrame(const glm::vec3& velocity) {
+    bool success;
+    setVelocity(velocity, success, true);
+#ifdef WANT_DEBUG
+    if (!success) {
+        qDebug() << "Warning -- setVelocityInSimulationFrame failed" << getID();
+    }
+#endif
+}
+
+glm::vec3 SpatiallyNestable::getAngularVelocityInSimulationFrame() const {
+    // TODO: fix this
+    return getAngularVelocity();
+}
+
+void SpatiallyNestable::setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity) {
+    // TODO: fix this
+    setAngularVelocity(angularVelocity);
+}
 
 QString SpatiallyNestable::nestableTypeToString(NestableType nestableType) {
     switch(nestableType) {

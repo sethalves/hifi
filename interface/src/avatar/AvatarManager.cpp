@@ -188,7 +188,8 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
             avatar->computeShapeInfo(shapeInfo);
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
             if (shape) {
-                AvatarMotionState* motionState = new AvatarMotionState(avatar, shape);
+                AvatarMotionState* motionState =
+                    new AvatarMotionState(avatar, shape, qApp->getSimulation(), avatar->getPhysicsEngine());
                 motionState->setMass(avatar->computeMass());
                 avatar->setPhysicsCallback([=] (uint32_t flags) { motionState->addDirtyFlags(flags); });
                 _motionStates.insert(avatar.get(), motionState);
@@ -303,19 +304,26 @@ AvatarSharedPointer AvatarManager::newSharedAvatar() {
     return std::make_shared<OtherAvatar>(qApp->thread());
 }
 
+void AvatarManager::removeAvatarFromPhysicsSimulation(Avatar* avatar) {
+    assert(avatar);
+    avatar->setPhysicsCallback(nullptr);
+    AvatarMotionStateMap::iterator itr = _motionStates.find(avatar);
+    if (itr != _motionStates.end()) {
+        AvatarMotionState* motionState = *itr;
+        if (motionState) {
+            _motionStatesToAddToPhysics.remove(motionState);
+            _motionStatesToRemoveFromPhysics.push_back(motionState);
+        }
+        _motionStates.erase(itr);
+    }
+}
+
 void AvatarManager::handleRemovedAvatar(const AvatarSharedPointer& removedAvatar, KillAvatarReason removalReason) {
     AvatarHashMap::handleRemovedAvatar(removedAvatar, removalReason);
 
     // remove from physics
     auto avatar = std::static_pointer_cast<Avatar>(removedAvatar);
-    avatar->setPhysicsCallback(nullptr);
-    AvatarMotionStateMap::iterator itr = _motionStates.find(avatar.get());
-    if (itr != _motionStates.end()) {
-        AvatarMotionState* motionState = *itr;
-        _motionStatesToAddToPhysics.remove(motionState);
-        _motionStatesToRemoveFromPhysics.push_back(motionState);
-        _motionStates.erase(itr);
-    }
+    removeAvatarFromPhysicsSimulation(avatar.get());
 
     if (removalReason == KillAvatarReason::TheirAvatarEnteredYourBubble) {
         emit DependencyManager::get<UsersScriptingInterface>()->enteredIgnoreRadius();
@@ -413,6 +421,7 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
             auto collisionSound = myAvatar->getCollisionSound();
             if (collisionSound) {
                 const auto characterController = myAvatar->getCharacterController();
+                // TODO -- should this convert local velocity to world?
                 const float avatarVelocityChange = (characterController ? glm::length(characterController->getVelocityChange()) : 0.0f);
                 const float velocityChange = glm::length(collision.velocityChange) + avatarVelocityChange;
                 const float MIN_AVATAR_COLLISION_ACCELERATION = 2.4f; // walking speed
