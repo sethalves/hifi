@@ -27,22 +27,36 @@ public:
     virtual ~SDL2Provider() {}
 
     virtual InputPluginList getInputPlugins() override {
-        static std::once_flag once;
-        std::call_once(once, [&] {
+        // static std::once_flag once;
+        // std::call_once(once, [&] {
+        //     InputPluginPointer plugin(new SDL2Manager());
+        //     if (plugin->isSupported()) {
+        //         _inputPlugins.push_back(plugin);
+        //     }
+        // });
+
+        std::lock_guard<std::mutex> guard(_inputPluginsLock);
+        if (!_inputPluginsInited) {
             InputPluginPointer plugin(new SDL2Manager());
             if (plugin->isSupported()) {
                 _inputPlugins.push_back(plugin);
             }
-        });
+        }
+        _inputPluginsInited = true;
+
         return _inputPlugins;
     }
 
     virtual void destroyInputPlugins() override {
+        std::lock_guard<std::mutex> guard(_inputPluginsLock);
         _inputPlugins.clear();
     }
 
 private:
+
+    std::mutex _inputPluginsLock;
     InputPluginList _inputPlugins;
+    bool _inputPluginsInited { false };
 };
 
 #include "SDL2Provider.moc"
