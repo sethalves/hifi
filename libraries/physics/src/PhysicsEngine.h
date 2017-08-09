@@ -60,7 +60,6 @@ public:
     uint32_t getNumSubsteps();
 
     void removeObjects(const VectorOfMotionStates& objects);
-    void removeSetOfObjects(const SetOfMotionStates& objects); // only called during teardown
     void removeObject(ObjectMotionState* object, bool doBumpAndPrune = true);
 
     void addObjects(const VectorOfMotionStates& objects);

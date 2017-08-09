@@ -169,6 +169,6 @@ PhysicsEnginePointer AvatarMotionState::getShouldBeInPhysicsEngine() const {
 // virtual
 void AvatarMotionState::maybeSwitchPhysicsEngines() {
     if (_avatar) {
-        _avatar->handleZoneChange();
+        std::static_pointer_cast<Avatar>(_avatar)->handleZoneChange();
     }
 }

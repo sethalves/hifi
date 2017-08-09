@@ -83,7 +83,6 @@ public:
 
     virtual void setPhysicsEngine(PhysicsEnginePointer physicsEngine) { }
 
-    void setWorldSimulationStep(uint32_t step);
     uint32_t getWorldSimulationStep() const;
 
     virtual void handleEasyChanges(uint32_t& flags);

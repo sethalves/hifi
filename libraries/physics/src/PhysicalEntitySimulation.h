@@ -26,6 +26,7 @@
 class PhysicalEntitySimulation;
 using PhysicalEntitySimulationPointer = std::shared_ptr<PhysicalEntitySimulation>;
 using SetOfEntityMotionStates = QSet<EntityMotionState*>;
+using VectorOfEntityMotionStates = QVector<EntityMotionState*>;
 
 class PhysicalEntitySimulation : public EntitySimulation {
 public:
@@ -99,8 +100,8 @@ inline QHash<QUuid, QVector<T>> sortMotionStatesByEngine(QVector<T> unsortedStat
 }
 
 template<class T>
-inline QHash<QUuid, QSet<T>> sortMotionStatesByEngine(QSet<T> unsortedStates) {
-    QHash<QUuid, QSet<T>> result;
+inline QHash<QUuid, QVector<T>> sortMotionStatesByEngine(QSet<T> unsortedStates) {
+    QHash<QUuid, QVector<T>> result;
     foreach (ObjectMotionState* motionState, unsortedStates) {
         T upcastMotionState = dynamic_cast<T>(motionState);
         if (upcastMotionState) {

@@ -211,14 +211,6 @@ void PhysicsEngine::removeObjects(const VectorOfMotionStates& objects) {
     }
 }
 
-// Same as above, but takes a Set instead of a Vector.  Should only be called during teardown.
-void PhysicsEngine::removeSetOfObjects(const SetOfMotionStates& objects) {
-    _contactMap.clear();
-    for (auto object : objects) {
-        removeObject(object, false);
-    }
-}
-
 void PhysicsEngine::addObjects(const VectorOfMotionStates& objects) {
     for (auto object : objects) {
         addObjectToDynamicsWorld(object);
@@ -235,6 +227,9 @@ VectorOfMotionStates PhysicsEngine::changeObjects(const VectorOfMotionStates& ob
     for (auto object : objects) {
         uint32_t flags = object->getIncomingDirtyFlags() & DIRTY_PHYSICS_FLAGS;
         if (flags & Simulation::DIRTY_HIERARCHY) {
+            // This will cause this motion-state to be added to a list in its EntitySimulation.  The actual removal
+            // from one engine and addition to another happens later.  We go ahead and process the rest of the
+            // flags, even if DIRTY_HIERARCHY is set.
             object->maybeSwitchPhysicsEngines();
         }
         if (flags & HARD_DIRTY_PHYSICS_FLAGS) {

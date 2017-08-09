@@ -4964,7 +4964,7 @@ void Application::update(float deltaTime) {
                         EntityItemPointer entity = entityMotionState->getEntity();
                         auto oldPhysicsEngine = motionState->getPhysicsEngine();
                         auto newPhysicsEngine = motionState->getShouldBeInPhysicsEngine();
-                        if (oldPhysicsEngine && newPhysicsEngine) {
+                        if (oldPhysicsEngine && newPhysicsEngine && oldPhysicsEngine != newPhysicsEngine) {
                             oldPhysicsEngine->removeObject(motionState);
                             newPhysicsEngine->addObject(motionState);
                         }

@@ -253,6 +253,8 @@ public:
     void addPhysicsFlags(uint32_t flags);
     bool isInPhysicsSimulation() const { return _physicsCallback != nullptr; }
 
+    virtual void handleZoneChange() {};
+
 public slots:
 
     // FIXME - these should be migrated to use Pose data instead

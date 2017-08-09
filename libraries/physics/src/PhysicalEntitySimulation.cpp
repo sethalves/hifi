@@ -144,9 +144,9 @@ void PhysicalEntitySimulation::clearEntitiesInternal() {
     // then remove the objects (aka MotionStates) from physics
     auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
 
-    QHash<QUuid, SetOfMotionStates> motionStatesPerEngine = sortMotionStatesByEngine(_physicalObjects);
+    QHash<QUuid, VectorOfMotionStates> motionStatesPerEngine = sortMotionStatesByEngine(_physicalObjects);
     foreach (QUuid engineID, motionStatesPerEngine.keys()) {
-        physicsEngineTracker->getPhysicsEngineByID(engineID)->removeSetOfObjects(motionStatesPerEngine[engineID]);
+        physicsEngineTracker->getPhysicsEngineByID(engineID)->removeObjects(motionStatesPerEngine[engineID]);
     }
 
     // delete the MotionStates
@@ -335,7 +335,7 @@ void PhysicalEntitySimulation::handleChangedMotionStates(const VectorOfMotionSta
         return;
     }
 
-    QHash<QUuid, SetOfEntityMotionStates> outgoingChangesPerEngine = sortMotionStatesByEngine(_outgoingChanges);
+    QHash<QUuid, VectorOfEntityMotionStates> outgoingChangesPerEngine = sortMotionStatesByEngine(_outgoingChanges);
     // clear _outgoingChanges here -- the states that should stay will be re-added below.
     _outgoingChanges.clear();
 
@@ -346,7 +346,7 @@ void PhysicalEntitySimulation::handleChangedMotionStates(const VectorOfMotionSta
         if (_lastStepSendPackets[engineID] != numSubsteps) {
             _lastStepSendPackets[engineID] = numSubsteps;
 
-            SetOfEntityMotionStates outgoingChanges = outgoingChangesPerEngine[engineID];
+            VectorOfEntityMotionStates outgoingChanges = outgoingChangesPerEngine[engineID];
             // look for entities to prune or update
             foreach (EntityMotionState* state, outgoingChanges) {
                 if (!state->isCandidateForOwnership()) {

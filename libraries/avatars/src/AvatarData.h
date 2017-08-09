@@ -634,8 +634,6 @@ public:
         return _lastSentJointData;
     }
 
-    virtual void handleZoneChange() {};
-
     // A method intended to be overriden by MyAvatar for polling orientation for network transmission.
     virtual glm::quat getOrientationOutbound() const;
 
@@ -694,7 +692,6 @@ protected:
     bool avatarScaleChangedSince(quint64 time) const { return _avatarScaleChanged >= time; }
     bool lookAtPositionChangedSince(quint64 time) const { return _headData->lookAtPositionChangedSince(time); }
     bool sensorToWorldMatrixChangedSince(quint64 time) const { return _sensorToWorldMatrixChanged >= time; }
-    bool sensorToSimulationMatrixChangedSince(quint64 time) const { return _sensorToSimulationMatrixChanged >= time; }
     bool additionalFlagsChangedSince(quint64 time) const { return _additionalFlagsChanged >= time; }
     bool parentInfoChangedSince(quint64 time) const { return _parentChanged >= time; }
     bool faceTrackerInfoChangedSince(quint64 time) const { return true; } // FIXME
@@ -765,7 +762,6 @@ protected:
     quint64 _avatarBoundingBoxChanged { 0 };
     quint64 _avatarScaleChanged { 0 };
     quint64 _sensorToWorldMatrixChanged { 0 };
-    quint64 _sensorToSimulationMatrixChanged { 0 };
     quint64 _additionalFlagsChanged { 0 };
     quint64 _parentChanged { 0 };
 

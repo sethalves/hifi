@@ -452,8 +452,6 @@ public:
 
     virtual PhysicsEnginePointer getChildPhysicsEngine() { return nullptr; } // overridden in ZoneEntityItem
 
-    virtual QString toString() const override;
-
     PhysicsEnginePointer getPhysicsEngine();
     virtual void hierarchyChanged() override;
 

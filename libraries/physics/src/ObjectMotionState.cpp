@@ -38,14 +38,6 @@ const glm::vec3& ObjectMotionState::getWorldOffset() {
     return _worldOffset;
 }
 
-void ObjectMotionState::setWorldSimulationStep(uint32_t step) {
-    PhysicsEnginePointer physicsEngine = getPhysicsEngine();
-    if (!physicsEngine) {
-        return;
-    }
-    physicsEngine->setWorldSimulationStep(step);
-}
-
 uint32_t ObjectMotionState::getWorldSimulationStep() const {
     PhysicsEnginePointer physicsEngine = getPhysicsEngine();
     if (!physicsEngine) {

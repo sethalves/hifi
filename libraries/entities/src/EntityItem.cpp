@@ -104,15 +104,6 @@ EntityItem::~EntityItem() {
     assert(!_physicsInfo);
 }
 
-QString EntityItem::toString() const {
-    QString name = getName();
-    if (name == "") {
-        return getID().toString();
-    }
-    return name + ":" + getID().toString();
-}
-
-
 EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties;
 

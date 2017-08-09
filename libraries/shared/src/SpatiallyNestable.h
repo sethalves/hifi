@@ -198,8 +198,6 @@ public:
     virtual glm::vec3 getAngularVelocityInSimulationFrame() const;
     virtual void setAngularVelocityInSimulationFrame(const glm::vec3& angularVelocity);
 
-    virtual QString toString() const { return getID().toString(); }
-
     virtual void hierarchyChanged(); // path through ancestors to root has changed
 
     void getLocalTransformAndVelocities(Transform& localTransform,
