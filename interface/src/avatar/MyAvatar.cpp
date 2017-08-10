@@ -1567,36 +1567,20 @@ void MyAvatar::prepareForPhysicsSimulation() {
     relayDriveKeysToCharacterController();
     updateMotors();
 
-    // attempt to keep the avatar stuck to its parent by matching velocities
+    // if the avatar's parent isn't a zone with localized-simulation, attempt to keep the avatar stuck to
+    // its parent by matching velocities
     QUuid parentID = getParentID();
-    glm::vec3 parentInducedVelocity;
-    glm::vec3 parentInducedAngularVelocity;
+    glm::vec3 parentInducedVelocity { 0.0f };
     if (parentID != QUuid() && parentID != physicsEngine->getID()) {
+        qDebug() << "QQQ 2 parentID =" << parentID << " physicsEngine =" << physicsEngine->getID();
         bool success;
         Transform parentTransform = getParentTransform(success);
         if (success) {
             glm::vec3 parentPosition = parentTransform.getTranslation();
-            glm::quat parentRotation = parentTransform.getRotation();
-            glm::vec3 parentVelocity = getParentVelocity();
             glm::vec3 parentAngularVelocity = getParentAngularVelocity();
-            glm::quat qParentAngularVelocity = glm::quat(parentAngularVelocity);
-
             glm::vec3 childPosition = getPosition();
-            parentInducedVelocity = parentVelocity + qParentAngularVelocity * (childPosition - parentPosition);
-
-            if (_previousParentLocationSet) {
-                glm::quat deltaRot = parentRotation * glm::inverse(_previousParentRotation);
-                glm::vec3 deltaRotEu = glm::eulerAngles(deltaRot);
-                deltaRotEu.x = 0.0f;
-                deltaRotEu.z = 0.0f;
-                glm::quat newRot = getOrientation() * glm::quat(deltaRotEu);
-                setOrientation(newRot);
-            }
-            _previousParentRotation = parentRotation;
-            _previousParentLocationSet = true;
+            parentInducedVelocity = getParentVelocity() + glm::cross(parentAngularVelocity, childPosition - parentPosition);
         }
-    } else {
-        _previousParentLocationSet = false;
     }
     _characterController.setParentInducedVelocity(parentInducedVelocity);
     _characterController.handleChangedCollisionGroup();
