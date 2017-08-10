@@ -255,6 +255,11 @@ public:
 
     virtual void handleZoneChange() {};
 
+    void fadeIn(render::ScenePointer scene);
+    void fadeOut(render::ScenePointer scene, KillAvatarReason reason);
+    bool isFading() const { return _isFading; }
+    void updateFadingStatus(render::ScenePointer scene);
+
 public slots:
 
     // FIXME - these should be migrated to use Pose data instead
@@ -306,6 +311,8 @@ protected:
     // protected methods...
     bool isLookingAtMe(AvatarSharedPointer avatar) const;
 
+    void fade(render::Transaction& transaction, render::Transition::Type type);
+
     glm::vec3 getBodyRightDirection() const { return getOrientation() * IDENTITY_RIGHT; }
     glm::vec3 getBodyUpDirection() const { return getOrientation() * IDENTITY_UP; }
     void measureMotionDerivatives(float deltaTime);
@@ -355,6 +362,8 @@ private:
     bool _initialized { false };
     bool _isLookAtTarget { false };
     bool _isAnimatingScale { false };
+    bool _mustFadeIn { false };
+    bool _isFading { false };
 
     static int _jointConesID;
 
