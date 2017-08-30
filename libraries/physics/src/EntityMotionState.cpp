@@ -100,11 +100,10 @@ void EntityMotionState::updateServerPhysicsVariables() {
 
 void EntityMotionState::handleDeactivation() {
     // copy _server data to entity
-    bool success;
-    _entity->setPosition(_serverPosition, success, false);
-    _entity->setOrientation(_serverRotation, success, false);
-    _entity->setVelocity(ENTITY_ITEM_ZERO_VEC3);
-    _entity->setAngularVelocity(ENTITY_ITEM_ZERO_VEC3);
+    Transform localTransform;
+    localTransform.setTranslation(_serverPosition);
+    localTransform.setRotation(_serverRotation);
+    _entity->setLocalTransformAndVelocities(localTransform, ENTITY_ITEM_ZERO_VEC3, ENTITY_ITEM_ZERO_VEC3);
     // and also to RigidBody
     btTransform worldTrans;
     worldTrans.setOrigin(glmToBullet(_serverPosition));
