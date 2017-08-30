@@ -100,9 +100,18 @@ void EntityMotionState::updateServerPhysicsVariables() {
 
 void EntityMotionState::handleDeactivation() {
     // copy _server data to entity
-    bool success;
-    _entity->setPosition(_serverPosition, success, false);
-    _entity->setOrientation(_serverRotation, success, false);
+    bool parentTransformSuccess;
+    Transform localToWorld = _entity->getParentTransform(parentTransformSuccess);
+    bool positionSuccess;
+    bool rotationSuccess;
+    if (parentTransformSuccess) {
+        _entity->setPosition(localToWorld.transform(_serverPosition), positionSuccess, false);
+        _entity->setOrientation(localToWorld.getRotation() * _serverRotation, rotationSuccess, false);
+    } else {
+        bool success;
+        _entity->setPosition(_serverPosition, positionSuccess, false);
+        _entity->setOrientation(_serverRotation, rotationSuccess, false);
+    }
     _entity->setVelocity(ENTITY_ITEM_ZERO_VEC3);
     _entity->setAngularVelocity(ENTITY_ITEM_ZERO_VEC3);
     // and also to RigidBody
