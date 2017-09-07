@@ -250,7 +250,11 @@ bool ZoneEntityRenderer::needsRenderUpdateFromTypedEntity(const TypedEntityPoint
         return true;
     }
 
-    if (entity->getKeyLightProperties() != _keyLightProperties) {
+    KeyLightPropertyGroup keyLightProperties;
+    withReadLock([&] {
+        keyLightProperties = _keyLightProperties;
+    });
+    if (entity->getKeyLightProperties() != keyLightProperties) {
         return true;
     }
 
