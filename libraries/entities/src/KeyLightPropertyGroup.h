@@ -84,6 +84,10 @@ public:
     DEFINE_PROPERTY(PROP_KEYLIGHT_AMBIENT_INTENSITY, AmbientIntensity, ambientIntensity, float, DEFAULT_KEYLIGHT_AMBIENT_INTENSITY);
     DEFINE_PROPERTY_REF(PROP_KEYLIGHT_DIRECTION, Direction, direction, glm::vec3, DEFAULT_KEYLIGHT_DIRECTION);
     DEFINE_PROPERTY_REF(PROP_KEYLIGHT_AMBIENT_URL, AmbientURL, ambientURL, QString, "");
+
+protected:
+    friend bool operator==(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b);
+    friend bool operator!=(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b);
 };
 
 #endif // hifi_KeyLightPropertyGroup_h

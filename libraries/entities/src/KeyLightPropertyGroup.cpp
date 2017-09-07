@@ -23,6 +23,19 @@ const float KeyLightPropertyGroup::DEFAULT_KEYLIGHT_INTENSITY = 1.0f;
 const float KeyLightPropertyGroup::DEFAULT_KEYLIGHT_AMBIENT_INTENSITY = 0.5f;
 const glm::vec3 KeyLightPropertyGroup::DEFAULT_KEYLIGHT_DIRECTION = { 0.0f, -1.0f, 0.0f };
 
+bool operator==(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b) {
+    return
+        (a._color == b._color &&
+         a._intensity == b._intensity &&
+         a._ambientIntensity == b._ambientIntensity &&
+         a._direction == b._direction &&
+         a._ambientURL == b._ambientURL);
+}
+
+bool operator!=(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b) {
+    return !(a == b);
+}
+
 void KeyLightPropertyGroup::copyToScriptValue(const EntityPropertyFlags& desiredProperties, QScriptValue& properties, QScriptEngine* engine, bool skipDefaults, EntityItemProperties& defaultEntityProperties) const {
     
     COPY_GROUP_PROPERTY_TO_QSCRIPTVALUE(PROP_KEYLIGHT_COLOR, KeyLight, keyLight, Color, color);

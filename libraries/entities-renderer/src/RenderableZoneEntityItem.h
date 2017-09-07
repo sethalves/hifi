@@ -101,9 +101,11 @@ private:
     bool _validSkyboxTexture{ false };
 
     QString _proceduralUserData;
+
+    KeyLightPropertyGroup _keyLightProperties;
 };
 
-} } // namespace 
+} } // namespace
 
 #if 0
 
