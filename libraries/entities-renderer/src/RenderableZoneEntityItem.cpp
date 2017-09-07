@@ -211,7 +211,7 @@ void ZoneEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& scen
 
     // make a copy of the keylight properties
     withWriteLock([&] {
-        const KeyLightPropertyGroup& newKeyLightProperties = entity->getKeyLightProperties();
+        KeyLightPropertyGroup newKeyLightProperties = entity->getKeyLightProperties();
         if (newKeyLightProperties != _keyLightProperties) {
             _keyLightProperties = newKeyLightProperties;
         }

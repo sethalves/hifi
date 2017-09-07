@@ -49,11 +49,9 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID) : EntityItem(en
 EntityItemProperties ZoneEntityItem::getProperties(EntityPropertyFlags desiredProperties) const {
     EntityItemProperties properties = EntityItem::getProperties(desiredProperties); // get the properties from our base class
 
-
-    {
-        QReadLocker locker(&_keyLightLock);
+    withReadLock([&] {
         _keyLightProperties.getProperties(properties);
-    }
+    });
 
     _stageProperties.getProperties(properties);
 
@@ -91,11 +89,9 @@ bool ZoneEntityItem::setProperties(const EntityItemProperties& properties) {
 bool ZoneEntityItem::setSubClassProperties(const EntityItemProperties& properties) {
     bool somethingChanged = EntityItem::setSubClassProperties(properties); // set the properties in our base class
 
-
-    {
-        QWriteLocker locker(&_keyLightLock);
+    withWriteLock([&] {
         _keyLightPropertiesChanged = _keyLightProperties.setProperties(properties);
-    }
+    });
 
     _stagePropertiesChanged = _stageProperties.setProperties(properties);
 
@@ -123,12 +119,11 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     const unsigned char* dataAt = data;
 
     int bytesFromKeylight;
-    {
-        QWriteLocker locker(&_keyLightLock);
+    withWriteLock([&] {
         bytesFromKeylight = _keyLightProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                                                  propertyFlags, overwriteLocalData,
                                                                                  _keyLightPropertiesChanged);
-    }
+    });
     somethingChanged = somethingChanged || _keyLightPropertiesChanged;
     bytesRead += bytesFromKeylight;
     dataAt += bytesFromKeylight;
@@ -161,10 +156,9 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
-    {
-        QReadLocker locker(&_keyLightLock);
+    withReadLock([&] {
         requestedProperties += _keyLightProperties.getEntityProperties(params);
-    }
+    });
 
     requestedProperties += PROP_SHAPE_TYPE;
     requestedProperties += PROP_COMPOUND_SHAPE_URL;
@@ -189,8 +183,10 @@ void ZoneEntityItem::appendSubclassData(OctreePacketData* packetData, EncodeBits
 
     bool successPropertyFits = true;
 
-    _keyLightProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
-                                         propertyFlags, propertiesDidntFit, propertyCount, appendState);
+    withReadLock([&] {
+        _keyLightProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
+                                               propertyFlags, propertiesDidntFit, propertyCount, appendState);
+    });
 
     _stageProperties.appendSubclassData(packetData, params, modelTreeElementExtraEncodeData, requestedProperties,
                                     propertyFlags, propertiesDidntFit, propertyCount, appendState);
@@ -216,9 +212,11 @@ void ZoneEntityItem::debugDump() const {
     qCDebug(entities) << "             getLastEdited:" << debugTime(getLastEdited(), now);
     qCDebug(entities) << "               _backgroundMode:" << EntityItemProperties::getBackgroundModeString(_backgroundMode);
 
-    _keyLightProperties.debugDump();
-    _stageProperties.debugDump();
-    _skyboxProperties.debugDump();
+    withReadLock([&] {
+        _keyLightProperties.debugDump();
+        _stageProperties.debugDump();
+        _skyboxProperties.debugDump();
+    });
 }
 
 ShapeType ZoneEntityItem::getShapeType() const {
