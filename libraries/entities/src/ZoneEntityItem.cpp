@@ -49,9 +49,12 @@ ZoneEntityItem::ZoneEntityItem(const EntityItemID& entityItemID) : EntityItem(en
 EntityItemProperties ZoneEntityItem::getProperties(EntityPropertyFlags desiredProperties) const {
     EntityItemProperties properties = EntityItem::getProperties(desiredProperties); // get the properties from our base class
 
-    
-    _keyLightProperties.getProperties(properties);
-    
+
+    {
+        QReadLocker locker(&_keyLightLock);
+        _keyLightProperties.getProperties(properties);
+    }
+
     _stageProperties.getProperties(properties);
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(shapeType, getShapeType);
@@ -89,7 +92,10 @@ bool ZoneEntityItem::setSubClassProperties(const EntityItemProperties& propertie
     bool somethingChanged = EntityItem::setSubClassProperties(properties); // set the properties in our base class
 
 
-    _keyLightPropertiesChanged = _keyLightProperties.setProperties(properties);
+    {
+        QWriteLocker locker(&_keyLightLock);
+        _keyLightPropertiesChanged = _keyLightProperties.setProperties(properties);
+    }
 
     _stagePropertiesChanged = _stageProperties.setProperties(properties);
 
@@ -116,8 +122,13 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
     int bytesRead = 0;
     const unsigned char* dataAt = data;
 
-    int bytesFromKeylight = _keyLightProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
-                                                                                 propertyFlags, overwriteLocalData, _keyLightPropertiesChanged);
+    int bytesFromKeylight;
+    {
+        QWriteLocker locker(&_keyLightLock);
+        bytesFromKeylight = _keyLightProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
+                                                                                 propertyFlags, overwriteLocalData,
+                                                                                 _keyLightPropertiesChanged);
+    }
     somethingChanged = somethingChanged || _keyLightPropertiesChanged;
     bytesRead += bytesFromKeylight;
     dataAt += bytesFromKeylight;
@@ -150,7 +161,10 @@ int ZoneEntityItem::readEntitySubclassDataFromBuffer(const unsigned char* data, 
 EntityPropertyFlags ZoneEntityItem::getEntityProperties(EncodeBitstreamParams& params) const {
     EntityPropertyFlags requestedProperties = EntityItem::getEntityProperties(params);
 
-    requestedProperties += _keyLightProperties.getEntityProperties(params);
+    {
+        QReadLocker locker(&_keyLightLock);
+        requestedProperties += _keyLightProperties.getEntityProperties(params);
+    }
 
     requestedProperties += PROP_SHAPE_TYPE;
     requestedProperties += PROP_COMPOUND_SHAPE_URL;

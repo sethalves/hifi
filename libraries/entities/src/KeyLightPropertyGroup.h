@@ -17,6 +17,8 @@
 
 #include <glm/glm.hpp>
 
+#include <shared/ReadWriteLockable.h>
+
 #include <QtScript/QScriptEngine>
 #include "EntityItemPropertiesMacros.h"
 #include "PropertyGroup.h"

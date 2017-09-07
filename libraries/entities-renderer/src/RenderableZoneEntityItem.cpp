@@ -210,12 +210,12 @@ void ZoneEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& scen
     }
 
     // make a copy of the keylight properties
-    const KeyLightPropertyGroup& newKeyLightProperties = entity->getKeyLightProperties();
-    if (newKeyLightProperties != _keyLightProperties) {
-        withWriteLock([&] {
+    withWriteLock([&] {
+        const KeyLightPropertyGroup& newKeyLightProperties = entity->getKeyLightProperties();
+        if (newKeyLightProperties != _keyLightProperties) {
             _keyLightProperties = newKeyLightProperties;
-        });
-    }
+        }
+    });
 }
 
 void ZoneEntityRenderer::doRenderUpdateAsynchronousTyped(const TypedEntityPointer& entity) {
@@ -284,9 +284,11 @@ void ZoneEntityRenderer::updateKeySunFromEntity(const TypedEntityPointer& entity
     sunLight->setOrientation(_lastRotation);
 
     // Set the keylight
-    sunLight->setColor(ColorUtils::toVec3(_keyLightProperties.getColor()));
-    sunLight->setIntensity(_keyLightProperties.getIntensity());
-    sunLight->setDirection(_keyLightProperties.getDirection());
+    withReadLock([&] {
+        sunLight->setColor(ColorUtils::toVec3(_keyLightProperties.getColor()));
+        sunLight->setIntensity(_keyLightProperties.getIntensity());
+        sunLight->setDirection(_keyLightProperties.getDirection());
+    });
 }
 
 void ZoneEntityRenderer::updateKeyAmbientFromEntity(const TypedEntityPointer& entity) {
@@ -297,13 +299,15 @@ void ZoneEntityRenderer::updateKeyAmbientFromEntity(const TypedEntityPointer& en
 
 
     // Set the keylight
-    ambientLight->setAmbientIntensity(_keyLightProperties.getAmbientIntensity());
+    withReadLock([&] {
+        ambientLight->setAmbientIntensity(_keyLightProperties.getAmbientIntensity());
 
-    if (_keyLightProperties.getAmbientURL().isEmpty()) {
-        setAmbientURL(entity->getSkyboxProperties().getURL());
-    } else {
-        setAmbientURL(_keyLightProperties.getAmbientURL());
-    }
+        if (_keyLightProperties.getAmbientURL().isEmpty()) {
+            setAmbientURL(entity->getSkyboxProperties().getURL());
+        } else {
+            setAmbientURL(_keyLightProperties.getAmbientURL());
+        }
+    });
 }
 
 void ZoneEntityRenderer::updateKeyBackgroundFromEntity(const TypedEntityPointer& entity) {

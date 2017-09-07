@@ -29,7 +29,7 @@ bool operator==(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b) 
          a._intensity == b._intensity &&
          a._ambientIntensity == b._ambientIntensity &&
          a._direction == b._direction &&
-         a._ambientURL == b._ambientURL);
+         a.getAmbientURL() == b.getAmbientURL());
 }
 
 bool operator!=(const KeyLightPropertyGroup& a, const KeyLightPropertyGroup& b) {

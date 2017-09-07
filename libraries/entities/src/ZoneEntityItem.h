@@ -63,7 +63,7 @@ public:
     QString getCompoundShapeURL() const;
     virtual void setCompoundShapeURL(const QString& url);
 
-    const KeyLightPropertyGroup& getKeyLightProperties() const { return _keyLightProperties; }
+    KeyLightPropertyGroup getKeyLightProperties() const { QReadLocker locker(&_keyLightLock); return _keyLightProperties; }
 
     void setBackgroundMode(BackgroundMode value) { _backgroundMode = value; _backgroundPropertiesChanged = true; }
     BackgroundMode getBackgroundMode() const { return _backgroundMode; }
@@ -122,6 +122,9 @@ protected:
 
     static bool _drawZoneBoundaries;
     static bool _zonesArePickable;
+
+private:
+    mutable QReadWriteLock _keyLightLock { QReadWriteLock::Recursive };
 };
 
 #endif // hifi_ZoneEntityItem_h
