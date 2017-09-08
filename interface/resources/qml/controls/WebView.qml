@@ -4,9 +4,6 @@ import QtWebChannel 1.0
 import "../controls-uit" as HiFiControls
 
 Item {
-    width: parent !== null ? parent.width : undefined
-    height: parent !== null ? parent.height : undefined
-
     property alias url: root.url
     property alias scriptURL: root.userScriptUrl
     property alias canGoBack: root.canGoBack;
@@ -28,8 +25,11 @@ Item {
 
     Flickable {
         id: flick
+        x: 0
+        y: 0
         width: parent.width
         height: keyboardEnabled && keyboardRaised ? parent.height - keyboard.height : parent.height
+
 
         WebEngineView {
             id: root
@@ -86,12 +86,8 @@ Item {
 
             onContentsSizeChanged: {
                 console.log("WebView contentsSize", contentsSize)
-                flick.contentWidth = flick.width
+                flick.contentWidth = Math.max(contentsSize.width, flick.width)
                 flick.contentHeight = Math.max(contentsSize.height, flick.height)
-            }
-            //disable popup
-            onContextMenuRequested: {
-                request.accepted = true;
             }
 
             onLoadingChanged: {
@@ -101,8 +97,6 @@ Item {
 
                 // Required to support clicking on "hifi://" links
                 if (WebEngineView.LoadStartedStatus == loadRequest.status) {
-                    flick.contentWidth = 0
-                    flick.contentHeight = 0
                     var url = loadRequest.url.toString();
                     url = (url.indexOf("?") >= 0) ? url + urlTag : url + "?" + urlTag;
                     if (urlHandler.canHandleUrl(url)) {
@@ -112,10 +106,22 @@ Item {
                     }
                 }
                 if (WebEngineView.LoadSucceededStatus == loadRequest.status) {
-                    root.runJavaScript("document.body.scrollHeight;", function (i_actualPageHeight) {
-                        flick.contentHeight = Math.max(i_actualPageHeight, flick.height);
-                    })
-                    flick.contentWidth = flick.width
+
+//                    flick.contentWidth = Math.max(contentsSize.width, flick.width)
+//                    flick.contentHeight = Math.max(contentsSize.height, flick.height)
+                    root.runJavaScript(
+                                   "document.body.scrollHeight;",
+                                   function (i_actualPageHeight) {
+                                       flick.contentHeight = Math.max (
+                                           i_actualPageHeight, flick.height);
+                                   })
+                               root.runJavaScript(
+                                   "document.body.scrollWidth;",
+                                   function (i_actualPageWidth) {
+                                       flick.contentWidth = Math.max (
+                                           i_actualPageWidth, flick.width);
+                                   })
+
                 }
             }
 
@@ -127,12 +133,9 @@ Item {
                     tabletRoot.openBrowserWindow(request, profile);
                 }
             }
-        }
-    }
 
-    HiFiControls.WebSpinner {
-        anchors.centerIn: parent
-        webroot: root
+            HiFiControls.WebSpinner { }
+        }
     }
 
     HiFiControls.Keyboard {
