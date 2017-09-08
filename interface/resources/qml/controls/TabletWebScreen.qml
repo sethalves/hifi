@@ -4,12 +4,11 @@ import QtWebChannel 1.0
 import "../controls-uit" as HiFiControls
 
 Item {
-    id: root
-    property alias url: webroot.url
-    property alias scriptURL: webroot.userScriptUrl
-    property alias canGoBack: webroot.canGoBack;
-    property var goBack: webroot.goBack;
-    property alias urlTag: webroot.urlTag
+    property alias url: root.url
+    property alias scriptURL: root.userScriptUrl
+    property alias canGoBack: root.canGoBack;
+    property var goBack: root.goBack;
+    property alias urlTag: root.urlTag
     property bool keyboardEnabled: true  // FIXME - Keyboard HMD only: Default to false
     property bool keyboardRaised: false
     property bool punctuationMode: false
@@ -22,15 +21,17 @@ Item {
     }
     */
 
-    property alias viewProfile: webroot.profile
+    property alias viewProfile: root.profile
 
     Flickable {
         id: flick
+        x: 0
+        y: 0
         width: parent.width
         height: keyboardEnabled && keyboardRaised ? parent.height - keyboard.height : parent.height
 
         WebEngineView {
-            id: webroot
+            id: root
             objectName: "webEngineView"
             anchors.fill: parent
 
@@ -57,7 +58,7 @@ Item {
             // User script.
             WebEngineScript {
                 id: userScript
-                sourceUrl: webroot.userScriptUrl
+                sourceUrl: root.userScriptUrl
                 injectionPoint: WebEngineScript.DocumentReady  // DOM ready but page load may not be finished.
                 worldId: WebEngineScript.MainWorld
             }
@@ -68,25 +69,21 @@ Item {
 
             property string newUrl: ""
 
-            //disable popup
-            onContextMenuRequested: {
-                request.accepted = true;
-            }
-
             onContentsSizeChanged: {
-                flick.contentHeight = Math.max(contentsSize.height, flick.height);
-                flick.contentWidth = flick.width
+                console.log("WebView contentsSize", contentsSize)
+                flick.contentWidth = Math.max(contentsSize.width, flick.width)
+                flick.contentHeight = Math.max(contentsSize.height, flick.height)
             }
 
             Component.onCompleted: {
                 webChannel.registerObject("eventBridge", eventBridge);
                 webChannel.registerObject("eventBridgeWrapper", eventBridgeWrapper);
                 // Ensure the JS from the web-engine makes it to our logging
-                webroot.javaScriptConsoleMessage.connect(function(level, message, lineNumber, sourceID) {
+                root.javaScriptConsoleMessage.connect(function(level, message, lineNumber, sourceID) {
                     console.log("Web Entity JS message: " + sourceID + " " + lineNumber + " " +  message);
                 });
 
-                webroot.profile.httpUserAgent = "Mozilla/5.0 Chrome (HighFidelityInterface)";
+                root.profile.httpUserAgent = "Mozilla/5.0 Chrome (HighFidelityInterface)";
             }
 
             onFeaturePermissionRequested: {
@@ -102,19 +99,28 @@ Item {
                 if (WebEngineView.LoadStartedStatus == loadRequest.status) {
                     flick.contentWidth = 0
                     flick.contentHeight = 0
+                    flick.contentX = 0
+                    flick.contentY = 0
                     var url = loadRequest.url.toString();
                     url = (url.indexOf("?") >= 0) ? url + urlTag : url + "?" + urlTag;
                     if (urlHandler.canHandleUrl(url)) {
                         if (urlHandler.handleUrl(url)) {
-                            webroot.stop();
+                            root.stop();
                         }
                     }
                 }
                 if (WebEngineView.LoadSucceededStatus == loadRequest.status) {
-                    webroot.runJavaScript("document.body.scrollHeight;", function (i_actualPageHeight) {
-                        flick.contentHeight = Math.max(i_actualPageHeight, flick.height);
-                    })
-                    flick.contentWidth = flick.width
+                    root.runJavaScript("document.body.scrollHeight;",
+                                function (i_actualPageHeight) {
+                                    console.log("on reloaded documentElement.scrollHeigh:", i_actualPageHeight)
+                                    flick.contentHeight = Math.max(i_actualPageHeight, flick.height);
+                                })
+                    root.runJavaScript("document.body.scrollWidth;",
+                                function (i_actualPageWidth) {
+                                    console.log("on reloaded documentElement.scrollWidth:", i_actualPageWidth)
+
+                                    flick.contentWidth = Math.max(i_actualPageWidth, flick.width);
+                                })
                 }
             }
 
@@ -126,12 +132,9 @@ Item {
                     tabletRoot.openBrowserWindow(request, profile);
                 }
             }
-        }
-    }
 
-    HiFiControls.WebSpinner {
-        anchors.centerIn: parent
-        webroot: webroot
+            HiFiControls.WebSpinner { }
+        }
     }
 
     HiFiControls.Keyboard {
@@ -144,4 +147,5 @@ Item {
             bottom: parent.bottom
         }
     }
+
 }
