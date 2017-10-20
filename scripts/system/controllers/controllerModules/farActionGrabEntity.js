@@ -573,7 +573,7 @@ Script.include("/~/system/libraries/controllers.js");
 
         this.laserPointer = LaserPointers.createLaserPointer({
             joint: (this.hand === RIGHT_HAND) ? "_CAMERA_RELATIVE_CONTROLLER_RIGHTHAND" : "_CAMERA_RELATIVE_CONTROLLER_LEFTHAND",
-            filter: RayPick.PICK_ENTITIES | RayPick.PICK_OVERLAYS,
+            filter: RayPick.PICK_ENTITIES | RayPick.PICK_OVERLAYS | RayPick.PICK_INCLUDE_NONCOLLIDABLE,
             maxDistance: PICK_MAX_DISTANCE,
             posOffset: getGrabPointSphereOffset(this.handToController(), true),
             renderStates: renderStates,
