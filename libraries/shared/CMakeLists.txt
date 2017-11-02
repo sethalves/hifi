@@ -11,5 +11,7 @@ if (ANDROID)
     target_link_libraries(${TARGET_NAME} android)
 endif()
 
+add_crashpad()
+
 target_zlib()
 target_nsight()
