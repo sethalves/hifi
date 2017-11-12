@@ -72,6 +72,9 @@ EntityScriptServer::EntityScriptServer(ReceivedMessage& message) : ThreadedAssig
 
     DependencyManager::set<EntityScriptServerServices>();
 
+    // Setup MessagesClient
+    auto messagesClient = DependencyManager::set<MessagesClient>();
+    messagesClient->startThread();
 
     // Needed to ensure the creation of the DebugDraw instance on the main thread
     DebugDraw::getInstance();
@@ -263,10 +266,6 @@ void EntityScriptServer::run() {
     auto nodeList = DependencyManager::get<NodeList>();
 
     ThreadedAssignment::commonInit(ENTITY_SCRIPT_SERVER_LOGGING_NAME, NodeType::EntityScriptServer);
-
-    // Setup MessagesClient
-    auto messagesClient = DependencyManager::set<MessagesClient>();
-    messagesClient->startThread();
 
     DomainHandler& domainHandler = DependencyManager::get<NodeList>()->getDomainHandler();
     connect(&domainHandler, &DomainHandler::settingsReceived, this, &EntityScriptServer::handleSettings);
