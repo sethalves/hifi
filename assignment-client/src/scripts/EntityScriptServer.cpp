@@ -448,6 +448,7 @@ void EntityScriptServer::resetEntitiesScriptEngine() {
     newEngine->globalObject().setProperty("WebSocketServer", webSocketServerConstructorValue);
 
     newEngine->registerGlobalObject("SoundCache", DependencyManager::get<SoundCache>().data());
+    newEngine->registerGlobalObject("Messages", DependencyManager::get<MessagesClient>().data());
 
     // connect this script engines printedMessage signal to the global ScriptEngines these various messages
     auto scriptEngines = DependencyManager::get<ScriptEngines>().data();
