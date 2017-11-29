@@ -325,7 +325,6 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
         if (!success) {
             return glm::quat();
         }
-        parentTransform.setScale(1.0f);
     }
     success = true;
 
@@ -595,6 +594,9 @@ const Transform SpatiallyNestable::getTransform(bool& success, int depth) const 
     Transform result;
     // return a world-space transform for this object's location
     Transform parentTransform = getParentTransform(success, depth);
+    if (!getScalesWithParent()) {
+        parentTransform.setScale(1.0f);
+    }
     _transformLock.withReadLock([&] {
         Transform::mult(result, parentTransform, _transform);
     });
@@ -618,7 +620,7 @@ const Transform SpatiallyNestable::getTransform(int jointIndex, bool& success, i
     if (depth > MAX_PARENTING_CHAIN_SIZE) {
         success = false;
         // someone created a loop.  break it...
-        qCDebug(shared) << "Parenting loop detected.";
+        qCDebug(shared) << "Parenting loop detected: " << getID();
         SpatiallyNestablePointer _this = getThisPointer();
         _this->setParentID(QUuid());
         bool setPositionSuccess;
