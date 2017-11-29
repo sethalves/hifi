@@ -1619,13 +1619,16 @@ void EntityItem::setParentID(const QUuid& value) {
 
 glm::vec3 EntityItem::getDimensions() const {
     if (getScalesWithParent()) {
-        glm::vec3 scale = getSNScale();
-        return glm::vec3(_dimensions.x * scale.x,
-                         _dimensions.y * scale.y,
-                         _dimensions.z * scale.z);
-    } else {
-        return _dimensions;
+        bool success;
+        Transform parentTransform = getParentTransform(success);
+        if (success) {
+            glm::vec3 scale = parentTransform.getScale();
+            return glm::vec3(_dimensions.x * scale.x,
+                             _dimensions.y * scale.y,
+                             _dimensions.z * scale.z);
+        }
     }
+    return _dimensions;
 }
 
 void EntityItem::setDimensions(const glm::vec3& value) {

@@ -913,7 +913,7 @@ void MyAvatar::saveData() {
     settings.setValue("dominantHand", _dominantHand);
     settings.setValue("headPitch", getHead()->getBasePitch());
 
-    settings.setValue("scale", _targetScale);
+    settings.setValue("scale", getTargetScale());
 
     settings.setValue("yawSpeed", _yawSpeed);
     settings.setValue("pitchSpeed", _pitchSpeed);
@@ -2165,11 +2165,12 @@ void MyAvatar::clampTargetScaleToDomainLimits() {
     // when we're about to change the target scale because the user has asked to increase or decrease their scale,
     // we first make sure that we're starting from a target scale that is allowed by the current domain
 
-    auto clampedTargetScale = glm::clamp(_targetScale, _domainMinimumScale, _domainMaximumScale);
+    float targetScale = getTargetScale();
+    auto clampedTargetScale = glm::clamp(targetScale, _domainMinimumScale, _domainMaximumScale);
 
-    if (clampedTargetScale != _targetScale) {
+    if (clampedTargetScale != targetScale) {
         qCDebug(interfaceapp, "Clamped scale to %f since original target scale %f was not allowed by domain",
-                (double)clampedTargetScale, (double)_targetScale);
+                (double)clampedTargetScale, (double)targetScale);
 
         setTargetScale(clampedTargetScale);
     }
@@ -2184,7 +2185,7 @@ void MyAvatar::clampScaleChangeToDomainLimits(float desiredScale) {
     }
 
     setTargetScale(clampedTargetScale);
-    qCDebug(interfaceapp, "Changed scale to %f", (double)_targetScale);
+    qCDebug(interfaceapp, "Changed scale to %f", (double)getTargetScale());
     emit(scaleChanged());
 }
 
@@ -2209,7 +2210,7 @@ void MyAvatar::increaseSize() {
     clampTargetScaleToDomainLimits();
 
     // calculate what our new scale should be
-    float updatedTargetScale = _targetScale * (1.0f + SCALING_RATIO);
+    float updatedTargetScale = getTargetScale() * (1.0f + SCALING_RATIO);
 
     // attempt to change to desired scale (clamped to the domain limits)
     clampScaleChangeToDomainLimits(updatedTargetScale);
@@ -2220,7 +2221,7 @@ void MyAvatar::decreaseSize() {
     clampTargetScaleToDomainLimits();
 
     // calculate what our new scale should be
-    float updatedTargetScale = _targetScale * (1.0f - SCALING_RATIO);
+    float updatedTargetScale = getTargetScale() * (1.0f - SCALING_RATIO);
 
     // attempt to change to desired scale (clamped to the domain limits)
     clampScaleChangeToDomainLimits(updatedTargetScale);
@@ -2254,23 +2255,24 @@ void MyAvatar::restrictScaleFromDomainSettings(const QJsonObject& domainSettings
     // Set avatar current scale
     Settings settings;
     settings.beginGroup("Avatar");
-    _targetScale = loadSetting(settings, "scale", 1.0f);
+    float targetScale = loadSetting(settings, "scale", 1.0f);
+    setTargetScale(targetScale);
 
     qCDebug(interfaceapp) << "This domain requires a minimum avatar scale of " << _domainMinimumScale
         << " and a maximum avatar scale of " << _domainMaximumScale
-        << ". Current avatar scale is " << _targetScale;
+        << ". Current avatar scale is " << targetScale;
 
     // debug to log if this avatar's scale in this domain will be clamped
-    float clampedScale = glm::clamp(_targetScale, _domainMinimumScale, _domainMaximumScale);
+    float clampedScale = glm::clamp(targetScale, _domainMinimumScale, _domainMaximumScale);
 
-    if (_targetScale != clampedScale) {
+    if (targetScale != clampedScale) {
         qCDebug(interfaceapp) << "Current avatar scale is clamped to " << clampedScale
-            << " because " << _targetScale << " is not allowed by current domain";
+            << " because " << targetScale << " is not allowed by current domain";
         // The current scale of avatar should not be more than domain's max_avatar_scale and not less than domain's min_avatar_scale .
-        _targetScale = clampedScale;
+        targetScale = clampedScale;
     }
 
-    setModelScale(_targetScale);
+    setModelScale(targetScale);
     rebuildCollisionShape();
     settings.endGroup();
 }
@@ -2283,7 +2285,7 @@ void MyAvatar::leaveDomain() {
 void MyAvatar::saveAvatarScale() {
     Settings settings;
     settings.beginGroup("Avatar");
-    settings.setValue("scale", _targetScale);
+    settings.setValue("scale", getTargetScale());
     settings.endGroup();
 }
 

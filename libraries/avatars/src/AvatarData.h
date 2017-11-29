@@ -484,7 +484,7 @@ public:
     //  Scale
     virtual void setTargetScale(float targetScale);
 
-    float getDomainLimitedScale() const { return glm::clamp(_targetScale, _domainMinimumScale, _domainMaximumScale); }
+    float getDomainLimitedScale() const { return glm::clamp(getTargetScale(), _domainMinimumScale, _domainMaximumScale); }
 
     void setDomainMinimumScale(float domainMinimumScale)
         { _domainMinimumScale = glm::clamp(domainMinimumScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE); _scaleChanged = usecTimestampNow(); }
@@ -675,7 +675,7 @@ public slots:
     virtual bool setAbsoluteJointRotationInObjectFrame(int index, const glm::quat& rotation) override { return false; }
     virtual bool setAbsoluteJointTranslationInObjectFrame(int index, const glm::vec3& translation) override { return false; }
 
-    float getTargetScale() const { return _targetScale; } // why is this a slot?
+    float getTargetScale() const; // why is this a slot?
 
     void resetLastSent() { _lastToByteArray = 0; }
 
@@ -705,7 +705,6 @@ protected:
     virtual void maybeUpdateSessionDisplayNameFromTransport(const QString& sessionDisplayName) { } // No-op in AvatarMixer
 
     // Body scale
-    float _targetScale;
     float _domainMinimumScale { MIN_AVATAR_SCALE };
     float _domainMaximumScale { MAX_AVATAR_SCALE };
 

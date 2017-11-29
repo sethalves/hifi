@@ -81,7 +81,6 @@ size_t AvatarDataPacket::maxJointDataSize(size_t numJoints) {
 AvatarData::AvatarData() :
     SpatiallyNestable(NestableType::Avatar, QUuid()),
     _handPosition(0.0f),
-    _targetScale(1.0f),
     _handState(0),
     _keyState(NO_KEY_DOWN),
     _forceFaceTrackerConnected(false),
@@ -108,10 +107,14 @@ const QUrl& AvatarData::defaultFullAvatarModelUrl() {
     return _defaultFullAvatarModelUrl;
 }
 
+float AvatarData::getTargetScale() const {
+    return getLocalSNScale().x;
+}
+
 void AvatarData::setTargetScale(float targetScale) {
     auto newValue = glm::clamp(targetScale, MIN_AVATAR_SCALE, MAX_AVATAR_SCALE);
-    if (_targetScale != newValue) {
-        _targetScale = newValue;
+    if (getLocalSNScale().x != newValue) {
+        setLocalSNScale(glm::vec3(newValue, newValue, newValue));
         _scaleChanged = usecTimestampNow();
         _avatarScaleChanged = _scaleChanged;
     }
