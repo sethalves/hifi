@@ -3018,10 +3018,10 @@ glm::vec3 MyAvatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
 
     switch (index) {
         case CONTROLLER_LEFTHAND_INDEX: {
-            return getControllerPoseInAvatarFrame(controller::Action::LEFT_HAND).getTranslation();
+            return getControllerPoseInAvatarFrame(controller::Action::LEFT_HAND).getTranslation() / getModelScale();
         }
         case CONTROLLER_RIGHTHAND_INDEX: {
-            return getControllerPoseInAvatarFrame(controller::Action::RIGHT_HAND).getTranslation();
+            return getControllerPoseInAvatarFrame(controller::Action::RIGHT_HAND).getTranslation() / getModelScale();;
         }
         case CAMERA_RELATIVE_CONTROLLER_LEFTHAND_INDEX: {
             auto pose = getControllerPoseInSensorFrame(controller::Action::LEFT_HAND);
