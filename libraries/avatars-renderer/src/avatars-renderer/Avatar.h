@@ -262,8 +262,8 @@ public:
      */
     Q_INVOKABLE float getEyeHeight() const;
 
-    virtual float getModelScale() const { return _modelScale; }
-    virtual void setModelScale(float scale) { _modelScale = scale; }
+    virtual float getModelScale() const { return getSNScale().x; }
+    virtual void setModelScale(float scale) { setSNScale(glm::vec3(scale, scale, scale)); }
 
     virtual void setAvatarEntityDataChanged(bool value) override;
 
@@ -369,7 +369,6 @@ private:
     bool _isAnimatingScale { false };
     bool _mustFadeIn { false };
     bool _isFading { false };
-    float _modelScale { 1.0f };
 
     static int _jointConesID;
 
