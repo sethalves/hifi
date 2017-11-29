@@ -3001,7 +3001,7 @@ glm::quat MyAvatar::getAbsoluteJointRotationInObjectFrame(int index) const {
         case CAMERA_MATRIX_INDEX: {
             bool success;
             Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
+            Transform::mult(avatarTransform, getParentTransform(success), getUnscaledLocalTransform());
             glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
             return glmExtractRotation(invAvatarMat * qApp->getCamera().getTransform());
         }
@@ -3038,7 +3038,7 @@ glm::vec3 MyAvatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
         case CAMERA_MATRIX_INDEX: {
             bool success;
             Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
+            Transform::mult(avatarTransform, getParentTransform(success), getUnscaledLocalTransform());
             glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
             return extractTranslation(invAvatarMat * qApp->getCamera().getTransform());
         }
