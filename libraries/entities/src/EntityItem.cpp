@@ -1617,6 +1617,17 @@ void EntityItem::setParentID(const QUuid& value) {
     }
 }
 
+glm::vec3 EntityItem::getDimensions() const {
+    if (getScalesWithParent()) {
+        glm::vec3 scale = getSNScale();
+        return glm::vec3(_dimensions.x * scale.x,
+                         _dimensions.y * scale.y,
+                         _dimensions.z * scale.z);
+    } else {
+        return _dimensions;
+    }
+}
+
 void EntityItem::setDimensions(const glm::vec3& value) {
     glm::vec3 newDimensions = glm::max(value, glm::vec3(0.0f)); // can never have negative dimensions
     if (getDimensions() != newDimensions) {
@@ -2288,6 +2299,15 @@ void EntityItem::dimensionsChanged() {
     requiresRecalcBoxes();
     SpatiallyNestable::dimensionsChanged(); // Do what you have to do
     somethingChangedNotification();
+}
+
+bool EntityItem::getScalesWithParent() const {
+    if (getClientOnly()) {
+        QUuid ancestorID = findAncestorOfType(NestableType::Avatar);
+        return !ancestorID.isNull();
+    } else {
+        return false;
+    }
 }
 
 void EntityItem::globalizeProperties(EntityItemProperties& properties, const QString& messageTemplate, const glm::vec3& offset) const {

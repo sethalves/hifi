@@ -180,7 +180,7 @@ public:
     void setDescription(const QString& value);
 
     /// Dimensions in meters (0.0 - TREE_SCALE)
-    inline const glm::vec3 getDimensions() const { return _dimensions; }
+    glm::vec3 getDimensions() const;
     virtual void setDimensions(const glm::vec3& value);
 
     float getLocalRenderAlpha() const;
@@ -453,6 +453,8 @@ public:
     virtual bool getMeshes(MeshProxyList& result) { return true; }
 
     virtual void locationChanged(bool tellPhysics = true) override;
+
+    virtual bool getScalesWithParent() const override;
 
     using ChangeHandlerCallback = std::function<void(const EntityItemID&)>;
     using ChangeHandlerId = QUuid;

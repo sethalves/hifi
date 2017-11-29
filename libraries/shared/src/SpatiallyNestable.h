@@ -140,6 +140,8 @@ public:
     virtual glm::vec3 getLocalSNScale() const;
     virtual void setLocalSNScale(const glm::vec3& scale);
 
+    virtual bool getScalesWithParent() const { return false; }
+
     QList<SpatiallyNestablePointer> getChildren() const;
     bool hasChildren() const;
 
