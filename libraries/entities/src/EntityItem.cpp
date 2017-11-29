@@ -241,7 +241,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_ANGULAR_VELOCITY, getLocalAngularVelocity());
         APPEND_ENTITY_PROPERTY(PROP_ACCELERATION, getAcceleration());
 
-        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getDimensions());
+        APPEND_ENTITY_PROPERTY(PROP_DIMENSIONS, getUnscaledDimensions());
         APPEND_ENTITY_PROPERTY(PROP_DENSITY, getDensity());
         APPEND_ENTITY_PROPERTY(PROP_GRAVITY, getGravity());
         APPEND_ENTITY_PROPERTY(PROP_DAMPING, getDamping());
@@ -776,7 +776,7 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
         READ_ENTITY_PROPERTY(PROP_ACCELERATION, glm::vec3, customSetAcceleration);
     }
 
-    READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, setDimensions);
+    READ_ENTITY_PROPERTY(PROP_DIMENSIONS, glm::vec3, setUnscaledDimensions);
     READ_ENTITY_PROPERTY(PROP_DENSITY, float, setDensity);
     READ_ENTITY_PROPERTY(PROP_GRAVITY, glm::vec3, setGravity);
 
@@ -894,7 +894,7 @@ void EntityItem::debugDump() const {
     qCDebug(entities) << "EntityItem id:" << getEntityItemID();
     qCDebug(entities, " edited ago:%f", (double)getEditedAgo());
     qCDebug(entities, " position:%f,%f,%f", (double)position.x, (double)position.y, (double)position.z);
-    qCDebug(entities) << " dimensions:" << getDimensions();
+    qCDebug(entities) << " dimensions:" << getScaledDimensions();
 }
 
 // adjust any internal timestamps to fix clock skew for this server
@@ -919,7 +919,7 @@ void EntityItem::adjustEditPacketForClockSkew(QByteArray& buffer, qint64 clockSk
 }
 
 float EntityItem::computeMass() const {
-    glm::vec3 dimensions = getDimensions();
+    glm::vec3 dimensions = getScaledDimensions();
     return getDensity() * _volumeMultiplier * dimensions.x * dimensions.y * dimensions.z;
 }
 
@@ -938,7 +938,7 @@ void EntityItem::setMass(float mass) {
     // we must protect the density range to help maintain stability of physics simulation
     // therefore this method might not accept the mass that is supplied.
 
-    glm::vec3 dimensions = getDimensions();
+    glm::vec3 dimensions = getScaledDimensions();
     float volume = _volumeMultiplier * dimensions.x * dimensions.y * dimensions.z;
 
     // compute new density
@@ -1172,7 +1172,7 @@ bool EntityItem::wantTerseEditLogging() const {
 glm::mat4 EntityItem::getEntityToWorldMatrix() const {
     glm::mat4 translation = glm::translate(getWorldPosition());
     glm::mat4 rotation = glm::mat4_cast(getWorldOrientation());
-    glm::mat4 scale = glm::scale(getDimensions());
+    glm::mat4 scale = glm::scale(getScaledDimensions());
     glm::mat4 registration = glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
     return translation * rotation * scale * registration;
 }
@@ -1212,7 +1212,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
 
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationOwner, getSimulationOwner);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(position, getLocalPosition);
-    COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getDimensions); // NOTE: radius is obsolete
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(dimensions, getUnscaledDimensions);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(rotation, getLocalOrientation);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(density, getDensity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(velocity, getLocalVelocity);
@@ -1319,7 +1319,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(acceleration, setAcceleration);
 
     // these (along with "position" above) affect tree structure
-    SET_ENTITY_PROPERTY_FROM_PROPERTIES(dimensions, setDimensions);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(dimensions, setUnscaledDimensions);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(registrationPoint, setRegistrationPoint);
 
     // these (along with all properties above) affect the simulation
@@ -1421,7 +1421,7 @@ void EntityItem::recordCreationTime() {
 const Transform EntityItem::getTransformToCenter(bool& success) const {
     Transform result = getTransform(success);
     if (getRegistrationPoint() != ENTITY_ITEM_HALF_VEC3) { // If it is not already centered, translate to center
-        result.postTranslate((ENTITY_ITEM_HALF_VEC3 - getRegistrationPoint()) * getDimensions()); // Position to center
+        result.postTranslate((ENTITY_ITEM_HALF_VEC3 - getRegistrationPoint()) * getScaledDimensions()); // Position to center
     }
     return result;
 }
@@ -1437,7 +1437,7 @@ AACube EntityItem::getMaximumAACube(bool& success) const {
             // we want to compute the furthestExtent that an entity can extend out from its "position"
             // to do this we compute the max of these two vec3s: registration and 1-registration
             // and then scale by dimensions
-            glm::vec3 maxExtents = getDimensions() * glm::max(_registrationPoint, glm::vec3(1.0f) - _registrationPoint);
+            glm::vec3 maxExtents = getScaledDimensions() * glm::max(_registrationPoint, glm::vec3(1.0f) - _registrationPoint);
 
             // there exists a sphere that contains maxExtents for all rotations
             float radius = glm::length(maxExtents);
@@ -1462,7 +1462,7 @@ AACube EntityItem::getMinimumAACube(bool& success) const {
         glm::vec3 position = getWorldPosition(success);
         if (success) {
             _recalcMinAACube = false;
-            glm::vec3 dimensions = getDimensions();
+            glm::vec3 dimensions = getScaledDimensions();
             glm::vec3 unrotatedMinRelativeToEntity = - (dimensions * _registrationPoint);
             glm::vec3 unrotatedMaxRelativeToEntity = dimensions * (glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint);
             Extents extents = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
@@ -1492,7 +1492,7 @@ AABox EntityItem::getAABox(bool& success) const {
         glm::vec3 position = getWorldPosition(success);
         if (success) {
             _recalcAABox = false;
-            glm::vec3 dimensions = getDimensions();
+            glm::vec3 dimensions = getScaledDimensions();
             glm::vec3 unrotatedMinRelativeToEntity = - (dimensions * _registrationPoint);
             glm::vec3 unrotatedMaxRelativeToEntity = dimensions * (glm::vec3(1.0f, 1.0f, 1.0f) - _registrationPoint);
             Extents extents = { unrotatedMinRelativeToEntity, unrotatedMaxRelativeToEntity };
@@ -1532,12 +1532,12 @@ bool EntityItem::shouldPuffQueryAACube() const {
 //    ... cornerToCornerLength = sqrt(3 x maxDimension ^ 2)
 //    ... radius = sqrt(3 x maxDimension ^ 2) / 2.0f;
 float EntityItem::getRadius() const {
-    return 0.5f * glm::length(getDimensions());
+    return 0.5f * glm::length(getScaledDimensions());
 }
 
 void EntityItem::adjustShapeInfoByRegistration(ShapeInfo& info) const {
     if (_registrationPoint != ENTITY_ITEM_DEFAULT_REGISTRATION_POINT) {
-        glm::mat4 scale = glm::scale(getDimensions());
+        glm::mat4 scale = glm::scale(getScaledDimensions());
         glm::mat4 registration = scale * glm::translate(ENTITY_ITEM_DEFAULT_REGISTRATION_POINT - getRegistrationPoint());
         glm::vec3 regTransVec = glm::vec3(registration[3]); // extract position component from matrix
         info.setOffset(regTransVec);
@@ -1558,12 +1558,12 @@ bool EntityItem::contains(const glm::vec3& point) const {
 }
 
 void EntityItem::computeShapeInfo(ShapeInfo& info) {
-    info.setParams(getShapeType(), 0.5f * getDimensions());
+    info.setParams(getShapeType(), 0.5f * getScaledDimensions());
     adjustShapeInfoByRegistration(info);
 }
 
 float EntityItem::getVolumeEstimate() const {
-    glm::vec3 dimensions = getDimensions();
+    glm::vec3 dimensions = getScaledDimensions();
     return dimensions.x * dimensions.y * dimensions.z;
 }
 
@@ -1617,25 +1617,37 @@ void EntityItem::setParentID(const QUuid& value) {
     }
 }
 
-glm::vec3 EntityItem::getDimensions() const {
+glm::vec3 EntityItem::getScaledDimensions() const {
     if (getScalesWithParent()) {
         bool success;
         Transform parentTransform = getParentTransform(success);
         if (success) {
             glm::vec3 scale = getSNScale();
-            return glm::vec3(_dimensions.x * scale.x,
-                             _dimensions.y * scale.y,
-                             _dimensions.z * scale.z);
+            return glm::vec3(_unscaledDimensions.x * scale.x,
+                             _unscaledDimensions.y * scale.y,
+                             _unscaledDimensions.z * scale.z);
         }
     }
-    return _dimensions;
+    return _unscaledDimensions;
 }
 
-void EntityItem::setDimensions(const glm::vec3& value) {
+void EntityItem::setScaledDimensions(const glm::vec3& value) {
+    bool success;
+    Transform parentTransform = getParentTransform(success);
+    if (!success) {
+        qCWarning(entities) << "setScaledDimensions failed to get parent transform: " << getID();
+    }
+    glm::vec3 parentScale = parentTransform.getScale();
+    setUnscaledDimensions(glm::vec3(value.x / parentScale.x,
+                                    value.y / parentScale.y,
+                                    value.z / parentScale.z));
+}
+
+void EntityItem::setUnscaledDimensions(const glm::vec3& value) {
     glm::vec3 newDimensions = glm::max(value, glm::vec3(0.0f)); // can never have negative dimensions
-    if (getDimensions() != newDimensions) {
+    if (getUnscaledDimensions() != newDimensions) {
         withWriteLock([&] {
-            _dimensions = newDimensions;
+            _unscaledDimensions = newDimensions;
             _dirtyFlags |= (Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS);
             _queryAACubeSet = false;
         });
@@ -2320,7 +2332,7 @@ void EntityItem::globalizeProperties(EntityItemProperties& properties, const QSt
     if (success) {
         properties.setPosition(globalPosition + offset);
         properties.setRotation(getWorldOrientation());
-        properties.setDimensions(getDimensions());
+        properties.setDimensions(getScaledDimensions());
         // Should we do velocities and accelerations, too? This could end up being quite involved, which is why the method exists.
     } else {
         properties.setPosition(getQueryAACube().calcCenter() + offset); // best we can do

@@ -529,7 +529,7 @@ void EntityScriptingInterface::deleteEntity(QUuid id) {
                     return;
                 }
 
-                auto dimensions = entity->getDimensions();
+                auto dimensions = entity->getScaledDimensions();
                 float volume = dimensions.x * dimensions.y * dimensions.z;
                 auto density = entity->getDensity();
                 auto velocity = entity->getWorldVelocity().length();
