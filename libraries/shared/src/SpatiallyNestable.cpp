@@ -19,7 +19,7 @@
 #include "SharedLogging.h"
 
 const float defaultAACubeSize = 1.0f;
-const int maxParentingChain = 30;
+const int MAX_PARENTING_CHAIN_SIZE = 30;
 
 SpatiallyNestable::SpatiallyNestable(NestableType nestableType, QUuid id) :
     _nestableType(nestableType),
@@ -615,7 +615,7 @@ const Transform SpatiallyNestable::getTransform(int jointIndex, bool& success, i
     // cause this object's parent to query its parent, etc) and multiplies this object's local transform onto it.
     Transform jointInWorldFrame;
 
-    if (depth > maxParentingChain) {
+    if (depth > MAX_PARENTING_CHAIN_SIZE) {
         success = false;
         // someone created a loop.  break it...
         qCDebug(shared) << "Parenting loop detected.";
