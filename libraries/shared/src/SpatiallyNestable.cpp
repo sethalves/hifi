@@ -86,8 +86,8 @@ Transform SpatiallyNestable::getParentTransform(bool& success, int depth) const 
     }
     if (parent) {
         result = parent->getTransform(_parentJointIndex, success, depth + 1);
-        if (!getScalesWithParent()) {
-            result.setScale(1.0f);
+        if (getScalesWithParent()) {
+            result.setScale(parent->scaleForChildren());
         }
     }
     return result;
@@ -195,8 +195,8 @@ glm::vec3 SpatiallyNestable::worldToLocal(const glm::vec3& position,
         if (!success) {
             return glm::vec3(0.0f);
         }
-        if (!scalesWithParent) {
-            parentTransform.setScale(1.0f);
+        if (scalesWithParent) {
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -235,7 +235,7 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
             return glm::quat();
         }
         if (scalesWithParent) {
-            parentTransform.setScale(1.0f);
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -256,8 +256,8 @@ glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, con
     if (!success) {
         return velocity;
     }
-    if (!scalesWithParent) {
-        parentTransform.setScale(1.0f);
+    if (scalesWithParent) {
+        parentTransform.setScale(parent->scaleForChildren());
     }
     glm::vec3 parentVelocity = parent->getWorldVelocity(success);
     if (!success) {
@@ -279,8 +279,8 @@ glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angula
     if (!success) {
         return angularVelocity;
     }
-    if (!scalesWithParent) {
-        parentTransform.setScale(1.0f);
+    if (scalesWithParent) {
+        parentTransform.setScale(parent->scaleForChildren());
     }
 
     return glm::inverse(parentTransform.getRotation()) * angularVelocity;
@@ -315,8 +315,8 @@ glm::vec3 SpatiallyNestable::localToWorld(const glm::vec3& position,
         if (!success) {
             return glm::vec3(0.0f);
         }
-        if (!scalesWithParent) {
-            parentTransform.setScale(1.0f);
+        if (scalesWithParent) {
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -356,8 +356,8 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
         if (!success) {
             return glm::quat();
         }
-        if (!scalesWithParent) {
-            parentTransform.setScale(1.0f);
+        if (scalesWithParent) {
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -380,8 +380,8 @@ glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, con
     if (!success) {
         return velocity;
     }
-    if (!scalesWithParent) {
-        parentTransform.setScale(1.0f);
+    if (scalesWithParent) {
+        parentTransform.setScale(parent->scaleForChildren());
     }
     glm::vec3 parentVelocity = parent->getWorldVelocity(success);
     if (!success) {
@@ -403,8 +403,8 @@ glm::vec3 SpatiallyNestable::localToWorldAngularVelocity(const glm::vec3& angula
     if (!success) {
         return angularVelocity;
     }
-    if (!scalesWithParent) {
-        parentTransform.setScale(1.0f);
+    if (scalesWithParent) {
+        parentTransform.setScale(parent->scaleForChildren());
     }
     return parentTransform.getRotation() * angularVelocity;
 }
@@ -643,24 +643,12 @@ const Transform SpatiallyNestable::getTransform(bool& success, int depth) const 
     return result;
 }
 
-const Transform SpatiallyNestable::getUnscaledTransform(bool& success, int depth) const {
-    Transform result = getTransform(success, depth);
-    result.setScale(1.0f);
-    return result;
-}
-
 const Transform SpatiallyNestable::getTransform() const {
     bool success;
     Transform result = getTransform(success);
     if (!success) {
         qCDebug(shared) << "getTransform failed for" << getID();
     }
-    return result;
-}
-
-const Transform SpatiallyNestable::getUnscaledTransform() const {
-    Transform result = getTransform();
-    result.setScale(1.0f);
     return result;
 }
 
@@ -775,12 +763,6 @@ Transform SpatiallyNestable::getLocalTransform() const {
     _transformLock.withReadLock([&] {
         result =_transform;
     });
-    return result;
-}
-
-Transform SpatiallyNestable::getUnscaledLocalTransform() const {
-    Transform result = getLocalTransform();
-    result.setScale(1.0f);
     return result;
 }
 

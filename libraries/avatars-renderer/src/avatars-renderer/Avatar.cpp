@@ -1004,7 +1004,7 @@ glm::quat Avatar::getAbsoluteJointRotationInObjectFrame(int index) const {
     switch (index) {
         case SENSOR_TO_WORLD_MATRIX_INDEX: {
             glm::mat4 sensorToWorldMatrix = getSensorToWorldMatrix();
-            glm::mat4 avatarMatrix = getUnscaledLocalTransform().getMatrix();
+            glm::mat4 avatarMatrix = getLocalTransform().getMatrix();
             glm::mat4 finalMat = glm::inverse(avatarMatrix) * sensorToWorldMatrix;
             return glmExtractRotation(finalMat);
         }
@@ -1044,7 +1044,7 @@ glm::vec3 Avatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
     switch (index) {
         case SENSOR_TO_WORLD_MATRIX_INDEX: {
             glm::mat4 sensorToWorldMatrix = getSensorToWorldMatrix();
-            glm::mat4 avatarMatrix = getUnscaledLocalTransform().getMatrix();
+            glm::mat4 avatarMatrix = getLocalTransform().getMatrix();
             glm::mat4 finalMat = glm::inverse(avatarMatrix) * sensorToWorldMatrix;
             return extractTranslation(finalMat);
         }
@@ -1510,7 +1510,7 @@ void Avatar::setParentID(const QUuid& parentID) {
     }
     QUuid initialParentID = getParentID();
     bool success;
-    Transform beforeChangeTransform = getUnscaledTransform(success);
+    Transform beforeChangeTransform = getTransform(success);
     SpatiallyNestable::setParentID(parentID);
     if (success) {
         setTransform(beforeChangeTransform, success);
@@ -1528,7 +1528,7 @@ void Avatar::setParentJointIndex(quint16 parentJointIndex) {
         return;
     }
     bool success;
-    Transform beforeChangeTransform = getUnscaledTransform(success);
+    Transform beforeChangeTransform = getTransform(success);
     SpatiallyNestable::setParentJointIndex(parentJointIndex);
     if (success) {
         setTransform(beforeChangeTransform, success);

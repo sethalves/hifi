@@ -3001,7 +3001,7 @@ glm::quat MyAvatar::getAbsoluteJointRotationInObjectFrame(int index) const {
         case CAMERA_MATRIX_INDEX: {
             bool success;
             Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getUnscaledLocalTransform());
+            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
             glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
             return glmExtractRotation(invAvatarMat * qApp->getCamera().getTransform());
         }
@@ -3018,10 +3018,10 @@ glm::vec3 MyAvatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
 
     switch (index) {
         case CONTROLLER_LEFTHAND_INDEX: {
-            return getControllerPoseInAvatarFrame(controller::Action::LEFT_HAND).getTranslation() / getModelScale();
+            return getControllerPoseInAvatarFrame(controller::Action::LEFT_HAND).getTranslation();
         }
         case CONTROLLER_RIGHTHAND_INDEX: {
-            return getControllerPoseInAvatarFrame(controller::Action::RIGHT_HAND).getTranslation() / getModelScale();;
+            return getControllerPoseInAvatarFrame(controller::Action::RIGHT_HAND).getTranslation();
         }
         case CAMERA_RELATIVE_CONTROLLER_LEFTHAND_INDEX: {
             auto pose = getControllerPoseInSensorFrame(controller::Action::LEFT_HAND);
@@ -3038,7 +3038,7 @@ glm::vec3 MyAvatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
         case CAMERA_MATRIX_INDEX: {
             bool success;
             Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getUnscaledLocalTransform());
+            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
             glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
             return extractTranslation(invAvatarMat * qApp->getCamera().getTransform());
         }

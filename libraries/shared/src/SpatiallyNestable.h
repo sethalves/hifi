@@ -72,9 +72,7 @@ public:
 
     // world frame
     virtual const Transform getTransform(bool& success, int depth = 0) const;
-    virtual const Transform getUnscaledTransform(bool& success, int depth = 0) const;
     virtual const Transform getTransform() const;
-    virtual const Transform getUnscaledTransform() const;
     virtual void setTransform(const Transform& transform, bool& success);
     virtual bool setTransform(const Transform& transform);
 
@@ -125,7 +123,6 @@ public:
 
     // object's parent's frame
     virtual Transform getLocalTransform() const;
-    virtual Transform getUnscaledLocalTransform() const;
     virtual void setLocalTransform(const Transform& transform);
 
     virtual glm::vec3 getLocalPosition() const;
@@ -144,6 +141,7 @@ public:
     virtual void setLocalSNScale(const glm::vec3& scale);
 
     virtual bool getScalesWithParent() const { return false; }
+    virtual glm::vec3 scaleForChildren() const { return glm::vec3(1.0f); }
 
     QList<SpatiallyNestablePointer> getChildren() const;
     bool hasChildren() const;
