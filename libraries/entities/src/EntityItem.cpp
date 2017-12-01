@@ -1636,11 +1636,13 @@ void EntityItem::setUnscaledDimensions(const glm::vec3& value) {
     if (getUnscaledDimensions() != newDimensions) {
         withWriteLock([&] {
             _unscaledDimensions = newDimensions;
-            _dirtyFlags |= (Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS);
-            _queryAACubeSet = false;
         });
         locationChanged();
         dimensionsChanged();
+        withWriteLock([&] {
+            _dirtyFlags |= (Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS);
+            _queryAACubeSet = false;
+        });
     }
 }
 
