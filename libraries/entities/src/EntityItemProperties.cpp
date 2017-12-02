@@ -2466,17 +2466,15 @@ bool EntityItemProperties::transformChanged() const {
 }
 
 bool EntityItemProperties::getScalesWithParent() const {
+    // keep this logic the same as in EntityItem::getScalesWithParent
     bool scalesWithParent { false };
     if (parentIDChanged()) {
         bool success;
         SpatiallyNestablePointer parent = SpatiallyNestable::findByID(getParentID(), success);
         if (success && parent) {
-            qDebug() << "YES";
-            bool avatarAncestor = parent->getNestableType() == NestableType::Avatar ||
-                parent->hasAncestorOfType(NestableType::Avatar);
-            scalesWithParent = getClientOnly() && avatarAncestor; // see EntityItem::getScalesWithParent
-        } else {
-            qDebug() << "NO";
+            bool avatarAncestor = (parent->getNestableType() == NestableType::Avatar ||
+                                   parent->hasAncestorOfType(NestableType::Avatar));
+            scalesWithParent = getClientOnly() && avatarAncestor;
         }
     }
     return scalesWithParent;
