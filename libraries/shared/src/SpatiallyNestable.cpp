@@ -169,9 +169,7 @@ void SpatiallyNestable::setParentJointIndex(quint16 parentJointIndex) {
 
 glm::vec3 SpatiallyNestable::worldToLocal(const glm::vec3& position,
                                           const QUuid& parentID, int parentJointIndex,
-                                          bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                          bool scalesWithParent, bool& success) {
     QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
     if (!parentFinder) {
         success = false;
@@ -208,9 +206,7 @@ glm::vec3 SpatiallyNestable::worldToLocal(const glm::vec3& position,
 
 glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
                                           const QUuid& parentID, int parentJointIndex,
-                                          bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                          bool scalesWithParent, bool& success) {
     QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
     if (!parentFinder) {
         success = false;
@@ -245,9 +241,7 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
 }
 
 glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, const QUuid& parentID,
-                                                  int parentJointIndex, bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                                  int parentJointIndex, bool scalesWithParent, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
     if (!success || !parent) {
         return velocity;
@@ -268,9 +262,7 @@ glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, con
 }
 
 glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
-                                                         int parentJointIndex, bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                                         int parentJointIndex, bool scalesWithParent, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
     if (!success || !parent) {
         return angularVelocity;
@@ -289,9 +281,7 @@ glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angula
 
 glm::vec3 SpatiallyNestable::worldToLocalDimensions(const glm::vec3& dimensions,
                                                     const QUuid& parentID, int parentJointIndex,
-                                                    bool& success) {
-    bool scalesWithParent = true; // XXX
-
+                                                    bool scalesWithParent, bool& success) {
     if (!scalesWithParent) {
         success = true;
         return dimensions;
