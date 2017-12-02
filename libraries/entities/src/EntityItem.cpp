@@ -2308,6 +2308,7 @@ void EntityItem::dimensionsChanged() {
 }
 
 bool EntityItem::getScalesWithParent() const {
+    // keep this logic the same as in EntityScriptingInterface::addEntity
     if (getClientOnly()) {
         QUuid ancestorID = findAncestorOfType(NestableType::Avatar);
         return !ancestorID.isNull();

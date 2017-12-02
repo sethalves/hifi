@@ -235,7 +235,17 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
 
     _activityTracking.addedEntityCount++;
 
-    bool scalesWithParent = clientOnly; // XXX and child of avatar
+    bool scalesWithParent { false };
+    if (properties.parentIDChanged()) {
+        bool success;
+        SpatiallyNestablePointer parent = SpatiallyNestable::findByID(properties.getParentID(), success);
+        if (success && parent) {
+            bool avatarAncestor = parent->getNestableType() == NestableType::Avatar ||
+                parent->hasAncestorOfType(NestableType::Avatar);
+            bool scalesWithParent = clientOnly && avatarAncestor; // see EntityItem::getScalesWithParent
+        }
+    }
+
     EntityItemProperties propertiesWithSimID = convertLocationFromScriptSemantics(properties, scalesWithParent);
     propertiesWithSimID.setDimensionsInitialized(properties.dimensionsChanged());
 
