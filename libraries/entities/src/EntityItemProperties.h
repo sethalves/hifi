@@ -88,6 +88,7 @@ public:
     EntityPropertyFlags getChangedProperties() const;
 
     bool transformChanged() const;
+    bool getScalesWithParent() const;
     bool parentRelatedPropertyChanged() const;
     bool queryAACubeRelatedPropertyChanged() const;
 

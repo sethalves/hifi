@@ -117,7 +117,8 @@ void EntityScriptingInterface::setEntityTree(EntityTreePointer elementTree) {
     }
 }
 
-EntityItemProperties convertLocationToScriptSemantics(const EntityItemProperties& entitySideProperties, bool scalesWithParent) {
+EntityItemProperties convertPropertiesToScriptSemantics(const EntityItemProperties& entitySideProperties,
+                                                        bool scalesWithParent) {
     // In EntityTree code, properties.position and properties.rotation are relative to the parent.  In javascript,
     // they are in world-space.  The local versions are put into localPosition and localRotation and position and
     // rotation are converted from local to world space.
@@ -166,7 +167,7 @@ EntityItemProperties convertLocationToScriptSemantics(const EntityItemProperties
 }
 
 
-EntityItemProperties convertLocationFromScriptSemantics(const EntityItemProperties& scriptSideProperties,
+EntityItemProperties convertPropertiesFromScriptSemantics(const EntityItemProperties& scriptSideProperties,
                                                         bool scalesWithParent) {
     // convert position and rotation properties from world-space to local, unless localPosition and localRotation
     // are set.  If they are set, they overwrite position and rotation.
@@ -235,26 +236,18 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
 
     _activityTracking.addedEntityCount++;
 
-    bool scalesWithParent { false };
-    if (properties.parentIDChanged()) {
-        bool success;
-        SpatiallyNestablePointer parent = SpatiallyNestable::findByID(properties.getParentID(), success);
-        if (success && parent) {
-            bool avatarAncestor = parent->getNestableType() == NestableType::Avatar ||
-                parent->hasAncestorOfType(NestableType::Avatar);
-            bool scalesWithParent = clientOnly && avatarAncestor; // see EntityItem::getScalesWithParent
-        }
-    }
-
-    EntityItemProperties propertiesWithSimID = convertLocationFromScriptSemantics(properties, scalesWithParent);
-    propertiesWithSimID.setDimensionsInitialized(properties.dimensionsChanged());
-
+    EntityItemProperties propertiesWithSimID = properties;
     if (clientOnly) {
         auto nodeList = DependencyManager::get<NodeList>();
         const QUuid myNodeID = nodeList->getSessionUUID();
         propertiesWithSimID.setClientOnly(clientOnly);
         propertiesWithSimID.setOwningAvatarID(myNodeID);
     }
+
+    bool scalesWithParent = propertiesWithSimID.getScalesWithParent();
+
+    propertiesWithSimID = convertPropertiesFromScriptSemantics(propertiesWithSimID, scalesWithParent);
+    propertiesWithSimID.setDimensionsInitialized(properties.dimensionsChanged());
 
     auto dimensions = propertiesWithSimID.getDimensions();
     float volume = dimensions.x * dimensions.y * dimensions.z;
@@ -365,7 +358,7 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
         });
     }
 
-    return convertLocationToScriptSemantics(results, scalesWithParent);
+    return convertPropertiesToScriptSemantics(results, scalesWithParent);
 }
 
 QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties) {
@@ -432,19 +425,13 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             if (!scriptSideProperties.localRotationChanged() && !scriptSideProperties.rotationChanged()) {
                 properties.setRotation(entity->getWorldOrientation());
             }
-            if (!scriptSideProperties.localVelocityChanged() && !scriptSideProperties.velocityChanged()) {
-                properties.setVelocity(entity->getWorldVelocity());
-            }
-            if (!scriptSideProperties.localAngularVelocityChanged() && !scriptSideProperties.angularVelocityChanged()) {
-                properties.setAngularVelocity(entity->getWorldAngularVelocity());
-            }
             if (!scriptSideProperties.localDimensionsChanged() && !scriptSideProperties.dimensionsChanged()) {
                 properties.setDimensions(entity->getScaledDimensions());
             }
         }
-        properties = convertLocationFromScriptSemantics(properties, entity->getScalesWithParent());
         properties.setClientOnly(entity->getClientOnly());
         properties.setOwningAvatarID(entity->getOwningAvatarID());
+        properties = convertPropertiesFromScriptSemantics(properties, properties.getScalesWithParent());
 
         float cost = calculateCost(density * volume, oldVelocity, newVelocity);
         cost *= costMultiplier;

@@ -2465,10 +2465,26 @@ bool EntityItemProperties::transformChanged() const {
         localPositionChanged() || localRotationChanged();
 }
 
+bool EntityItemProperties::getScalesWithParent() const {
+    bool scalesWithParent { false };
+    if (parentIDChanged()) {
+        bool success;
+        SpatiallyNestablePointer parent = SpatiallyNestable::findByID(getParentID(), success);
+        if (success && parent) {
+            qDebug() << "YES";
+            bool avatarAncestor = parent->getNestableType() == NestableType::Avatar ||
+                parent->hasAncestorOfType(NestableType::Avatar);
+            scalesWithParent = getClientOnly() && avatarAncestor; // see EntityItem::getScalesWithParent
+        } else {
+            qDebug() << "NO";
+        }
+    }
+    return scalesWithParent;
+}
+
 bool EntityItemProperties::parentRelatedPropertyChanged() const {
     return positionChanged() || rotationChanged() ||
         localPositionChanged() || localRotationChanged() ||
-        localVelocityChanged() || localAngularVelocityChanged() ||
         localDimensionsChanged() ||
         parentIDChanged() || parentJointIndexChanged();
 }
