@@ -79,10 +79,10 @@ void Line3DOverlay::setEnd(const glm::vec3& end) {
     glm::vec3 offset;
 
     if (_endParentID != QUuid()) {
-        offset = worldToLocal(end, _endParentID, _endParentJointIndex, success);
+        offset = worldToLocal(end, _endParentID, _endParentJointIndex, getScalesWithParent(), success);
     } else {
         localStart = getLocalStart();
-        localEnd = worldToLocal(end, getParentID(), getParentJointIndex(), success);
+        localEnd = worldToLocal(end, getParentID(), getParentJointIndex(), getScalesWithParent(), success);
         offset = localEnd - localStart;
     }
     if (!success) {
