@@ -168,7 +168,7 @@ EntityItemProperties convertPropertiesToScriptSemantics(const EntityItemProperti
 
 
 EntityItemProperties convertPropertiesFromScriptSemantics(const EntityItemProperties& scriptSideProperties,
-                                                        bool scalesWithParent) {
+                                                          bool scalesWithParent) {
     // convert position and rotation properties from world-space to local, unless localPosition and localRotation
     // are set.  If they are set, they overwrite position and rotation.
     EntityItemProperties entitySideProperties = scriptSideProperties;
