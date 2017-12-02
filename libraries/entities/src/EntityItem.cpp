@@ -49,6 +49,7 @@ EntityItem::EntityItem(const EntityItemID& entityItemID) :
 {
     setLocalVelocity(ENTITY_ITEM_DEFAULT_VELOCITY);
     setLocalAngularVelocity(ENTITY_ITEM_DEFAULT_ANGULAR_VELOCITY);
+    setUnscaledDimensions(ENTITY_ITEM_DEFAULT_DIMENSIONS);
     // explicitly set transform parts to set dirty flags used by batch rendering
     locationChanged();
     dimensionsChanged();

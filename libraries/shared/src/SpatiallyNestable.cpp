@@ -286,11 +286,46 @@ glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angula
     return glm::inverse(parentTransform.getRotation()) * angularVelocity;
 }
 
+
+glm::vec3 SpatiallyNestable::worldToLocalDimensions(const glm::vec3& dimensions,
+                                                    const QUuid& parentID, int parentJointIndex,
+                                                    bool& success) {
+    bool scalesWithParent = true; // XXX
+
+    if (!scalesWithParent) {
+        success = true;
+        return dimensions;
+    }
+
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return dimensions;
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return dimensions;
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return dimensions;
+    }
+
+    success = true;
+    if (parent) {
+        return dimensions / parent->scaleForChildren();
+    }
+    return dimensions;
+}
+
 glm::vec3 SpatiallyNestable::localToWorld(const glm::vec3& position,
                                           const QUuid& parentID, int parentJointIndex,
+                                          bool scalesWithParent,
                                           bool& success) {
-    bool scalesWithParent = false; // XXX
-
     Transform result;
     QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
     if (!parentFinder) {
@@ -329,9 +364,8 @@ glm::vec3 SpatiallyNestable::localToWorld(const glm::vec3& position,
 
 glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
                                           const QUuid& parentID, int parentJointIndex,
+                                          bool scalesWithParent,
                                           bool& success) {
-    bool scalesWithParent = false; // XXX
-
     Transform result;
     QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
     if (!parentFinder) {
@@ -369,9 +403,7 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
 }
 
 glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, const QUuid& parentID,
-                                                  int parentJointIndex, bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                                  int parentJointIndex, bool scalesWithParent, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
     if (!success || !parent) {
         return velocity;
@@ -392,9 +424,7 @@ glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, con
 }
 
 glm::vec3 SpatiallyNestable::localToWorldAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
-                                                  int parentJointIndex, bool& success) {
-    bool scalesWithParent = false; // XXX
-
+                                                         int parentJointIndex, bool scalesWithParent, bool& success) {
     SpatiallyNestablePointer parent = SpatiallyNestable::findByID(parentID, success);
     if (!success || !parent) {
         return angularVelocity;
@@ -407,6 +437,41 @@ glm::vec3 SpatiallyNestable::localToWorldAngularVelocity(const glm::vec3& angula
         parentTransform.setScale(parent->scaleForChildren());
     }
     return parentTransform.getRotation() * angularVelocity;
+}
+
+
+glm::vec3 SpatiallyNestable::localToWorldDimensions(const glm::vec3& dimensions,
+                                                    const QUuid& parentID, int parentJointIndex, bool scalesWithParent,
+                                                    bool& success) {
+    if (!scalesWithParent) {
+        success = true;
+        return dimensions;
+    }
+
+    Transform result;
+    QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+    if (!parentFinder) {
+        success = false;
+        return dimensions;
+    }
+
+    Transform parentTransform;
+    auto parentWP = parentFinder->find(parentID, success);
+    if (!success) {
+        return dimensions;
+    }
+
+    auto parent = parentWP.lock();
+    if (!parentID.isNull() && !parent) {
+        success = false;
+        return dimensions;
+    }
+
+    success = true;
+    if (parent) {
+        return dimensions * parent->scaleForChildren();
+    }
+    return dimensions;
 }
 
 glm::vec3 SpatiallyNestable::getWorldPosition(bool& success) const {

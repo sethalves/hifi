@@ -56,13 +56,20 @@ public:
                                           int parentJointIndex, bool& success);
     static glm::vec3 worldToLocalAngularVelocity(const glm::vec3& angularVelocity, const QUuid& parentID,
                                                  int parentJointIndex, bool& success);
+    static glm::vec3 worldToLocalDimensions(const glm::vec3& dimensions, const QUuid& parentID,
+                                            int parentJointIndex, bool& success);
 
-    static glm::vec3 localToWorld(const glm::vec3& position, const QUuid& parentID, int parentJointIndex, bool& success);
-    static glm::quat localToWorld(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex, bool& success);
+    static glm::vec3 localToWorld(const glm::vec3& position, const QUuid& parentID, int parentJointIndex,
+                                  bool scalesWithParent, bool& success);
+    static glm::quat localToWorld(const glm::quat& orientation, const QUuid& parentID, int parentJointIndex,
+                                  bool scalesWithParent, bool& success);
     static glm::vec3 localToWorldVelocity(const glm::vec3& velocity,
-                                          const QUuid& parentID, int parentJointIndex, bool& success);
+                                          const QUuid& parentID, int parentJointIndex, bool scalesWithParent, bool& success);
     static glm::vec3 localToWorldAngularVelocity(const glm::vec3& angularVelocity,
-                                                 const QUuid& parentID, int parentJointIndex, bool& success);
+                                                 const QUuid& parentID, int parentJointIndex,
+                                                 bool scalesWithParent, bool& success);
+    static glm::vec3 localToWorldDimensions(const glm::vec3& dimensions, const QUuid& parentID,
+                                            int parentJointIndex, bool scalesWithParent, bool& success);
 
     static QString nestableTypeToString(NestableType nestableType);
 
