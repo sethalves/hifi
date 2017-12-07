@@ -1716,14 +1716,16 @@ void EntityTree::fixupNeedsParentFixups() {
             // need to be moved.
             entity->markDirtyFlags(Simulation::DIRTY_MOTION_TYPE |
                                    Simulation::DIRTY_COLLISION_GROUP |
-                                   Simulation::DIRTY_TRANSFORM);
+                                   Simulation::DIRTY_TRANSFORM |
+                                   Simulation::DIRTY_HIERARCHY);
             entityChanged(entity);
             entity->forEachDescendant([&](SpatiallyNestablePointer object) {
                 if (object->getNestableType() == NestableType::Entity) {
                     EntityItemPointer descendantEntity = std::static_pointer_cast<EntityItem>(object);
                     descendantEntity->markDirtyFlags(Simulation::DIRTY_MOTION_TYPE |
                                                      Simulation::DIRTY_COLLISION_GROUP |
-                                                     Simulation::DIRTY_TRANSFORM);
+                                                     Simulation::DIRTY_TRANSFORM |
+                                                     Simulation::DIRTY_HIERARCHY);
                     entityChanged(descendantEntity);
                 }
             });
