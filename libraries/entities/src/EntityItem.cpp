@@ -1259,6 +1259,7 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(description, getDescription);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(actionData, getDynamicData);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentID, getParentID);
+    COPY_ENTITY_PROPERTY_TO_PROPERTIES(simulationID, getSimulationID);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(parentJointIndex, getParentJointIndex);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(queryAACube, getQueryAACube);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(localPosition, getLocalPosition);
@@ -1366,6 +1367,7 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(description, setDescription);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(actionData, setDynamicData);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentID, setParentID);
+    SET_ENTITY_PROPERTY_FROM_PROPERTIES(simulationID, setSimulationID);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(parentJointIndex, setParentJointIndex);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(queryAACube, setQueryAACube);
 

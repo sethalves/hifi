@@ -390,6 +390,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
                 properties.setAccelerationChanged(false);
                 properties.setParentIDChanged(false);
                 properties.setParentJointIndexChanged(false);
+                properties.setSimulationIDChanged(false);
 
                 if (wantTerseEditLogging()) {
                     qCDebug(entities) << (senderNode ? senderNode->getUUID() : "null") << "physical edits suppressed";
@@ -1035,6 +1036,13 @@ void EntityTree::fixupTerseEditLogging(EntityItemProperties& properties, QList<Q
         if (index >= 0) {
             QUuid value = properties.getParentID();
             changedProperties[index] = QString("parentID:") + value.toString();
+        }
+    }
+    if (properties.simulationIDChanged()) {
+        int index = changedProperties.indexOf("simulationID");
+        if (index >= 0) {
+            QUuid value = properties.getSimulationID();
+            changedProperties[index] = QString("simulationID:") + value.toString();
         }
     }
 

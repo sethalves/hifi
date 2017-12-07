@@ -802,6 +802,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(zPNeighborID, EntityItemID, setZPNeighborID);
 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(parentID, QUuid, setParentID);
+    COPY_PROPERTY_FROM_QSCRIPTVALUE(simulationID, QUuid, setSimulationID);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(parentJointIndex, quint16, setParentJointIndex);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(queryAACube, AACube, setQueryAACube);
 
@@ -951,6 +952,7 @@ void EntityItemProperties::merge(const EntityItemProperties& other) {
     COPY_PROPERTY_IF_CHANGED(zPNeighborID);
 
     COPY_PROPERTY_IF_CHANGED(parentID);
+    COPY_PROPERTY_IF_CHANGED(simulationID);
     COPY_PROPERTY_IF_CHANGED(parentJointIndex);
     COPY_PROPERTY_IF_CHANGED(queryAACube);
 
@@ -2057,6 +2059,7 @@ void EntityItemProperties::markAllChanged() {
     _zPNeighborIDChanged = true;
 
     _parentIDChanged = true;
+    _simulationIDChanged = true;
     _parentJointIndexChanged = true;
 
     _jointRotationsSetChanged = true;
@@ -2416,6 +2419,9 @@ QList<QString> EntityItemProperties::listChangedProperties() {
     if (parentIDChanged()) {
         out += "parentID";
     }
+    if (simulationIDChanged()) {
+        out += "simulationID";
+    }
     if (parentJointIndexChanged()) {
         out += "parentJointIndex";
     }
@@ -2484,7 +2490,7 @@ bool EntityItemProperties::transformChanged() const {
 bool EntityItemProperties::parentRelatedPropertyChanged() const {
     return positionChanged() || rotationChanged() ||
         localPositionChanged() || localRotationChanged() ||
-        parentIDChanged() || parentJointIndexChanged();
+        parentIDChanged() || simulationIDChanged() || parentJointIndexChanged();
 }
 
 bool EntityItemProperties::queryAACubeRelatedPropertyChanged() const {

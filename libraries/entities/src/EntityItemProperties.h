@@ -498,6 +498,7 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, ZPNeighborID, zPNeighborID, "");
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, ParentID, parentID, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, SimulationID, simulationID, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, ParentJointIndex, parentJointIndex, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, QueryAACube, queryAACube, "");
 
