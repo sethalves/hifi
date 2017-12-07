@@ -66,8 +66,6 @@ const QHostAddress DEFAULT_ASSIGNMENT_CLIENT_MONITOR_HOSTNAME = QHostAddress::Lo
 
 const QString USERNAME_UUID_REPLACEMENT_STATS_KEY = "$username";
 
-const QString LOCAL_SOCKET_CHANGE_STAT = "LocalSocketChanges";
-
 typedef std::pair<QUuid, SharedNodePointer> UUIDNodePair;
 typedef tbb::concurrent_unordered_map<QUuid, SharedNodePointer, UUIDHasher> NodeHash;
 
@@ -113,9 +111,12 @@ public:
     bool isAllowedEditor() const { return _permissions.can(NodePermissions::Permission::canAdjustLocks); }
     bool getThisNodeCanRez() const { return _permissions.can(NodePermissions::Permission::canRezPermanentEntities); }
     bool getThisNodeCanRezTmp() const { return _permissions.can(NodePermissions::Permission::canRezTemporaryEntities); }
+    bool getThisNodeCanRezCertified() const { return _permissions.can(NodePermissions::Permission::canRezPermanentCertifiedEntities); }
+    bool getThisNodeCanRezTmpCertified() const { return _permissions.can(NodePermissions::Permission::canRezTemporaryCertifiedEntities); }
     bool getThisNodeCanWriteAssets() const { return _permissions.can(NodePermissions::Permission::canWriteToAssetServer); }
     bool getThisNodeCanKick() const { return _permissions.can(NodePermissions::Permission::canKick); }
-
+    bool getThisNodeCanReplaceContent() const { return _permissions.can(NodePermissions::Permission::canReplaceDomainContent); }
+    
     quint16 getSocketLocalPort() const { return _nodeSocket.localPort(); }
     Q_INVOKABLE void setSocketLocalPort(quint16 socketLocalPort);
 
@@ -123,17 +124,25 @@ public:
 
     PacketReceiver& getPacketReceiver() { return *_packetReceiver; }
 
+    // use sendUnreliablePacket to send an unrelaible packet (that you do not need to move)
+    // either to a node (via its active socket) or to a manual sockaddr
     qint64 sendUnreliablePacket(const NLPacket& packet, const Node& destinationNode);
     qint64 sendUnreliablePacket(const NLPacket& packet, const HifiSockAddr& sockAddr,
                                 const QUuid& connectionSecret = QUuid());
 
+    // use sendPacket to send a moved unreliable or reliable NL packet to a node's active socket or manual sockaddr
     qint64 sendPacket(std::unique_ptr<NLPacket> packet, const Node& destinationNode);
     qint64 sendPacket(std::unique_ptr<NLPacket> packet, const HifiSockAddr& sockAddr,
                       const QUuid& connectionSecret = QUuid());
 
-    qint64 sendPacketList(NLPacketList& packetList, const Node& destinationNode);
-    qint64 sendPacketList(NLPacketList& packetList, const HifiSockAddr& sockAddr,
+    // use sendUnreliableUnorderedPacketList to unreliably send separate packets from the packet list
+    // either to a node's active socket or to a manual sockaddr
+    qint64 sendUnreliableUnorderedPacketList(NLPacketList& packetList, const Node& destinationNode);
+    qint64 sendUnreliableUnorderedPacketList(NLPacketList& packetList, const HifiSockAddr& sockAddr,
                           const QUuid& connectionSecret = QUuid());
+
+    // use sendPacketList to send reliable packet lists (ordered or unordered) to a node's active socket
+    // or to a manual sock addr
     qint64 sendPacketList(std::unique_ptr<NLPacketList> packetList, const HifiSockAddr& sockAddr);
     qint64 sendPacketList(std::unique_ptr<NLPacketList> packetList, const Node& destinationNode);
 
@@ -285,7 +294,9 @@ public:
 
     void setPacketFilterOperator(udt::PacketFilterOperator filterOperator) { _nodeSocket.setPacketFilterOperator(filterOperator); }
     bool packetVersionMatch(const udt::Packet& packet);
-    bool isPacketVerified(const udt::Packet& packet);
+
+    bool isPacketVerifiedWithSource(const udt::Packet& packet, Node* sourceNode = nullptr);
+    bool isPacketVerified(const udt::Packet& packet) { return isPacketVerifiedWithSource(packet); }
 
     static void makeSTUNRequestPacket(char* stunRequestPacket);
 
@@ -327,8 +338,11 @@ signals:
     void isAllowedEditorChanged(bool isAllowedEditor);
     void canRezChanged(bool canRez);
     void canRezTmpChanged(bool canRezTmp);
+    void canRezCertifiedChanged(bool canRez);
+    void canRezTmpCertifiedChanged(bool canRezTmp);
     void canWriteAssetsChanged(bool canWriteAssets);
     void canKickChanged(bool canKick);
+    void canReplaceContentChanged(bool canReplaceContent);
 
 protected slots:
     void connectedForLocalSocketTest();
@@ -350,7 +364,7 @@ protected:
 
     void setLocalSocket(const HifiSockAddr& sockAddr);
 
-    bool packetSourceAndHashMatchAndTrackBandwidth(const udt::Packet& packet);
+    bool packetSourceAndHashMatchAndTrackBandwidth(const udt::Packet& packet, Node* sourceNode = nullptr);
     void processSTUNResponse(std::unique_ptr<udt::BasePacket> packet);
 
     void handleNodeKill(const SharedNodePointer& node);

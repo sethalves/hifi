@@ -20,6 +20,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QThread>
 #include <QtCore/QUrl>
+#include <QtNetwork/QTcpSocket>
 #include <QtNetwork/QHostInfo>
 
 #include <LogHandler.h>
@@ -27,7 +28,6 @@
 #include <NumericalConstants.h>
 #include <SettingHandle.h>
 #include <SharedUtil.h>
-#include <StatTracker.h>
 #include <UUID.h>
 
 #include "AccountManager.h"
@@ -159,6 +159,14 @@ void LimitedNodeList::setPermissions(const NodePermissions& newPermissions) {
         newPermissions.can(NodePermissions::Permission::canRezTemporaryEntities)) {
         emit canRezTmpChanged(_permissions.can(NodePermissions::Permission::canRezTemporaryEntities));
     }
+    if (originalPermissions.can(NodePermissions::Permission::canRezPermanentCertifiedEntities) !=
+        newPermissions.can(NodePermissions::Permission::canRezPermanentCertifiedEntities)) {
+        emit canRezCertifiedChanged(_permissions.can(NodePermissions::Permission::canRezPermanentCertifiedEntities));
+    }
+    if (originalPermissions.can(NodePermissions::Permission::canRezTemporaryCertifiedEntities) !=
+        newPermissions.can(NodePermissions::Permission::canRezTemporaryCertifiedEntities)) {
+        emit canRezTmpCertifiedChanged(_permissions.can(NodePermissions::Permission::canRezTemporaryCertifiedEntities));
+    }
     if (originalPermissions.can(NodePermissions::Permission::canWriteToAssetServer) !=
         newPermissions.can(NodePermissions::Permission::canWriteToAssetServer)) {
         emit canWriteAssetsChanged(_permissions.can(NodePermissions::Permission::canWriteToAssetServer));
@@ -166,6 +174,10 @@ void LimitedNodeList::setPermissions(const NodePermissions& newPermissions) {
     if (originalPermissions.can(NodePermissions::Permission::canKick) !=
         newPermissions.can(NodePermissions::Permission::canKick)) {
         emit canKickChanged(_permissions.can(NodePermissions::Permission::canKick));
+    }
+    if (originalPermissions.can(NodePermissions::Permission::canReplaceDomainContent) !=
+        newPermissions.can(NodePermissions::Permission::canReplaceDomainContent)) {
+        emit canReplaceContentChanged(_permissions.can(NodePermissions::Permission::canReplaceDomainContent));
     }
 }
 
@@ -198,12 +210,12 @@ QUdpSocket& LimitedNodeList::getDTLSSocket() {
     return *_dtlsSocket;
 }
 
-bool LimitedNodeList::isPacketVerified(const udt::Packet& packet) {
+bool LimitedNodeList::isPacketVerifiedWithSource(const udt::Packet& packet, Node* sourceNode) {
     // We track bandwidth when doing packet verification to avoid needing to do a node lookup
     // later when we already do it in packetSourceAndHashMatchAndTrackBandwidth. A node lookup
     // incurs a lock, so it is ideal to avoid needing to do it 2+ times for each packet
     // received.
-    return packetVersionMatch(packet) && packetSourceAndHashMatchAndTrackBandwidth(packet);
+    return packetVersionMatch(packet) && packetSourceAndHashMatchAndTrackBandwidth(packet, sourceNode);
 }
 
 bool LimitedNodeList::packetVersionMatch(const udt::Packet& packet) {
@@ -252,7 +264,7 @@ bool LimitedNodeList::packetVersionMatch(const udt::Packet& packet) {
     }
 }
 
-bool LimitedNodeList::packetSourceAndHashMatchAndTrackBandwidth(const udt::Packet& packet) {
+bool LimitedNodeList::packetSourceAndHashMatchAndTrackBandwidth(const udt::Packet& packet, Node* sourceNode) {
 
     PacketType headerType = NLPacket::typeInHeader(packet);
 
@@ -294,14 +306,18 @@ bool LimitedNodeList::packetSourceAndHashMatchAndTrackBandwidth(const udt::Packe
     } else {
         QUuid sourceID = NLPacket::sourceIDInHeader(packet);
 
-        // figure out which node this is from
-        SharedNodePointer matchingNode = nodeWithUUID(sourceID);
+        // check if we were passed a sourceNode hint or if we need to look it up
+        if (!sourceNode) {
+            // figure out which node this is from
+            SharedNodePointer matchingNode = nodeWithUUID(sourceID);
+            sourceNode = matchingNode.data();
+        }
 
-        if (matchingNode) {
+        if (sourceNode) {
             if (!PacketTypeEnum::getNonVerifiedPackets().contains(headerType)) {
 
                 QByteArray packetHeaderHash = NLPacket::verificationHashInHeader(packet);
-                QByteArray expectedHash = NLPacket::hashForPacketAndSecret(packet, matchingNode->getConnectionSecret());
+                QByteArray expectedHash = NLPacket::hashForPacketAndSecret(packet, sourceNode->getConnectionSecret());
 
                 // check if the md5 hash in the header matches the hash we would expect
                 if (packetHeaderHash != expectedHash) {
@@ -319,9 +335,9 @@ bool LimitedNodeList::packetSourceAndHashMatchAndTrackBandwidth(const udt::Packe
 
             // No matter if this packet is handled or not, we update the timestamp for the last time we heard
             // from this sending node
-            matchingNode->setLastHeardMicrostamp(usecTimestampNow());
+            sourceNode->setLastHeardMicrostamp(usecTimestampNow());
 
-            emit dataReceived(matchingNode->getType(), packet.getPayloadSize());
+            emit dataReceived(sourceNode->getType(), packet.getPayloadSize());
 
             return true;
 
@@ -414,7 +430,7 @@ qint64 LimitedNodeList::sendPacket(std::unique_ptr<NLPacket> packet, const HifiS
     }
 }
 
-qint64 LimitedNodeList::sendPacketList(NLPacketList& packetList, const Node& destinationNode) {
+qint64 LimitedNodeList::sendUnreliableUnorderedPacketList(NLPacketList& packetList, const Node& destinationNode) {
     auto activeSocket = destinationNode.getActiveSocket();
 
     if (activeSocket) {
@@ -437,8 +453,8 @@ qint64 LimitedNodeList::sendPacketList(NLPacketList& packetList, const Node& des
     }
 }
 
-qint64 LimitedNodeList::sendPacketList(NLPacketList& packetList, const HifiSockAddr& sockAddr,
-                                       const QUuid& connectionSecret) {
+qint64 LimitedNodeList::sendUnreliableUnorderedPacketList(NLPacketList& packetList, const HifiSockAddr& sockAddr,
+                                                          const QUuid& connectionSecret) {
     qint64 bytesSent = 0;
 
     // close the last packet in the list
@@ -660,7 +676,11 @@ SharedNodePointer LimitedNodeList::addOrUpdateNode(const QUuid& uuid, NodeType_t
         }
 
         // insert the new node and release our read lock
+#if defined(Q_OS_ANDROID) || (defined(__clang__) && defined(Q_OS_LINUX))
+        _nodeHash.insert(UUIDNodePair(newNode->getUUID(), newNodePointer));
+#else
         _nodeHash.emplace(newNode->getUUID(), newNodePointer);
+#endif
         readLocker.unlock();
 
         qCDebug(networking) << "Added" << *newNode;
@@ -1090,7 +1110,6 @@ void LimitedNodeList::setLocalSocket(const HifiSockAddr& sockAddr) {
             qCInfo(networking) << "Local socket is" << sockAddr;
         } else {
             qCInfo(networking) << "Local socket has changed from" << _localSockAddr << "to" << sockAddr;
-            DependencyManager::get<StatTracker>()->incrementStat(LOCAL_SOCKET_CHANGE_STAT);
         }
 
         _localSockAddr = sockAddr;

@@ -15,12 +15,13 @@ macro(SET_PACKAGING_PARAMETERS)
   set(PR_BUILD 0)
   set(PRODUCTION_BUILD 0)
   set(DEV_BUILD 0)
-
-  set(RELEASE_TYPE $ENV{RELEASE_TYPE})
-  set(RELEASE_NUMBER $ENV{RELEASE_NUMBER})
-  string(TOLOWER "$ENV{BRANCH}" BUILD_BRANCH)
   set(BUILD_GLOBAL_SERVICES "DEVELOPMENT")
   set(USE_STABLE_GLOBAL_SERVICES 0)
+
+  set_from_env(RELEASE_TYPE RELEASE_TYPE "DEV")
+  set_from_env(RELEASE_NUMBER RELEASE_NUMBER "")
+  set_from_env(BUILD_BRANCH BRANCH "")
+  string(TOLOWER "${BUILD_BRANCH}" BUILD_BRANCH)
 
   message(STATUS "The BUILD_BRANCH variable is: ${BUILD_BRANCH}")
   message(STATUS "The BRANCH environment variable is: $ENV{BRANCH}")
@@ -133,7 +134,7 @@ macro(SET_PACKAGING_PARAMETERS)
       else()
         message( FATAL_ERROR "Visual Studio 2013 or higher required." )
       endif()
-  
+
       if (NOT SIGNTOOL_EXECUTABLE)
         message(FATAL_ERROR "Code signing of executables was requested but signtool.exe could not be found.")
       endif ()
@@ -147,6 +148,7 @@ macro(SET_PACKAGING_PARAMETERS)
     set(CONSOLE_STARTUP_REG_KEY "ConsoleStartupShortcut")
     set(CLIENT_LAUNCH_NOW_REG_KEY "ClientLaunchAfterInstall")
     set(SERVER_LAUNCH_NOW_REG_KEY "ServerLaunchAfterInstall")
+    set(CUSTOM_INSTALL_REG_KEY "CustomInstall")
   endif ()
 
   # setup component categories for installer
@@ -161,5 +163,6 @@ macro(SET_PACKAGING_PARAMETERS)
   # create a header file our targets can use to find out the application version
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/includes")
   configure_file("${HF_CMAKE_DIR}/templates/BuildInfo.h.in" "${CMAKE_BINARY_DIR}/includes/BuildInfo.h")
+  include_directories("${CMAKE_BINARY_DIR}/includes")
 
 endmacro(SET_PACKAGING_PARAMETERS)

@@ -53,7 +53,7 @@ const QUuid MY_AVATAR_KEY;  // NULL key
 
 AvatarManager::AvatarManager(QObject* parent) :
     _avatarsToFade(),
-    _myAvatar(std::make_shared<MyAvatar>(qApp->thread()))
+    _myAvatar(new MyAvatar(qApp->thread()), [](MyAvatar* ptr) { ptr->deleteLater(); })
 {
     // register a meta type for the weak pointer we'll use for the owning avatar mixer for each avatar
     qRegisterMetaType<QWeakPointer<Node> >("NodeWeakPointer");
@@ -179,6 +179,12 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
         const AvatarPriority& sortData = sortedAvatars.top();
         const auto& avatar = std::static_pointer_cast<Avatar>(sortData.avatar);
 
+        bool ignoring = DependencyManager::get<NodeList>()->isPersonalMutingNode(avatar->getID());
+        if (ignoring) {
+            sortedAvatars.pop();
+            continue;
+        }
+
         // for ALL avatars...
         if (_shouldRender) {
             avatar->ensureInScene(avatar, qApp->getMain3DScene());
@@ -253,19 +259,20 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
         qApp->getMain3DScene()->enqueueTransaction(transaction);
     }
 
-    _avatarSimulationTime = (float)(usecTimestampNow() - startTime) / (float)USECS_PER_MSEC;
     _numAvatarsUpdated = numAvatarsUpdated;
     _numAvatarsNotUpdated = numAVatarsNotUpdated;
 
     simulateAvatarFades(deltaTime);
+
+    _avatarSimulationTime = (float)(usecTimestampNow() - startTime) / (float)USECS_PER_MSEC;
 }
 
-void AvatarManager::postUpdate(float deltaTime) {
+void AvatarManager::postUpdate(float deltaTime, const render::ScenePointer& scene) {
     auto hashCopy = getHashCopy();
     AvatarHash::iterator avatarIterator = hashCopy.begin();
     for (avatarIterator = hashCopy.begin(); avatarIterator != hashCopy.end(); avatarIterator++) {
         auto avatar = std::static_pointer_cast<Avatar>(avatarIterator.value());
-        avatar->postUpdate(deltaTime);
+        avatar->postUpdate(deltaTime, scene);
     }
 }
 
@@ -297,7 +304,7 @@ void AvatarManager::simulateAvatarFades(float deltaTime) {
 }
 
 AvatarSharedPointer AvatarManager::newSharedAvatar() {
-    return std::make_shared<OtherAvatar>(qApp->thread());
+    return AvatarSharedPointer(new OtherAvatar(qApp->thread()), [](OtherAvatar* ptr) { ptr->deleteLater(); });
 }
 
 void AvatarManager::removeAvatarFromPhysicsSimulation(Avatar* avatar) {
@@ -443,7 +450,7 @@ void AvatarManager::handleCollisionEvents(const CollisionEvents& collisionEvents
                 static const int MAX_INJECTOR_COUNT = 3;
                 if (_collisionInjectors.size() < MAX_INJECTOR_COUNT) {
                     auto injector = AudioInjector::playSound(collisionSound, energyFactorOfFull, AVATAR_STRETCH_FACTOR,
-                                                             myAvatar->getPosition());
+                                                             myAvatar->getWorldPosition());
                     _collisionInjectors.emplace_back(injector);
                 }
                 myAvatar->collisionWithEntity(collision);
@@ -482,18 +489,24 @@ AvatarSharedPointer AvatarManager::getAvatarBySessionID(const QUuid& sessionID) 
 RayToAvatarIntersectionResult AvatarManager::findRayIntersection(const PickRay& ray,
                                                                  const QScriptValue& avatarIdsToInclude,
                                                                  const QScriptValue& avatarIdsToDiscard) {
-    RayToAvatarIntersectionResult result;
-    if (QThread::currentThread() != thread()) {
-        BLOCKING_INVOKE_METHOD(const_cast<AvatarManager*>(this), "findRayIntersection",
-                                  Q_RETURN_ARG(RayToAvatarIntersectionResult, result),
-                                  Q_ARG(const PickRay&, ray),
-                                  Q_ARG(const QScriptValue&, avatarIdsToInclude),
-                                  Q_ARG(const QScriptValue&, avatarIdsToDiscard));
-        return result;
-    }
-
     QVector<EntityItemID> avatarsToInclude = qVectorEntityItemIDFromScriptValue(avatarIdsToInclude);
     QVector<EntityItemID> avatarsToDiscard = qVectorEntityItemIDFromScriptValue(avatarIdsToDiscard);
+
+    return findRayIntersectionVector(ray, avatarsToInclude, avatarsToDiscard);
+}
+
+RayToAvatarIntersectionResult AvatarManager::findRayIntersectionVector(const PickRay& ray,
+                                                                       const QVector<EntityItemID>& avatarsToInclude,
+                                                                       const QVector<EntityItemID>& avatarsToDiscard) {
+    RayToAvatarIntersectionResult result;
+    if (QThread::currentThread() != thread()) {
+        BLOCKING_INVOKE_METHOD(const_cast<AvatarManager*>(this), "findRayIntersectionVector",
+                                  Q_RETURN_ARG(RayToAvatarIntersectionResult, result),
+                                  Q_ARG(const PickRay&, ray),
+                                  Q_ARG(const QVector<EntityItemID>&, avatarsToInclude),
+                                  Q_ARG(const QVector<EntityItemID>&, avatarsToDiscard));
+        return result;
+    }
 
     glm::vec3 normDirection = glm::normalize(ray.direction);
 

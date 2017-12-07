@@ -85,7 +85,7 @@ class Overlays : public QObject {
     Q_PROPERTY(OverlayID keyboardFocusOverlay READ getKeyboardFocusOverlay WRITE setKeyboardFocusOverlay)
 
 public:
-    Overlays() {};
+    Overlays();
 
     void init();
     void update(float deltatime);
@@ -213,6 +213,12 @@ public slots:
                                                        bool visibleOnly = false,
                                                        bool collidableOnly = false);
 
+    // Same as above but with QVectors
+    RayToOverlayIntersectionResult findRayIntersectionVector(const PickRay& ray, bool precisionPicking,
+                                                             const QVector<OverlayID>& overlaysToInclude,
+                                                             const QVector<OverlayID>& overlaysToDiscard,
+                                                             bool visibleOnly = false, bool collidableOnly = false);
+
     /**jsdoc
      * Return a list of 3d overlays with bounding boxes that touch the given sphere
      *
@@ -292,12 +298,19 @@ public slots:
     void sendMouseReleaseOnOverlay(const OverlayID& overlayID, const PointerEvent& event);
     void sendMouseMoveOnOverlay(const OverlayID& overlayID, const PointerEvent& event);
 
-    void sendHoverEnterOverlay(const OverlayID& id, const PointerEvent& event);
-    void sendHoverOverOverlay(const OverlayID& id, const PointerEvent& event);
-    void sendHoverLeaveOverlay(const OverlayID& id, const PointerEvent& event);
+    void sendHoverEnterOverlay(const OverlayID& overlayID, const PointerEvent& event);
+    void sendHoverOverOverlay(const OverlayID& overlayID, const PointerEvent& event);
+    void sendHoverLeaveOverlay(const OverlayID& overlayID, const PointerEvent& event);
 
     OverlayID getKeyboardFocusOverlay();
-    void setKeyboardFocusOverlay(OverlayID id);
+    void setKeyboardFocusOverlay(const OverlayID& id);
+
+    void mousePressPointerEvent(const OverlayID& overlayID, const PointerEvent& event);
+    void mouseMovePointerEvent(const OverlayID& overlayID, const PointerEvent& event);
+    void mouseReleasePointerEvent(const OverlayID& overlayID, const PointerEvent& event);
+    void hoverEnterPointerEvent(const OverlayID& overlayID, const PointerEvent& event);
+    void hoverOverPointerEvent(const OverlayID& overlayID, const PointerEvent& event);
+    void hoverLeavePointerEvent(const OverlayID& overlayID, const PointerEvent& event);
 
 signals:
     /**jsdoc
@@ -326,6 +339,7 @@ private:
     mutable QMutex _mutex { QMutex::Recursive };
     QMap<OverlayID, Overlay::Pointer> _overlaysHUD;
     QMap<OverlayID, Overlay::Pointer> _overlaysWorld;
+
 #if OVERLAY_PANELS
     QMap<OverlayID, OverlayPanel::Pointer> _panels;
 #endif
@@ -343,10 +357,6 @@ private:
     OverlayID _currentClickingOnOverlayID { UNKNOWN_OVERLAY_ID };
     OverlayID _currentHoverOverOverlayID { UNKNOWN_OVERLAY_ID };
 
-    Q_INVOKABLE RayToOverlayIntersectionResult findRayIntersectionInternal(const PickRay& ray, bool precisionPicking,
-                                                               const QVector<OverlayID>& overlaysToInclude,
-                                                               const QVector<OverlayID>& overlaysToDiscard,
-                                                               bool visibleOnly = false, bool collidableOnly = false);
     RayToOverlayIntersectionResult findRayIntersectionForMouseEvent(PickRay ray);
 };
 

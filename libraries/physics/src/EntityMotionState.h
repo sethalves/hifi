@@ -121,6 +121,7 @@ protected:
 
     PhysicsEngineWeakPointer _physicsEngine;
 
+    bool _serverVariablesSet { false };
     glm::vec3 _serverPosition;    // in simulation-frame (not world-frame)
     glm::quat _serverRotation;
     glm::vec3 _serverVelocity;

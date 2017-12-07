@@ -307,7 +307,7 @@ bool OpenGLDisplayPlugin::activate() {
     auto compositorHelper = DependencyManager::get<CompositorHelper>();
     connect(compositorHelper.data(), &CompositorHelper::alphaChanged, [this] {
         auto compositorHelper = DependencyManager::get<CompositorHelper>();
-        auto animation = new QPropertyAnimation(this, "overlayAlpha");
+        auto animation = new QPropertyAnimation(this, "hudAlpha");
         animation->setDuration(200);
         animation->setEndValue(compositorHelper->getAlpha());
         animation->start();
@@ -415,7 +415,20 @@ void OpenGLDisplayPlugin::customizeContext() {
             state->setBlendFunction(true,
                 gpu::State::SRC_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::INV_SRC_ALPHA,
                 gpu::State::FACTOR_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::ONE);
-            _overlayPipeline = gpu::Pipeline::create(program, state);
+            _hudPipeline = gpu::Pipeline::create(program, state);
+        }
+
+        {
+            auto vs = gpu::StandardShaderLib::getDrawUnitQuadTexcoordVS();
+            auto ps = gpu::StandardShaderLib::getDrawTextureMirroredXPS();
+            gpu::ShaderPointer program = gpu::Shader::createProgram(vs, ps);
+            gpu::Shader::makeProgram(*program);
+            gpu::StatePointer state = gpu::StatePointer(new gpu::State());
+            state->setDepthTest(gpu::State::DepthTest(false));
+            state->setBlendFunction(true,
+                gpu::State::SRC_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::INV_SRC_ALPHA,
+                gpu::State::FACTOR_ALPHA, gpu::State::BLEND_OP_ADD, gpu::State::ONE);
+            _mirrorHUDPipeline = gpu::Pipeline::create(program, state);
         }
 
         {
@@ -437,7 +450,8 @@ void OpenGLDisplayPlugin::customizeContext() {
 void OpenGLDisplayPlugin::uncustomizeContext() {
     _presentPipeline.reset();
     _cursorPipeline.reset();
-    _overlayPipeline.reset();
+    _hudPipeline.reset();
+    _mirrorHUDPipeline.reset();
     _compositeFramebuffer.reset();
     withPresentThreadLock([&] {
         _currentFrame.reset();
@@ -562,22 +576,23 @@ void OpenGLDisplayPlugin::updateFrameData() {
     });
 }
 
-void OpenGLDisplayPlugin::compositeOverlay() {
-    render([&](gpu::Batch& batch){
-        batch.enableStereo(false);
-        batch.setFramebuffer(_compositeFramebuffer);
-        batch.setPipeline(_overlayPipeline);
-        batch.setResourceTexture(0, _currentFrame->overlay);
-        if (isStereo()) {
-            for_each_eye([&](Eye eye) {
-                batch.setViewportTransform(eyeViewport(eye));
+std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> OpenGLDisplayPlugin::getHUDOperator() {
+    return [this](gpu::Batch& batch, const gpu::TexturePointer& hudTexture, bool mirror) {
+        if (_hudPipeline) {
+            batch.enableStereo(false);
+            batch.setPipeline(mirror ? _mirrorHUDPipeline : _hudPipeline);
+            batch.setResourceTexture(0, hudTexture);
+            if (isStereo()) {
+                for_each_eye([&](Eye eye) {
+                    batch.setViewportTransform(eyeViewport(eye));
+                    batch.draw(gpu::TRIANGLE_STRIP, 4);
+                });
+            } else {
+                batch.setViewportTransform(ivec4(uvec2(0), _compositeFramebuffer->getSize()));
                 batch.draw(gpu::TRIANGLE_STRIP, 4);
-            });
-        } else {
-            batch.setViewportTransform(ivec4(uvec2(0), _compositeFramebuffer->getSize()));
-            batch.draw(gpu::TRIANGLE_STRIP, 4);
+            }
         }
-    });
+    };
 }
 
 void OpenGLDisplayPlugin::compositePointer() {
@@ -626,24 +641,27 @@ void OpenGLDisplayPlugin::compositeLayers() {
         compositeScene();
     }
 
-
 #ifdef HIFI_ENABLE_NSIGHT_DEBUG
-    if (false) // do not compositeoverlay if running nsight debug
+    if (false) // do not draw the HUD if running nsight debug
 #endif
     {
-        PROFILE_RANGE_EX(render_detail, "compositeOverlay", 0xff0077ff, (uint64_t)presentCount())
-        compositeOverlay();
-    }
-
-    auto compositorHelper = DependencyManager::get<CompositorHelper>();
-    if (compositorHelper->getReticleVisible()) {
-        PROFILE_RANGE_EX(render_detail, "compositePointer", 0xff0077ff, (uint64_t)presentCount())
-        compositePointer();
+        PROFILE_RANGE_EX(render_detail, "handleHUDBatch", 0xff0077ff, (uint64_t)presentCount())
+        auto hudOperator = getHUDOperator();
+        withPresentThreadLock([&] {
+            _hudOperator = hudOperator;
+        });
     }
 
     {
         PROFILE_RANGE_EX(render_detail, "compositeExtra", 0xff0077ff, (uint64_t)presentCount())
         compositeExtra();
+    }
+
+    // Draw the pointer last so it's on top of everything
+    auto compositorHelper = DependencyManager::get<CompositorHelper>();
+    if (compositorHelper->getReticleVisible()) {
+        PROFILE_RANGE_EX(render_detail, "compositePointer", 0xff0077ff, (uint64_t)presentCount())
+            compositePointer();
     }
 }
 
@@ -775,6 +793,19 @@ QImage OpenGLDisplayPlugin::getScreenshot(float aspectRatio) const {
     return screenshot.mirrored(false, true);
 }
 
+QImage OpenGLDisplayPlugin::getSecondaryCameraScreenshot() const {
+    auto textureCache = DependencyManager::get<TextureCache>();
+    auto secondaryCameraFramebuffer = textureCache->getSpectatorCameraFramebuffer();
+    gpu::Vec4i region(0, 0, secondaryCameraFramebuffer->getWidth(), secondaryCameraFramebuffer->getHeight());
+
+    auto glBackend = const_cast<OpenGLDisplayPlugin&>(*this).getGLBackend();
+    QImage screenshot(region.z, region.w, QImage::Format_ARGB32);
+    withMainThreadContext([&] {
+        glBackend->downloadFramebuffer(secondaryCameraFramebuffer, region, screenshot);
+    });
+    return screenshot.mirrored(false, true);
+}
+
 glm::uvec2 OpenGLDisplayPlugin::getSurfacePixels() const {
     uvec2 result;
     auto window = _container->getPrimaryWidget();
@@ -808,7 +839,7 @@ void OpenGLDisplayPlugin::assertIsPresentThread() const {
 
 bool OpenGLDisplayPlugin::beginFrameRender(uint32_t frameIndex) {
     withNonPresentThreadLock([&] {
-        _compositeOverlayAlpha = _overlayAlpha;
+        _compositeHUDAlpha = _hudAlpha;
     });
     return Parent::beginFrameRender(frameIndex);
 }

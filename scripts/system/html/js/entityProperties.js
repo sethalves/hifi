@@ -146,6 +146,22 @@ function createEmitTextPropertyUpdateFunction(propertyName) {
     };
 }
 
+function createZoneComponentModeChangedFunction(zoneComponent, zoneComponentModeInherit, zoneComponentModeDisabled, zoneComponentModeEnabled) {
+    return function() {
+        var zoneComponentMode;
+
+        if (zoneComponentModeInherit.checked) {
+            zoneComponentMode = 'inherit';
+        } else if (zoneComponentModeDisabled.checked) {
+            zoneComponentMode = 'disabled';
+        } else if (zoneComponentModeEnabled.checked) {
+            zoneComponentMode = 'enabled';
+        }
+
+        updateProperty(zoneComponent, zoneComponentMode);
+    }
+}
+
 function createEmitGroupTextPropertyUpdateFunction(group, propertyName) {
     return function() {
         var properties = {};
@@ -554,6 +570,7 @@ function loaded() {
 
         var elCloneable = document.getElementById("property-cloneable");
         var elCloneableDynamic = document.getElementById("property-cloneable-dynamic");
+        var elCloneableAvatarEntity = document.getElementById("property-cloneable-avatarEntity");
         var elCloneableGroup = document.getElementById("group-cloneable-group");
         var elCloneableLifetime = document.getElementById("property-cloneable-lifetime");
         var elCloneableLimit = document.getElementById("property-cloneable-limit");
@@ -611,6 +628,7 @@ function loaded() {
         var elModelAnimationLastFrame = document.getElementById("property-model-animation-last-frame");
         var elModelAnimationLoop = document.getElementById("property-model-animation-loop");
         var elModelAnimationHold = document.getElementById("property-model-animation-hold");
+        var elModelAnimationAllowTranslation = document.getElementById("property-model-animation-allow-translation");
         var elModelTextures = document.getElementById("property-model-textures");
         var elModelOriginalTextures = document.getElementById("property-model-original-textures");
 
@@ -655,6 +673,32 @@ function loaded() {
         var elZoneKeyLightDirectionZ = document.getElementById("property-zone-key-light-direction-z");
         var elZoneKeyLightAmbientURL = document.getElementById("property-zone-key-ambient-url");
 
+        var elZoneHazeModeInherit = document.getElementById("property-zone-haze-mode-inherit");
+        var elZoneHazeModeDisabled = document.getElementById("property-zone-haze-mode-disabled");
+        var elZoneHazeModeEnabled = document.getElementById("property-zone-haze-mode-enabled");
+        
+        var elZoneHazeRange = document.getElementById("property-zone-haze-range");
+        var elZoneHazeColor = document.getElementById("property-zone-haze-color");
+        var elZoneHazeColorRed = document.getElementById("property-zone-haze-color-red");
+        var elZoneHazeColorGreen = document.getElementById("property-zone-haze-color-green");
+        var elZoneHazeColorBlue = document.getElementById("property-zone-haze-color-blue");
+        var elZoneHazeGlareColor = document.getElementById("property-zone-haze-glare-color");
+        var elZoneHazeGlareColorRed = document.getElementById("property-zone-haze-glare-color-red");
+        var elZoneHazeGlareColorGreen = document.getElementById("property-zone-haze-glare-color-green");
+        var elZoneHazeGlareColorBlue = document.getElementById("property-zone-haze-glare-color-blue");
+        var elZoneHazeEnableGlare = document.getElementById("property-zone-haze-enable-light-blend");
+        var elZonehazeGlareAngle = document.getElementById("property-zone-haze-blend-angle");
+        
+        var elZoneHazeAltitudeEffect = document.getElementById("property-zone-haze-altitude-effect");
+        var elZoneHazeBaseRef = document.getElementById("property-zone-haze-base");
+        var elZoneHazeCeiling = document.getElementById("property-zone-haze-ceiling");
+
+        var elZoneHazeBackgroundBlend = document.getElementById("property-zone-haze-background-blend");
+        
+        var elZoneHazeAttenuateKeyLight = document.getElementById("property-zone-haze-attenuate-keylight");
+        var elZoneHazeKeyLightRange = document.getElementById("property-zone-haze-keylight-range");
+        var elZoneHazeKeyLightAltitude = document.getElementById("property-zone-haze-keylight-altitude");
+       
         var elZoneStageLatitude = document.getElementById("property-zone-stage-latitude");
         var elZoneStageLongitude = document.getElementById("property-zone-stage-longitude");
         var elZoneStageAltitude = document.getElementById("property-zone-stage-altitude");
@@ -839,35 +883,58 @@ function loaded() {
                         elCloneableLimit.value = 0;
                         elCloneableLifetime.value = 300;
 
+                        var grabbablesSet = false;
                         var parsedUserData = {}
                         try {
                             parsedUserData = JSON.parse(properties.userData);
 
                             if ("grabbableKey" in parsedUserData) {
-                                if ("grabbable" in parsedUserData["grabbableKey"]) {
-                                    elGrabbable.checked = parsedUserData["grabbableKey"].grabbable;
+                                grabbablesSet = true;
+                                var grabbableData = parsedUserData["grabbableKey"];
+                                if ("grabbable" in grabbableData) {
+                                    elGrabbable.checked = grabbableData.grabbable;
+                                } else {
+                                    elGrabbable.checked = true;
                                 }
-                                if ("wantsTrigger" in parsedUserData["grabbableKey"]) {
-                                    elWantsTrigger.checked = parsedUserData["grabbableKey"].wantsTrigger;
+                                if ("wantsTrigger" in grabbableData) {
+                                    elWantsTrigger.checked = grabbableData.wantsTrigger;
+                                } else {
+                                    elWantsTrigger.checked = false;
                                 }
-                                if ("ignoreIK" in parsedUserData["grabbableKey"]) {
-                                    elIgnoreIK.checked = parsedUserData["grabbableKey"].ignoreIK;
+                                if ("ignoreIK" in grabbableData) {
+                                    elIgnoreIK.checked = grabbableData.ignoreIK;
+                                } else {
+                                    elIgnoreIK.checked = true;
                                 }
-                                if ("cloneable" in parsedUserData["grabbableKey"]) {
-                                    elCloneable.checked = parsedUserData["grabbableKey"].cloneable;
+                                if ("cloneable" in grabbableData) {
+                                    elCloneable.checked = grabbableData.cloneable;
                                     elCloneableGroup.style.display = elCloneable.checked ? "block": "none";
-                                    elCloneableDynamic.checked = parsedUserData["grabbableKey"].cloneDynamic ? parsedUserData["grabbableKey"].cloneDynamic : properties.dynamic;
+                                    elCloneableDynamic.checked =
+                                        grabbableData.cloneDynamic ? grabbableData.cloneDynamic : properties.dynamic;
                                     if (elCloneable.checked) {
-                                      if ("cloneLifetime" in parsedUserData["grabbableKey"]) {
-                                          elCloneableLifetime.value = parsedUserData["grabbableKey"].cloneLifetime ? parsedUserData["grabbableKey"].cloneLifetime : 300;
+                                      if ("cloneLifetime" in grabbableData) {
+                                          elCloneableLifetime.value =
+                                              grabbableData.cloneLifetime ? grabbableData.cloneLifetime : 300;
                                       }
-                                      if ("cloneLimit" in parsedUserData["grabbableKey"]) {
-                                          elCloneableLimit.value = parsedUserData["grabbableKey"].cloneLimit ? parsedUserData["grabbableKey"].cloneLimit : 0;
+                                      if ("cloneLimit" in grabbableData) {
+                                          elCloneableLimit.value = grabbableData.cloneLimit ? grabbableData.cloneLimit : 0;
+                                      }
+                                      if ("cloneAvatarEntity" in grabbableData) {
+                                          elCloneableAvatarEntity.checked =
+                                              grabbableData.cloneAvatarEntity ? grabbableData.cloneAvatarEntity : false;
                                       }
                                     }
+                                } else {
+                                    elCloneable.checked = false;
                                 }
                             }
                         } catch (e) {
+                        }
+                        if (!grabbablesSet) {
+                            elGrabbable.checked = true;
+                            elWantsTrigger.checked = false;
+                            elIgnoreIK.checked = true;
+                            elCloneable.checked = false;
                         }
 
                         elCollisionSoundURL.value = properties.collisionSoundURL;
@@ -927,6 +994,7 @@ function loaded() {
                             elModelAnimationLastFrame.value = properties.animation.lastFrame;
                             elModelAnimationLoop.checked = properties.animation.loop;
                             elModelAnimationHold.checked = properties.animation.hold;
+                            elModelAnimationAllowTranslation.checked = properties.animation.allowTranslation;
                             elModelTextures.value = properties.textures;
                             setTextareaScrolling(elModelTextures);
                             elModelOriginalTextures.value = properties.originalTextures;
@@ -969,6 +1037,42 @@ function loaded() {
                             elZoneKeyLightDirectionY.value = properties.keyLight.direction.y.toFixed(2);
                             elZoneKeyLightAmbientURL.value = properties.keyLight.ambientURL;
 
+                            elZoneHazeModeInherit.checked = (properties.hazeMode == 'inherit');
+                            elZoneHazeModeDisabled.checked = (properties.hazeMode == 'disabled');
+                            elZoneHazeModeEnabled.checked = (properties.hazeMode == 'enabled');
+
+                            elZoneHazeRange.value = properties.haze.hazeRange.toFixed(0);
+                            elZoneHazeColor.style.backgroundColor = "rgb(" + 
+                                properties.haze.hazeColor.red + "," + 
+                                properties.haze.hazeColor.green + "," + 
+                                properties.haze.hazeColor.blue + ")";
+
+                            elZoneHazeColorRed.value = properties.haze.hazeColor.red;
+                            elZoneHazeColorGreen.value = properties.haze.hazeColor.green;
+                            elZoneHazeColorBlue.value = properties.haze.hazeColor.blue;
+                            elZoneHazeBackgroundBlend.value = properties.haze.hazeBackgroundBlend.toFixed(2);
+
+                            elZoneHazeGlareColor.style.backgroundColor = "rgb(" + 
+                                properties.haze.hazeGlareColor.red + "," + 
+                                properties.haze.hazeGlareColor.green + "," + 
+                                properties.haze.hazeGlareColor.blue + ")";
+
+                            elZoneHazeGlareColorRed.value = properties.haze.hazeGlareColor.red;
+                            elZoneHazeGlareColorGreen.value = properties.haze.hazeGlareColor.green;
+                            elZoneHazeGlareColorBlue.value = properties.haze.hazeGlareColor.blue;
+
+                            elZoneHazeEnableGlare.checked = properties.haze.hazeEnableGlare;
+                            elZonehazeGlareAngle.value = properties.haze.hazeGlareAngle.toFixed(0);
+
+                            elZoneHazeAltitudeEffect.checked = properties.haze.hazeAltitudeEffect;
+                            elZoneHazeBaseRef.value = properties.haze.hazeBaseRef.toFixed(0);
+                            elZoneHazeCeiling.value = properties.haze.hazeCeiling.toFixed(0);
+
+                            elZoneHazeBackgroundBlend.value = properties.haze.hazeBackgroundBlend.toFixed(2);
+
+//                            elZoneHazeAttenuateKeyLight.checked = properties.haze.hazeAttenuateKeyLight;
+//                            elZoneHazeKeyLightRange.value = properties.haze.hazeKeyLightRange.toFixed(0);
+//                            elZoneHazeKeyLightAltitude.value = properties.haze.hazeKeyLightAltitude.toFixed(0);
 
                             elZoneStageLatitude.value = properties.stage.latitude.toFixed(2);
                             elZoneStageLongitude.value = properties.stage.longitude.toFixed(2);
@@ -1114,9 +1218,14 @@ function loaded() {
             }
             userDataChanger("grabbableKey", "grabbable", elGrabbable, elUserData, properties.dynamic);
         });
-        elCloneableDynamic.addEventListener('change', function (event){
+        elCloneableDynamic.addEventListener('change', function(event) {
             userDataChanger("grabbableKey", "cloneDynamic", event.target, elUserData, -1);
         });
+
+        elCloneableAvatarEntity.addEventListener('change', function(event) {
+            userDataChanger("grabbableKey", "cloneAvatarEntity", event.target, elUserData, -1);
+        });
+
         elCloneable.addEventListener('change', function (event) {
             var checked = event.target.checked;
             if (checked) {
@@ -1124,6 +1233,7 @@ function loaded() {
                         cloneLifetime: elCloneableLifetime,
                         cloneLimit: elCloneableLimit,
                         cloneDynamic: elCloneableDynamic,
+                        cloneAvatarEntity: elCloneableAvatarEntity,
                         cloneable: event.target,
                         grabbable: null
                     }, elUserData, {});
@@ -1134,6 +1244,7 @@ function loaded() {
                         cloneLifetime: null,
                         cloneLimit: null,
                         cloneDynamic: null,
+                        cloneAvatarEntity: null,
                         cloneable: false
                     }, elUserData, {});
                 elCloneableGroup.style.display = "none";
@@ -1264,7 +1375,7 @@ function loaded() {
         elShape.addEventListener('change', createEmitTextPropertyUpdateFunction('shape'));
 
         elWebSourceURL.addEventListener('change', createEmitTextPropertyUpdateFunction('sourceUrl'));
-        elWebDPI.addEventListener('change', createEmitNumberPropertyUpdateFunction('dpi'));
+        elWebDPI.addEventListener('change', createEmitNumberPropertyUpdateFunction('dpi', 0));
 
         elModelURL.addEventListener('change', createEmitTextPropertyUpdateFunction('modelURL'));
         elShapeType.addEventListener('change', createEmitTextPropertyUpdateFunction('shapeType'));
@@ -1278,6 +1389,7 @@ function loaded() {
         elModelAnimationLastFrame.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('animation', 'lastFrame'));
         elModelAnimationLoop.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('animation', 'loop'));
         elModelAnimationHold.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('animation', 'hold'));
+        elModelAnimationAllowTranslation.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('animation', 'allowTranslation'));
 
         elModelTextures.addEventListener('change', createEmitTextPropertyUpdateFunction('textures'));
 
@@ -1357,6 +1469,76 @@ function loaded() {
         elZoneKeyLightDirectionX.addEventListener('change', zoneKeyLightDirectionChangeFunction);
         elZoneKeyLightDirectionY.addEventListener('change', zoneKeyLightDirectionChangeFunction);
 
+        var hazeModeChanged = createZoneComponentModeChangedFunction('hazeMode', elZoneHazeModeInherit, elZoneHazeModeDisabled, elZoneHazeModeEnabled)
+        elZoneHazeModeInherit.addEventListener('change', hazeModeChanged);
+        elZoneHazeModeDisabled.addEventListener('change', hazeModeChanged);
+        elZoneHazeModeEnabled.addEventListener('change', hazeModeChanged);
+
+        elZoneHazeRange.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeRange'));
+
+        colorPickers.push($('#property-zone-haze-color').colpick({
+            colorScheme: 'dark',
+            layout: 'hex',
+            color: '000000',
+            onShow: function(colpick) {
+                $('#property-zone-haze-color').attr('active', 'true');
+            },
+            onHide: function(colpick) {
+                $('#property-zone-haze-color').attr('active', 'false');
+            },
+            onSubmit: function(hsb, hex, rgb, el) {
+                $(el).css('background-color', '#' + hex);
+                $(el).colpickHide();
+                emitColorPropertyUpdate('hazeColor', rgb.r, rgb.g, rgb.b, 'haze');
+            }
+        }));
+        var zoneHazeColorChangeFunction = createEmitGroupColorPropertyUpdateFunction('haze', 'hazeColor', 
+            elZoneHazeColorRed, 
+            elZoneHazeColorGreen, 
+            elZoneHazeColorBlue);
+
+        elZoneHazeColorRed.addEventListener('change', zoneHazeColorChangeFunction);
+        elZoneHazeColorGreen.addEventListener('change', zoneHazeColorChangeFunction);
+        elZoneHazeColorBlue.addEventListener('change', zoneHazeColorChangeFunction);
+
+        colorPickers.push($('#property-zone-haze-glare-color').colpick({
+            colorScheme: 'dark',
+            layout: 'hex',
+            color: '000000',
+            onShow: function(colpick) {
+                $('#property-zone-haze-glare-color').attr('active', 'true');
+            },
+            onHide: function(colpick) {
+                $('#property-zone-haze-glare-color').attr('active', 'false');
+            },
+            onSubmit: function(hsb, hex, rgb, el) {
+                $(el).css('background-color', '#' + hex);
+                $(el).colpickHide();
+                emitColorPropertyUpdate('hazeGlareColor', rgb.r, rgb.g, rgb.b, 'haze');
+            }
+        }));
+        var zoneHazeGlareColorChangeFunction = createEmitGroupColorPropertyUpdateFunction('haze', 'hazeGlareColor', 
+            elZoneHazeGlareColorRed, 
+            elZoneHazeGlareColorGreen, 
+            elZoneHazeGlareColorBlue);
+
+        elZoneHazeGlareColorRed.addEventListener('change', zoneHazeGlareColorChangeFunction);
+        elZoneHazeGlareColorGreen.addEventListener('change', zoneHazeGlareColorChangeFunction);
+        elZoneHazeGlareColorBlue.addEventListener('change', zoneHazeGlareColorChangeFunction);
+
+        elZoneHazeEnableGlare.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('haze', 'hazeEnableGlare'));
+        elZonehazeGlareAngle.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeGlareAngle'));
+
+        elZoneHazeAltitudeEffect.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('haze', 'hazeAltitudeEffect'));
+        elZoneHazeCeiling.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeCeiling'));
+        elZoneHazeBaseRef.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeBaseRef'));
+
+        elZoneHazeBackgroundBlend.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeBackgroundBlend'));
+
+//        elZoneHazeAttenuateKeyLight.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('haze', 'hazeAttenuateKeyLight'));
+//        elZoneHazeKeyLightRange.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeKeyLightRange'));
+//        elZoneHazeKeyLightAltitude.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('haze', 'hazeKeyLightAltitude'));
+
         elZoneStageLatitude.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('stage', 'latitude'));
         elZoneStageLongitude.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('stage', 'longitude'));
         elZoneStageAltitude.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('stage', 'altitude'));
@@ -1364,8 +1546,8 @@ function loaded() {
         elZoneStageDay.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('stage', 'day'));
         elZoneStageHour.addEventListener('change', createEmitGroupNumberPropertyUpdateFunction('stage', 'hour'));
 
-
         elZoneBackgroundMode.addEventListener('change', createEmitTextPropertyUpdateFunction('backgroundMode'));
+
         var zoneSkyboxColorChangeFunction = createEmitGroupColorPropertyUpdateFunction('skybox', 'color',
             elZoneSkyboxColorRed, elZoneSkyboxColorGreen, elZoneSkyboxColorBlue);
         elZoneSkyboxColorRed.addEventListener('change', zoneSkyboxColorChangeFunction);

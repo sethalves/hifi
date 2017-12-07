@@ -109,24 +109,6 @@ public:
         RightHand = 0x02,
     };
 
-    enum class HandLaserMode {
-        None, // Render no hand lasers
-        Overlay, // Render hand lasers only if they intersect with the UI layer, and stop at the UI layer
-    };
-
-    virtual bool setHandLaser(
-        uint32_t hands, // Bits from the Hand enum
-        HandLaserMode mode, // Mode in which to render
-        const vec4& color = vec4(1), // The color of the rendered laser
-        const vec3& direction = vec3(0, 0, -1) // The direction in which to render the hand lasers
-        ) {
-        return false;
-    }
-
-    virtual bool setExtraLaser(HandLaserMode mode, const vec4& color, const glm::vec3& sensorSpaceStart, const vec3& sensorSpaceDirection) {
-        return false;
-    }
-
     virtual bool suppressKeyboard() { return false;  }
     virtual void unsuppressKeyboard() {};
     virtual bool isKeyboardVisible() { return false; }
@@ -174,8 +156,8 @@ public:
         return aspect(getRecommendedRenderSize());
     }
 
-    // The recommended bounds for primary overlay placement
-    virtual QRect getRecommendedOverlayRect() const {
+    // The recommended bounds for primary HUD placement
+    virtual QRect getRecommendedHUDRect() const {
         const int DESKTOP_SCREEN_PADDING = 50;
         auto recommendedSize = getRecommendedUiSize() - glm::uvec2(DESKTOP_SCREEN_PADDING);
         return QRect(0, 0, recommendedSize.x, recommendedSize.y);
@@ -183,6 +165,7 @@ public:
 
     // Fetch the most recently displayed image as a QImage
     virtual QImage getScreenshot(float aspectRatio = 0.0f) const = 0;
+    virtual QImage getSecondaryCameraScreenshot() const = 0;
 
     // will query the underlying hmd api to compute the most recent head pose
     virtual bool beginFrameRender(uint32_t frameIndex) { return true; }
@@ -221,8 +204,9 @@ public:
 
     void waitForPresent();
 
-    static const QString& MENU_PATH();
+    std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> getHUDOperator();
 
+    static const QString& MENU_PATH();
 
 signals:
     void recommendedFramebufferSizeChanged(const QSize& size);
@@ -233,6 +217,8 @@ protected:
     void incrementPresentCount();
 
     gpu::ContextPointer _gpuContext;
+
+    std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> _hudOperator { std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)>() };
 
 private:
     QMutex _presentMutex;

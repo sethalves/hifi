@@ -14,31 +14,73 @@
 #ifndef hifi_Ledger_h
 #define hifi_Ledger_h
 
+#include <QJsonObject>
 #include <DependencyManager.h>
-#include <qjsonobject.h>
-#include <qjsonarray.h>
+#include <QtNetwork/QNetworkReply>
+#include "AccountManager.h"
+
 
 class Ledger : public QObject, public Dependency {
     Q_OBJECT
     SINGLETON_DEPENDENCY
 
 public:
-    void buy(const QString& hfc_key, int cost, const QString& asset_id, const QString& inventory_key, const QString& buyerUsername = "");
-    bool receiveAt(const QString& hfc_key);
+    void buy(const QString& hfc_key, int cost, const QString& asset_id, const QString& inventory_key, const bool controlled_failure = false);
+    bool receiveAt(const QString& hfc_key, const QString& old_key);
     void balance(const QStringList& keys);
     void inventory(const QStringList& keys);
+    void history(const QStringList& keys);
+    void account();
+    void reset();
+    void updateLocation(const QString& asset_id, const QString location, const bool controlledFailure = false);
+    void certificateInfo(const QString& certificateId);
+
+    enum CertificateStatus {
+        CERTIFICATE_STATUS_UNKNOWN = 0,
+        CERTIFICATE_STATUS_VERIFICATION_SUCCESS,
+        CERTIFICATE_STATUS_VERIFICATION_TIMEOUT,
+        CERTIFICATE_STATUS_STATIC_VERIFICATION_FAILED,
+        CERTIFICATE_STATUS_OWNER_VERIFICATION_FAILED,
+    };
 
 signals:
-    void buyResult(const QString& failureReason);
-    void receiveAtResult(const QString& failureReason);
-    void balanceResult(int balance, const QString& failureReason);
-    void inventoryResult(QJsonObject inventory, const QString& failureReason);
+    void buyResult(QJsonObject result);
+    void receiveAtResult(QJsonObject result);
+    void balanceResult(QJsonObject result);
+    void inventoryResult(QJsonObject result);
+    void historyResult(QJsonObject result);
+    void accountResult(QJsonObject result);
+    void locationUpdateResult(QJsonObject result);
+    void certificateInfoResult(QJsonObject result);
+
+    void updateCertificateStatus(const QString& certID, uint certStatus);
+
+public slots:
+    void buySuccess(QNetworkReply& reply);
+    void buyFailure(QNetworkReply& reply);
+    void receiveAtSuccess(QNetworkReply& reply);
+    void receiveAtFailure(QNetworkReply& reply);
+    void balanceSuccess(QNetworkReply& reply);
+    void balanceFailure(QNetworkReply& reply);
+    void inventorySuccess(QNetworkReply& reply);
+    void inventoryFailure(QNetworkReply& reply);
+    void historySuccess(QNetworkReply& reply);
+    void historyFailure(QNetworkReply& reply);
+    void resetSuccess(QNetworkReply& reply);
+    void resetFailure(QNetworkReply& reply);
+    void accountSuccess(QNetworkReply& reply);
+    void accountFailure(QNetworkReply& reply);
+    void updateLocationSuccess(QNetworkReply& reply);
+    void updateLocationFailure(QNetworkReply& reply);
+    void certificateInfoSuccess(QNetworkReply& reply);
+    void certificateInfoFailure(QNetworkReply& reply);
 
 private:
-    // These in-memory caches is temporary, until we start sending things to the server.
-    int _balance{ -1 };
-    QJsonArray _inventory{};
-    int initializedBalance() { if (_balance < 0) _balance = 100; return _balance; }
+    QJsonObject apiResponse(const QString& label, QNetworkReply& reply);
+    QJsonObject failResponse(const QString& label, QNetworkReply& reply);
+    void send(const QString& endpoint, const QString& success, const QString& fail, QNetworkAccessManager::Operation method, AccountManagerAuth::Type authType, QJsonObject request);
+    void keysQuery(const QString& endpoint, const QString& success, const QString& fail);
+    void signedSend(const QString& propertyName, const QByteArray& text, const QString& key, const QString& endpoint, const QString& success, const QString& fail, const bool controlled_failure = false);
 };
 
 #endif // hifi_Ledger_h

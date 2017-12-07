@@ -15,6 +15,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/vector_query.hpp>
 
+#include <AvatarConstants.h>
 #include <shared/QtHelpers.h>
 #include <DeferredLightingEffect.h>
 #include <EntityTreeRenderer.h>
@@ -107,7 +108,7 @@ Avatar::Avatar(QThread* thread) :
     // we may have been created in the network thread, but we live in the main thread
     moveToThread(thread);
 
-    setScale(glm::vec3(1.0f)); // avatar scale is uniform
+    setModelScale(1.0f); // avatar scale is uniform
 
     auto geometryCache = DependencyManager::get<GeometryCache>();
     _nameRectGeometryID = geometryCache->allocateID();
@@ -145,25 +146,25 @@ void Avatar::init() {
 glm::vec3 Avatar::getChestPosition() const {
     // for now, let's just assume that the "chest" is halfway between the root and the neck
     glm::vec3 neckPosition;
-    return _skeletonModel->getNeckPosition(neckPosition) ? (getPosition() + neckPosition) * 0.5f : getPosition();
+    return _skeletonModel->getNeckPosition(neckPosition) ? (getWorldPosition() + neckPosition) * 0.5f : getWorldPosition();
 }
 
 glm::vec3 Avatar::getNeckPosition() const {
     glm::vec3 neckPosition;
-    return _skeletonModel->getNeckPosition(neckPosition) ? neckPosition : getPosition();
+    return _skeletonModel->getNeckPosition(neckPosition) ? neckPosition : getWorldPosition();
 }
 
 AABox Avatar::getBounds() const {
     if (!_skeletonModel->isRenderable() || _skeletonModel->needsFixupInScene()) {
         // approximately 2m tall, scaled to user request.
-        return AABox(getPosition() - glm::vec3(getUniformScale()), getUniformScale() * 2.0f);
+        return AABox(getWorldPosition() - glm::vec3(getModelScale()), getModelScale() * 2.0f);
     }
     return _skeletonModel->getRenderableMeshBound();
 }
 
 void Avatar::animateScaleChanges(float deltaTime) {
     if (_isAnimatingScale) {
-        float currentScale = getUniformScale();
+        float currentScale = getModelScale();
         float desiredScale = getDomainLimitedScale();
 
         // use exponential decay toward the domain limit clamped scale
@@ -178,7 +179,7 @@ void Avatar::animateScaleChanges(float deltaTime) {
             animatedScale = desiredScale;
             _isAnimatingScale = false;
         }
-        setScale(glm::vec3(animatedScale)); // avatar scale is uniform
+        setModelScale(animatedScale); // avatar scale is uniform
 
         // flag the joints as having changed for force update to RenderItem
         _hasNewJointData = true;
@@ -196,6 +197,11 @@ void Avatar::setTargetScale(float targetScale) {
         _scaleChanged = usecTimestampNow();
         _isAnimatingScale = true;
     }
+}
+
+void Avatar::setAvatarEntityDataChanged(bool value) {
+    AvatarData::setAvatarEntityDataChanged(value);
+    _avatarEntityDataHashes.clear();
 }
 
 void Avatar::updateAvatarEntities() {
@@ -286,6 +292,13 @@ void Avatar::updateAvatarEntities() {
                 properties.setScript(noScript);
             }
 
+            auto specifiedHref = properties.getHref();
+            if (!isMyAvatar() && !specifiedHref.isEmpty()) {
+                qCDebug(avatars_renderer) << "removing entity href from avatar attached entity:" << entityID << "old href:" << specifiedHref;
+                QString noHref;
+                properties.setHref(noHref);
+            }
+
             // When grabbing avatar entities, they are parented to the joint moving them, then when un-grabbed
             // they go back to the default parent (null uuid).  When un-gripped, others saw the entity disappear.
             // The thinking here is the local position was noticed as changing, but not the parentID (since it is now
@@ -359,13 +372,13 @@ void Avatar::simulate(float deltaTime, bool inView) {
                 locationChanged(); // joints changed, so if there are any children, update them.
                 _hasNewJointData = false;
 
-                glm::vec3 headPosition = getPosition();
+                glm::vec3 headPosition = getWorldPosition();
                 if (!_skeletonModel->getHeadPosition(headPosition)) {
-                    headPosition = getPosition();
+                    headPosition = getWorldPosition();
                 }
                 head->setPosition(headPosition);
             }
-            head->setScale(getUniformScale());
+            head->setScale(getModelScale());
             head->simulate(deltaTime);
         } else {
             // a non-full update is still required so that the position, rotation, scale and bounds of the skeletonModel are updated.
@@ -423,44 +436,46 @@ bool Avatar::isLookingAtMe(AvatarSharedPointer avatar) const {
     glm::vec3 theirLookAt = dynamic_pointer_cast<Avatar>(avatar)->getHead()->getLookAtPosition();
     glm::vec3 myEyePosition = getHead()->getEyePosition();
 
-    return glm::distance(theirLookAt, myEyePosition) <= (HEAD_SPHERE_RADIUS * getUniformScale());
+    return glm::distance(theirLookAt, myEyePosition) <= (HEAD_SPHERE_RADIUS * getModelScale());
 }
 
 void Avatar::slamPosition(const glm::vec3& newPosition) {
-    setPosition(newPosition);
+    setWorldPosition(newPosition);
     _positionDeltaAccumulator = glm::vec3(0.0f);
-    setVelocity(glm::vec3(0.0f));
+    setWorldVelocity(glm::vec3(0.0f));
     _lastVelocity = glm::vec3(0.0f);
 }
 
 void Avatar::updateAttitude(const glm::quat& orientation) {
     _skeletonModel->updateAttitude(orientation);
-	_worldUpDirection = orientation * Vectors::UNIT_Y;
+    _worldUpDirection = orientation * Vectors::UNIT_Y;
 }
 
 void Avatar::applyPositionDelta(const glm::vec3& delta) {
-    setPosition(getPosition() + delta);
+    setWorldPosition(getWorldPosition() + delta);
     _positionDeltaAccumulator += delta;
 }
 
 void Avatar::measureMotionDerivatives(float deltaTime) {
     PerformanceTimer perfTimer("derivatives");
     // linear
-    float invDeltaTime = 1.0f / deltaTime;
+    const float MIN_DELTA_TIME = 0.001f;
+    const float safeDeltaTime = glm::max(deltaTime, MIN_DELTA_TIME);
+    float invDeltaTime = 1.0f / safeDeltaTime;
     // Floating point error prevents us from computing velocity in a naive way
     // (e.g. vel = (pos - oldPos) / dt) so instead we use _positionOffsetAccumulator.
     glm::vec3 velocity = _positionDeltaAccumulator * invDeltaTime;
     _positionDeltaAccumulator = glm::vec3(0.0f);
     _acceleration = (velocity - _lastVelocity) * invDeltaTime;
     _lastVelocity = velocity;
-    setVelocity(velocity);
+    setWorldVelocity(velocity);
 
     // angular
-    glm::quat orientation = getOrientation();
+    glm::quat orientation = getWorldOrientation();
     glm::quat delta = glm::inverse(_lastOrientation) * orientation;
     glm::vec3 angularVelocity = glm::axis(delta) * glm::angle(delta) * invDeltaTime;
-    setAngularVelocity(angularVelocity);
-    _lastOrientation = getOrientation();
+    setWorldAngularVelocity(angularVelocity);
+    _lastOrientation = getWorldOrientation();
 }
 
 enum TextRendererType {
@@ -554,12 +569,12 @@ void Avatar::updateRenderItem(render::Transaction& transaction) {
     }
 }
 
-void Avatar::postUpdate(float deltaTime) {
+void Avatar::postUpdate(float deltaTime, const render::ScenePointer& scene) {
 
     if (isMyAvatar() ? showMyLookAtVectors : showOtherLookAtVectors) {
         const float EYE_RAY_LENGTH = 10.0;
-        const glm::vec4 BLUE(0.0f, 0.0f, 1.0f, 1.0f);
-        const glm::vec4 RED(1.0f, 0.0f, 0.0f, 1.0f);
+        const glm::vec4 BLUE(0.0f, 0.0f, _lookAtSnappingEnabled ? 1.0f : 0.25f, 1.0f);
+        const glm::vec4 RED(_lookAtSnappingEnabled ? 1.0f : 0.25f, 0.0f, 0.0f, 1.0f);
 
         int leftEyeJoint = getJointIndex("LeftEye");
         glm::vec3 leftEyePosition;
@@ -578,6 +593,8 @@ void Avatar::postUpdate(float deltaTime) {
             DebugDraw::getInstance().drawRay(rightEyePosition, rightEyePosition + rightEyeRotation * Vectors::UNIT_Z * EYE_RAY_LENGTH, RED);
         }
     }
+
+    fixupModelsInScene(scene);
 }
 
 void Avatar::render(RenderArgs* renderArgs) {
@@ -586,7 +603,7 @@ void Avatar::render(RenderArgs* renderArgs) {
 
     glm::vec3 viewPos = renderArgs->getViewFrustum().getPosition();
     const float MAX_DISTANCE_SQUARED_FOR_SHOWING_POINTING_LASERS = 100.0f; // 10^2
-    if (glm::distance2(viewPos, getPosition()) < MAX_DISTANCE_SQUARED_FOR_SHOWING_POINTING_LASERS) {
+    if (glm::distance2(viewPos, getWorldPosition()) < MAX_DISTANCE_SQUARED_FOR_SHOWING_POINTING_LASERS) {
         auto geometryCache = DependencyManager::get<GeometryCache>();
 
         // render pointing lasers
@@ -645,20 +662,18 @@ void Avatar::render(RenderArgs* renderArgs) {
     }
 
     ViewFrustum frustum = renderArgs->getViewFrustum();
-    if (!frustum.sphereIntersectsFrustum(getPosition(), getBoundingRadius())) {
+    if (!frustum.sphereIntersectsFrustum(getWorldPosition(), getBoundingRadius())) {
         return;
     }
-
-    fixupModelsInScene(renderArgs->_scene);
 
     if (showCollisionShapes && shouldRenderHead(renderArgs) && _skeletonModel->isRenderable()) {
         PROFILE_RANGE_BATCH(batch, __FUNCTION__":skeletonBoundingCollisionShapes");
         const float BOUNDING_SHAPE_ALPHA = 0.7f;
-        _skeletonModel->renderBoundingCollisionShapes(renderArgs, *renderArgs->_batch, getUniformScale(), BOUNDING_SHAPE_ALPHA);
+        _skeletonModel->renderBoundingCollisionShapes(renderArgs, *renderArgs->_batch, getModelScale(), BOUNDING_SHAPE_ALPHA);
     }
 
     if (showReceiveStats || showNamesAboveHeads) {
-        glm::vec3 toTarget = frustum.getPosition() - getPosition();
+        glm::vec3 toTarget = frustum.getPosition() - getWorldPosition();
         float distanceToTarget = glm::length(toTarget);
         const float DISPLAYNAME_DISTANCE = 20.0f;
         updateDisplayNameAlpha(distanceToTarget < DISPLAYNAME_DISTANCE);
@@ -727,19 +742,19 @@ void Avatar::simulateAttachments(float deltaTime) {
         glm::quat jointRotation;
         if (attachment.isSoft) {
             // soft attachments do not have transform offsets
-            model->setTranslation(getPosition());
-            model->setRotation(getOrientation() * Quaternions::Y_180);
+            model->setTransformNoUpdateRenderItems(Transform(getWorldOrientation() * Quaternions::Y_180, glm::vec3(1.0), getWorldPosition()));
             model->simulate(deltaTime);
+            model->updateRenderItems();
         } else {
             if (_skeletonModel->getJointPositionInWorldFrame(jointIndex, jointPosition) &&
                 _skeletonModel->getJointRotationInWorldFrame(jointIndex, jointRotation)) {
-                model->setTranslation(jointPosition + jointRotation * attachment.translation * getUniformScale());
-                model->setRotation(jointRotation * attachment.rotation);
-                float scale = getUniformScale() * attachment.scale;
+                model->setTransformNoUpdateRenderItems(Transform(jointRotation * attachment.rotation, glm::vec3(1.0), jointPosition + jointRotation * attachment.translation * getModelScale()));
+                float scale = getModelScale() * attachment.scale;
                 model->setScaleToFit(true, model->getNaturalDimensions() * scale, true); // hack to force rescale
                 model->setSnapModelToCenter(false); // hack to force resnap
                 model->setSnapModelToCenter(true);
                 model->simulate(deltaTime);
+                model->updateRenderItems();
             }
         }
     }
@@ -781,9 +796,9 @@ glm::vec3 Avatar::getDisplayNamePosition() const {
         const float HEAD_PROPORTION = 0.75f;
         float size = getBoundingRadius();
 
-        DEBUG_VALUE("_position =", getPosition());
+        DEBUG_VALUE("_position =", getWorldPosition());
         DEBUG_VALUE("size =", size);
-        namePosition = getPosition() + bodyUpDirection * (size * HEAD_PROPORTION);
+        namePosition = getWorldPosition() + bodyUpDirection * (size * HEAD_PROPORTION);
     }
 
     if (glm::any(glm::isnan(namePosition)) || glm::any(glm::isinf(namePosition))) {
@@ -895,7 +910,7 @@ void Avatar::renderDisplayName(gpu::Batch& batch, const ViewFrustum& view, const
 }
 
 void Avatar::setSkeletonOffset(const glm::vec3& offset) {
-    const float MAX_OFFSET_LENGTH = getUniformScale() * 0.5f;
+    const float MAX_OFFSET_LENGTH = getModelScale() * 0.5f;
     float offsetLength = glm::length(offset);
     if (offsetLength > MAX_OFFSET_LENGTH) {
         _skeletonOffset = (MAX_OFFSET_LENGTH / offsetLength) * offset;
@@ -908,7 +923,7 @@ glm::vec3 Avatar::getSkeletonPosition() const {
     // The avatar is rotated PI about the yAxis, so we have to correct for it
     // to get the skeleton offset contribution in the world-frame.
     const glm::quat FLIP = glm::angleAxis(PI, glm::vec3(0.0f, 1.0f, 0.0f));
-    return getPosition() + getOrientation() * FLIP * _skeletonOffset;
+    return getWorldPosition() + getWorldOrientation() * FLIP * _skeletonOffset;
 }
 
 QVector<glm::quat> Avatar::getJointRotations() const {
@@ -993,19 +1008,19 @@ glm::quat Avatar::getAbsoluteJointRotationInObjectFrame(int index) const {
         index += numeric_limits<unsigned short>::max() + 1; // 65536
     }
 
-    switch(index) {
+    switch (index) {
         case SENSOR_TO_WORLD_MATRIX_INDEX: {
             glm::mat4 sensorToWorldMatrix = getSensorToWorldMatrix();
-            bool success;
-            Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
-            glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
-            return glmExtractRotation(invAvatarMat * sensorToWorldMatrix);
+            glm::mat4 avatarMatrix = getLocalTransform().getMatrix();
+            glm::mat4 finalMat = glm::inverse(avatarMatrix) * sensorToWorldMatrix;
+            return glmExtractRotation(finalMat);
         }
+        case CAMERA_RELATIVE_CONTROLLER_LEFTHAND_INDEX:
         case CONTROLLER_LEFTHAND_INDEX: {
             Transform controllerLeftHandTransform = Transform(getControllerLeftHandMatrix());
             return controllerLeftHandTransform.getRotation();
         }
+        case CAMERA_RELATIVE_CONTROLLER_RIGHTHAND_INDEX:
         case CONTROLLER_RIGHTHAND_INDEX: {
             Transform controllerRightHandTransform = Transform(getControllerRightHandMatrix());
             return controllerRightHandTransform.getRotation();
@@ -1033,19 +1048,19 @@ glm::vec3 Avatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
         index += numeric_limits<unsigned short>::max() + 1; // 65536
     }
 
-    switch(index) {
+    switch (index) {
         case SENSOR_TO_WORLD_MATRIX_INDEX: {
             glm::mat4 sensorToWorldMatrix = getSensorToWorldMatrix();
-            bool success;
-            Transform avatarTransform;
-            Transform::mult(avatarTransform, getParentTransform(success), getLocalTransform());
-            glm::mat4 invAvatarMat = avatarTransform.getInverseMatrix();
-            return extractTranslation(invAvatarMat * sensorToWorldMatrix);
+            glm::mat4 avatarMatrix = getLocalTransform().getMatrix();
+            glm::mat4 finalMat = glm::inverse(avatarMatrix) * sensorToWorldMatrix;
+            return extractTranslation(finalMat);
         }
+        case CAMERA_RELATIVE_CONTROLLER_LEFTHAND_INDEX:
         case CONTROLLER_LEFTHAND_INDEX: {
             Transform controllerLeftHandTransform = Transform(getControllerLeftHandMatrix());
             return controllerLeftHandTransform.getTranslation();
         }
+        case CAMERA_RELATIVE_CONTROLLER_RIGHTHAND_INDEX:
         case CONTROLLER_RIGHTHAND_INDEX: {
             Transform controllerRightHandTransform = Transform(getControllerRightHandMatrix());
             return controllerRightHandTransform.getTranslation();
@@ -1065,6 +1080,22 @@ glm::vec3 Avatar::getAbsoluteJointTranslationInObjectFrame(int index) const {
             _skeletonModel->getAbsoluteJointTranslationInRigFrame(index, translation);
             return Quaternions::Y_180 * translation;
         }
+    }
+}
+
+glm::vec3 Avatar::getAbsoluteJointScaleInObjectFrame(int index) const {
+    if (index < 0) {
+        index += numeric_limits<unsigned short>::max() + 1; // 65536
+    }
+
+    // only sensor to world matrix has non identity scale.
+    switch (index) {
+        case SENSOR_TO_WORLD_MATRIX_INDEX: {
+            glm::mat4 sensorToWorldMatrix = getSensorToWorldMatrix();
+            return extractScale(sensorToWorldMatrix);
+        }
+        default:
+            return AvatarData::getAbsoluteJointScaleInObjectFrame(index);
     }
 }
 
@@ -1156,7 +1187,7 @@ glm::vec3 Avatar::getJointPosition(const QString& name) const {
 
 void Avatar::scaleVectorRelativeToPosition(glm::vec3 &positionToScale) const {
     //Scale a world space vector as if it was relative to the position
-    positionToScale = getPosition() + getUniformScale() * (positionToScale - getPosition());
+    positionToScale = getWorldPosition() + getModelScale() * (positionToScale - getWorldPosition());
 }
 
 void Avatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
@@ -1323,7 +1354,7 @@ float Avatar::getHeadHeight() const {
     Extents extents = _skeletonModel->getMeshExtents();
     glm::vec3 neckPosition;
     if (!extents.isEmpty() && extents.isValid() && _skeletonModel->getNeckPosition(neckPosition)) {
-        return extents.maximum.y / 2.0f - neckPosition.y + getPosition().y;
+        return extents.maximum.y / 2.0f - neckPosition.y + getWorldPosition().y;
     }
 
     const float DEFAULT_HEAD_HEIGHT = 0.25f;
@@ -1358,7 +1389,7 @@ void Avatar::updateDisplayNameAlpha(bool showDisplayName) {
 
 // virtual
 void Avatar::computeShapeInfo(ShapeInfo& shapeInfo) {
-    float uniformScale = getUniformScale();
+    float uniformScale = getModelScale();
     shapeInfo.setCapsuleY(uniformScale * _skeletonModel->getBoundingCapsuleRadius(),
             0.5f * uniformScale *  _skeletonModel->getBoundingCapsuleHeight());
     shapeInfo.setOffset(uniformScale * _skeletonModel->getBoundingCapsuleOffset());
@@ -1368,8 +1399,8 @@ void Avatar::getCapsule(glm::vec3& start, glm::vec3& end, float& radius) {
     ShapeInfo shapeInfo;
     computeShapeInfo(shapeInfo);
     glm::vec3 halfExtents = shapeInfo.getHalfExtents(); // x = radius, y = halfHeight
-    start = getPosition() - glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
-    end = getPosition() + glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
+    start = getWorldPosition() - glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
+    end = getWorldPosition() + glm::vec3(0, halfExtents.y, 0) + shapeInfo.getOffset();
     radius = halfExtents.x;
 }
 
@@ -1462,12 +1493,12 @@ glm::quat Avatar::getUncachedRightPalmRotation() const {
 }
 
 void Avatar::setPositionViaScript(const glm::vec3& position) {
-    setPosition(position);
-    updateAttitude(getOrientation());
+    setWorldPosition(position);
+    updateAttitude(getWorldOrientation());
 }
 
 void Avatar::setOrientationViaScript(const glm::quat& orientation) {
-    setOrientation(orientation);
+    setWorldOrientation(orientation);
     updateAttitude(orientation);
 }
 
@@ -1567,5 +1598,56 @@ void Avatar::addToScene(AvatarSharedPointer myHandle, const render::ScenePointer
 void Avatar::ensureInScene(AvatarSharedPointer self, const render::ScenePointer& scene) {
     if (!render::Item::isValidID(_renderItemID)) {
         addToScene(self, scene);
+    }
+}
+
+float Avatar::getEyeHeight() const {
+
+    if (QThread::currentThread() != thread()) {
+        float result = DEFAULT_AVATAR_EYE_HEIGHT;
+        BLOCKING_INVOKE_METHOD(const_cast<Avatar*>(this), "getEyeHeight", Q_RETURN_ARG(float, result));
+        return result;
+    }
+
+    // TODO: if performance becomes a concern we can cache this value rather then computing it everytime.
+    // Makes assumption that the y = 0 plane in geometry is the ground plane.
+    // We also make that assumption in Rig::computeAvatarBoundingCapsule()
+    float avatarScale = getModelScale();
+    if (_skeletonModel) {
+        auto& rig = _skeletonModel->getRig();
+        int headTopJoint = rig.indexOfJoint("HeadTop_End");
+        int headJoint = rig.indexOfJoint("Head");
+        int eyeJoint = rig.indexOfJoint("LeftEye") != -1 ? rig.indexOfJoint("LeftEye") : rig.indexOfJoint("RightEye");
+        int toeJoint = rig.indexOfJoint("LeftToeBase") != -1 ? rig.indexOfJoint("LeftToeBase") : rig.indexOfJoint("RightToeBase");
+        if (eyeJoint >= 0 && toeJoint >= 0) {
+            // measure from eyes to toes.
+            float eyeHeight = rig.getAbsoluteDefaultPose(eyeJoint).trans().y - rig.getAbsoluteDefaultPose(toeJoint).trans().y;
+            return eyeHeight;
+        } else if (eyeJoint >= 0) {
+            // measure eyes to y = 0 plane.
+            float groundHeight = transformPoint(rig.getGeometryToRigTransform(), glm::vec3(0.0f)).y;
+            float eyeHeight = rig.getAbsoluteDefaultPose(eyeJoint).trans().y - groundHeight;
+            return eyeHeight;
+        } else if (headTopJoint >= 0 && toeJoint >= 0) {
+            // measure toe to top of head.  Note: default poses already include avatar scale factor
+            const float ratio = DEFAULT_AVATAR_EYE_TO_TOP_OF_HEAD / DEFAULT_AVATAR_HEIGHT;
+            float height = rig.getAbsoluteDefaultPose(headTopJoint).trans().y - rig.getAbsoluteDefaultPose(toeJoint).trans().y;
+            return height - height * ratio;
+        } else if (headTopJoint >= 0) {
+            const float ratio = DEFAULT_AVATAR_EYE_TO_TOP_OF_HEAD / DEFAULT_AVATAR_HEIGHT;
+            float groundHeight = transformPoint(rig.getGeometryToRigTransform(), glm::vec3(0.0f)).y;
+            float headHeight = rig.getAbsoluteDefaultPose(headTopJoint).trans().y - groundHeight;
+            return headHeight - headHeight * ratio;
+        } else if (headJoint >= 0) {
+            float groundHeight = transformPoint(rig.getGeometryToRigTransform(), glm::vec3(0.0f)).y;
+            const float DEFAULT_AVATAR_NECK_TO_EYE = DEFAULT_AVATAR_NECK_TO_TOP_OF_HEAD - DEFAULT_AVATAR_EYE_TO_TOP_OF_HEAD;
+            const float ratio = DEFAULT_AVATAR_NECK_TO_EYE / DEFAULT_AVATAR_NECK_HEIGHT;
+            float neckHeight = rig.getAbsoluteDefaultPose(headJoint).trans().y - groundHeight;
+            return neckHeight + neckHeight * ratio;
+        } else {
+            return avatarScale * DEFAULT_AVATAR_EYE_HEIGHT;
+        }
+    } else {
+        return avatarScale * DEFAULT_AVATAR_EYE_HEIGHT;
     }
 }

@@ -246,7 +246,7 @@ void PhysicalEntitySimulation::getObjectsToAddToPhysics(VectorOfMotionStates& re
                 if (numPoints > MAX_HULL_POINTS) {
                     qWarning() << "convex hull with" << numPoints
                         << "points for entity" << entity->getDebugName()
-                        << "at" << entity->getPosition() << " will be reduced";
+                        << "at" << entity->getWorldPosition() << " will be reduced";
                 }
             }
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
@@ -398,10 +398,11 @@ void PhysicalEntitySimulation::applyDynamicChanges() {
     QList<EntityDynamicPointer> dynamicsFailedToAdd;
     auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
     physicsEngineTracker->forEachPhysicsEngine([this](PhysicsEnginePointer physicsEngine) {
-        // FIXME put fine grain locking into _physicsEngine
-        QMutexLocker lock(&_mutex);
-        foreach(QUuid dynamicToRemove, _dynamicsToRemove) {
-            physicsEngine->removeDynamic(dynamicToRemove);
+        if (physicsEngine) {
+            QMutexLocker lock(&_dynamicsMutex);
+            foreach(QUuid dynamicToRemove, _dynamicsToRemove) {
+                physicsEngine->removeDynamic(dynamicToRemove);
+            }
         }
     });
     foreach (EntityDynamicPointer dynamicToAdd, _dynamicsToAdd) {
@@ -417,9 +418,10 @@ void PhysicalEntitySimulation::applyDynamicChanges() {
                 }
             }
         }
+        // applyDynamicChanges will clear _dynamicsToRemove and _dynamicsToAdd
+        EntitySimulation::applyDynamicChanges();
     }
-    // applyDynamicChanges will clear _dynamicsToRemove and _dynamicsToAdd
-    EntitySimulation::applyDynamicChanges();
+
     // put back the ones that couldn't yet be added
     foreach (EntityDynamicPointer dynamicFailedToAdd, dynamicsFailedToAdd) {
         addDynamic(dynamicFailedToAdd);
