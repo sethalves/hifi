@@ -121,6 +121,7 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_DESCRIPTION;
     requestedProperties += PROP_ACTION_DATA;
     requestedProperties += PROP_PARENT_ID;
+    requestedProperties += PROP_SIMULATION_ID;
     requestedProperties += PROP_PARENT_JOINT_INDEX;
     requestedProperties += PROP_QUERY_AA_CUBE;
 
@@ -286,6 +287,7 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
             actualParentID = nodeList->getSessionUUID();
         }
         APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, actualParentID);
+        APPEND_ENTITY_PROPERTY(PROP_SIMULATION_ID, getSimulationID());
 
         APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, getParentJointIndex());
         APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, getQueryAACube());
@@ -827,10 +829,11 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_DESCRIPTION, QString, setDescription);
     READ_ENTITY_PROPERTY(PROP_ACTION_DATA, QByteArray, setDynamicData);
 
-    {   // parentID and parentJointIndex are also protected by simulation ownership
+    {   // parentID, simulationID, and parentJointIndex are also protected by simulation ownership
         bool oldOverwrite = overwriteLocalData;
         overwriteLocalData = overwriteLocalData && !weOwnSimulation;
         READ_ENTITY_PROPERTY(PROP_PARENT_ID, QUuid, setParentID);
+        READ_ENTITY_PROPERTY(PROP_SIMULATION_ID, QUuid, setSimulationID);
         READ_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, quint16, setParentJointIndex);
         overwriteLocalData = oldOverwrite;
     }
@@ -1908,7 +1911,7 @@ void EntityItem::setPendingOwnershipPriority(quint8 priority, const quint64& tim
     _simulationOwner.setPendingPriority(priority, timestamp);
 }
 
-EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
+EntityItemPointer EntityItem::findSimulationZone(QUuid parentID) {
     // search upward through parents for a zone
     bool success = true;
     for (SpatiallyNestablePointer ancestor = SpatiallyNestable::findByID(parentID, success);
@@ -1924,9 +1927,14 @@ EntityItemPointer EntityItem::findAncestorZone(QUuid parentID) {
 }
 
 PhysicsEnginePointer EntityItem::getPhysicsEngine() {
-    EntityItemPointer ancestorZone = EntityItem::findAncestorZone(getParentID());
-    if (ancestorZone) {
-        return ancestorZone->getChildPhysicsEngine();
+    QUuid simulationID = getSimulationID();
+    if (!simulationID.isNull()) {
+        bool success { false };
+        SpatiallyNestablePointer simulationSN = SpatiallyNestable::findByID(simulationID, success);
+        if (success && simulationSN && simulationSN->getNestableType() == NestableType::Entity) {
+            EntityItemPointer simulationEntity = std::static_pointer_cast<EntityItem>(simulationSN);
+            return simulationEntity->getChildPhysicsEngine();
+        }
     }
     auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTrackerInterface>();
     return physicsEngineTracker->getPhysicsEngineByID(PhysicsEngineTrackerInterface::DEFAULT_PHYSICS_ENGINE_ID);

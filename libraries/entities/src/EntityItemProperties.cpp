@@ -355,6 +355,7 @@ EntityPropertyFlags EntityItemProperties::getChangedProperties() const {
     CHECK_PROPERTY_CHANGE(PROP_Y_P_NEIGHBOR_ID, yPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_Z_P_NEIGHBOR_ID, zPNeighborID);
     CHECK_PROPERTY_CHANGE(PROP_PARENT_ID, parentID);
+    CHECK_PROPERTY_CHANGE(PROP_SIMULATION_ID, simulationID);
     CHECK_PROPERTY_CHANGE(PROP_PARENT_JOINT_INDEX, parentJointIndex);
     CHECK_PROPERTY_CHANGE(PROP_JOINT_ROTATIONS_SET, jointRotationsSet);
     CHECK_PROPERTY_CHANGE(PROP_JOINT_ROTATIONS, jointRotations);
@@ -624,6 +625,7 @@ QScriptValue EntityItemProperties::copyToScriptValue(QScriptEngine* engine, bool
     }
 
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_PARENT_ID, parentID);
+    COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_SIMULATION_ID, simulationID);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_PARENT_JOINT_INDEX, parentJointIndex);
     COPY_PROPERTY_TO_QSCRIPTVALUE(PROP_QUERY_AA_CUBE, queryAACube);
 
@@ -1128,6 +1130,7 @@ void EntityItemProperties::entityPropertyFlagsFromScriptValue(const QScriptValue
         ADD_PROPERTY_TO_MAP(PROP_Z_P_NEIGHBOR_ID, ZPNeighborID, zPNeighborID, EntityItemID);
 
         ADD_PROPERTY_TO_MAP(PROP_PARENT_ID, ParentID, parentID, QUuid);
+        ADD_PROPERTY_TO_MAP(PROP_SIMULATION_ID, SimulationID, simulationID, QUuid);
         ADD_PROPERTY_TO_MAP(PROP_PARENT_JOINT_INDEX, ParentJointIndex, parentJointIndex, uint16_t);
 
         ADD_PROPERTY_TO_MAP(PROP_LOCAL_POSITION, LocalPosition, localPosition, glm::vec3);
@@ -1339,6 +1342,7 @@ OctreeElement::AppendState EntityItemProperties::encodeEntityEditPacket(PacketTy
             APPEND_ENTITY_PROPERTY(PROP_HREF, properties.getHref());
             APPEND_ENTITY_PROPERTY(PROP_DESCRIPTION, properties.getDescription());
             APPEND_ENTITY_PROPERTY(PROP_PARENT_ID, properties.getParentID());
+            APPEND_ENTITY_PROPERTY(PROP_SIMULATION_ID, properties.getSimulationID());
             APPEND_ENTITY_PROPERTY(PROP_PARENT_JOINT_INDEX, properties.getParentJointIndex());
             APPEND_ENTITY_PROPERTY(PROP_QUERY_AA_CUBE, properties.getQueryAACube());
 
@@ -1699,6 +1703,7 @@ bool EntityItemProperties::decodeEntityEditPacket(const unsigned char* data, int
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_HREF, QString, setHref);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_DESCRIPTION, QString, setDescription);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_PARENT_ID, QUuid, setParentID);
+    READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_SIMULATION_ID, QUuid, setSimulationID);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_PARENT_JOINT_INDEX, quint16, setParentJointIndex);
     READ_ENTITY_PROPERTY_TO_PROPERTIES(PROP_QUERY_AA_CUBE, AACube, setQueryAACube);
 

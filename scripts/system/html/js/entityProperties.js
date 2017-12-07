@@ -526,6 +526,7 @@ function loaded() {
 
         var elParentID = document.getElementById("property-parent-id");
         var elParentJointIndex = document.getElementById("property-parent-joint-index");
+        var elSimulationID = document.getElementById("property-simulation-id");
 
         var elRegistrationX = document.getElementById("property-reg-x");
         var elRegistrationY = document.getElementById("property-reg-y");
@@ -832,6 +833,7 @@ function loaded() {
 
                         elParentID.value = properties.parentID;
                         elParentJointIndex.value = properties.parentJointIndex;
+                        elSimulationID.value = properties.simulationID;
 
                         elRegistrationX.value = properties.registrationPoint.x.toFixed(4);
                         elRegistrationY.value = properties.registrationPoint.y.toFixed(4);
@@ -1148,6 +1150,7 @@ function loaded() {
 
         elParentID.addEventListener('change', createEmitTextPropertyUpdateFunction('parentID'));
         elParentJointIndex.addEventListener('change', createEmitNumberPropertyUpdateFunction('parentJointIndex', 0));
+        elSimulationID.addEventListener('change', createEmitTextPropertyUpdateFunction('simulationID'));
 
         var registrationChangeFunction = createEmitVec3PropertyUpdateFunction(
             'registrationPoint', elRegistrationX, elRegistrationY, elRegistrationZ);

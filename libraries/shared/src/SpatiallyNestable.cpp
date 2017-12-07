@@ -77,6 +77,23 @@ void SpatiallyNestable::setParentID(const QUuid& parentID) {
     getParentPointer(success);
 }
 
+
+const QUuid SpatiallyNestable::getSimulationID() const {
+    QUuid result;
+    _idLock.withReadLock([&] {
+        result = _simulationID;
+    });
+    return result;
+}
+
+void SpatiallyNestable::setSimulationID(const QUuid& simulationID) {
+    _idLock.withWriteLock([&] {
+        if (_simulationID != simulationID) {
+            _simulationID = simulationID;
+        }
+    });
+}
+
 Transform SpatiallyNestable::getParentTransform(bool& success, int depth, bool inSimulationFrame) const {
     Transform result;
     SpatiallyNestablePointer parent = getParentPointer(success);
@@ -94,15 +111,18 @@ Transform SpatiallyNestable::getParentTransform(bool& success, int depth, bool i
 
 SpatiallyNestablePointer SpatiallyNestable::getParentPointer(bool& success) const {
     SpatiallyNestablePointer parent = _parent.lock();
-    QUuid parentID = getParentID(); // used for its locking
+    QUuid parentOrSimulationID = getParentID(); // used for its locking
+    if (parentOrSimulationID.isNull()) {
+        parentOrSimulationID = getSimulationID();
+    }
 
-    if (!parent && parentID.isNull()) {
+    if (!parent && parentOrSimulationID.isNull()) {
         // no parent
         success = true;
         return nullptr;
     }
 
-    if (parent && parent->getID() == parentID) {
+    if (parent && parent->getID() == parentOrSimulationID) {
         // parent pointer is up-to-date
         if (!_parentKnowsMe) {
             SpatialParentTree* parentTree = parent->getParentTree();
@@ -128,7 +148,7 @@ SpatiallyNestablePointer SpatiallyNestable::getParentPointer(bool& success) cons
         success = false;
         return nullptr;
     }
-    _parent = parentFinder->find(parentID, success, getParentTree());
+    _parent = parentFinder->find(parentOrSimulationID, success, getParentTree());
     if (!success) {
         return nullptr;
     }
@@ -148,7 +168,7 @@ SpatiallyNestablePointer SpatiallyNestable::getParentPointer(bool& success) cons
 
     getThisPointer()->hierarchyChanged();
 
-    success = (parent || parentID.isNull());
+    success = (parent || parentOrSimulationID.isNull());
     return parent;
 }
 

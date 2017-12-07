@@ -439,10 +439,9 @@ public:
     QUuid getOwningAvatarID() const { return _owningAvatarID; }
     void setOwningAvatarID(const QUuid& owningAvatarID) { _owningAvatarID = owningAvatarID; }
 
-    static EntityItemPointer findAncestorZone(QUuid parentID);
-
     virtual PhysicsEnginePointer getChildPhysicsEngine() { return nullptr; } // overridden in ZoneEntityItem
 
+    static EntityItemPointer findSimulationZone(QUuid parentID);
     PhysicsEnginePointer getPhysicsEngine();
     virtual void hierarchyChanged() override;
 

@@ -3014,10 +3014,11 @@ bool MyAvatar::didTeleport() {
 void MyAvatar::handleZoneChange() {
     auto treeRenderer = qApp->getEntities();
     std::shared_ptr<ZoneEntityItem> zone = treeRenderer->myAvatarZone();
-    EntityItemPointer simulationZone = zone ? EntityItem::findAncestorZone(zone->getID()) : nullptr;
-    QUuid zoneID = simulationZone ? simulationZone->getID() : QUuid();
 
-    if (zoneID != _currentZoneID) {
+    EntityItemPointer simulationZone = zone ? EntityItem::findSimulationZone(zone->getID()) : nullptr;
+    QUuid simulationID = simulationZone ? simulationZone->getID() : QUuid();
+
+    if (simulationID != _currentZoneID) {
 
         #ifdef WANT_DEBUG
         bool findSuccess;
@@ -3034,7 +3035,7 @@ void MyAvatar::handleZoneChange() {
         }
 
         // adjust position and velocity for new frame
-        _currentZoneID = zoneID;
+        _currentZoneID = simulationID;
         qCDebug(interfaceapp) << "_currentZoneID =" << _currentZoneID;
         bool success;
         Transform beforeTransform = getTransform(success);

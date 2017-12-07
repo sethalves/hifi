@@ -313,6 +313,7 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
                     desiredProperties.getHasProperty(PROP_LOCAL_ROTATION)) {
                     // if we are explicitly getting position or rotation, we need parent information to make sense of them.
                     desiredProperties.setHasProperty(PROP_PARENT_ID);
+                    desiredProperties.setHasProperty(PROP_SIMULATION_ID);
                     desiredProperties.setHasProperty(PROP_PARENT_JOINT_INDEX);
                 }
 

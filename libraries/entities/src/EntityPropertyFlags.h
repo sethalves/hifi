@@ -154,6 +154,7 @@ enum EntityPropertyList {
     PROP_EMITTER_SHOULD_TRAIL,
 
     PROP_PARENT_ID,
+    PROP_SIMULATION_ID,
     PROP_PARENT_JOINT_INDEX,
 
     PROP_LOCAL_POSITION, // only used to convert values to and from scripts

@@ -51,6 +51,9 @@ public:
     virtual const QUuid getParentID() const;
     virtual void setParentID(const QUuid& parentID);
 
+    virtual const QUuid getSimulationID() const;
+    virtual void setSimulationID(const QUuid& parentID);
+
     virtual quint16 getParentJointIndex() const { return _parentJointIndex; }
     virtual void setParentJointIndex(quint16 parentJointIndex);
 
@@ -249,6 +252,8 @@ protected:
 private:
     QUuid _parentID; // what is this thing's transform relative to?
     quint16 _parentJointIndex { INVALID_JOINT_INDEX }; // which joint of the parent is this relative to?
+
+    QUuid _simulationID; // what is this thing's transform relative to?
 
     mutable ReadWriteLockable _transformLock;
     mutable ReadWriteLockable _idLock;

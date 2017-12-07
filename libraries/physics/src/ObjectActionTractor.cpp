@@ -52,7 +52,6 @@ bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, gl
         return false;
     }
     SpatiallyNestablePointer other = getOther();
-    EntityItemPointer ancestorZone = ownerEntity->findAncestorZone(ownerEntity->getParentID());
 
     withReadLock([&]{
 
@@ -73,12 +72,13 @@ bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, gl
             position = _desiredPositionalTarget;
         }
 
-        if (ancestorZone) {
+        QUuid simulationID = ownerEntity->getSimulationID();
+        if (!simulationID.isNull()) {
             // convert from world-frame to simulation-frame
             bool rSuccess;
-            rotation = SpatiallyNestable::worldToLocal(rotation, ancestorZone->getID(), -1, rSuccess);
+            rotation = SpatiallyNestable::worldToLocal(rotation, simulationID, -1, rSuccess);
             bool pSuccess;
-            position = SpatiallyNestable::worldToLocal(position, ancestorZone->getID(), -1, pSuccess);
+            position = SpatiallyNestable::worldToLocal(position, simulationID, -1, pSuccess);
             if (!rSuccess || !pSuccess) {
                 rotation = _desiredRotationalTarget;
                 position = _desiredPositionalTarget;
