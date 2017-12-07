@@ -183,6 +183,7 @@ void AvatarMixerSlave::broadcastAvatarDataToAgent(const SharedNodePointer& node)
     // Quadruple the scale of both bounding boxes
     nodeBox.embiggen(4.0f);
 
+
     // setup list of AvatarData as well as maps to map betweeen the AvatarData and the original nodes
     // for calling the AvatarData::sortAvatars() function and getting our sorted list of client nodes
     QList<AvatarSharedPointer> avatarList;
