@@ -390,6 +390,8 @@ private:
 
     float _displayNameTargetAlpha { 1.0f };
     float _displayNameAlpha { 1.0f };
+
+    bool _avatarLocationChanged { false };
 };
 
 #endif // hifi_Avatar_h

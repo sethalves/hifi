@@ -380,6 +380,7 @@ void Avatar::simulate(float deltaTime, bool inView) {
             }
             head->setScale(getModelScale());
             head->simulate(deltaTime);
+            _avatarLocationChanged = true;
         } else {
             // a non-full update is still required so that the position, rotation, scale and bounds of the skeletonModel are updated.
             _skeletonModel->simulate(deltaTime, false);
@@ -413,6 +414,11 @@ void Avatar::simulate(float deltaTime, bool inView) {
     {
         PROFILE_RANGE(simulation, "entities");
         updateAvatarEntities();
+    }
+
+    if (_avatarLocationChanged) {
+        _avatarLocationChanged = false;
+        locationChanged();
     }
 }
 
@@ -1285,7 +1291,7 @@ int Avatar::parseDataFromBuffer(const QByteArray& buffer) {
         addPhysicsFlags(Simulation::DIRTY_POSITION);
     }
     if (_moving || _hasNewJointData) {
-        locationChanged();
+        _avatarLocationChanged = true;
     }
 
     return bytesRead;
