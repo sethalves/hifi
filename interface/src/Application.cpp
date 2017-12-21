@@ -6272,7 +6272,7 @@ void Application::showAssetServerWidget(QString filePath) {
         if (!hmd->getShouldShowTablet() && !isHMDMode()) {
             DependencyManager::get<OffscreenUi>()->show(url, "AssetServer", startUpload);
         } else {
-            static const QUrl url("../../hifi/dialogs/TabletAssetServer.qml");
+            static const QUrl url("hifi/dialogs/TabletAssetServer.qml");
             tablet->pushOntoStack(url);
         }
     }
@@ -6845,7 +6845,7 @@ void Application::loadLODToolsDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->lodTools();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletLODTools.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletLODTools.qml");
     }
 }
 
@@ -6857,7 +6857,7 @@ void Application::loadEntityStatisticsDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->octreeStatsDetails();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletEntityStatistics.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletEntityStatistics.qml");
     }
 }
 
@@ -6868,7 +6868,7 @@ void Application::loadDomainConnectionDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->showDomainConnectionDialog();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletDCDialog.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletDCDialog.qml");
     }
 }
 
