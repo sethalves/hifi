@@ -7651,7 +7651,9 @@ void Application::setAvatarOverrideUrl(const QUrl& url, bool save) {
 }
 
 void Application::saveNextPhysicsStats(QString filename) {
-    _physicsEngine->saveNextPhysicsStats(filename);
+    forEachPhysicsEngine([=](PhysicsEnginePointer physicsEngine) {
+        physicsEngine->saveNextPhysicsStats(filename);
+    });
 }
 
 #include "Application.moc"
