@@ -200,6 +200,7 @@ enum class EntityVersion : PacketVersion {
     StrokeColorProperty = 77,
     HasDynamicOwnershipTests,
     HazeEffect,
+    StaticCertJsonVersionOne,
     ZoneLocalPhysics
 };
 

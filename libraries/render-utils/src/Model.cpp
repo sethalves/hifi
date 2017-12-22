@@ -168,7 +168,7 @@ void Model::setScale(const glm::vec3& scale) {
     _scaledToFit = false;
 }
 
-const float SCALE_CHANGE_EPSILON = 0.01f;
+const float SCALE_CHANGE_EPSILON = 0.001f;
 
 void Model::setScaleInternal(const glm::vec3& scale) {
     if (glm::distance(_scale, scale) > SCALE_CHANGE_EPSILON) {
@@ -291,6 +291,7 @@ void Model::reset() {
     if (isLoaded()) {
         const FBXGeometry& geometry = getFBXGeometry();
         _rig.reset(geometry);
+        emit rigReset();
     }
 }
 
@@ -327,6 +328,7 @@ bool Model::updateGeometry() {
             _blendedVertexBuffers.push_back(buffer);
         }
         needFullUpdate = true;
+        emit rigReady();
     }
     return needFullUpdate;
 }
