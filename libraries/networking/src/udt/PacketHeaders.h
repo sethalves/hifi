@@ -201,6 +201,7 @@ enum class EntityVersion : PacketVersion {
     HasDynamicOwnershipTests,
     HazeEffect,
     StaticCertJsonVersionOne,
+    OwnershipChallengeFix,
     ZoneLocalPhysics
 };
 
