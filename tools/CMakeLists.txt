@@ -26,5 +26,9 @@ if (BUILD_TOOLS)
 
   add_subdirectory(auto-tester)
   set_target_properties(auto-tester PROPERTIES FOLDER "Tools")
+
+  add_subdirectory(fbx-dump)
+  set_target_properties(fbx-dump PROPERTIES FOLDER "Tools")
+
 endif()
 
