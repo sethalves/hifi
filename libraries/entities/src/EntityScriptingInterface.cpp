@@ -1330,6 +1330,7 @@ QUuid EntityScriptingInterface::addAction(const QString& actionTypeString,
         action->setIsMine(true);
         success = entity->addAction(simulation, action);
         entity->flagForOwnershipBid(SCRIPT_GRAB_SIMULATION_PRIORITY);
+        bidOnLinkedByDynamics(entity, SCRIPT_GRAB_SIMULATION_PRIORITY);
         return false; // Physics will cause a packet to be sent, so don't send from here.
     });
     if (success) {
