@@ -361,6 +361,25 @@ EntityItemProperties EntityScriptingInterface::getEntityProperties(QUuid identit
     return convertPropertiesToScriptSemantics(results, scalesWithParent);
 }
 
+void EntityScriptingInterface::bidOnLinkedByDynamics(EntityItemPointer entity, quint8 priority) {
+    auto nodeList = DependencyManager::get<NodeList>();
+    const QUuid myNodeID = nodeList->getSessionUUID();
+
+    std::set<EntityItemPointer> linkedByDynamics = entity->getEntitiesRecursivelyLinkedByDynamics();
+    for (const EntityItemPointer& other : linkedByDynamics) {
+        EntityItemProperties ownershipBidProperties;
+        ownershipBidProperties.setSimulationOwner(myNodeID, priority);
+        other->flagForOwnershipBid(priority);
+        other->rememberHasSimulationOwnershipBid();
+        ownershipBidProperties.setLastEdited(entity->getLastEdited());
+        // XXX PacketType::EntityPhysics ?
+        queueEntityMessage(PacketType::EntityEdit, other->getID(), ownershipBidProperties);
+        other->setLastBroadcast(usecTimestampNow());
+    }
+}
+
+
+
 QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties& scriptSideProperties) {
     PROFILE_RANGE(script_entities, __FUNCTION__);
 
@@ -514,17 +533,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                 }
             });
 
-            std::set<EntityItemPointer> linkedByDynamics = entity->getEntitiesRecursivelyLinkedByDynamics();
-            for (const EntityItemPointer& other : linkedByDynamics) {
-                EntityItemProperties ownershipBidProperties;
-                ownershipBidProperties.setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
-                other->flagForOwnershipBid(SCRIPT_POKE_SIMULATION_PRIORITY);
-                other->rememberHasSimulationOwnershipBid();
-                ownershipBidProperties.setLastEdited(properties.getLastEdited());
-                // XXX PacketType::EntityPhysics ?
-                queueEntityMessage(PacketType::EntityEdit, other->getID(), ownershipBidProperties);
-                other->setLastBroadcast(usecTimestampNow());
-            }
+            bidOnLinkedByDynamics(entity, SCRIPT_POKE_SIMULATION_PRIORITY);
         }
     });
     if (!entityFound) {
@@ -1281,7 +1290,14 @@ bool EntityScriptingInterface::actionWorker(const QUuid& entityID,
         properties.setActionDataDirty();
         auto now = usecTimestampNow();
         properties.setLastEdited(now);
+
+        properties.setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
+        entity->flagForOwnershipBid(SCRIPT_POKE_SIMULATION_PRIORITY);
+        entity->rememberHasSimulationOwnershipBid();
+
         queueEntityMessage(PacketType::EntityEdit, entityID, properties);
+
+        bidOnLinkedByDynamics(entity, SCRIPT_POKE_SIMULATION_PRIORITY);
     }
 
     return doTransmit;

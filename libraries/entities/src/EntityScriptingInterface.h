@@ -431,6 +431,8 @@ public slots:
     Q_INVOKABLE QString getStaticCertificateJSON(const QUuid& entityID);
     Q_INVOKABLE bool verifyStaticCertificateProperties(const QUuid& entityID);
 
+    void bidOnLinkedByDynamics(EntityItemPointer entity, quint8 priority);
+
 signals:
     void collisionWithEntity(const EntityItemID& idA, const EntityItemID& idB, const Collision& collision);
 
