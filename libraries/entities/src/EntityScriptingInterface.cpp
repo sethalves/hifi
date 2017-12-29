@@ -521,6 +521,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                 other->flagForOwnershipBid(SCRIPT_POKE_SIMULATION_PRIORITY);
                 other->rememberHasSimulationOwnershipBid();
                 ownershipBidProperties.setLastEdited(properties.getLastEdited());
+                // XXX PacketType::EntityPhysics ?
                 queueEntityMessage(PacketType::EntityEdit, other->getID(), ownershipBidProperties);
                 other->setLastBroadcast(usecTimestampNow());
             }

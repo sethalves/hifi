@@ -603,6 +603,10 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
         qCDebug(physics) << "       lastSimulated:" << debugTime(lastSimulated, now);
     #endif //def WANT_DEBUG
 
+    EntityEditPacketSender* entityPacketSender = static_cast<EntityEditPacketSender*>(packetSender);
+    EntityTreeElementPointer element = _entity->getElement();
+    EntityTreePointer tree = element ? element->getTree() : nullptr;
+
     if (_numInactiveUpdates > 0) {
         // we own the simulation but the entity has stopped so we tell the server we're clearing simulatorID
         // but we remember we do still own it...  and rely on the server to tell us we don't
@@ -620,6 +624,18 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
         _entity->rememberHasSimulationOwnershipBid();
         // ...then reset _outgoingPriority in preparation for the next frame
         _outgoingPriority = 0;
+
+        // also bid on ownership of any entities that are linked to _entity via dynamics (actions or constraints)
+        std::set<EntityItemPointer> linkedByDynamics = _entity->getEntitiesRecursivelyLinkedByDynamics();
+        for (const EntityItemPointer& other : linkedByDynamics) {
+            EntityItemProperties ownershipBidProperties;
+            ownershipBidProperties.setSimulationOwner(Physics::getSessionUUID(), VOLUNTEER_SIMULATION_PRIORITY);
+            other->flagForOwnershipBid(SCRIPT_POKE_SIMULATION_PRIORITY);
+            other->rememberHasSimulationOwnershipBid();
+            ownershipBidProperties.setLastEdited(properties.getLastEdited());
+            entityPacketSender->queueEditEntityMessage(PacketType::EntityPhysics, tree, other->getID(), ownershipBidProperties);
+            other->setLastBroadcast(usecTimestampNow());
+        }
     } else if (_outgoingPriority != _entity->getSimulationPriority()) {
         // we own the simulation but our desired priority has changed
         if (_outgoingPriority == 0) {
@@ -633,13 +649,9 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
     }
 
     EntityItemID id(_entity->getID());
-    EntityEditPacketSender* entityPacketSender = static_cast<EntityEditPacketSender*>(packetSender);
     #ifdef WANT_DEBUG
         qCDebug(physics) << "EntityMotionState::sendUpdate()... calling queueEditEntityMessage()...";
     #endif
-
-    EntityTreeElementPointer element = _entity->getElement();
-    EntityTreePointer tree = element ? element->getTree() : nullptr;
 
     properties.setClientOnly(_entity->getClientOnly());
     properties.setOwningAvatarID(_entity->getOwningAvatarID());
