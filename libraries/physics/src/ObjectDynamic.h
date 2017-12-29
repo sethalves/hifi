@@ -49,6 +49,8 @@ public:
 
     virtual QList<btRigidBody*> getRigidBodies();
 
+    virtual SpatiallyNestablePointer getOther() override;
+
 protected:
     quint64 localTimeToServerTime(quint64 timeValue) const;
     quint64 serverTimeToLocalTime(quint64 timeValue) const;
@@ -65,7 +67,6 @@ protected:
 
     EntityItemID _otherID;
     SpatiallyNestableWeakPointer _other;
-    SpatiallyNestablePointer getOther();
 
 private:
     qint64 getEntityServerClockSkew() const;

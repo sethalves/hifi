@@ -2038,6 +2038,59 @@ bool EntityItem::removeAction(EntitySimulationPointer simulation, const QUuid& a
     return success;
 }
 
+
+std::set<EntityItemPointer> EntityItem::getEntitiesLinkedByDynamics() const {
+    std::set<EntityItemPointer> result;
+
+    QHash<QUuid, EntityDynamicPointer>::const_iterator i = _objectActions.begin();
+    while (i != _objectActions.end()) {
+        EntityDynamicPointer action = i.value();
+        if (action && action->isActive()) {
+            SpatiallyNestablePointer other = action->getOther();
+            EntityItemPointer otherEntity = std::dynamic_pointer_cast<EntityItem>(other);
+            if (otherEntity) {
+                result.insert(otherEntity);
+            }
+        }
+        i++;
+    }
+
+    return result;
+}
+
+std::set<EntityItemPointer> EntityItem::getEntitiesRecursivelyLinkedByDynamics() {
+    std::set<EntityItemPointer> result;
+    std::deque<EntityItemPointer> maybeUnexplored;
+
+    // Put this entity into `maybeUnexplored`.  Take the first entity in `maybeUnexplored`, if it's not yet in `result`, place
+    // it in `result` and follow any dynamics (actions or constraints) to other entities.  For each entity found across
+    // an action, put it into `maybeUnexplored` (if it has already been explored, it will be in `result` and skipped in
+    // a future iteration of the loop).
+
+    // We end up with a set of all the entities that can be reached by hopping across dynamics, not including the
+    // original entity.
+
+    maybeUnexplored.push_back(getThisPointer());
+    while (!maybeUnexplored.empty()) {
+        EntityItemPointer nextToExplore = maybeUnexplored.front();
+        maybeUnexplored.pop_front();
+        bool alreadyExplored = result.find(nextToExplore) != result.end();
+        if (alreadyExplored) {
+            continue;
+        }
+        result.insert(nextToExplore);
+        std::set<EntityItemPointer> connectedToNext = nextToExplore->getEntitiesLinkedByDynamics();
+        std::for_each(connectedToNext.begin(),
+                      connectedToNext.end(),
+                      [&](EntityItemPointer other) {
+                          maybeUnexplored.push_back(other);
+                      });
+    }
+
+    result.erase(getThisPointer()); // don't include the initial entity in the set
+    return result;
+}
+
 bool EntityItem::stillHasGrabActions() const {
     QList<EntityDynamicPointer> holdActions = getActionsOfType(DYNAMIC_TYPE_HOLD);
     QList<EntityDynamicPointer>::const_iterator i = holdActions.begin();

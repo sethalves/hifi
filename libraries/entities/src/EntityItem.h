@@ -464,6 +464,9 @@ public:
     static QString _marketplacePublicKey;
     static void retrieveMarketplacePublicKey();
 
+    std::set<EntityItemPointer> getEntitiesLinkedByDynamics() const;
+    std::set<EntityItemPointer> getEntitiesRecursivelyLinkedByDynamics();
+
 protected:
     QHash<ChangeHandlerId, ChangeHandlerCallback> _changeHandlers;
 

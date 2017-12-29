@@ -57,8 +57,6 @@ public:
 
     void updateEntities();
 
-//    friend class EntityTree;
-
     virtual void addDynamic(EntityDynamicPointer dynamic);
     virtual void removeDynamic(const QUuid dynamicID);
     virtual void removeDynamics(QList<QUuid> dynamicIDsToRemove);

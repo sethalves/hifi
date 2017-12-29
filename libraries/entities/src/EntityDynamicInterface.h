@@ -23,6 +23,8 @@ using EntityItemPointer = std::shared_ptr<EntityItem>;
 using EntityItemWeakPointer = std::weak_ptr<EntityItem>;
 class EntitySimulation;
 using EntitySimulationPointer = std::shared_ptr<EntitySimulation>;
+class SpatiallyNestable;
+using SpatiallyNestablePointer = std::shared_ptr<SpatiallyNestable>;
 
 enum EntityDynamicType {
     // keep these synchronized with dynamicTypeFromString and dynamicTypeToString
@@ -48,6 +50,8 @@ public:
     EntityDynamicType getType() const { return _type; }
 
     virtual void remapIDs(QHash<EntityItemID, EntityItemID>& map) = 0;
+
+    virtual SpatiallyNestablePointer getOther() { return nullptr; }
 
     virtual bool isAction() const { return false; }
     virtual bool isConstraint() const { return false; }
