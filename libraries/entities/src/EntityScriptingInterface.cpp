@@ -422,15 +422,15 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
     _entityTree->withReadLock([&] {
         EntityItemPointer entity = _entityTree->findEntityByEntityItemID(entityID);
         if (entity) {
+            auto nodeList = DependencyManager::get<NodeList>();
+            const QUuid myNodeID = nodeList->getSessionUUID();
+
             entityFound = true;
             // make sure the properties has a type, so that the encode can know which properties to include
             properties.setType(entity->getType());
             bool hasTerseUpdateChanges = properties.hasTerseUpdateChanges();
             bool hasPhysicsChanges = properties.hasMiscPhysicsChanges() || hasTerseUpdateChanges;
             if (_bidOnSimulationOwnership && hasPhysicsChanges) {
-                auto nodeList = DependencyManager::get<NodeList>();
-                const QUuid myNodeID = nodeList->getSessionUUID();
-
                 if (entity->getSimulatorID() == myNodeID) {
                     // we think we already own the simulation, so make sure to send ALL TerseUpdate properties
                     if (hasTerseUpdateChanges) {
@@ -475,6 +475,17 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                     }
                 }
             });
+
+            std::set<EntityItemPointer> linkedByDynamics = entity->getEntitiesRecursivelyLinkedByDynamics();
+            for (const EntityItemPointer& other : linkedByDynamics) {
+                EntityItemProperties ownershipBidProperties;
+                ownershipBidProperties.setSimulationOwner(myNodeID, SCRIPT_POKE_SIMULATION_PRIORITY);
+                other->flagForOwnershipBid(SCRIPT_POKE_SIMULATION_PRIORITY);
+                other->rememberHasSimulationOwnershipBid();
+                ownershipBidProperties.setLastEdited(properties.getLastEdited());
+                queueEntityMessage(PacketType::EntityEdit, other->getID(), ownershipBidProperties);
+                other->setLastBroadcast(usecTimestampNow());
+            }
         }
     });
     if (!entityFound) {

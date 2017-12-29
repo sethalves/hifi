@@ -2080,11 +2080,9 @@ std::set<EntityItemPointer> EntityItem::getEntitiesRecursivelyLinkedByDynamics()
         }
         result.insert(nextToExplore);
         std::set<EntityItemPointer> connectedToNext = nextToExplore->getEntitiesLinkedByDynamics();
-        std::for_each(connectedToNext.begin(),
-                      connectedToNext.end(),
-                      [&](EntityItemPointer other) {
-                          maybeUnexplored.push_back(other);
-                      });
+        for (const EntityItemPointer& other : connectedToNext) {
+            maybeUnexplored.push_back(other);
+        }
     }
 
     result.erase(getThisPointer()); // don't include the initial entity in the set
