@@ -1590,7 +1590,7 @@ void MyAvatar::updateMotors() {
             bool success;
             _characterController.addMotor(
                 _actionMotorVelocity,
-                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, false, success),
                 horizontalMotorTimescale,
                 verticalMotorTimescale);
         } else {
@@ -1599,7 +1599,7 @@ void MyAvatar::updateMotors() {
             bool success;
             _characterController.addMotor(
                 _actionMotorVelocity,
-                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+                SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, false, success),
                 INVALID_MOTOR_TIMESCALE);
         }
     }
@@ -1615,7 +1615,7 @@ void MyAvatar::updateMotors() {
         bool success;
         _characterController.addMotor(
             _scriptedMotorVelocity,
-            SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, success),
+            SpatiallyNestable::worldToLocal(motorRotation, physicsEngine->getID(), -1, false, success),
             _scriptedMotorTimescale);
     }
 
@@ -1677,7 +1677,7 @@ void MyAvatar::nextAttitude(glm::vec3 position, glm::quat orientation) {
         qCWarning(interfaceapp) << "Warning -- MyAvatar::nextAttitude failed";
     }
 
-    glm::quat worldOrientation = localToWorld(orientation, _currentZoneID, -1, success);
+    glm::quat worldOrientation = localToWorld(orientation, _currentZoneID, -1, false, success);
     if (!success) {
         qCWarning(interfaceapp) << "Warning -- in MyAvatar::nextAttitude, localToWorld failed";
         return;
@@ -2914,8 +2914,10 @@ void MyAvatar::FollowHelper::prePhysicsUpdate(MyAvatar& myAvatar, const glm::mat
     glm::mat4 currentWorldMatrix = myAvatar.getSensorToWorldMatrix() * currentBodyMatrix;
 
     bool success;
-    glm::mat4 SFdesiredWorldMatrix = SpatiallyNestable::worldToLocal(desiredWorldMatrix, physicsEngine->getID(), -1, success);
-    glm::mat4 SFcurrentWorldMatrix = SpatiallyNestable::worldToLocal(currentWorldMatrix, physicsEngine->getID(), -1, success);
+    glm::mat4 SFdesiredWorldMatrix =
+        SpatiallyNestable::worldToLocal(desiredWorldMatrix, physicsEngine->getID(), -1, false, success);
+    glm::mat4 SFcurrentWorldMatrix =
+        SpatiallyNestable::worldToLocal(currentWorldMatrix, physicsEngine->getID(), -1, false, success);
 
     AnimPose followWorldPose(SFcurrentWorldMatrix);
 
