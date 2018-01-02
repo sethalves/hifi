@@ -26,5 +26,9 @@ if (BUILD_TOOLS)
 
   add_subdirectory(auto-tester)
   set_target_properties(auto-tester PROPERTIES FOLDER "Tools")
+
+  add_subdirectory(vrca-unpacker)
+  set_target_properties(vrca-unpacker PROPERTIES FOLDER "Tools")
+
 endif()
 
