@@ -27,6 +27,12 @@ public:
 
 private:
     bool _verbose;
+
+    QString unpackString0(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackWord(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackDWord(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackQWord(QByteArray vrcaBlob, int& cursor, bool& success);
+    QUuid unpackUUID(QByteArray vrcaBlob, int& cursor, bool& success);
 };
 
 #endif // hifi_VRCAUnpackerApp_h
