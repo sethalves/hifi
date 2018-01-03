@@ -29,9 +29,9 @@ private:
     bool _verbose;
 
     QString unpackString0(QByteArray vrcaBlob, int& cursor, bool& success);
-    uint64_t unpackWord(QByteArray vrcaBlob, int& cursor, bool& success);
-    uint64_t unpackDWord(QByteArray vrcaBlob, int& cursor, bool& success);
-    uint64_t unpackQWord(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackDWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackQWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
     QUuid unpackUUID(QByteArray vrcaBlob, int& cursor, bool& success);
 };
 

@@ -28,6 +28,33 @@
 #include "lz4.h"
 #include "VRCAUnpackerApp.h"
 
+class ArchiveBlockInfo {
+public:
+    ArchiveBlockInfo(uint64_t uncompressedSize, uint64_t compressedSize, uint64_t flags) :
+        uncompressedSize(uncompressedSize),
+        compressedSize(compressedSize),
+        flags(flags) { }
+
+    uint64_t uncompressedSize;
+    uint64_t compressedSize;
+    uint64_t flags;
+};
+
+class NodeInfo {
+public:
+    NodeInfo(uint64_t offset, uint64_t uncompressedSize, uint64_t flags, QString name) :
+        offset(offset),
+        uncompressedSize(uncompressedSize),
+        flags(flags),
+        name(name) { }
+
+    uint64_t offset;
+    uint64_t uncompressedSize;
+    uint64_t flags;
+    QString name;
+};
+
+
 VRCAUnpackerApp::VRCAUnpackerApp(int argc, char* argv[]) :
     QCoreApplication(argc, argv)
 {
@@ -99,7 +126,7 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
         return false;
     }
 
-    int endian = unpackDWord(vrcaBlob, cursor, success);
+    int endian = unpackDWordBigEnd(vrcaBlob, cursor, success);
     if (!success || endian != 6) {
         qWarning() << "can't handle non-big-endian ordering:" << endian;
         return false;
@@ -117,7 +144,7 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
     }
     qDebug() << "fileEngineVersion =" << fileEngineVersion;
 
-    uint64_t totalFileSize = unpackQWord(vrcaBlob, cursor, success);
+    uint64_t totalFileSize = unpackQWordBigEnd(vrcaBlob, cursor, success);
     if (!success) {
         qWarning() << "failed to parse total file size";
     }
@@ -127,21 +154,21 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
         return false;
     }
 
-    uint64_t ciBlockSize = unpackDWord(vrcaBlob, cursor, success); // compressed size
+    uint64_t ciBlockSize = unpackDWordBigEnd(vrcaBlob, cursor, success); // compressed size
     if (!success) {
         qWarning() << "failed to parse compressed size";
         return false;
     }
     qDebug() << "ciBlockSize =" << ciBlockSize;
 
-    uint64_t uiBlockSize = unpackDWord(vrcaBlob, cursor, success); // decompressed size
+    uint64_t uiBlockSize = unpackDWordBigEnd(vrcaBlob, cursor, success); // decompressed size
     if (!success) {
         qWarning() << "failed to parse decompressed size";
         return false;
     }
     qDebug() << "uiBlockSize =" << uiBlockSize;
 
-    uint64_t flags = unpackDWord(vrcaBlob, cursor, success);
+    uint64_t flags = unpackDWordBigEnd(vrcaBlob, cursor, success);
     if (!success) {
         qWarning() << "failed to parse decompressed size";
         return false;
@@ -169,8 +196,8 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
     // QByteArray decomped = decompressL4Z(comped, success);
     // qDebug() << "decomped.size() =" << decomped.size();
 
-    char dst[uiBlockSize];
-    int lz4Result = LZ4_decompress_safe_partial(comped.data(), dst, ciBlockSize, uiBlockSize * 2, uiBlockSize);
+    QByteArray directoryData(uiBlockSize, 0);
+    int lz4Result = LZ4_decompress_safe_partial(comped.data(), directoryData.data(), ciBlockSize, uiBlockSize, uiBlockSize);
     qDebug() << "lz4Result =" << lz4Result;
 
     if ((uint64_t)lz4Result != uiBlockSize) {
@@ -178,7 +205,6 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
         return false;
     }
 
-    QByteArray directoryData = QByteArray(dst, uiBlockSize);
     int directoryCursor = 0;
 
     QUuid id = unpackUUID(directoryData, directoryCursor, success);
@@ -189,25 +215,26 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
     qDebug() << "id =" << id;
 
 
-    int numBlocks = (int)unpackDWord(directoryData, directoryCursor, success);
+    int numBlocks = (int)unpackDWordBigEnd(directoryData, directoryCursor, success);
     if (!success) {
         qWarning() << "failed to parse decompressed size";
         return false;
     }
     qDebug() << "numBlocks =" << numBlocks;
 
+    std::list<ArchiveBlockInfo> blockInfos;
     for (int i = 0; i < numBlocks; i++) {
-        uint64_t blockUncompressedSize = unpackDWord(directoryData, directoryCursor, success);
+        uint64_t blockUncompressedSize = unpackDWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get blockUncompressedSize for" << i;
             return false;
         }
-        uint64_t blockCompressedSize = unpackDWord(directoryData, directoryCursor, success);
+        uint64_t blockCompressedSize = unpackDWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get blockCompressedSize for" << i;
             return false;
         }
-        uint64_t blockFlags = unpackWord(directoryData, directoryCursor, success);
+        uint64_t blockFlags = unpackWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get blockFlags for" << i;
             return false;
@@ -216,28 +243,31 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
         qDebug() << "block -- compressed =" << blockCompressedSize
                  << "uncompressed =" << blockUncompressedSize
                  << "flags =" << blockFlags;
+
+        blockInfos.push_back(ArchiveBlockInfo(blockUncompressedSize, blockCompressedSize, blockFlags));
     }
 
 
-    int numNodes = (int)unpackDWord(directoryData, directoryCursor, success);
+    int numNodes = (int)unpackDWordBigEnd(directoryData, directoryCursor, success);
     if (!success) {
         qWarning() << "failed to parse decompressed size";
         return false;
     }
     qDebug() << "numNodes =" << numNodes;
 
+    std::list<NodeInfo> nodeInfos;
     for (int i = 0; i < numNodes; i++) {
-        uint64_t nodeOffset = unpackQWord(directoryData, directoryCursor, success);
+        uint64_t nodeOffset = unpackQWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get nodeOffset for" << i;
             return false;
         }
-        uint64_t nodeUncompressedSize = unpackQWord(directoryData, directoryCursor, success);
+        uint64_t nodeUncompressedSize = unpackQWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get nodeUncompressedSize for" << i;
             return false;
         }
-        uint64_t nodeFlags = unpackDWord(directoryData, directoryCursor, success);
+        uint64_t nodeFlags = unpackDWordBigEnd(directoryData, directoryCursor, success);
         if (!success) {
             qDebug() << "failed to get nodeFlags for" << i;
             return false;
@@ -251,10 +281,41 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
                  << "uncompressed =" << nodeUncompressedSize
                  << "flags =" << nodeFlags
                  << "name =" << nodeName;
+
+        nodeInfos.push_back(NodeInfo(nodeOffset, nodeUncompressedSize, nodeFlags, nodeName));
     }
 
     qDebug() << "directoryCursor =" << directoryCursor;
     qDebug() << "cursor =" << cursor;
+
+    QByteArray blockStorage;
+    for (ArchiveBlockInfo& blockInfo : blockInfos) {
+        qDebug() << "-------- block, compressedSize =" << blockInfo.compressedSize
+                 << "uncompressedSize =" << blockInfo.uncompressedSize
+                 << "blockInfo.flags =" << blockInfo.flags;
+        int compressionType = blockInfo.flags & 0x3f;
+        if (blockInfo.compressedSize != blockInfo.uncompressedSize) {
+            qDebug() << "block compression type =" << compressionType;
+
+            QByteArray dst(blockInfo.uncompressedSize, 0);
+            QByteArray comped = vrcaBlob.mid(cursor, blockInfo.compressedSize);
+
+
+            if (compressionType == 1) { // LZMA
+                // XXX
+            } else if (compressionType == 2 || compressionType == 3) { // LZ4 || LZ4HC
+                int lz4Result = LZ4_decompress_safe_partial(comped.data(), dst.data(), blockInfo.compressedSize,
+                                                            blockInfo.uncompressedSize, blockInfo.uncompressedSize);
+                qDebug() << "lz4Result = " << lz4Result << " vs " << blockInfo.uncompressedSize;
+                blockStorage.append(dst);
+            } else if (compressedSize == 4) { // LZHAM
+                // XXX
+            }
+        } else {
+            blockStorage.append(vrcaBlob.mid(cursor, blockInfo.uncompressedSize));
+        }
+        cursor += blockInfo.compressedSize;
+    }
 
     return true;
 }
@@ -277,7 +338,7 @@ QString VRCAUnpackerApp::unpackString0(QByteArray vrcaBlob, int& cursor, bool& s
     return result;
 }
 
-uint64_t VRCAUnpackerApp::unpackWord(QByteArray vrcaBlob, int& cursor, bool& success) {
+uint64_t VRCAUnpackerApp::unpackWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success) {
     uint64_t result { 0 };
 
     if (cursor + 2 >= vrcaBlob.size()) {
@@ -287,15 +348,15 @@ uint64_t VRCAUnpackerApp::unpackWord(QByteArray vrcaBlob, int& cursor, bool& suc
 
     unsigned char* v = (unsigned char*)vrcaBlob.data() + cursor;
     result =
-        ((uint64_t)v[2] << 8) +
-        ((uint64_t)v[3] << 0);
+        ((uint64_t)v[0] << 8) +
+        ((uint64_t)v[1] << 0);
 
     success = true;
     cursor += 2;
     return result;
 }
 
-uint64_t VRCAUnpackerApp::unpackDWord(QByteArray vrcaBlob, int& cursor, bool& success) {
+uint64_t VRCAUnpackerApp::unpackDWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success) {
     uint64_t result { 0 };
 
     if (cursor + 4 >= vrcaBlob.size()) {
@@ -315,7 +376,7 @@ uint64_t VRCAUnpackerApp::unpackDWord(QByteArray vrcaBlob, int& cursor, bool& su
     return result;
 }
 
-uint64_t VRCAUnpackerApp::unpackQWord(QByteArray vrcaBlob, int& cursor, bool& success) {
+uint64_t VRCAUnpackerApp::unpackQWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success) {
     uint64_t result { 0 };
 
     if (cursor + 8 >= vrcaBlob.size()) {
