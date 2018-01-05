@@ -28,11 +28,30 @@ public:
 private:
     bool _verbose;
 
+    void extractTypeMetaData(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    void extractTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    void extractOldStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    void extractNewStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    void extractObject(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool longObjectIDs,
+                       uint64_t dataOffset, bool& success);
+    void alignCursor(int& cursor);
+
     QString unpackString0(QByteArray vrcaBlob, int& cursor, bool& success);
+    QString unpackStringN(QByteArray vrcaBlob, int& cursor, int length, bool& success);
+    uint64_t unpackByte(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackWord(QByteArray vrcaBlob, int& cursor, bool littleEndian, bool& success);
     uint64_t unpackWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackWordLittleEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackDWord(QByteArray vrcaBlob, int& cursor, bool littleEndian, bool& success);
+    int32_t unpackInt(QByteArray vrcaBlob, int& cursor, bool littleEndian, bool& success);
     uint64_t unpackDWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackDWordLittleEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackQWord(QByteArray vrcaBlob, int& cursor, bool littleEndian, bool& success);
     uint64_t unpackQWordBigEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    uint64_t unpackQWordLittleEnd(QByteArray vrcaBlob, int& cursor, bool& success);
+    QByteArray unpackBytes(QByteArray vrcaBlob, int& cursor, int size, bool& success);
     QUuid unpackUUID(QByteArray vrcaBlob, int& cursor, bool& success);
+    QString unpackDATString(int offset, QByteArray data, bool& success);
 };
 
 #endif // hifi_VRCAUnpackerApp_h
