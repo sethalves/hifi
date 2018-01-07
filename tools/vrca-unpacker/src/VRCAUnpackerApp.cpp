@@ -897,23 +897,40 @@ QByteArray VRCAUnpackerApp::unpackBytes(QByteArray vrcaBlob, int& cursor, int si
 }
 
 
+QByteArray STRINGS_DAT;
+
+void makeSTRING_DAT() {
+    if (STRINGS_DAT.size() != 0) {
+        return;
+    }
+
+    static const char* strings[] = {
+        "AABB", "AnimationClip", "AnimationCurve", "AnimationState", "Array", "Base", "BitField", "bitset",
+        "bool", "char", "ColorRGBA", "Component", "data", "deque", "double", "dynamic_array",
+        "FastPropertyName", "first", "float", "Font", "GameObject", "Generic Mono", "GradientNEW", "GUID",
+        "GUIStyle", "int", "list", "long long", "map", "Matrix4x4f", "MdFour", "MonoBehaviour",
+        "MonoScript", "m_ByteSize", "m_Curve", "m_EditorClassIdentifier", "m_EditorHideFlags", "m_Enabled",
+        "m_ExtensionPtr", "m_GameObject", "m_Index", "m_IsArray", "m_IsStatic", "m_MetaFlag", "m_Name",
+        "m_ObjectHideFlags", "m_PrefabInternal", "m_PrefabParentObject", "m_Script", "m_StaticEditorFlags",
+        "m_Type", "m_Version", "Object", "pair", "PPtr<Component>", "PPtr<GameObject>", "PPtr<Material>",
+        "PPtr<MonoBehaviour>", "PPtr<MonoScript>", "PPtr<Object>", "PPtr<Prefab>", "PPtr<Sprite>",
+        "PPtr<TextAsset>", "PPtr<Texture>", "PPtr<Texture2D>", "PPtr<Transform>", "Prefab", "Quaternionf",
+        "Rectf", "RectInt", "RectOffset", "second", "set", "short", "size", "SInt16", "SInt32", "SInt64",
+        "SInt8", "staticvector", "string", "TextAsset", "TextMesh", "Texture", "Texture2D", "Transform",
+        "TypelessData", "UInt16", "UInt32", "UInt64", "UInt8", "unsigned int", "unsigned long long",
+        "unsigned short", "vector", "Vector2f", "Vector3f", "Vector4f", "m_ScriptingClassIdentifier",
+        "Gradient"
+    };
+
+    int count = sizeof(strings) / sizeof(char*);
+    for (int i = 0; i < count; i++) {
+        STRINGS_DAT.append(QString(strings[i]));
+        STRINGS_DAT.append((char)0);
+    }
+}
+
 QString VRCAUnpackerApp::unpackDATString(int offset, QByteArray data, bool& success) {
-    static const QByteArray STRINGS_DAT =
-        QByteArray("AABB\0" "AnimationClip\0" "AnimationCurve\0" "AnimationState\0" "Array\0" "Base\0" "BitField\0" "bitset\0"
-                   "bool\0" "char\0" "ColorRGBA\0" "Component\0" "data\0" "deque\0" "double\0" "dynamic_array\0"
-                   "FastPropertyName\0" "first\0" "float\0" "Font\0" "GameObject\0" "Generic Mono\0" "GradientNEW\0" "GUID\0"
-                   "GUIStyle\0" "int\0" "list\0" "long long\0" "map\0" "Matrix4x4f\0" "MdFour\0" "MonoBehaviour\0"
-                   "MonoScript\0" "m_ByteSize\0" "m_Curve\0" "m_EditorClassIdentifier\0" "m_EditorHideFlags\0" "m_Enabled\0"
-                   "m_ExtensionPtr\0" "m_GameObject\0" "m_Index\0" "m_IsArray\0" "m_IsStatic\0" "m_MetaFlag\0" "m_Name\0"
-                   "m_ObjectHideFlags\0" "m_PrefabInternal\0" "m_PrefabParentObject\0" "m_Script\0" "m_StaticEditorFlags\0"
-                   "m_Type\0" "m_Version\0" "Object\0" "pair\0" "PPtr<Component>\0" "PPtr<GameObject>\0" "PPtr<Material>\0"
-                   "PPtr<MonoBehaviour>\0" "PPtr<MonoScript>\0" "PPtr<Object>\0" "PPtr<Prefab>\0" "PPtr<Sprite>\0"
-                   "PPtr<TextAsset>\0" "PPtr<Texture>\0" "PPtr<Texture2D>\0" "PPtr<Transform>\0" "Prefab\0" "Quaternionf\0"
-                   "Rectf\0" "RectInt\0" "RectOffset\0" "second\0" "set\0" "short\0" "size\0" "SInt16\0" "SInt32\0" "SInt64\0"
-                   "SInt8\0" "staticvector\0" "string\0" "TextAsset\0" "TextMesh\0" "Texture\0" "Texture2D\0" "Transform\0"
-                   "TypelessData\0" "UInt16\0" "UInt32\0" "UInt64\0" "UInt8\0" "unsigned int\0" "unsigned long long\0"
-                   "unsigned short\0" "vector\0" "Vector2f\0" "Vector3f\0" "Vector4f\0" "m_ScriptingClassIdentifier\0"
-                   "Gradient\0", 1151);
+    makeSTRING_DAT();
 
     if (offset < 0) {
         offset &= 0x7fffffff;
