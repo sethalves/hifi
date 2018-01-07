@@ -13,7 +13,66 @@
 #ifndef hifi_VRCAUnpackerApp_h
 #define hifi_VRCAUnpackerApp_h
 
+#include <memory>
 #include <QApplication>
+
+
+class ArchiveBlockInfo {
+public:
+    ArchiveBlockInfo(uint64_t uncompressedSize, uint64_t compressedSize, uint64_t flags) :
+        uncompressedSize(uncompressedSize),
+        compressedSize(compressedSize),
+        flags(flags) { }
+
+    uint64_t uncompressedSize;
+    uint64_t compressedSize;
+    uint64_t flags;
+};
+
+class NodeInfo {
+public:
+    NodeInfo(uint64_t offset, uint64_t uncompressedSize, uint64_t flags, QString name) :
+        offset(offset),
+        uncompressedSize(uncompressedSize),
+        flags(flags),
+        name(name) { }
+
+    uint64_t offset;
+    uint64_t uncompressedSize;
+    uint64_t flags;
+    QString name;
+};
+
+class TypeTree;
+using TypeTreePointer = std::shared_ptr<TypeTree>;
+class TypeTree {
+public:
+    TypeTree() { }
+
+    QString type;
+    QString name;
+    uint64_t version;
+    bool isArray;
+    uint64_t size;
+    uint64_t index;
+    uint64_t flags;
+
+    std::vector<TypeTreePointer> children;
+};
+
+
+class TypeMetadata;
+using TypeMetadataPointer = std::shared_ptr<TypeMetadata>;
+class TypeMetadata {
+public:
+    TypeMetadata() { }
+    std::vector<int> classIDs;
+    std::map<int, TypeTreePointer> typeTrees;
+    std::map<int, QByteArray> hashes;
+    QByteArray asset;
+    QString generatorVersion;
+    QString targetPlatform;
+};
 
 
 class VRCAUnpackerApp : public QCoreApplication {
@@ -28,12 +87,12 @@ public:
 private:
     bool _verbose;
 
-    void extractTypeMetaData(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
-    void extractTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
-    void extractOldStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
-    void extractNewStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    TypeMetadataPointer extractTypeMetaData(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    TypeTreePointer extractTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    TypeTreePointer extractOldStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
+    TypeTreePointer extractNewStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success);
     void extractObject(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool longObjectIDs,
-                       uint64_t dataOffset, bool& success);
+                       uint64_t dataOffset, TypeMetadataPointer typeMeta, bool& success);
     void alignCursor(int& cursor);
 
     QString unpackString0(QByteArray vrcaBlob, int& cursor, bool& success);

@@ -29,45 +29,6 @@
 #include "lzma.h"
 #include "VRCAUnpackerApp.h"
 
-class ArchiveBlockInfo {
-public:
-    ArchiveBlockInfo(uint64_t uncompressedSize, uint64_t compressedSize, uint64_t flags) :
-        uncompressedSize(uncompressedSize),
-        compressedSize(compressedSize),
-        flags(flags) { }
-
-    uint64_t uncompressedSize;
-    uint64_t compressedSize;
-    uint64_t flags;
-};
-
-class NodeInfo {
-public:
-    NodeInfo(uint64_t offset, uint64_t uncompressedSize, uint64_t flags, QString name) :
-        offset(offset),
-        uncompressedSize(uncompressedSize),
-        flags(flags),
-        name(name) { }
-
-    uint64_t offset;
-    uint64_t uncompressedSize;
-    uint64_t flags;
-    QString name;
-};
-
-class TypeTree {
-public:
-    TypeTree() { }
-
-    QString type;
-    QString name;
-    uint64_t version;
-    bool isArray;
-    uint64_t size;
-    uint64_t index;
-    uint64_t flags;
-};
-
 QByteArray lzmaUncompress(QByteArray data, uint64_t uncompressedSize, uint64_t props, uint64_t dictSize, bool& success) {
     QByteArray result(uncompressedSize, 0);
     uint32_t preset_number = LZMA_PRESET_DEFAULT;
@@ -498,7 +459,7 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
 
         /// ???  asset.py 111
 
-        extractTypeMetaData(asset, assetCursor, format, littleEndian, success);
+        TypeMetadataPointer typeMetadata = extractTypeMetaData(asset, assetCursor, format, littleEndian, success);
 
         // XXX asset.py 118
 
@@ -507,18 +468,52 @@ bool VRCAUnpackerApp::unpackVRCAByteArray(QByteArray vrcaBlob) {
             longObjectIDs = unpackDWord(asset, assetCursor, littleEndian, success) > 0;
         }
 
-        uint64_t numObjects = unpackDWord(asset, assetCursor, littleEndian, success) > 0;
+        qDebug() << "after tree" << assetCursor;
+
+        uint64_t numObjects = unpackDWord(asset, assetCursor, littleEndian, success);
+        qDebug() << "numObjects = " << numObjects;
         for (int i = 0; i < (int)numObjects; i++) {
             if (format >= 14) {
                 alignCursor(assetCursor); // asset.py 124
             }
 
-            extractObject(asset, assetCursor, format, littleEndian, longObjectIDs, dataOffset, success);
+            extractObject(asset, assetCursor, format, littleEndian, longObjectIDs, dataOffset, typeMetadata, success);
         }
+
+        // asset.py 132
+        if (format >= 11) {
+            uint64_t numAdds = unpackDWord(asset, assetCursor, littleEndian, success);
+            for (int i = 0; i < numAdds; i++) {
+                if (format >= 14) {
+                    alignCursor(assetCursor);
+                }
+                quint64 ID;
+                if (longObjectIDs || format >= 14) {
+                    ID = unpackQWord(asset, assetCursor, littleEndian, success);
+                } else {
+                    ID = unpackDWord(asset, assetCursor, littleEndian, success);
+                }
+
+                /*int add = */ unpackInt(asset, assetCursor, littleEndian, success);
+                // self.adds.append((id, buf.read_int()))
+            }
+        }
+
+        if (format >= 6) {
+            uint64_t numRefs = unpackDWord(asset, assetCursor, littleEndian, success);
+            for (int i = 0; i < numRefs; i++) {
+                QString assetPath = unpackString0(asset, assetCursor, success);
+                QUuid guid = unpackUUID(asset, assetCursor, success);
+                int type = unpackInt(asset, assetCursor, littleEndian, success);
+                QString filePath = unpackString0(asset, assetCursor, success);
+
+                qDebug() << "REF " << assetPath << guid << type << filePath;
+                // self.asset_refs.append(ref)
+            }
+        }
+
+        QString unkString = unpackString0(asset, assetCursor, success);
     }
-
-
-
 
     return true;
 }
@@ -532,35 +527,71 @@ void VRCAUnpackerApp::alignCursor(int& cursor) {
 }
 
 void VRCAUnpackerApp::extractObject(QByteArray asset, int& assetCursor, int format,
-                                    bool littleEndian, bool longObjectIDs, uint64_t dataOffset, bool& success) {
+                                    bool littleEndian, bool longObjectIDs, uint64_t dataOffset,
+                                    TypeMetadataPointer typeMetadata, bool& success) {
     // object.py 55
     uint64_t ID;
     if (longObjectIDs || format >= 14) {
-        ID = unpackQWordBigEnd(asset, assetCursor, success);
+        ID = unpackQWord(asset, assetCursor, littleEndian, success);
     } else {
-        ID = unpackDWordBigEnd(asset, assetCursor, success);
+        ID = unpackDWord(asset, assetCursor, littleEndian, success);
     }
 
+    dataOffset += unpackDWord(asset, assetCursor, littleEndian, success);
+    uint64_t size = unpackDWord(asset, assetCursor, littleEndian, success);
 
+    int32_t typeID;
+    int32_t classID;
+    if (format < 17) {
+        typeID = unpackInt(asset, assetCursor, littleEndian, success);
+        classID = unpackInt(asset, assetCursor, littleEndian, success);
+    } else {
+        typeID = unpackInt(asset, assetCursor, littleEndian, success);
+        classID = typeMetadata->classIDs[typeID];
+        typeID = classID;
+    }
+
+    qDebug() << "QQQQ typeID =" << typeID << "classID =" << classID;
+
+    // object.py 67
+
+    bool isDestroyed { false };
+    if (format <= 10) {
+        isDestroyed = unpackDWord(asset, assetCursor, littleEndian, success) > 0;
+    }
+
+    uint64_t unk0;
+    if (format >= 11 && format <= 16) {
+        unk0 = unpackDWord(asset, assetCursor, littleEndian, success);
+    }
+    uint64_t unk1;
+    if (format >= 15 && format <= 16) {
+        unpackByte(asset, assetCursor, success);
+    }
 }
 
-void VRCAUnpackerApp::extractTypeMetaData(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success) {
+TypeMetadataPointer VRCAUnpackerApp::extractTypeMetaData(QByteArray asset, int& assetCursor,
+                                                     int format, bool littleEndian, bool& success) {
+    TypeMetadataPointer typeMetadata = std::make_shared<TypeMetadata>();
 
     // type.py 128
 
     QString generatorVersion = unpackString0(asset, assetCursor, success);
     qDebug() << "generatorVersion =" << generatorVersion;
+    typeMetadata->generatorVersion = generatorVersion;
 
     uint64_t targetPlatform = unpackDWord(asset, assetCursor, littleEndian, success);
     qDebug() << "targetPlatform =" << targetPlatform; // RuntimePlatform: WindowsWebPlayer = 5
+    typeMetadata->targetPlatform = targetPlatform;
 
+    TypeTreePointer typeTree;
     if (format >= 13) {
         bool hasTypeTrees = unpackByte(asset, assetCursor, success) > 0;
         uint64_t numTypes = unpackDWord(asset, assetCursor, littleEndian, success);
         qDebug() << "hasTypeTrees =" << hasTypeTrees << "numTypes =" << numTypes;
 
         for (int i = 0; i < (int)numTypes; i++) {
-            int classID = (int)unpackDWord(asset, assetCursor, littleEndian, success);
+            int classID = unpackInt(asset, assetCursor, littleEndian, success);
             qDebug() << "classID =" << classID;
             if (format >= 17) {
                 unpackByte(asset, assetCursor, success); // unknown byte
@@ -579,27 +610,34 @@ void VRCAUnpackerApp::extractTypeMetaData(QByteArray asset, int& assetCursor, in
                 }
             }
 
+            typeMetadata->classIDs.push_back(classID);
+
             QByteArray hash;
             if (classID < 0) {
                 hash = unpackBytes(asset, assetCursor, 0x20, success);
             } else {
                 hash = unpackBytes(asset, assetCursor, 0x10, success);
             }
+            typeMetadata->hashes[classID] = hash;
 
             if (hasTypeTrees) {
-                extractTree(asset, assetCursor, format, littleEndian, success);
+                typeTree = extractTree(asset, assetCursor, format, littleEndian, success);
+                typeMetadata->typeTrees[classID] = typeTree;
             }
         }
     } else {
         uint64_t numFields = unpackDWord(asset, assetCursor, littleEndian, success);
         for (int i = 0; i < (int)numFields; i++) {
-            /* int classID = */ unpackDWord(asset, assetCursor, littleEndian, success);
-            extractTree(asset, assetCursor, format, littleEndian, success);
+            int classID = unpackInt(asset, assetCursor, littleEndian, success);
+            typeTree = extractTree(asset, assetCursor, format, littleEndian, success);
+            typeMetadata->typeTrees[classID] = typeTree;
         }
     }
+
+    return typeMetadata;
 }
 
-void VRCAUnpackerApp::extractTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success) {
+TypeTreePointer VRCAUnpackerApp::extractTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success) {
     // type.py 31
     if (format == 10 || format >= 12) {
         return extractNewStyleTree(asset, assetCursor, format, littleEndian, success);
@@ -608,7 +646,8 @@ void VRCAUnpackerApp::extractTree(QByteArray asset, int& assetCursor, int format
     }
 }
 
-void VRCAUnpackerApp::extractOldStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success) {
+TypeTreePointer VRCAUnpackerApp::extractOldStyleTree(QByteArray asset, int& assetCursor,
+                                                     int format, bool littleEndian, bool& success) {
     // QString type = getDATString(asset, assetCursor, success);
     // if (!success) {
     //     return;
@@ -629,9 +668,11 @@ void VRCAUnpackerApp::extractOldStyleTree(QByteArray asset, int& assetCursor, in
     // }
 
     qDebug() << "old-tree";
+    return nullptr;
 }
 
-void VRCAUnpackerApp::extractNewStyleTree(QByteArray asset, int& assetCursor, int format, bool littleEndian, bool& success) {
+TypeTreePointer VRCAUnpackerApp::extractNewStyleTree(QByteArray asset, int& assetCursor,
+                                                     int format, bool littleEndian, bool& success) {
     uint64_t numNodes = unpackDWord(asset, assetCursor, littleEndian, success);
     qDebug() << "numNodes =" << numNodes;
     uint64_t bufferBytes = unpackDWord(asset, assetCursor, littleEndian, success);
@@ -644,9 +685,27 @@ void VRCAUnpackerApp::extractNewStyleTree(QByteArray asset, int& assetCursor, in
 
     int nodeDataCursor { 0 };
 
+    std::list<TypeTreePointer> parents;
+
+    TypeTreePointer top = std::make_shared<TypeTree>();
+    parents.push_back(top);
+    TypeTreePointer curr = top;
+
     for (int i = 0; i < (int)numNodes; i++) {
         uint64_t version = unpackWord(nodeData, nodeDataCursor, littleEndian, success);
         uint64_t depth = unpackByte(nodeData, nodeDataCursor, success);
+
+        if (depth == 0) {
+            curr = top;
+        } else {
+            while (parents.size() > depth) {
+                parents.pop_back();
+            }
+            curr = std::make_shared<TypeTree>();
+            parents.back()->children.push_back(curr);
+        }
+
+
         bool isArray = unpackByte(nodeData, nodeDataCursor, success) > 0;
 
         int typeOffset = unpackInt(nodeData, nodeDataCursor, littleEndian, success);
@@ -662,15 +721,16 @@ void VRCAUnpackerApp::extractNewStyleTree(QByteArray asset, int& assetCursor, in
         // qDebug() << "version =" << version << "depth =" << depth << "isArray =" << isArray
         //          << "type =" << type << "name =" << name << "size =" << size << "index =" << index << "flags =" << flags;
 
-        TypeTree treeNode = TypeTree();
-        treeNode.type = type;
-        treeNode.name = name;
-        treeNode.version = version;
-        treeNode.isArray = isArray;
-        treeNode.size = size;
-        treeNode.index = index;
-        treeNode.flags = flags;
+        curr->type = type;
+        curr->name = name;
+        curr->version = version;
+        curr->isArray = isArray;
+        curr->size = size;
+        curr->index = index;
+        curr->flags = flags;
     }
+
+    return top;
 }
 
 
