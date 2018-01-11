@@ -1680,3 +1680,7 @@ float Avatar::getUnscaledEyeHeightFromSkeleton() const {
         return DEFAULT_AVATAR_EYE_HEIGHT;
     }
 }
+
+glm::vec3 Avatar::scaleForChildren(int parentJointIndex) const {
+    return glm::vec3(getModelScale());
+}

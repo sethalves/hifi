@@ -268,7 +268,7 @@ public:
 
     virtual float getModelScale() const { return _modelScale; }
     virtual void setModelScale(float scale) { _modelScale = scale; }
-    virtual glm::vec3 scaleForChildren() const override { return glm::vec3(getModelScale()); }
+    virtual glm::vec3 scaleForChildren(int parentJointIndex) const override;
 
     virtual void setAvatarEntityDataChanged(bool value) override;
 

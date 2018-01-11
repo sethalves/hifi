@@ -3259,3 +3259,12 @@ SpatialParentTree* MyAvatar::getParentTree() const {
     EntityTreePointer entityTree = entityTreeRenderer ? entityTreeRenderer->getTree() : nullptr;
     return entityTree.get();
 }
+
+glm::vec3 MyAvatar::scaleForChildren(int parentJointIndex) const {
+    if (_skeletonModel->getEnableCauterization() &&
+        _headBoneSet.find(parentJointIndex) != _headBoneSet.end()) {
+        return glm::vec3(0.0001);
+    } else {
+        return glm::vec3(getModelScale());
+    }
+}
