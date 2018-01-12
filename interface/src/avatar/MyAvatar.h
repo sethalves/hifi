@@ -557,8 +557,6 @@ public:
 
     const QUuid& getSelfID() const { return AVATAR_SELF_ID; }
 
-    virtual glm::vec3 scaleForChildren(int parentJointIndex) const override;
-
 public slots:
     void increaseSize();
     void decreaseSize();

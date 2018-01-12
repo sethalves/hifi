@@ -505,7 +505,7 @@ extern void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avata
 void MyAvatar::updateChildCauterization(SpatiallyNestablePointer object) {
     if (object->getNestableType() == NestableType::Entity) {
         EntityItemPointer entity = std::static_pointer_cast<EntityItem>(object);
-        entity->setCauterized(_prevShouldDrawHead);
+        entity->setCauterized(!_prevShouldDrawHead);
     }
 }
 
@@ -3276,14 +3276,4 @@ SpatialParentTree* MyAvatar::getParentTree() const {
     auto entityTreeRenderer = qApp->getEntities();
     EntityTreePointer entityTree = entityTreeRenderer ? entityTreeRenderer->getTree() : nullptr;
     return entityTree.get();
-}
-
-glm::vec3 MyAvatar::scaleForChildren(int parentJointIndex) const {
-    return glm::vec3(getModelScale());
-    // if (_skeletonModel->getEnableCauterization() &&
-    //     _headBoneSet.find(parentJointIndex) != _headBoneSet.end()) {
-    //     return glm::vec3(0.0001);
-    // } else {
-    //     return glm::vec3(getModelScale());
-    // }
 }

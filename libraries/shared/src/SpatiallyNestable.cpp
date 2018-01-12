@@ -87,7 +87,7 @@ Transform SpatiallyNestable::getParentTransform(bool& success, int depth) const 
     if (parent) {
         result = parent->getTransform(_parentJointIndex, success, depth + 1);
         if (getScalesWithParent()) {
-            result.setScale(parent->scaleForChildren(_parentJointIndex));
+            result.setScale(parent->scaleForChildren());
         }
     }
     return result;
@@ -194,7 +194,7 @@ glm::vec3 SpatiallyNestable::worldToLocal(const glm::vec3& position,
             return glm::vec3(0.0f);
         }
         if (scalesWithParent) {
-            parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -231,7 +231,7 @@ glm::quat SpatiallyNestable::worldToLocal(const glm::quat& orientation,
             return glm::quat();
         }
         if (scalesWithParent) {
-            parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -251,7 +251,7 @@ glm::vec3 SpatiallyNestable::worldToLocalVelocity(const glm::vec3& velocity, con
         return velocity;
     }
     if (scalesWithParent) {
-        parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+        parentTransform.setScale(parent->scaleForChildren());
     }
     glm::vec3 parentVelocity = parent->getWorldVelocity(success);
     if (!success) {
@@ -272,7 +272,7 @@ glm::vec3 SpatiallyNestable::worldToLocalAngularVelocity(const glm::vec3& angula
         return angularVelocity;
     }
     if (scalesWithParent) {
-        parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+        parentTransform.setScale(parent->scaleForChildren());
     }
 
     return glm::inverse(parentTransform.getRotation()) * angularVelocity;
@@ -307,7 +307,7 @@ glm::vec3 SpatiallyNestable::worldToLocalDimensions(const glm::vec3& dimensions,
 
     success = true;
     if (parent) {
-        return dimensions / parent->scaleForChildren(parentJointIndex);
+        return dimensions / parent->scaleForChildren();
     }
     return dimensions;
 }
@@ -341,7 +341,7 @@ glm::vec3 SpatiallyNestable::localToWorld(const glm::vec3& position,
             return glm::vec3(0.0f);
         }
         if (scalesWithParent) {
-            parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -381,7 +381,7 @@ glm::quat SpatiallyNestable::localToWorld(const glm::quat& orientation,
             return glm::quat();
         }
         if (scalesWithParent) {
-            parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+            parentTransform.setScale(parent->scaleForChildren());
         }
     }
     success = true;
@@ -403,7 +403,7 @@ glm::vec3 SpatiallyNestable::localToWorldVelocity(const glm::vec3& velocity, con
         return velocity;
     }
     if (scalesWithParent) {
-        parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+        parentTransform.setScale(parent->scaleForChildren());
     }
     glm::vec3 parentVelocity = parent->getWorldVelocity(success);
     if (!success) {
@@ -424,7 +424,7 @@ glm::vec3 SpatiallyNestable::localToWorldAngularVelocity(const glm::vec3& angula
         return angularVelocity;
     }
     if (scalesWithParent) {
-        parentTransform.setScale(parent->scaleForChildren(parentJointIndex));
+        parentTransform.setScale(parent->scaleForChildren());
     }
     return parentTransform.getRotation() * angularVelocity;
 }
@@ -459,7 +459,7 @@ glm::vec3 SpatiallyNestable::localToWorldDimensions(const glm::vec3& dimensions,
 
     success = true;
     if (parent) {
-        return dimensions * parent->scaleForChildren(parentJointIndex);
+        return dimensions * parent->scaleForChildren();
     }
     return dimensions;
 }

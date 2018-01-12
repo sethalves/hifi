@@ -196,7 +196,7 @@ public:
     glm::vec3 translation;
     glm::mat4 preTransform;
     glm::quat preRotation;
-    glm::quat rotationQQ;
+    glm::quat rotation;
     glm::quat postRotation;
     glm::mat4 postTransform;
 
@@ -218,7 +218,7 @@ glm::mat4 getGlobalTransform(const QMultiMap<QString, QString>& _connectionParen
 
         const FBXModel& model = models.value(nodeID);
         globalTransform = glm::translate(model.translation) * model.preTransform * glm::mat4_cast(model.preRotation *
-            model.rotationQQ * model.postRotation) * model.postTransform * globalTransform;
+            model.rotation * model.postRotation) * model.postTransform * globalTransform;
         if (mixamoHack) {
             // there's something weird about the models from Mixamo Fuse; they don't skin right with the full transform
             return globalTransform;
@@ -893,7 +893,7 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 
                     model.preTransform = glm::translate(rotationOffset) * glm::translate(rotationPivot);
                     model.preRotation = glm::quat(glm::radians(preRotation));
-                    model.rotationQQ = glm::quat(glm::radians(rotation));
+                    model.rotation = glm::quat(glm::radians(rotation));
                     model.postRotation = glm::inverse(glm::quat(glm::radians(postRotation)));
                     model.postTransform = glm::translate(-rotationPivot) * glm::translate(scaleOffset) *
                         glm::translate(scalePivot) * glm::scale(scale) * glm::translate(-scalePivot);
@@ -1457,7 +1457,7 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         joint.translation = model.translation; // these are usually in centimeters
         joint.preTransform = model.preTransform;
         joint.preRotation = model.preRotation;
-        joint.rotation = model.rotationQQ;
+        joint.rotation = model.rotation;
         joint.postRotation = model.postRotation;
         joint.postTransform = model.postTransform;
         joint.rotationMin = model.rotationMin;
