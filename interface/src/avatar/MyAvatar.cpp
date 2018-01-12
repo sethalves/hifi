@@ -514,9 +514,10 @@ void MyAvatar::simulate(float deltaTime) {
 
     animateScaleChanges(deltaTime);
 
+    const std::unordered_set<int>& headBoneSet = _skeletonModel->getCauterizeBoneSet();
     forEachChild([&](SpatiallyNestablePointer object) {
-        bool childOfHead = _headBoneSet.find(object->getParentJointIndex()) != _headBoneSet.end();
-        if (childOfHead) {
+        bool isChildOfHead = headBoneSet.find(object->getParentJointIndex()) != headBoneSet.end();
+        if (isChildOfHead) {
             updateChildCauterization(object);
             object->forEachDescendant([&](SpatiallyNestablePointer descendant) {
                 updateChildCauterization(descendant);
