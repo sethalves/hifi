@@ -115,7 +115,7 @@ void CauterizedModel::updateClusterMatrices() {
     }
 
     // as an optimization, don't build cautrizedClusterMatrices if the boneSet is empty.
-    if (!_cauterizeBoneSet.empty()) {
+    if (_cauterizeAll || !_cauterizeBoneSet.empty()) {
         static const glm::mat4 zeroScale(
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
             glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
@@ -129,7 +129,7 @@ void CauterizedModel::updateClusterMatrices() {
             for (int j = 0; j < mesh.clusters.size(); j++) {
                 const FBXCluster& cluster = mesh.clusters.at(j);
                 auto jointMatrix = _rig.getJointTransform(cluster.jointIndex);
-                if (_cauterizeBoneSet.find(cluster.jointIndex) != _cauterizeBoneSet.end()) {
+                if (_cauterizeAll || _cauterizeBoneSet.find(cluster.jointIndex) != _cauterizeBoneSet.end()) {
                     jointMatrix = cauterizeMatrix;
                 }
                 glm_mat4u_mul(jointMatrix, cluster.inverseBindMatrix, state.clusterMatrices[j]);

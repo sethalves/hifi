@@ -116,10 +116,14 @@ QVariantMap parseTexturesToMap(QString textures, const QVariantMap& defaultTextu
 
 void RenderableModelEntityItem::doInitialModelSimulation() {
     DETAILED_PROFILE_RANGE(simulation_physics, __FUNCTION__);
-    ModelPointer model = getModel();
+    CauterizedModelPointer model = getModel();
     if (!model) {
         return;
     }
+
+    model->setCauterizeAll();
+    model->flagAsCauterized();
+
     // The machinery for updateModelBounds will give existing models the opportunity to fix their
     // translation/rotation/scale/registration.  The first two are straightforward, but the latter two have guards to
     // make sure they don't happen after they've already been set.  Here we reset those guards. This doesn't cause the
@@ -1281,13 +1285,23 @@ void ModelEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& sce
 
     entity->updateModelBounds();
 
-    bool visible = _visible && !_cauterized;
-    if (model->isVisible() != visible) {
+    // bool visible = _visible && !_cauterized;
+    // if (model->isVisible() != visible) {
+    //     // FIXME: this seems like it could be optimized if we tracked our last known visible state in
+    //     //        the renderable item. As it stands now the model checks it's visible/invisible state
+    //     //        so most of the time we don't do anything in this function.
+    //     model->setVisibleInScene(visible, scene);
+    // }
+
+    if (model->isVisible() != _visible) {
         // FIXME: this seems like it could be optimized if we tracked our last known visible state in
         //        the renderable item. As it stands now the model checks it's visible/invisible state
         //        so most of the time we don't do anything in this function.
-        model->setVisibleInScene(visible, scene);
+        model->setVisibleInScene(_visible, scene);
     }
+
+    model->setEnableCauterization(_cauterized);
+
     // TODO? early exit here when not visible?
 
     if (_needsCollisionGeometryUpdate) {

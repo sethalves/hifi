@@ -31,6 +31,7 @@ public:
 
     const std::unordered_set<int>& getCauterizeBoneSet() const { return _cauterizeBoneSet; }
     void setCauterizeBoneSet(const std::unordered_set<int>& boneSet) { _cauterizeBoneSet = boneSet; }
+    void setCauterizeAll() { _cauterizeAll = true; }
 
     void deleteGeometry() override;
     bool updateGeometry() override;
@@ -48,6 +49,7 @@ protected:
     QVector<Model::MeshState> _cauterizeMeshStates;
     bool _isCauterized { false };
     bool _enableCauterization { false };
+    bool _cauterizeAll { false };
 };
 
 #endif // hifi_CauterizedModel_h
