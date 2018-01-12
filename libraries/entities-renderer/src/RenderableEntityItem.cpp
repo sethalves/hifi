@@ -362,7 +362,8 @@ void EntityRenderer::doRenderUpdateSynchronous(const ScenePointer& scene, Transa
         }
 
         _moving = entity->isMovingRelativeToParent();
-        _visible = entity->getVisible();
+        _visible = entity->getVisible() && !entity->getCauterized();
+        _needsRenderUpdate = false;
     });
 }
 
