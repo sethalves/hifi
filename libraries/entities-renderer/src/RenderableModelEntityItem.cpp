@@ -37,7 +37,7 @@
 
 static CollisionRenderMeshCache collisionMeshCache;
 
-void ModelEntityWrapper::setModel(const ModelPointer& model) {
+void ModelEntityWrapper::setModel(const CauterizedModelPointer& model) {
     withWriteLock([&] {
         if (_model != model) {
             _model = model;
@@ -48,8 +48,8 @@ void ModelEntityWrapper::setModel(const ModelPointer& model) {
     });
 }
 
-ModelPointer ModelEntityWrapper::getModel() const {
-    return resultWithReadLock<ModelPointer>([&] {
+CauterizedModelPointer ModelEntityWrapper::getModel() const {
+    return resultWithReadLock<CauterizedModelPointer>([&] {
         return _model;
     });
 }
@@ -1207,7 +1207,7 @@ void ModelEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& sce
     });
 
     // Check for removal
-    ModelPointer model;
+    CauterizedModelPointer model;
     withReadLock([&] { model = _model; });
     if (!_hasModel) {
         if ((bool)model) {
@@ -1223,7 +1223,7 @@ void ModelEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& sce
 
     // Check for addition
     if (_hasModel && !(bool)_model) {
-        model = std::make_shared<Model>(nullptr, entity.get());
+        model = std::make_shared<CauterizedModel>(nullptr, entity.get());
         connect(model.get(), &Model::setURLFinished, this, [&](bool didVisualGeometryRequestSucceed) {
             setKey(didVisualGeometryRequestSucceed);
             emit requestRenderUpdate();

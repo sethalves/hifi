@@ -12,11 +12,15 @@
 
 #include "Model.h"
 
+class CauterizedModel;
+using CauterizedModelPointer = std::shared_ptr<CauterizedModel>;
+
+
 class CauterizedModel : public Model {
     Q_OBJECT
 
 public:
-    CauterizedModel(QObject* parent);
+    CauterizedModel(QObject* parent, SpatiallyNestable* spatiallyNestableOverride = nullptr);
     virtual ~CauterizedModel();
 
     void flagAsCauterized() { _isCauterized = true; }

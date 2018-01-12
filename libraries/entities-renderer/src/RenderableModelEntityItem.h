@@ -19,14 +19,14 @@
 
 #include <ModelEntityItem.h>
 #include <AnimationCache.h>
-#include <Model.h>
+#include <CauterizedModel.h>
 #include <model-networking/ModelCache.h>
 
 #include "RenderableEntityItem.h"
 
 
 
-class Model;
+class CauterizedModel;
 class EntityTreeRenderer;
 
 namespace render { namespace entities {
@@ -40,13 +40,13 @@ class ModelEntityWrapper : public ModelEntityItem {
 
 protected:
     ModelEntityWrapper(const EntityItemID& entityItemID) : Parent(entityItemID) {}
-    void setModel(const ModelPointer& model);
-    ModelPointer getModel() const;
+    void setModel(const CauterizedModelPointer& model);
+    CauterizedModelPointer getModel() const;
     bool isModelLoaded() const;
 
     bool _needsInitialSimulation{ true };
 private:
-    ModelPointer _model;
+    CauterizedModelPointer _model;
 };
 
 class RenderableModelEntityItem : public ModelEntityWrapper {
@@ -159,7 +159,7 @@ private:
     virtual bool isTransparent() const override { return false; }
 
     bool _hasModel { false };
-    ModelPointer _model;
+    CauterizedModelPointer _model;
     GeometryResource::Pointer _compoundShapeResource;
     QString _lastTextures;
     QVariantMap _currentTextures;
