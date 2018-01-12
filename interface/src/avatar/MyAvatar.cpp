@@ -46,6 +46,7 @@
 #include <recording/Frame.h>
 #include <RecordingScriptingInterface.h>
 #include <trackers/FaceTracker.h>
+#include <RenderableModelEntityItem.h>
 
 #include "MyHead.h"
 #include "MySkeletonModel.h"
@@ -501,10 +502,27 @@ void MyAvatar::updateEyeContactTarget(float deltaTime) {
 extern QByteArray avatarStateToFrame(const AvatarData* _avatar);
 extern void avatarStateFromFrame(const QByteArray& frameData, AvatarData* _avatar);
 
+void MyAvatar::updateChildCauterization(SpatiallyNestablePointer object) {
+    if (object->getNestableType() == NestableType::Entity) {
+        EntityItemPointer entity = std::static_pointer_cast<EntityItem>(object);
+        entity->setCauterized(_prevShouldDrawHead);
+    }
+}
+
 void MyAvatar::simulate(float deltaTime) {
     PerformanceTimer perfTimer("simulate");
 
     animateScaleChanges(deltaTime);
+
+    forEachChild([&](SpatiallyNestablePointer object) {
+        bool childOfHead = _headBoneSet.find(object->getParentJointIndex()) != _headBoneSet.end();
+        if (childOfHead) {
+            updateChildCauterization(object);
+            object->forEachDescendant([&](SpatiallyNestablePointer descendant) {
+                updateChildCauterization(descendant);
+            });
+        }
+    });
 
     {
         PerformanceTimer perfTimer("transform");
@@ -3261,10 +3279,11 @@ SpatialParentTree* MyAvatar::getParentTree() const {
 }
 
 glm::vec3 MyAvatar::scaleForChildren(int parentJointIndex) const {
-    if (_skeletonModel->getEnableCauterization() &&
-        _headBoneSet.find(parentJointIndex) != _headBoneSet.end()) {
-        return glm::vec3(0.0001);
-    } else {
-        return glm::vec3(getModelScale());
-    }
+    return glm::vec3(getModelScale());
+    // if (_skeletonModel->getEnableCauterization() &&
+    //     _headBoneSet.find(parentJointIndex) != _headBoneSet.end()) {
+    //     return glm::vec3(0.0001);
+    // } else {
+    //     return glm::vec3(getModelScale());
+    // }
 }
