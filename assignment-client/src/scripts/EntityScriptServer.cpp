@@ -286,7 +286,10 @@ void EntityScriptServer::run() {
     entityScriptingInterface->init();
 
     _entityViewer.init();
-    
+
+    _scriptEntityViewer.setTree(_entityViewer.getTree());
+    _scriptEntityViewer.init();
+
     // setup the JSON filter that asks for entities with a non-default serverScripts property
     QJsonObject queryJSONParameters;
     queryJSONParameters[EntityJSONQueryProperties::SERVER_SCRIPTS_PROPERTY] = EntityQueryFilterSymbol::NonDefault;
@@ -297,7 +300,7 @@ void EntityScriptServer::run() {
     queryFlags[EntityJSONQueryProperties::INCLUDE_DESCENDANTS_PROPERTY] = true;
 
     queryJSONParameters[EntityJSONQueryProperties::FLAGS_PROPERTY] = queryFlags;
-    
+
     // setup the JSON parameters so that OctreeQuery does not use a frustum and uses our JSON filter
     _entityViewer.getOctreeQuery().setUsesFrustum(false);
     _entityViewer.getOctreeQuery().setJSONParameters(queryJSONParameters);
@@ -445,6 +448,8 @@ void EntityScriptServer::resetEntitiesScriptEngine() {
 
     newEngine->registerGlobalObject("SoundCache", DependencyManager::get<SoundCache>().data());
 
+    newEngine->registerGlobalObject("EntityViewer", &_scriptEntityViewer);
+
     // connect this script engines printedMessage signal to the global ScriptEngines these various messages
     auto scriptEngines = DependencyManager::get<ScriptEngines>().data();
     connect(newEngine.data(), &ScriptEngine::printedMessage, scriptEngines, &ScriptEngines::onPrintedMessage);
@@ -479,6 +484,7 @@ void EntityScriptServer::clear() {
     }
 
     _entityViewer.clear();
+    _scriptEntityViewer.clear();
 
     // reset the engine
     if (!_shuttingDown) {

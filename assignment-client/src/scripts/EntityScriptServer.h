@@ -77,6 +77,7 @@ private:
     ScriptEnginePointer _entitiesScriptEngine;
     EntityEditPacketSender _entityEditSender;
     EntityTreeHeadlessViewer _entityViewer;
+    EntityTreeHeadlessViewer _scriptEntityViewer;
 
     int _maxEntityPPS { DEFAULT_MAX_ENTITY_PPS };
     int _entityPPSPerScript { DEFAULT_ENTITY_PPS_PER_SCRIPT };
