@@ -40,7 +40,7 @@ var HOVER_TEXTURES = {
 var UNSELECTED_COLOR = { red: 0x1F, green: 0xC6, blue: 0xA6};
 var SELECTED_COLOR = {red: 0xF3, green: 0x91, blue: 0x29};
 var HOVER_COLOR = {red: 0xD0, green: 0xD0, blue: 0xD0}; // almost white for now
-var PAL_QML_SOURCE = "../Pal.qml";
+var PAL_QML_SOURCE = "hifi/Pal.qml";
 var conserveResources = true;
 
 Script.include("/~/system/libraries/controllers.js");
@@ -685,7 +685,6 @@ function startup() {
     });
     button.clicked.connect(onTabletButtonClicked);
     tablet.screenChanged.connect(onTabletScreenChanged);
-    Users.usernameFromIDReply.connect(usernameFromIDReply);
     Window.domainChanged.connect(clearLocalQMLDataAndClosePAL);
     Window.domainConnectionRefused.connect(clearLocalQMLDataAndClosePAL);
     Messages.subscribe(CHANNEL);
@@ -708,6 +707,7 @@ function off() {
         Controller.mousePressEvent.disconnect(handleMouseEvent);
         Controller.mouseMoveEvent.disconnect(handleMouseMoveEvent);
         tablet.tabletShownChanged.disconnect(tabletVisibilityChanged);
+        Users.usernameFromIDReply.disconnect(usernameFromIDReply);
         isWired = false;
         ContextOverlay.enabled = true
     }
@@ -744,6 +744,7 @@ function onTabletButtonClicked() {
         Script.update.connect(updateOverlays);
         Controller.mousePressEvent.connect(handleMouseEvent);
         Controller.mouseMoveEvent.connect(handleMouseMoveEvent);
+        Users.usernameFromIDReply.connect(usernameFromIDReply);
         triggerMapping.enable();
         triggerPressMapping.enable();
         audioTimer = createAudioInterval(conserveResources ? AUDIO_LEVEL_CONSERVED_UPDATE_INTERVAL_MS : AUDIO_LEVEL_UPDATE_INTERVAL_MS);
@@ -890,7 +891,6 @@ function shutdown() {
     button.clicked.disconnect(onTabletButtonClicked);
     tablet.removeButton(button);
     tablet.screenChanged.disconnect(onTabletScreenChanged);
-    Users.usernameFromIDReply.disconnect(usernameFromIDReply);
     Window.domainChanged.disconnect(clearLocalQMLDataAndClosePAL);
     Window.domainConnectionRefused.disconnect(clearLocalQMLDataAndClosePAL);
     Messages.subscribe(CHANNEL);

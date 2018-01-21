@@ -72,26 +72,13 @@ ContextOverlayInterface::ContextOverlayInterface() {
     connect(&qApp->getOverlays(), &Overlays::hoverLeaveOverlay, this, &ContextOverlayInterface::contextOverlays_hoverLeaveOverlay);
 
     {
-        render::Transaction transaction;
-        initializeSelectionToSceneHandler(_selectionToSceneHandlers[0], "contextOverlayHighlightList", transaction);
-        for (auto i = 1; i < MAX_SELECTION_COUNT; i++) {
-            auto selectionName = QString("highlightList") + QString::number(i);
-            initializeSelectionToSceneHandler(_selectionToSceneHandlers[i], selectionName, transaction);
-        }
-        const render::ScenePointer& scene = qApp->getMain3DScene();
-        scene->enqueueTransaction(transaction);
+        _selectionScriptingInterface->enableListHighlight("contextOverlayHighlightList", QVariantMap());
     }
 
     auto nodeList = DependencyManager::get<NodeList>();
     auto& packetReceiver = nodeList->getPacketReceiver();
     packetReceiver.registerListener(PacketType::ChallengeOwnershipReply, this, "handleChallengeOwnershipReplyPacket");
     _challengeOwnershipTimeoutTimer.setSingleShot(true);
-}
-
-void ContextOverlayInterface::initializeSelectionToSceneHandler(SelectionToSceneHandler& handler, const QString& selectionName, render::Transaction& transaction) {
-    handler.initialize(selectionName);
-    connect(_selectionScriptingInterface.data(), &SelectionScriptingInterface::selectedItemsListChanged, &handler, &SelectionToSceneHandler::selectedItemsListChanged);
-    transaction.resetSelectionHighlight(selectionName.toStdString());
 }
 
 static const xColor CONTEXT_OVERLAY_COLOR = { 255, 255, 255 };
@@ -164,7 +151,7 @@ bool ContextOverlayInterface::createOrDestroyContextOverlay(const EntityItemID& 
                 glm::vec3 normal;
                 boundingBox.findRayIntersection(cameraPosition, direction, distance, face, normal);
                 float offsetAngle = -CONTEXT_OVERLAY_OFFSET_ANGLE;
-                if (DependencyManager::get<PointerManager>()->isLeftHand(event.getID())) {
+                if (event.getID() == 1) { // "1" is left hand
                     offsetAngle *= -1.0f;
                 }
                 contextOverlayPosition = cameraPosition +
@@ -279,7 +266,7 @@ void ContextOverlayInterface::contextOverlays_hoverLeaveEntity(const EntityItemI
     }
 }
 
-static const QString INSPECTION_CERTIFICATE_QML_PATH = qApp->applicationDirPath() + "../../../qml/hifi/commerce/inspectionCertificate/InspectionCertificate.qml";
+static const QString INSPECTION_CERTIFICATE_QML_PATH = "hifi/commerce/inspectionCertificate/InspectionCertificate.qml";
 void ContextOverlayInterface::openInspectionCertificate() {
     // lets open the tablet to the inspection certificate QML
     if (!_currentEntityWithContextOverlay.isNull() && _entityMarketplaceID.length() > 0) {
@@ -302,7 +289,7 @@ void ContextOverlayInterface::openInspectionCertificate() {
                     QNetworkRequest networkRequest;
                     networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
                     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-                    QUrl requestURL = NetworkingConstants::METAVERSE_SERVER_URL;
+                    QUrl requestURL = NetworkingConstants::METAVERSE_SERVER_URL();
                     requestURL.setPath("/api/v1/commerce/proof_of_purchase_status/transfer");
                     QJsonObject request;
                     request["certificate_id"] = entityProperties.getCertificateID();
@@ -372,7 +359,7 @@ void ContextOverlayInterface::openInspectionCertificate() {
     }
 }
 
-static const QString MARKETPLACE_BASE_URL = NetworkingConstants::METAVERSE_SERVER_URL.toString() + "/marketplace/items/";
+static const QString MARKETPLACE_BASE_URL = NetworkingConstants::METAVERSE_SERVER_URL().toString() + "/marketplace/items/";
 
 void ContextOverlayInterface::openMarketplace() {
     // lets open the tablet and go to the current item in

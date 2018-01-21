@@ -17,6 +17,7 @@
 #include <ThreadSafeValueCache.h>
 #include "AnimationPropertyGroup.h"
 
+
 class ModelEntityItem : public EntityItem {
 public:
     static EntityItemPointer factory(const EntityItemID& entityID, const EntityItemProperties& properties);
@@ -46,8 +47,11 @@ public:
                                                 EntityPropertyFlags& propertyFlags, bool overwriteLocalData,
                                                 bool& somethingChanged) override;
 
-    //virtual void update(const quint64& now) override;
-    //virtual bool needsToCallUpdate() const override;
+    // update() and needstocallupdate() added back for the entity property fix
+    virtual void update(const quint64& now) override;
+    virtual bool needsToCallUpdate() const override;
+    void updateFrameCount();
+
     virtual void debugDump() const override;
 
     void setShapeType(ShapeType type) override;
@@ -90,9 +94,13 @@ public:
     bool getAnimationAllowTranslation() const { return _animationProperties.getAllowTranslation(); };
 
     void setAnimationLoop(bool loop);
+    bool getAnimationLoop() const;
 
     void setAnimationHold(bool hold);
     bool getAnimationHold() const;
+
+    void setRelayParentJoints(bool relayJoints);
+    bool getRelayParentJoints() const;
 
     void setAnimationFirstFrame(float firstFrame);
     float getAnimationFirstFrame() const;
@@ -102,6 +110,7 @@ public:
 
     bool getAnimationIsPlaying() const;
     float getAnimationCurrentFrame() const;
+    float getAnimationFPS() const;
     bool isAnimatingSomething() const;
 
     static const QString DEFAULT_TEXTURES;
@@ -147,10 +156,11 @@ protected:
     };
 
     QVector<ModelJointData> _localJointData;
-    int _lastKnownCurrentFrame;
+    int _lastKnownCurrentFrame{-1};
 
     rgbColor _color;
     QString _modelURL;
+    bool _relayParentJoints;
 
     ThreadSafeValueCache<QString> _compoundShapeURL;
 
@@ -160,6 +170,11 @@ protected:
     QString _textures;
 
     ShapeType _shapeType = SHAPE_TYPE_NONE;
+
+private:
+    uint64_t _lastAnimated{ 0 };
+    AnimationPropertyGroup _previousAnimationProperties;
+    float _currentFrame{ -1.0f };
 };
 
 #endif // hifi_ModelEntityItem_h

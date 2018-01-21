@@ -10,13 +10,15 @@
 //
 
 
+#include "PhysicalEntitySimulation.h"
+
+#include <Profile.h>
 
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
 #include "ShapeManager.h"
 #include "PhysicsEngineTracker.h"
 
-#include "PhysicalEntitySimulation.h"
 
 PhysicalEntitySimulation::PhysicalEntitySimulation() : EntitySimulation() {
 }
@@ -312,20 +314,24 @@ void PhysicalEntitySimulation::handleDeactivatedMotionStates(const VectorOfMotio
 }
 
 void PhysicalEntitySimulation::handleChangedMotionStates(const VectorOfMotionStates& motionStates) {
+    PROFILE_RANGE_EX(simulation_physics, "ChangedEntities", 0x00000000, (uint64_t)motionStates.size());
     QMutexLocker lock(&_mutex);
 
     // walk the motionStates looking for those that correspond to entities
-    for (auto stateItr : motionStates) {
-        ObjectMotionState* state = &(*stateItr);
-        assert(state);
-        if (state->getType() == MOTIONSTATE_TYPE_ENTITY) {
-            EntityMotionState* entityState = static_cast<EntityMotionState*>(state);
-            EntityItemPointer entity = entityState->getEntity();
-            assert(entity.get());
-            if (entityState->isCandidateForOwnership()) {
-                _outgoingChanges.insert(entityState);
+    {
+        PROFILE_RANGE_EX(simulation_physics, "Filter", 0x00000000, (uint64_t)motionStates.size());
+        for (auto stateItr : motionStates) {
+            ObjectMotionState* state = &(*stateItr);
+            assert(state);
+            if (state->getType() == MOTIONSTATE_TYPE_ENTITY) {
+                EntityMotionState* entityState = static_cast<EntityMotionState*>(state);
+                EntityItemPointer entity = entityState->getEntity();
+                assert(entity.get());
+                if (entityState->isCandidateForOwnership()) {
+                    _outgoingChanges.insert(entityState);
+                }
+                _entitiesToSort.insert(entity);
             }
-            _entitiesToSort.insert(entity);
         }
     }
 
@@ -339,29 +345,33 @@ void PhysicalEntitySimulation::handleChangedMotionStates(const VectorOfMotionSta
     // clear _outgoingChanges here -- the states that should stay will be re-added below.
     _outgoingChanges.clear();
 
-    auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
-    physicsEngineTracker->forEachPhysicsEngine([this, outgoingChangesPerEngine](PhysicsEnginePointer physicsEngine) {
-        uint32_t numSubsteps = physicsEngine->getNumSubsteps();
-        QUuid engineID = physicsEngine->getID();
-        if (_lastStepSendPackets[engineID] != numSubsteps) {
-            _lastStepSendPackets[engineID] = numSubsteps;
+    {
+        PROFILE_RANGE_EX(simulation_physics, "Prune/Send", 0x00000000, (uint64_t)_outgoingChanges.size());
 
-            VectorOfEntityMotionStates outgoingChanges = outgoingChangesPerEngine[engineID];
-            // look for entities to prune or update
-            foreach (EntityMotionState* state, outgoingChanges) {
-                if (!state->isCandidateForOwnership()) {
-                    // prune
-                    continue;
+        auto physicsEngineTracker = DependencyManager::get<PhysicsEngineTracker>();
+        physicsEngineTracker->forEachPhysicsEngine([this, outgoingChangesPerEngine](PhysicsEnginePointer physicsEngine) {
+            uint32_t numSubsteps = physicsEngine->getNumSubsteps();
+            QUuid engineID = physicsEngine->getID();
+            if (_lastStepSendPackets[engineID] != numSubsteps) {
+                _lastStepSendPackets[engineID] = numSubsteps;
+
+                VectorOfEntityMotionStates outgoingChanges = outgoingChangesPerEngine[engineID];
+                // look for entities to prune or update
+                foreach (EntityMotionState* state, outgoingChanges) {
+                    if (!state->isCandidateForOwnership()) {
+                        // prune
+                        continue;
+                    }
+                    if (state->shouldSendUpdate(numSubsteps)) {
+                        // update
+                        state->sendUpdate(_entityPacketSender, numSubsteps);
+                    }
+                    // keep this MotionState in the _outgoingChanges set
+                    _outgoingChanges += state;
                 }
-                if (state->shouldSendUpdate(numSubsteps)) {
-                    // update
-                    state->sendUpdate(_entityPacketSender, numSubsteps);
-                }
-                // keep this MotionState in the _outgoingChanges set
-                _outgoingChanges += state;
             }
-        }
-    });
+        });
+    }
 }
 
 void PhysicalEntitySimulation::handleCollisionEvents(const CollisionEvents& collisionEvents) {

@@ -62,6 +62,8 @@ public:
     virtual void setLength(float length) {}
     virtual void setLockEndUUID(const QUuid& objectID, bool isOverlay, const glm::mat4& offsetMat = glm::mat4()) {}
 
+    virtual void setDoesHover(bool hover);
+
     void update(unsigned int pointerID);
     virtual void updateVisuals(const PickResultPointer& pickResult) = 0;
     void generatePointerEvents(unsigned int pointerID, const PickResultPointer& pickResult);
@@ -82,13 +84,16 @@ protected:
     bool _enabled;
     bool _hover;
 
-    virtual PointerEvent buildPointerEvent(const PickedObject& target, const PickResultPointer& pickResult, bool hover = true) const = 0;
+    virtual PointerEvent buildPointerEvent(const PickedObject& target, const PickResultPointer& pickResult, const std::string& button = "", bool hover = true) = 0;
 
     virtual PickedObject getHoveredObject(const PickResultPointer& pickResult) = 0;
-    virtual Buttons getPressedButtons() = 0;
+    virtual Buttons getPressedButtons(const PickResultPointer& pickResult) = 0;
 
     virtual bool shouldHover(const PickResultPointer& pickResult) { return true; }
     virtual bool shouldTrigger(const PickResultPointer& pickResult) { return true; }
+
+    static const float POINTER_MOVE_DELAY;
+    static const float TOUCH_PRESS_TO_MOVE_DEADSPOT_SQUARED;
 
 private:
     PickedObject _prevHoveredObject;
@@ -98,7 +103,6 @@ private:
     std::unordered_map<std::string, PickedObject> _triggeredObjects;
 
     PointerEvent::Button chooseButton(const std::string& button);
-
 };
 
 #endif // hifi_Pick_h

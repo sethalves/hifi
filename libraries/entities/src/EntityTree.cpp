@@ -39,10 +39,8 @@
 #include "EntityEditFilters.h"
 #include "EntityDynamicFactoryInterface.h"
 
-
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 const float EntityTree::DEFAULT_MAX_TMP_ENTITY_LIFETIME = 60 * 60; // 1 hour
-
 
 // combines the ray cast arguments into a single object
 class RayArgs {
@@ -355,11 +353,11 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
                 } else if (submittedID == senderID) {
                     // the sender is trying to take or continue ownership
                     if (entity->getSimulatorID().isNull()) {
-                        // the sender it taking ownership
+                        // the sender is taking ownership
                         properties.promoteSimulationPriority(RECRUIT_SIMULATION_PRIORITY);
                         simulationBlocked = false;
                     } else if (entity->getSimulatorID() == senderID) {
-                        // the sender is asserting ownership
+                        // the sender is asserting ownership, maybe changing priority
                         simulationBlocked = false;
                     } else {
                         // the sender is trying to steal ownership from another simulator
@@ -1197,13 +1195,15 @@ bool EntityTree::verifyNonce(const QString& certID, const QString& nonce, Entity
         key = sent.second;
     }
 
-    QString annotatedKey = "-----BEGIN PUBLIC KEY-----\n" + key.insert(64, "\n") + "\n-----END PUBLIC KEY-----";
-    bool verificationSuccess = EntityItemProperties::verifySignature(annotatedKey.toUtf8(), actualNonce.toUtf8(), nonce.toUtf8());
+    QString annotatedKey = "-----BEGIN PUBLIC KEY-----\n" + key.insert(64, "\n") + "\n-----END PUBLIC KEY-----\n"; 
+    QByteArray hashedActualNonce = QCryptographicHash::hash(QByteArray(actualNonce.toUtf8()), QCryptographicHash::Sha256);
+    bool verificationSuccess = EntityItemProperties::verifySignature(annotatedKey.toUtf8(), hashedActualNonce, QByteArray::fromBase64(nonce.toUtf8()));
 
     if (verificationSuccess) {
         qCDebug(entities) << "Ownership challenge for Cert ID" << certID << "succeeded.";
     } else {
-        qCDebug(entities) << "Ownership challenge for Cert ID" << certID << "failed for nonce" << actualNonce << "key" << key << "signature" << nonce;
+        qCDebug(entities) << "Ownership challenge for Cert ID" << certID << "failed. Actual nonce:" << actualNonce <<
+            "\nHashed actual nonce (digest):" << hashedActualNonce << "\nSent nonce (signature)" << nonce << "\nKey" << key;
     }
 
     return verificationSuccess;
@@ -1316,7 +1316,7 @@ void EntityTree::validatePop(const QString& certID, const EntityItemID& entityIt
     QNetworkRequest networkRequest;
     networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QUrl requestURL = NetworkingConstants::METAVERSE_SERVER_URL;
+    QUrl requestURL = NetworkingConstants::METAVERSE_SERVER_URL();
     requestURL.setPath("/api/v1/commerce/proof_of_purchase_status/transfer");
     QJsonObject request;
     request["certificate_id"] = certID;
@@ -1724,14 +1724,16 @@ void EntityTree::fixupNeedsParentFixups() {
             // need to be moved.
             entity->markDirtyFlags(Simulation::DIRTY_MOTION_TYPE |
                                    Simulation::DIRTY_COLLISION_GROUP |
-                                   Simulation::DIRTY_TRANSFORM);
+                                   Simulation::DIRTY_TRANSFORM |
+                                   Simulation::DIRTY_HIERARCHY);
             entityChanged(entity);
             entity->forEachDescendant([&](SpatiallyNestablePointer object) {
                 if (object->getNestableType() == NestableType::Entity) {
                     EntityItemPointer descendantEntity = std::static_pointer_cast<EntityItem>(object);
                     descendantEntity->markDirtyFlags(Simulation::DIRTY_MOTION_TYPE |
                                                      Simulation::DIRTY_COLLISION_GROUP |
-                                                     Simulation::DIRTY_TRANSFORM);
+                                                     Simulation::DIRTY_TRANSFORM |
+                                                     Simulation::DIRTY_HIERARCHY);
                     entityChanged(descendantEntity);
                 }
             });
@@ -1778,24 +1780,26 @@ void EntityTree::addToNeedsParentFixupList(EntityItemPointer entity) {
 }
 
 void EntityTree::update(bool simulate) {
-    PROFILE_RANGE(simulation_physics, "ET::update");
+    PROFILE_RANGE(simulation_physics, "UpdateTree");
     fixupNeedsParentFixups();
     if (simulate && _simulation) {
         withWriteLock([&] {
             _simulation->updateEntities();
-            VectorOfEntities pendingDeletes;
-            _simulation->takeEntitiesToDelete(pendingDeletes);
+            {
+                PROFILE_RANGE(simulation_physics, "Deletes");
+                VectorOfEntities pendingDeletes;
+                _simulation->takeEntitiesToDelete(pendingDeletes);
+                if (pendingDeletes.size() > 0) {
+                    // translate into list of ID's
+                    QSet<EntityItemID> idsToDelete;
 
-            if (pendingDeletes.size() > 0) {
-                // translate into list of ID's
-                QSet<EntityItemID> idsToDelete;
+                    for (auto entity : pendingDeletes) {
+                        idsToDelete.insert(entity->getEntityItemID());
+                    }
 
-                for (auto entity : pendingDeletes) {
-                    idsToDelete.insert(entity->getEntityItemID());
+                    // delete these things the roundabout way
+                    deleteEntities(idsToDelete, true);
                 }
-
-                // delete these things the roundabout way
-                deleteEntities(idsToDelete, true);
             }
         });
     }
@@ -2241,10 +2245,14 @@ bool EntityTree::writeToMap(QVariantMap& entityDescription, OctreeElementPointer
 }
 
 bool EntityTree::readFromMap(QVariantMap& map) {
+    // These are needed to deal with older content (before adding inheritance modes)
+    int contentVersion = map["Version"].toInt();
+    bool needsConversion = (contentVersion < (int)EntityVersion::ZoneLightInheritModes);
+
     // map will have a top-level list keyed as "Entities".  This will be extracted
     // and iterated over.  Each member of this list is converted to a QVariantMap, then
     // to a QScriptValue, and then to EntityItemProperties.  These properties are used
-    // to add the new entity to the EnitytTree.
+    // to add the new entity to the EntityTree.
     QVariantList entitiesQList = map["Entities"].toList();
     QScriptEngine scriptEngine;
 
@@ -2285,12 +2293,44 @@ bool EntityTree::readFromMap(QVariantMap& map) {
             properties.setOwningAvatarID(myNodeID);
         }
 
+        // Fix for older content not containing mode fields in the zones
+        if (needsConversion && (properties.getType() == EntityTypes::EntityType::Zone)) {
+            // The legacy version had no keylight mode - this is set to on
+            properties.setKeyLightMode(COMPONENT_MODE_ENABLED);
+            
+            // The ambient URL has been moved from "keyLight" to "ambientLight"
+            if (entityMap.contains("keyLight")) {
+                QVariantMap keyLightObject = entityMap["keyLight"].toMap();
+                properties.getAmbientLight().setAmbientURL(keyLightObject["ambientURL"].toString());
+            }
+
+            // Copy the skybox URL if the ambient URL is empty, as this is the legacy behaviour
+            // Use skybox value only if it is not empty, else set ambientMode to inherit (to use default URL)
+            properties.setAmbientLightMode(COMPONENT_MODE_ENABLED);
+            if (properties.getAmbientLight().getAmbientURL() == "") {
+                if (properties.getSkybox().getURL() != "") {
+                    properties.getAmbientLight().setAmbientURL(properties.getSkybox().getURL());
+                } else {
+                    properties.setAmbientLightMode(COMPONENT_MODE_INHERIT);
+                }
+            }
+
+            // The background should be enabled if the mode is skybox
+            // Note that if the values are default then they are not stored in the JSON file
+            if (entityMap.contains("backgroundMode") && (entityMap["backgroundMode"].toString() == "skybox")) {
+                properties.setSkyboxMode(COMPONENT_MODE_ENABLED);
+            } else {
+                properties.setSkyboxMode(COMPONENT_MODE_INHERIT);
+            }
+        }
+
         EntityItemPointer entity = addEntity(entityItemID, properties);
         if (!entity) {
             qCDebug(entities) << "adding Entity failed:" << entityItemID << properties.getType();
             success = false;
         }
     }
+
     return success;
 }
 
