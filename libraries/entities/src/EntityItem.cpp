@@ -687,18 +687,18 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
                 weOwnSimulation = _simulationOwner.matchesValidID(myNodeID);
             }
         } else if (_simulationOwner.pendingTake(now - maxPingRoundTrip)) {
-            // we sent a bid before this packet could have been sent from the server
-            // so we ignore it and pretend we own the object's simulation
+            // we sent a bid already but maybe before this packet was sent from the server
             weOwnSimulation = true;
             if (newSimOwner.getID().isNull()) {
-                // entity-server is trying to clear someone  else's ownership
-                // but we want to own it, therefore we ignore this clear event
+                // the entity-server is trying to clear someone else's ownership
                 if (!_simulationOwner.isNull()) {
-                    // someone else really did own it
                     markDirtyFlags(Simulation::DIRTY_SIMULATOR_ID);
                     somethingChanged = true;
                     _simulationOwner.clearCurrentOwner();
                 }
+            } else if (newSimOwner.getID() == myNodeID) {
+                // the entity-server is awarding us ownership which is what we want
+                _simulationOwner.set(newSimOwner);
             }
         } else if (newSimOwner.matchesValidID(myNodeID) && !_hasBidOnSimulation) {
             // entity-server tells us that we have simulation ownership while we never requested this for this EntityItem,
@@ -966,7 +966,10 @@ void EntityItem::setMass(float mass) {
 
 void EntityItem::setHref(QString value) {
     auto href = value.toLower();
-    if (! (value.toLower().startsWith("hifi://")) ) {
+
+    // If the string has something and doesn't start with with "hifi://" it shouldn't be set
+    // We allow the string to be empty, because that's the initial state of this property
+    if ( !(value.toLower().startsWith("hifi://")) && !value.isEmpty()) {
         return;
     }
     withWriteLock([&] {
@@ -2107,18 +2110,11 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
         }
 
         EntityDynamicPointer action = _objectActions[actionID];
-
+        auto removedActionType = action->getType();
         action->setOwnerEntity(nullptr);
         action->setIsMine(false);
+        _objectActions.remove(actionID);
 
-        if (simulation) {
-            action->removeFromSimulation(simulation);
-        }
-
-        bool success = true;
-        serializeActions(success, _allActionsDataCache);
-        _dirtyFlags |= Simulation::DIRTY_PHYSICS_ACTIVATION;
-        auto removedActionType = action->getType();
         if ((removedActionType == DYNAMIC_TYPE_HOLD || removedActionType == DYNAMIC_TYPE_FAR_GRAB) && !stillHasGrabActions()) {
             _dirtyFlags &= ~Simulation::NO_BOOTSTRAPPING;
             _dirtyFlags |= Simulation::DIRTY_COLLISION_GROUP; // may need to not collide with own avatar
@@ -2134,7 +2130,14 @@ bool EntityItem::removeActionInternal(const QUuid& actionID, EntitySimulationPoi
             // because they should have been set correctly when the action was added
             // and/or when children were linked
         }
-        _objectActions.remove(actionID);
+
+        if (simulation) {
+            action->removeFromSimulation(simulation);
+        }
+
+        bool success = true;
+        serializeActions(success, _allActionsDataCache);
+        _dirtyFlags |= Simulation::DIRTY_PHYSICS_ACTIVATION;
         setDynamicDataNeedsTransmit(true);
         return success;
     }
@@ -2749,9 +2752,17 @@ bool EntityItem::getVisible() const {
 }
 
 void EntityItem::setVisible(bool value) {
+    bool changed = false;
     withWriteLock([&] {
-        _visible = value;
+        if (_visible != value) {
+            changed = true;
+            _visible = value;
+        }
     });
+
+    if (changed) {
+        emit requestRenderUpdate();
+    }
 }
 
 bool EntityItem::isChildOfMyAvatar() const {

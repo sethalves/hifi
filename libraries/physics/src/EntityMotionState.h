@@ -99,6 +99,7 @@ public:
 protected:
     // changes _outgoingPriority only if priority is larger
     void upgradeOutgoingPriority(uint8_t priority);
+    void zeroCleanObjectVelocities() const;
 
     #ifdef WANT_DEBUG_ENTITY_TREE_LOCKS
     bool entityTreeIsLocked() const;

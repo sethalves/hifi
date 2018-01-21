@@ -154,11 +154,10 @@
 #include "scripting/Audio.h"
 #include "networking/CloseEventSender.h"
 #include "scripting/TestScriptingInterface.h"
-#include "scripting/AccountScriptingInterface.h"
 #include "scripting/AssetMappingsScriptingInterface.h"
 #include "scripting/ClipboardScriptingInterface.h"
 #include "scripting/DesktopScriptingInterface.h"
-#include "scripting/GlobalServicesScriptingInterface.h"
+#include "scripting/AccountServicesScriptingInterface.h"
 #include "scripting/HMDScriptingInterface.h"
 #include "scripting/MenuScriptingInterface.h"
 #include "scripting/SettingsScriptingInterface.h"
@@ -193,6 +192,7 @@
 #include <GPUIdent.h>
 #include <gl/GLHelpers.h>
 #include <src/scripting/LimitlessVoiceRecognitionScriptingInterface.h>
+#include <src/scripting/GooglePolyScriptingInterface.h>
 #include <EntityScriptClient.h>
 #include <ModelScriptingInterface.h>
 
@@ -211,6 +211,7 @@
 #include "commerce/QmlCommerce.h"
 
 #include "webbrowser/WebBrowserSuggestionsEngine.h"
+#include <DesktopPreviewProvider.h>
 
 // On Windows PC, NVidia Optimus laptop, we want to enable NVIDIA GPU
 // FIXME seems to be broken.
@@ -575,8 +576,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
         }
     };
     reportAndQuit("--protocolVersion", [&](FILE* fp) {
-        DependencyManager::set<AddressManager>();
-        auto version = DependencyManager::get<AddressManager>()->protocolVersion();
+        auto version = protocolVersionsSignatureBase64();
         fputs(version.toLatin1().data(), fp);
     });
     reportAndQuit("--version", [&](FILE* fp) {
@@ -635,6 +635,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<PointerScriptingInterface>();
     DependencyManager::set<PickScriptingInterface>();
     DependencyManager::set<Cursor::Manager>();
+    DependencyManager::set<DesktopPreviewProvider>();
     DependencyManager::set<AccountManager>(std::bind(&Application::getUserAgent, qApp));
     DependencyManager::set<StatTracker>();
     DependencyManager::set<ScriptEngines>(ScriptEngine::CLIENT_SCRIPT);
@@ -702,6 +703,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<EntityScriptClient>();
     DependencyManager::set<EntityScriptServerLogClient>();
     DependencyManager::set<LimitlessVoiceRecognitionScriptingInterface>();
+    DependencyManager::set<GooglePolyScriptingInterface>();
     DependencyManager::set<OctreeStatsProvider>(nullptr, qApp->getOcteeSceneStats());
     DependencyManager::set<AvatarBookmarks>();
     DependencyManager::set<LocationBookmarks>();
@@ -741,6 +743,7 @@ const float DEFAULT_HMD_TABLET_SCALE_PERCENT = 100.0f;
 const float DEFAULT_DESKTOP_TABLET_SCALE_PERCENT = 75.0f;
 const bool DEFAULT_DESKTOP_TABLET_BECOMES_TOOLBAR = true;
 const bool DEFAULT_HMD_TABLET_BECOMES_TOOLBAR = false;
+const bool DEFAULT_PREFER_STYLUS_OVER_LASER = false;
 const bool DEFAULT_PREFER_AVATAR_FINGER_OVER_STYLUS = false;
 const QString DEFAULT_CURSOR_NAME = "DEFAULT";
 
@@ -759,6 +762,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _desktopTabletScale("desktopTabletScale", DEFAULT_DESKTOP_TABLET_SCALE_PERCENT),
     _desktopTabletBecomesToolbarSetting("desktopTabletBecomesToolbar", DEFAULT_DESKTOP_TABLET_BECOMES_TOOLBAR),
     _hmdTabletBecomesToolbarSetting("hmdTabletBecomesToolbar", DEFAULT_HMD_TABLET_BECOMES_TOOLBAR),
+    _preferStylusOverLaserSetting("preferStylusOverLaser", DEFAULT_PREFER_STYLUS_OVER_LASER),
     _preferAvatarFingerOverStylusSetting("preferAvatarFingerOverStylus", DEFAULT_PREFER_AVATAR_FINGER_OVER_STYLUS),
     _constrainToolbarPosition("toolbar/constrainToolbarToCenterX", true),
     _preferredCursor("preferredCursor", DEFAULT_CURSOR_NAME),
@@ -1192,8 +1196,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         userActivityLogger.logAction("launch", properties);
     }
 
-    // Tell our entity edit sender about our known jurisdictions
-    _entityEditSender.setServerJurisdictions(&_entityServerJurisdictions);
     _entityEditSender.setMyAvatar(myAvatar.get());
 
     // The entity octree will have to know about MyAvatar for the parentJointName import
@@ -1446,7 +1448,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     connect(audioIO.data(), &AudioClient::noiseGateClosed, audioScriptingInterface.data(), &AudioScriptingInterface::noiseGateClosed);
     connect(audioIO.data(), &AudioClient::inputReceived, audioScriptingInterface.data(), &AudioScriptingInterface::inputReceived);
 
-
     this->installEventFilter(this);
 
 #ifdef HAVE_DDE
@@ -1470,8 +1471,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         applicationUpdater->checkForUpdate();
     }
 
-    // Now that menu is initialized we can sync myAvatar with it's state.
-    myAvatar->updateMotionBehaviorFromMenu();
+    Menu::getInstance()->setIsOptionChecked(MenuOption::ActionMotorControl, true);
 
 // FIXME spacemouse code still needs cleanup
 #if 0
@@ -1855,6 +1855,9 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     DependencyManager::get<EntityTreeRenderer>()->setSetPrecisionPickingOperator([&](unsigned int rayPickID, bool value) {
         DependencyManager::get<PickManager>()->setPrecisionPicking(rayPickID, value);
     });
+    EntityTreeRenderer::setRenderDebugHullsOperator([] {
+        return Menu::getInstance()->isOptionChecked(MenuOption::PhysicsShowHulls);
+    });
 
     // Preload Tablet sounds
     DependencyManager::get<TabletScriptingInterface>()->preloadSounds();
@@ -2094,6 +2097,11 @@ void Application::cleanupBeforeQuit() {
     DependencyManager::destroy<AudioInjectorManager>();
     DependencyManager::destroy<AudioScriptingInterface>();
 
+    // The PointerManager must be destroyed before the PickManager because when a Pointer is deleted,
+    // it accesses the PickManager to delete its associated Pick
+    DependencyManager::destroy<PointerManager>();
+    DependencyManager::destroy<PickManager>();
+
     qCDebug(interfaceapp) << "Application::cleanupBeforeQuit() complete";
 }
 
@@ -2293,7 +2301,7 @@ void Application::initializeUi() {
         QUrl{ "hifi/commerce/wallet/SecurityImageChange.qml" },
         QUrl{ "hifi/commerce/wallet/SecurityImageModel.qml" },
         QUrl{ "hifi/commerce/wallet/SecurityImageSelection.qml" },
-        QUrl{ "hifi/commerce/wallet/SendMoney.qml" },
+        QUrl{ "hifi/commerce/wallet/sendMoney/SendMoney.qml" },
         QUrl{ "hifi/commerce/wallet/Wallet.qml" },
         QUrl{ "hifi/commerce/wallet/WalletHome.qml" },
         QUrl{ "hifi/commerce/wallet/WalletSetup.qml" },
@@ -2328,9 +2336,10 @@ void Application::initializeUi() {
 
     setupPreferences();
 
-    // For some reason there is already an "Application" object in the QML context,
-    // though I can't find it. Hence, "ApplicationInterface"
-    surfaceContext->setContextProperty("Audio", DependencyManager::get<AudioScriptingInterface>().data());
+    // in Qt 5.10.0 there is already an "Audio" object in the QML context
+    // though I failed to find it (from QtMultimedia??). So..  let it be "AudioScriptingInterface"
+    surfaceContext->setContextProperty("AudioScriptingInterface", DependencyManager::get<AudioScriptingInterface>().data());
+
     surfaceContext->setContextProperty("AudioStats", DependencyManager::get<AudioClient>()->getStats().data());
     surfaceContext->setContextProperty("AudioScope", DependencyManager::get<AudioScope>().data());
 
@@ -2381,9 +2390,11 @@ void Application::initializeUi() {
     surfaceContext->setContextProperty("SoundCache", DependencyManager::get<SoundCache>().data());
     surfaceContext->setContextProperty("InputConfiguration", DependencyManager::get<InputConfiguration>().data());
 
-    surfaceContext->setContextProperty("Account", AccountScriptingInterface::getInstance());
+    surfaceContext->setContextProperty("Account", AccountServicesScriptingInterface::getInstance()); // DEPRECATED - TO BE REMOVED
+    surfaceContext->setContextProperty("GlobalServices", AccountServicesScriptingInterface::getInstance()); // DEPRECATED - TO BE REMOVED
+    surfaceContext->setContextProperty("AccountServices", AccountServicesScriptingInterface::getInstance());
+
     surfaceContext->setContextProperty("DialogsManager", _dialogsManagerScriptingInterface);
-    surfaceContext->setContextProperty("GlobalServices", GlobalServicesScriptingInterface::getInstance());
     surfaceContext->setContextProperty("FaceTracker", DependencyManager::get<DdeFaceTracker>().data());
     surfaceContext->setContextProperty("AvatarManager", DependencyManager::get<AvatarManager>().data());
     surfaceContext->setContextProperty("UndoStack", &_undoStackScriptingInterface);
@@ -2449,7 +2460,7 @@ void Application::initializeUi() {
     offscreenSurfaceCache->reserve(Web3DOverlay::QML, 2);
 }
 
-void Application::updateCamera(RenderArgs& renderArgs) {
+void Application::updateCamera(RenderArgs& renderArgs, float deltaTime) {
     PROFILE_RANGE(render, __FUNCTION__);
     PerformanceTimer perfTimer("updateCamera");
 
@@ -2464,6 +2475,7 @@ void Application::updateCamera(RenderArgs& renderArgs) {
     // Using the latter will cause the camera to wobble with idle animations,
     // or with changes from the face tracker
     if (_myCamera.getMode() == CAMERA_MODE_FIRST_PERSON) {
+        _thirdPersonHMDCameraBoomValid= false;
         if (isHMDMode()) {
             mat4 camMat = myAvatar->getSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
             _myCamera.setPosition(extractTranslation(camMat));
@@ -2476,12 +2488,25 @@ void Application::updateCamera(RenderArgs& renderArgs) {
     }
     else if (_myCamera.getMode() == CAMERA_MODE_THIRD_PERSON) {
         if (isHMDMode()) {
-            auto hmdWorldMat = myAvatar->getSensorToWorldMatrix() * myAvatar->getHMDSensorMatrix();
-            _myCamera.setOrientation(glm::normalize(glmExtractRotation(hmdWorldMat)));
-            _myCamera.setPosition(extractTranslation(hmdWorldMat) +
-                myAvatar->getWorldOrientation() * boomOffset);
+
+            if (!_thirdPersonHMDCameraBoomValid) {
+                const glm::vec3 CAMERA_OFFSET = glm::vec3(0.0f, 0.0f, 0.7f);
+                _thirdPersonHMDCameraBoom = cancelOutRollAndPitch(myAvatar->getHMDSensorOrientation()) * CAMERA_OFFSET;
+                _thirdPersonHMDCameraBoomValid = true;
+            }
+
+            glm::mat4 thirdPersonCameraSensorToWorldMatrix = myAvatar->getSensorToWorldMatrix();
+
+            const glm::vec3 cameraPos = myAvatar->getHMDSensorPosition() + _thirdPersonHMDCameraBoom * myAvatar->getBoomLength();
+            glm::mat4 sensorCameraMat = createMatFromQuatAndPos(myAvatar->getHMDSensorOrientation(), cameraPos);
+            glm::mat4 worldCameraMat = thirdPersonCameraSensorToWorldMatrix * sensorCameraMat;
+
+            _myCamera.setOrientation(glm::normalize(glmExtractRotation(worldCameraMat)));
+            _myCamera.setPosition(extractTranslation(worldCameraMat));
         }
         else {
+            _thirdPersonHMDCameraBoomValid = false;
+
             _myCamera.setOrientation(myAvatar->getHead()->getOrientation());
             if (Menu::getInstance()->isOptionChecked(MenuOption::CenterPlayerInView)) {
                 _myCamera.setPosition(myAvatar->getDefaultEyePosition()
@@ -2494,6 +2519,7 @@ void Application::updateCamera(RenderArgs& renderArgs) {
         }
     }
     else if (_myCamera.getMode() == CAMERA_MODE_MIRROR) {
+        _thirdPersonHMDCameraBoomValid= false;
         if (isHMDMode()) {
             auto mirrorBodyOrientation = myAvatar->getWorldOrientation() * glm::quat(glm::vec3(0.0f, PI + _rotateMirror, 0.0f));
 
@@ -2528,6 +2554,7 @@ void Application::updateCamera(RenderArgs& renderArgs) {
         renderArgs._renderMode = RenderArgs::MIRROR_RENDER_MODE;
     }
     else if (_myCamera.getMode() == CAMERA_MODE_ENTITY) {
+        _thirdPersonHMDCameraBoomValid= false;
         EntityItemPointer cameraEntity = _myCamera.getCameraEntityPointer();
         if (cameraEntity != nullptr) {
             if (isHMDMode()) {
@@ -2588,6 +2615,10 @@ void Application::setDesktopTabletBecomesToolbarSetting(bool value) {
 void Application::setHmdTabletBecomesToolbarSetting(bool value) {
     _hmdTabletBecomesToolbarSetting.set(value);
     updateSystemTabletMode();
+}
+
+void Application::setPreferStylusOverLaser(bool value) {
+    _preferStylusOverLaserSetting.set(value);
 }
 
 void Application::setPreferAvatarFingerOverStylus(bool value) {
@@ -4340,8 +4371,9 @@ void Application::updateLOD(float deltaTime) const {
         float presentTime = getActiveDisplayPlugin()->getAveragePresentTime();
         float engineRunTime = (float)(_renderEngine->getConfiguration().get()->getCPURunTime());
         float gpuTime = getGPUContext()->getFrameTimerGPUAverage();
-        float maxRenderTime = glm::max(gpuTime, glm::max(presentTime, engineRunTime));
-        DependencyManager::get<LODManager>()->autoAdjustLOD(maxRenderTime, deltaTime);
+        auto lodManager = DependencyManager::get<LODManager>();
+        lodManager->setRenderTimes(presentTime, engineRunTime, gpuTime);
+        lodManager->autoAdjustLOD(deltaTime);
     } else {
         DependencyManager::get<LODManager>()->resetLODAdjust();
     }
@@ -4571,7 +4603,7 @@ void Application::reloadResourceCaches() {
     _lastQueriedTime = 0;
     _octreeQuery.incrementConnectionID();
 
-    queryOctree(NodeType::EntityServer, PacketType::EntityQuery, _entityServerJurisdictions);
+    queryOctree(NodeType::EntityServer, PacketType::EntityQuery);
 
     DependencyManager::get<AssetClient>()->clearCache();
 
@@ -5088,8 +5120,6 @@ void Application::update(float deltaTime) {
         }
     }
 
-    PerformanceTimer perfTimer("misc");
-
     bool showWarnings = Menu::getInstance()->isOptionChecked(MenuOption::PipelineWarnings);
     PerformanceWarning warn(showWarnings, "Application::update()");
 
@@ -5098,11 +5128,13 @@ void Application::update(float deltaTime) {
     // TODO: break these out into distinct perfTimers when they prove interesting
     {
         PROFILE_RANGE(app, "PickManager");
+        PerformanceTimer perfTimer("pickManager");
         DependencyManager::get<PickManager>()->update();
     }
 
     {
         PROFILE_RANGE(app, "PointerManager");
+        PerformanceTimer perfTimer("pointerManager");
         DependencyManager::get<PointerManager>()->update();
     }
 
@@ -5128,8 +5160,8 @@ void Application::update(float deltaTime) {
     // Update my voxel servers with my current voxel query...
     {
         PROFILE_RANGE_EX(app, "QueryOctree", 0xffff0000, (uint64_t)getActiveDisplayPlugin()->presentCount());
-        QMutexLocker viewLocker(&_viewMutex);
         PerformanceTimer perfTimer("queryOctree");
+        QMutexLocker viewLocker(&_viewMutex);
         quint64 sinceLastQuery = now - _lastQueriedTime;
         const quint64 TOO_LONG_SINCE_LAST_QUERY = 3 * USECS_PER_SECOND;
         bool queryIsDue = sinceLastQuery > TOO_LONG_SINCE_LAST_QUERY;
@@ -5138,7 +5170,7 @@ void Application::update(float deltaTime) {
         if (queryIsDue || viewIsDifferentEnough) {
             _lastQueriedTime = now;
             if (DependencyManager::get<SceneScriptingInterface>()->shouldRenderEntities()) {
-                queryOctree(NodeType::EntityServer, PacketType::EntityQuery, _entityServerJurisdictions);
+                queryOctree(NodeType::EntityServer, PacketType::EntityQuery);
             }
             sendAvatarViewFrustum();
             _lastQueriedViewFrustum = _viewFrustum;
@@ -5165,12 +5197,14 @@ void Application::update(float deltaTime) {
         }
     }
 
-    avatarManager->postUpdate(deltaTime, getMain3DScene());
-
+    {
+        PerformanceTimer perfTimer("avatarManager/postUpdate");
+        avatarManager->postUpdate(deltaTime, getMain3DScene());
+    }
 
     {
-        PROFILE_RANGE_EX(app, "PreRenderLambdas", 0xffff0000, (uint64_t)0);
-
+        PROFILE_RANGE_EX(app, "PostUpdateLambdas", 0xffff0000, (uint64_t)0);
+        PerformanceTimer perfTimer("postUpdateLambdas");
         std::unique_lock<std::mutex> guard(_postUpdateLambdasLock);
         for (auto& iter : _postUpdateLambdas) {
             iter.second();
@@ -5178,7 +5212,9 @@ void Application::update(float deltaTime) {
         _postUpdateLambdas.clear();
     }
 
-    editRenderArgs([this](AppRenderArgs& appRenderArgs) {
+
+    editRenderArgs([this, deltaTime](AppRenderArgs& appRenderArgs) {
+        PerformanceTimer perfTimer("editRenderArgs");
         appRenderArgs._headPose= getHMDSensorPose();
 
         auto myAvatar = getMyAvatar();
@@ -5224,7 +5260,7 @@ void Application::update(float deltaTime) {
             resizeGL();
         }
 
-        this->updateCamera(appRenderArgs._renderArgs);
+        this->updateCamera(appRenderArgs._renderArgs, deltaTime);
         appRenderArgs._eyeToWorld = _myCamera.getTransform();
         appRenderArgs._isStereo = false;
 
@@ -5292,12 +5328,20 @@ void Application::update(float deltaTime) {
         }
     });
 
-    AnimDebugDraw::getInstance().update();
+    {
+        PerformanceTimer perfTimer("limitless");
+        AnimDebugDraw::getInstance().update();
+    }
 
-    DependencyManager::get<LimitlessVoiceRecognitionScriptingInterface>()->update();
+    {
+        PerformanceTimer perfTimer("limitless");
+        DependencyManager::get<LimitlessVoiceRecognitionScriptingInterface>()->update();
+    }
 
-    // Game loop is done, mark the end of the frame for the scene transactions and the render loop to take over
-    getMain3DScene()->enqueueFrame();
+    { // Game loop is done, mark the end of the frame for the scene transactions and the render loop to take over
+        PerformanceTimer perfTimer("enqueueFrame");
+        getMain3DScene()->enqueueFrame();
+    }
 }
 
 void Application::sendAvatarViewFrustum() {
@@ -5359,14 +5403,11 @@ int Application::sendNackPackets() {
     return packetsSent;
 }
 
-void Application::queryOctree(NodeType_t serverType, PacketType packetType, NodeToJurisdictionMap& jurisdictions) {
+void Application::queryOctree(NodeType_t serverType, PacketType packetType) {
 
     if (!_settingsLoaded) {
         return; // bail early if settings are not loaded
     }
-
-    //qCDebug(interfaceapp) << ">>> inside... queryOctree()... _viewFrustum.getFieldOfView()=" << _viewFrustum.getFieldOfView();
-    bool wantExtraDebugging = getLogger()->extraDebugging();
 
     ViewFrustum viewFrustum;
     copyViewFrustum(viewFrustum);
@@ -5382,147 +5423,22 @@ void Application::queryOctree(NodeType_t serverType, PacketType packetType, Node
     _octreeQuery.setOctreeSizeScale(lodManager->getOctreeSizeScale());
     _octreeQuery.setBoundaryLevelAdjust(lodManager->getBoundaryLevelAdjust());
 
-    // Iterate all of the nodes, and get a count of how many octree servers we have...
-    int totalServers = 0;
-    int inViewServers = 0;
-    int unknownJurisdictionServers = 0;
-
     auto nodeList = DependencyManager::get<NodeList>();
 
-    nodeList->eachNode([&](const SharedNodePointer& node) {
-        // only send to the NodeTypes that are serverType
-        if (node->getActiveSocket() && node->getType() == serverType) {
-            totalServers++;
+    auto node = nodeList->soloNodeOfType(serverType);
+    if (node && node->getActiveSocket()) {
+        _octreeQuery.setMaxQueryPacketsPerSecond(getMaxOctreePacketsPerSecond());
 
-            // get the server bounds for this server
-            QUuid nodeUUID = node->getUUID();
+        auto queryPacket = NLPacket::create(packetType);
 
-            // if we haven't heard from this voxel server, go ahead and send it a query, so we
-            // can get the jurisdiction...
-            if (jurisdictions.find(nodeUUID) == jurisdictions.end()) {
-                unknownJurisdictionServers++;
-            } else {
-                const JurisdictionMap& map = (jurisdictions)[nodeUUID];
+        // encode the query data
+        auto packetData = reinterpret_cast<unsigned char*>(queryPacket->getPayload());
+        int packetSize = _octreeQuery.getBroadcastData(packetData);
+        queryPacket->setPayloadSize(packetSize);
 
-                auto rootCode = map.getRootOctalCode();
-
-                if (rootCode) {
-                    VoxelPositionSize rootDetails;
-                    voxelDetailsForCode(rootCode.get(), rootDetails);
-                    AACube serverBounds(glm::vec3(rootDetails.x * TREE_SCALE,
-                                                  rootDetails.y * TREE_SCALE,
-                                                  rootDetails.z * TREE_SCALE) - glm::vec3(HALF_TREE_SCALE),
-                                        rootDetails.s * TREE_SCALE);
-                    if (viewFrustum.cubeIntersectsKeyhole(serverBounds)) {
-                        inViewServers++;
-                    }
-                }
-            }
-        }
-    });
-
-    if (wantExtraDebugging) {
-        qCDebug(interfaceapp, "Servers: total %d, in view %d, unknown jurisdiction %d",
-            totalServers, inViewServers, unknownJurisdictionServers);
+        // make sure we still have an active socket
+        nodeList->sendUnreliablePacket(*queryPacket, *node);
     }
-
-    int perServerPPS = 0;
-    const int SMALL_BUDGET = 10;
-    int perUnknownServer = SMALL_BUDGET;
-    int totalPPS = getMaxOctreePacketsPerSecond();
-
-    // determine PPS based on number of servers
-    if (inViewServers >= 1) {
-        // set our preferred PPS to be exactly evenly divided among all of the voxel servers... and allocate 1 PPS
-        // for each unknown jurisdiction server
-        perServerPPS = (totalPPS / inViewServers) - (unknownJurisdictionServers * perUnknownServer);
-    } else {
-        if (unknownJurisdictionServers > 0) {
-            perUnknownServer = (totalPPS / unknownJurisdictionServers);
-        }
-    }
-
-    if (wantExtraDebugging) {
-        qCDebug(interfaceapp, "perServerPPS: %d perUnknownServer: %d", perServerPPS, perUnknownServer);
-    }
-
-    auto queryPacket = NLPacket::create(packetType);
-
-    nodeList->eachNode([&](const SharedNodePointer& node) {
-        // only send to the NodeTypes that are serverType
-        if (node->getActiveSocket() && node->getType() == serverType) {
-
-            // get the server bounds for this server
-            QUuid nodeUUID = node->getUUID();
-
-            bool inView = false;
-            bool unknownView = false;
-
-            // if we haven't heard from this voxel server, go ahead and send it a query, so we
-            // can get the jurisdiction...
-            if (jurisdictions.find(nodeUUID) == jurisdictions.end()) {
-                unknownView = true; // assume it's in view
-                if (wantExtraDebugging) {
-                    qCDebug(interfaceapp) << "no known jurisdiction for node " << *node << ", assume it's visible.";
-                }
-            } else {
-                const JurisdictionMap& map = (jurisdictions)[nodeUUID];
-
-                auto rootCode = map.getRootOctalCode();
-
-                if (rootCode) {
-                    VoxelPositionSize rootDetails;
-                    voxelDetailsForCode(rootCode.get(), rootDetails);
-                    AACube serverBounds(glm::vec3(rootDetails.x * TREE_SCALE,
-                                                  rootDetails.y * TREE_SCALE,
-                                                  rootDetails.z * TREE_SCALE) - glm::vec3(HALF_TREE_SCALE),
-                                        rootDetails.s * TREE_SCALE);
-
-
-                    inView = viewFrustum.cubeIntersectsKeyhole(serverBounds);
-                } else if (wantExtraDebugging) {
-                    qCDebug(interfaceapp) << "Jurisdiction without RootCode for node " << *node << ". That's unusual!";
-                }
-            }
-
-            if (inView) {
-                _octreeQuery.setMaxQueryPacketsPerSecond(perServerPPS);
-            } else if (unknownView) {
-                if (wantExtraDebugging) {
-                    qCDebug(interfaceapp) << "no known jurisdiction for node " << *node << ", give it budget of "
-                                            << perUnknownServer << " to send us jurisdiction.";
-                }
-
-                // set the query's position/orientation to be degenerate in a manner that will get the scene quickly
-                // If there's only one server, then don't do this, and just let the normal voxel query pass through
-                // as expected... this way, we will actually get a valid scene if there is one to be seen
-                if (totalServers > 1) {
-                    _octreeQuery.setCameraPosition(glm::vec3(-0.1,-0.1,-0.1));
-                    const glm::quat OFF_IN_NEGATIVE_SPACE = glm::quat(-0.5, 0, -0.5, 1.0);
-                    _octreeQuery.setCameraOrientation(OFF_IN_NEGATIVE_SPACE);
-                    _octreeQuery.setCameraNearClip(0.1f);
-                    _octreeQuery.setCameraFarClip(0.1f);
-                    if (wantExtraDebugging) {
-                        qCDebug(interfaceapp) << "Using 'minimal' camera position for node" << *node;
-                    }
-                } else {
-                    if (wantExtraDebugging) {
-                        qCDebug(interfaceapp) << "Using regular camera position for node" << *node;
-                    }
-                }
-                _octreeQuery.setMaxQueryPacketsPerSecond(perUnknownServer);
-            } else {
-                _octreeQuery.setMaxQueryPacketsPerSecond(0);
-            }
-
-            // encode the query data
-            int packetSize = _octreeQuery.getBroadcastData(reinterpret_cast<unsigned char*>(queryPacket->getPayload()));
-            queryPacket->setPayloadSize(packetSize);
-
-            // make sure we still have an active socket
-            nodeList->sendUnreliablePacket(*queryPacket, *node);
-        }
-    });
 }
 
 
@@ -5637,11 +5553,6 @@ void Application::clearDomainOctreeDetails() {
 
     resetPhysicsReadyInformation();
 
-    // reset our node to stats and node to jurisdiction maps... since these must be changing...
-    _entityServerJurisdictions.withWriteLock([&] {
-        _entityServerJurisdictions.clear();
-    });
-
     _octreeServerSceneStats.withWriteLock([&] {
         _octreeServerSceneStats.clear();
     });
@@ -5651,7 +5562,7 @@ void Application::clearDomainOctreeDetails() {
 
     auto skyStage = DependencyManager::get<SceneScriptingInterface>()->getSkyStage();
 
-    skyStage->setBackgroundMode(model::SunSkyStage::SKY_DEFAULT);
+    skyStage->setBackgroundMode(graphics::SunSkyStage::SKY_DEFAULT);
 
     DependencyManager::get<AnimationCache>()->clearUnusedResources();
     DependencyManager::get<ModelCache>()->clearUnusedResources();
@@ -5843,8 +5754,6 @@ bool Application::nearbyEntitiesAreReadyForPhysics() {
 }
 
 int Application::processOctreeStats(ReceivedMessage& message, SharedNodePointer sendingNode) {
-    // But, also identify the sender, and keep track of the contained jurisdiction root for this server
-
     // parse the incoming stats datas stick it in a temporary object for now, while we
     // determine which server it belongs to
     int statsMessageLength = 0;
@@ -5858,42 +5767,6 @@ int Application::processOctreeStats(ReceivedMessage& message, SharedNodePointer 
 
         if (octreeStats.isFullScene()) {
             _fullSceneReceivedCounter++;
-        }
-
-        // see if this is the first we've heard of this node...
-        NodeToJurisdictionMap* jurisdiction = nullptr;
-        QString serverType;
-        if (sendingNode->getType() == NodeType::EntityServer) {
-            jurisdiction = &_entityServerJurisdictions;
-            serverType = "Entity";
-        }
-
-        bool found = false;
-
-        jurisdiction->withReadLock([&] {
-            if (jurisdiction->find(nodeUUID) != jurisdiction->end()) {
-                found = true;
-                return;
-            }
-
-            VoxelPositionSize rootDetails;
-            voxelDetailsForCode(octreeStats.getJurisdictionRoot().get(), rootDetails);
-
-            qCDebug(interfaceapp, "stats from new %s server... [%f, %f, %f, %f]",
-                qPrintable(serverType),
-                (double)rootDetails.x, (double)rootDetails.y, (double)rootDetails.z, (double)rootDetails.s);
-        });
-
-        if (!found) {
-            // store jurisdiction details for later use
-            // This is bit of fiddling is because JurisdictionMap assumes it is the owner of the values used to construct it
-            // but OctreeSceneStats thinks it's just returning a reference to its contents. So we need to make a copy of the
-            // details from the OctreeSceneStats to construct the JurisdictionMap
-            JurisdictionMap jurisdictionMap;
-            jurisdictionMap.copyContents(octreeStats.getJurisdictionRoot(), octreeStats.getJurisdictionEndNodes());
-            jurisdiction->withWriteLock([&] {
-                (*jurisdiction)[nodeUUID] = jurisdictionMap;
-            });
         }
     });
 
@@ -5915,7 +5788,7 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
         return !entityServerNode || isPhysicsEnabled();
     });
 
-    // setup the packet senders and jurisdiction listeners of the script engine's scripting interfaces so
+    // setup the packet sender of the script engine's scripting interfaces so
     // we can use the same ones from the application.
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
     entityScriptingInterface->setPacketSender(&_entityEditSender);
@@ -5980,6 +5853,7 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
     scriptEngine->registerFunction("OverlayWindow", QmlWindowClass::constructor);
 
     scriptEngine->registerGlobalObject("Menu", MenuScriptingInterface::getInstance());
+    scriptEngine->registerGlobalObject("DesktopPreviewProvider", DependencyManager::get<DesktopPreviewProvider>().data());
     scriptEngine->registerGlobalObject("Stats", Stats::getInstance());
     scriptEngine->registerGlobalObject("Settings", SettingsScriptingInterface::getInstance());
     scriptEngine->registerGlobalObject("Snapshot", DependencyManager::get<Snapshot>().data());
@@ -5999,10 +5873,11 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
     scriptEngine->registerGlobalObject("ModelCache", DependencyManager::get<ModelCache>().data());
     scriptEngine->registerGlobalObject("SoundCache", DependencyManager::get<SoundCache>().data());
 
-    scriptEngine->registerGlobalObject("Account", AccountScriptingInterface::getInstance());
     scriptEngine->registerGlobalObject("DialogsManager", _dialogsManagerScriptingInterface);
 
-    scriptEngine->registerGlobalObject("GlobalServices", GlobalServicesScriptingInterface::getInstance());
+    scriptEngine->registerGlobalObject("Account", AccountServicesScriptingInterface::getInstance()); // DEPRECATED - TO BE REMOVED
+    scriptEngine->registerGlobalObject("GlobalServices", AccountServicesScriptingInterface::getInstance()); // DEPRECATED - TO BE REMOVED
+    scriptEngine->registerGlobalObject("AccountServices", AccountServicesScriptingInterface::getInstance());
     qScriptRegisterMetaType(scriptEngine.data(), DownloadInfoResultToScriptValue, DownloadInfoResultFromScriptValue);
 
     scriptEngine->registerGlobalObject("FaceTracker", DependencyManager::get<DdeFaceTracker>().data());
@@ -6029,6 +5904,7 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
     scriptEngine->registerGlobalObject("Users", DependencyManager::get<UsersScriptingInterface>().data());
 
     scriptEngine->registerGlobalObject("LimitlessSpeechRecognition", DependencyManager::get<LimitlessVoiceRecognitionScriptingInterface>().data());
+    scriptEngine->registerGlobalObject("GooglePoly", DependencyManager::get<GooglePolyScriptingInterface>().data());
 
     if (auto steamClient = PluginManager::getInstance()->getSteamClientPlugin()) {
         scriptEngine->registerGlobalObject("Steam", new SteamScriptingInterface(scriptEngine.data(), steamClient.get()));
@@ -6401,7 +6277,7 @@ void Application::showAssetServerWidget(QString filePath) {
         if (!hmd->getShouldShowTablet() && !isHMDMode()) {
             DependencyManager::get<OffscreenUi>()->show(url, "AssetServer", startUpload);
         } else {
-            static const QUrl url("../../hifi/dialogs/TabletAssetServer.qml");
+            static const QUrl url("../dialogs/TabletAssetServer.qml");
             tablet->pushOntoStack(url);
         }
     }
@@ -6974,7 +6850,7 @@ void Application::loadLODToolsDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->lodTools();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletLODTools.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletLODTools.qml");
     }
 }
 
@@ -6986,7 +6862,7 @@ void Application::loadEntityStatisticsDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->octreeStatsDetails();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletEntityStatistics.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletEntityStatistics.qml");
     }
 }
 
@@ -6997,7 +6873,7 @@ void Application::loadDomainConnectionDialog() {
         auto dialogsManager = DependencyManager::get<DialogsManager>();
         dialogsManager->showDomainConnectionDialog();
     } else {
-        tablet->pushOntoStack("../../hifi/dialogs/TabletDCDialog.qml");
+        tablet->pushOntoStack("hifi/dialogs/TabletDCDialog.qml");
     }
 }
 
@@ -7030,6 +6906,15 @@ void Application::loadAddAvatarBookmarkDialog() const {
     avatarBookmarks->addBookmark();
 }
 
+void Application::loadAvatarBrowser() const {
+    auto tablet = dynamic_cast<TabletProxy*>(DependencyManager::get<TabletScriptingInterface>()->getTablet("com.highfidelity.interface.tablet.system"));
+    // construct the url to the marketplace item
+    QString url = NetworkingConstants::METAVERSE_SERVER_URL().toString() + "/marketplace?category=avatars";
+    QString MARKETPLACES_INJECT_SCRIPT_PATH = "file:///" + qApp->applicationDirPath() + "/scripts/system/html/js/marketplacesInject.js";
+    tablet->gotoWebScreen(url, MARKETPLACES_INJECT_SCRIPT_PATH);
+    DependencyManager::get<HMDScriptingInterface>()->openTablet();
+}
+
 void Application::takeSnapshot(bool notify, bool includeAnimated, float aspectRatio) {
     postLambdaEvent([notify, includeAnimated, aspectRatio, this] {
         // Get a screenshot and save it
@@ -7047,7 +6932,8 @@ void Application::takeSnapshot(bool notify, bool includeAnimated, float aspectRa
 
 void Application::takeSecondaryCameraSnapshot() {
     postLambdaEvent([this] {
-        Snapshot::saveSnapshot(getActiveDisplayPlugin()->getSecondaryCameraScreenshot());
+        QString snapshotPath = Snapshot::saveSnapshot(getActiveDisplayPlugin()->getSecondaryCameraScreenshot());
+        emit DependencyManager::get<WindowScriptingInterface>()->stillSnapshotTaken(snapshotPath, true);
     });
 }
 
@@ -7622,11 +7508,13 @@ void Application::updateThreadPoolCount() const {
 }
 
 void Application::updateSystemTabletMode() {
-    qApp->setProperty(hifi::properties::HMD, isHMDMode());
-    if (isHMDMode()) {
-        DependencyManager::get<TabletScriptingInterface>()->setToolbarMode(getHmdTabletBecomesToolbarSetting());
-    } else {
-        DependencyManager::get<TabletScriptingInterface>()->setToolbarMode(getDesktopTabletBecomesToolbarSetting());
+    if (_settingsLoaded) {
+        qApp->setProperty(hifi::properties::HMD, isHMDMode());
+        if (isHMDMode()) {
+            DependencyManager::get<TabletScriptingInterface>()->setToolbarMode(getHmdTabletBecomesToolbarSetting());
+        } else {
+            DependencyManager::get<TabletScriptingInterface>()->setToolbarMode(getDesktopTabletBecomesToolbarSetting());
+        }
     }
 }
 

@@ -158,7 +158,7 @@ void EntityMotionState::handleEasyChanges(uint32_t& flags) {
         // (1) we own it but may need to change the priority OR...
         // (2) we don't own it but should bid (because a local script has been changing physics properties)
         uint8_t newPriority = isLocallyOwned() ? _entity->getSimulationOwner().getPriority() : _entity->getSimulationOwner().getPendingPriority();
-        _outgoingPriority = glm::max(_outgoingPriority, newPriority);
+        upgradeOutgoingPriority(newPriority);
 
         // reset bid expiry so that we bid ASAP
         _nextOwnershipBid = 0;
@@ -259,11 +259,36 @@ void EntityMotionState::setWorldTransform(const btTransform& worldTrans) {
     assert(_entity);
     assert(entityTreeIsLocked());
     measureBodyAcceleration();
-    _entity->setPositionInSimulationFrame(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
-    _entity->setOrientationInSimulationFrame(bulletToGLM(worldTrans.getRotation()));
-    _entity->setVelocityInSimulationFrame(getBodyLinearVelocity());
-    _entity->setAngularVelocityInSimulationFrame(getBodyAngularVelocity());
-    _entity->setLastSimulated(usecTimestampNow());
+
+    // If transform or velocities are flagged as dirty it means a network or scripted change
+    // occured between the beginning and end of the stepSimulation() and we DON'T want to apply
+    // these physics simulation results.
+    uint32_t flags = _entity->getDirtyFlags() & (Simulation::DIRTY_TRANSFORM | Simulation::DIRTY_VELOCITIES);
+    if (!flags) {
+        // flags are clear
+        // _entity->setWorldTransform(bulletToGLM(worldTrans.getOrigin()), bulletToGLM(worldTrans.getRotation()));
+        _entity->setPositionInSimulationFrame(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
+        _entity->setOrientationInSimulationFrame(bulletToGLM(worldTrans.getRotation()));
+        _entity->setVelocityInSimulationFrame(getBodyLinearVelocity());
+        _entity->setAngularVelocityInSimulationFrame(getBodyAngularVelocity());
+        _entity->setLastSimulated(usecTimestampNow());
+    } else {
+        // only set properties NOT flagged
+        if (!(flags & Simulation::DIRTY_TRANSFORM)) {
+            // _entity->setWorldTransform(bulletToGLM(worldTrans.getOrigin()), bulletToGLM(worldTrans.getRotation()));
+            _entity->setPositionInSimulationFrame(bulletToGLM(worldTrans.getOrigin()) + ObjectMotionState::getWorldOffset());
+            _entity->setOrientationInSimulationFrame(bulletToGLM(worldTrans.getRotation()));
+        }
+        if (!(flags & Simulation::DIRTY_LINEAR_VELOCITY)) {
+            _entity->setVelocityInSimulationFrame(getBodyLinearVelocity());
+        }
+        if (!(flags & Simulation::DIRTY_ANGULAR_VELOCITY)) {
+            _entity->setAngularVelocityInSimulationFrame(getBodyAngularVelocity());
+        }
+        if (flags != (Simulation::DIRTY_TRANSFORM | Simulation::DIRTY_VELOCITIES)) {
+            _entity->setLastSimulated(usecTimestampNow());
+        }
+    }
 
     if (_entity->getSimulatorID().isNull()) {
         _loopsWithoutOwner++;
@@ -392,7 +417,8 @@ bool EntityMotionState::remoteSimulationOutOfSync(uint32_t simulationStep) {
     }
 
     if (_entity->dynamicDataNeedsTransmit()) {
-        _outgoingPriority = _entity->hasActions() ? SCRIPT_GRAB_SIMULATION_PRIORITY : SCRIPT_POKE_SIMULATION_PRIORITY;
+        uint8_t priority = _entity->hasActions() ? SCRIPT_GRAB_SIMULATION_PRIORITY : SCRIPT_POKE_SIMULATION_PRIORITY;
+        upgradeOutgoingPriority(priority);
         return true;
     }
 
@@ -491,17 +517,21 @@ bool EntityMotionState::shouldSendUpdate(uint32_t simulationStep) {
         // we don't own the simulation
 
         // NOTE: we do not volunteer to own kinematic or static objects
-        uint8_t insufficientPriority = _body->isStaticOrKinematicObject() ? VOLUNTEER_SIMULATION_PRIORITY : 0;
+        uint8_t volunteerPriority = _body->isStaticOrKinematicObject() ? VOLUNTEER_SIMULATION_PRIORITY : 0;
 
-        bool shouldBid = _outgoingPriority > insufficientPriority && // but we would like to own it AND
+        bool shouldBid = _outgoingPriority > volunteerPriority && // but we would like to own it AND
                 usecTimestampNow() > _nextOwnershipBid; // it is time to bid again
         if (shouldBid && _outgoingPriority < _entity->getSimulationPriority()) {
-            // we are insufficiently interested so clear our interest
+            // we are insufficiently interested so clear _outgoingPriority
             // and reset the bid expiry
             _outgoingPriority = 0;
             _nextOwnershipBid = usecTimestampNow() + USECS_BETWEEN_OWNERSHIP_BIDS;
         }
         return shouldBid;
+    } else {
+        // When we own the simulation: make sure _outgoingPriority is not less than current owned priority
+        // because: an _outgoingPriority of zero indicates that we should drop ownership when we have it.
+        upgradeOutgoingPriority(_entity->getSimulationPriority());
     }
 
     return remoteSimulationOutOfSync(simulationStep);
@@ -514,9 +544,7 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
 
     if (!_body->isActive()) {
         // make sure all derivatives are zero
-        _entity->setVelocity(Vectors::ZERO);
-        _entity->setAngularVelocity(Vectors::ZERO);
-        _entity->setAcceleration(Vectors::ZERO);
+        zeroCleanObjectVelocities();
         _numInactiveUpdates++;
     } else {
         glm::vec3 gravity = _entity->getGravity();
@@ -544,9 +572,7 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
             if (movingSlowly) {
                 // velocities might not be zero, but we'll fake them as such, which will hopefully help convince
                 // other simulating observers to deactivate their own copies
-                glm::vec3 zero(0.0f);
-                _entity->setVelocity(zero);
-                _entity->setAngularVelocity(zero);
+                zeroCleanObjectVelocities();
             }
         }
         _numInactiveUpdates = 0;
@@ -608,8 +634,10 @@ void EntityMotionState::sendUpdate(OctreeEditPacketSender* packetSender, uint32_
         _entity->setPendingOwnershipPriority(_outgoingPriority, now);
         // don't forget to remember that we have made a bid
         _entity->rememberHasSimulationOwnershipBid();
-        // ...then reset _outgoingPriority in preparation for the next frame
+        // ...then reset _outgoingPriority
         _outgoingPriority = 0;
+        // _outgoingPrioriuty will be re-computed before next bid,
+        // or will be set to agree with ownership priority should we win the bid
     } else if (_outgoingPriority != _entity->getSimulationPriority()) {
         // we own the simulation but our desired priority has changed
         if (_outgoingPriority == 0) {
@@ -821,4 +849,23 @@ PhysicsEnginePointer EntityMotionState::getPhysicsEngine() const {
         return result;
     }
     return getShouldBeInPhysicsEngine();
+}
+
+void EntityMotionState::zeroCleanObjectVelocities() const {
+    // If transform or velocities are flagged as dirty it means a network or scripted change
+    // occured between the beginning and end of the stepSimulation() and we DON'T want to apply
+    // these physics simulation results.
+    uint32_t flags = _entity->getDirtyFlags() & (Simulation::DIRTY_TRANSFORM | Simulation::DIRTY_VELOCITIES);
+    if (!flags) {
+        _entity->setWorldVelocity(glm::vec3(0.0f));
+        _entity->setWorldAngularVelocity(glm::vec3(0.0f));
+    } else {
+        if (!(flags & Simulation::DIRTY_LINEAR_VELOCITY)) {
+            _entity->setWorldVelocity(glm::vec3(0.0f));
+        }
+        if (!(flags & Simulation::DIRTY_ANGULAR_VELOCITY)) {
+            _entity->setWorldAngularVelocity(glm::vec3(0.0f));
+        }
+    }
+    _entity->setAcceleration(glm::vec3(0.0f));
 }
