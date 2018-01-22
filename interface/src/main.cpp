@@ -30,11 +30,6 @@
 #include "UserActivityLogger.h"
 #include "MainWindow.h"
 
-#ifdef HAS_BUGSPLAT
-#include <BugSplat.h>
-#include <CrashReporter.h>
-#endif
-
 #ifdef Q_OS_WIN
 extern "C" {
     typedef int(__stdcall * CHECKMINSPECPROC) ();
@@ -42,11 +37,6 @@ extern "C" {
 #endif
 
 int main(int argc, const char* argv[]) {
-#if HAS_BUGSPLAT
-    static QString BUG_SPLAT_DATABASE = "interface_alpha";
-    static QString BUG_SPLAT_APPLICATION_NAME = "Interface";
-    CrashReporter crashReporter { BUG_SPLAT_DATABASE, BUG_SPLAT_APPLICATION_NAME, BuildInfo::VERSION };
-#endif
 
 #ifdef Q_OS_LINUX
     QApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
@@ -259,7 +249,6 @@ int main(int argc, const char* argv[]) {
             }
         }
 #endif
-        
 
         // Setup local server
         QLocalServer server { &app };
@@ -268,29 +257,8 @@ int main(int argc, const char* argv[]) {
         server.removeServer(applicationName);
         server.listen(applicationName);
 
-        QObject::connect(&server, &QLocalServer::newConnection, &app, &Application::handleLocalServerConnection, Qt::DirectConnection);
-
-#ifdef HAS_BUGSPLAT
-        auto accountManager = DependencyManager::get<AccountManager>();
-        crashReporter.mpSender.setDefaultUserName(qPrintable(accountManager->getAccountInfo().getUsername()));
-        QObject::connect(accountManager.data(), &AccountManager::usernameChanged, &app, [&crashReporter](const QString& newUsername) {
-            crashReporter.mpSender.setDefaultUserName(qPrintable(newUsername));
-        });
-
-        // BugSplat WILL NOT work with file paths that do not use OS native separators.
-        auto logger = app.getLogger();
-        auto logPath = QDir::toNativeSeparators(logger->getFilename());
-        crashReporter.mpSender.sendAdditionalFile(qPrintable(logPath));
-
-        QMetaObject::Connection connection;
-        connection = QObject::connect(logger, &FileLogger::rollingLogFile, &app, [&crashReporter, &connection](QString newFilename) {
-            // We only want to add the first rolled log file (the "beginning" of the log) to BugSplat to ensure we don't exceed the 2MB
-            // zipped limit, so we disconnect here.
-            QObject::disconnect(connection);
-            auto rolledLogPath = QDir::toNativeSeparators(newFilename);
-            crashReporter.mpSender.sendAdditionalFile(qPrintable(rolledLogPath));
-        });
-#endif
+        QObject::connect(&server, &QLocalServer::newConnection,
+                         &app, &Application::handleLocalServerConnection, Qt::DirectConnection);
 
         printSystemInformation();
 
