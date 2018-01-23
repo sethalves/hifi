@@ -655,8 +655,6 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     }
 #endif
 
-    Setting::init();
-
     // Tell the plugin manager about our statically linked plugins
     auto pluginManager = PluginManager::getInstance();
     pluginManager->setInputPluginProvider([] { return getInputPlugins(); });
