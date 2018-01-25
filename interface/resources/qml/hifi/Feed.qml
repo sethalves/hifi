@@ -33,7 +33,6 @@ Column {
     property int labelSize: 20;
 
     property string metaverseServerUrl: '';
-    property string protocol: '';
     property string actions: 'snapshot';
     // sendToScript doesn't get wired until after everything gets created. So we have to queue fillDestinations on nextTick.
     property string labelText: actions;
@@ -103,7 +102,7 @@ Column {
             'include_actions=' + actions,
             'restriction=' + (Account.isLoggedIn() ? 'open,hifi' : 'open'),
             'require_online=true',
-            'protocol=' + protocol,
+            'protocol=' + encodeURIComponent(Window.protocolSignature()),
             'page=' + pageNumber
         ];
         var url = metaverseBase + 'user_stories?' + options.join('&');
