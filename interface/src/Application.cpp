@@ -838,6 +838,11 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _sampleSound(nullptr)
 
 {
+#if HAS_CRASHPAD
+    crashpadAnnotations = new crashpad::SimpleStringDictionary(); // don't free this, let it leak
+    crashpad::CrashpadInfo* crashpad_info = crashpad::GetCrashpadInfo();
+    crashpad_info->set_simple_annotations(crashpadAnnotations);
+#endif // HAS_CRASHPAD
 
     auto steamClient = PluginManager::getInstance()->getSteamClientPlugin();
     setProperty(hifi::properties::STEAM, (steamClient && steamClient->isRunning()));
@@ -904,6 +909,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto accountManager = DependencyManager::get<AccountManager>();
 
     _logger->setSessionID(accountManager->getSessionID());
+
+#if HAS_CRASHPAD
+    backtraceAnnotations->SetKeyValue("MetaverseSessionID", accountManager->getSessionID());
+#endif // HAS_CRASHPAD
 
     if (steamClient) {
         qCDebug(interfaceapp) << "[VERSION] SteamVR buildID:" << steamClient->getSteamVRBuildID();
