@@ -166,6 +166,10 @@ endif ()
 add_dependencies(${TARGET_NAME} resources)
 
 if (WIN32)
+  set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS "/ignore:4099")
+endif()
+
+if (WIN32)
   # These are external plugins, but we need to do the 'add dependency' here so that their
   # binary directories get added to the fixup path
   add_dependency_external_projects(sixense)
