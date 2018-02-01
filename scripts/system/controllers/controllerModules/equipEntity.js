@@ -271,8 +271,8 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         this.grabEntityProps = null;
         this.shouldSendStart = false;
         this.equipedWithSecondary = false;
+        this.handHasBeenRightsideUp = false;
         this.entityInScabbardProps = null;
-        this.targetJustRezzedFromScabbard = false;
 
         try {
             this.entityInScabbardProps = JSON.parse(Settings.getValue(SCABBARD_SETTINGS + "." + this.hand));
@@ -619,7 +619,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 // 100 ms seems to be sufficient time to force the check even occur after the object has been initialized.
                 Script.setTimeout(grabEquipCheck, 100);
             }
-
         };
 
         this.endEquipEntity = function () {
@@ -710,6 +709,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         this.isReady = function (controllerData, deltaTime) {
             var timestamp = Date.now();
             this.updateInputs(controllerData);
+            this.handHasBeenRightsideUp = false;
 
             var runningValues = this.checkNearbyHotspots(controllerData, deltaTime, timestamp);
             if (!runningValues.active) {
@@ -727,7 +727,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                     this.startEquipEntity(controllerData);
                     this.messageGrabEntity = true;
                     this.equipedWithSecondary = this.secondarySmoothedSqueezed();
-                    this.targetJustRezzedFromScabbard = true;
                     return makeRunningValues(true, [entityIDFromScabbard], []);
                 }
             }
@@ -764,10 +763,13 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 return makeRunningValues(false, [], []);
             }
 
-            var dropDetected = this.dropGestureProcess(deltaTime) && !this.targetJustRezzedFromScabbard;
-
-            if (this.triggerSmoothedReleased()) {
-                this.targetJustRezzedFromScabbard = false;
+            var handIsUpsideDown = this.dropGestureProcess(deltaTime);
+            var dropDetected = false;
+            if (this.handHasBeenRightsideUp) {
+                dropDetected = handIsUpsideDown;
+            }
+            if (!handIsUpsideDown) {
+                this.handHasBeenRightsideUp = true;
             }
 
             if (this.triggerSmoothedReleased() || this.secondaryReleased()) {
