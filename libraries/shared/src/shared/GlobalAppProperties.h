@@ -10,6 +10,9 @@
 #ifndef hifi_GlobalAppProperties_h
 #define hifi_GlobalAppProperties_h
 
+#include <QtCore/QCoreApplication>
+#include <QtCore/QVariant>
+
 namespace hifi { namespace properties {
 
     extern const char* CRASHED;
@@ -20,6 +23,7 @@ namespace hifi { namespace properties {
     extern const char* TRACING;
     extern const char* HMD;
     extern const char* APP_LOCAL_DATA_PATH;
+    extern const char* SERVERLESS;
 
     namespace gl {
         extern const char* BACKEND;
@@ -27,6 +31,7 @@ namespace hifi { namespace properties {
         extern const char* PRIMARY_CONTEXT;
     }
 
+    bool asBool(const char* flag);
 } }
 
 

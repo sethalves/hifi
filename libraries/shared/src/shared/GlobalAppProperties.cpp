@@ -18,6 +18,7 @@ namespace hifi { namespace properties {
     const char* TRACING = "com.highfidelity.tracing";
     const char* HMD = "com.highfidelity.hmd";
     const char* APP_LOCAL_DATA_PATH = "com.highfidelity.appLocalDataPath";
+    const char* SERVERLESS = "com.highfidelity.serverless";
 
     namespace gl {
         const char* BACKEND = "com.highfidelity.gl.backend";
@@ -25,4 +26,8 @@ namespace hifi { namespace properties {
         const char* PRIMARY_CONTEXT = "com.highfidelity.gl.primaryContext";
     }
 
+    bool asBool(const char* flag) {
+        auto variant = qApp->property(flag);
+        return variant.isValid() && variant.toBool();
+    }
 } }

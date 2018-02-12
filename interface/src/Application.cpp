@@ -950,7 +950,12 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
 
     // setup a timer for domain-server check ins
     QTimer* domainCheckInTimer = new QTimer(this);
-    connect(domainCheckInTimer, &QTimer::timeout, nodeList.data(), &NodeList::sendDomainServerCheckIn);
+    // connect(domainCheckInTimer, &QTimer::timeout, nodeList.data(), &NodeList::sendDomainServerCheckIn);
+    connect(domainCheckInTimer, &QTimer::timeout, [nodeList] {
+        if (!hifi::properties::asBool(hifi::properties::SERVERLESS)) {
+            nodeList->sendDomainServerCheckIn();
+        }
+    });
     domainCheckInTimer->start(DOMAIN_SERVER_CHECK_IN_MSECS);
     connect(this, &QCoreApplication::aboutToQuit, [domainCheckInTimer] {
         domainCheckInTimer->stop();
@@ -4406,8 +4411,10 @@ void Application::init() {
 
     qCDebug(interfaceapp) << "Loaded settings";
 
-    // fire off an immediate domain-server check in now that settings are loaded
-    DependencyManager::get<NodeList>()->sendDomainServerCheckIn();
+    if (!hifi::properties::asBool(hifi::properties::SERVERLESS)) {
+        // fire off an immediate domain-server check in now that settings are loaded
+        DependencyManager::get<NodeList>()->sendDomainServerCheckIn();
+    }
 
     // This allows collision to be set up properly for shape entities supported by GeometryCache.
     // This is before entity setup to ensure that it's ready for whenever instance collision is initialized.

@@ -22,6 +22,7 @@
 #include <NumericalConstants.h>
 #include <SettingHandle.h>
 #include <UUID.h>
+#include <shared/GlobalAppProperties.h>
 
 #include "AddressManager.h"
 #include "NodeList.h"
@@ -207,7 +208,9 @@ bool AddressManager::handleUrl(const QUrl& lookupUrl, LookupTrigger trigger) {
     static QString URL_TYPE_DOMAIN_ID = "domain_id";
     static QString URL_TYPE_PLACE = "place";
     static QString URL_TYPE_NETWORK_ADDRESS = "network_address";
-    if (lookupUrl.scheme() == HIFI_URL_SCHEME) {
+    if (lookupUrl.scheme() == "file") {
+        setDomainInfo("", 0, trigger);
+    } else if (lookupUrl.scheme() == HIFI_URL_SCHEME) {
 
         qCDebug(networking) << "Trying to go to URL" << lookupUrl.toString();
 
@@ -295,20 +298,24 @@ bool AddressManager::handleUrl(const QUrl& lookupUrl, LookupTrigger trigger) {
 
 void AddressManager::handleLookupString(const QString& lookupString, bool fromSuggestions) {
     if (!lookupString.isEmpty()) {
-        // make this a valid hifi URL and handle it off to handleUrl
-        QString sanitizedString = lookupString.trimmed();
-        QUrl lookupURL;
-
-        if (!lookupString.startsWith('/')) {
-            const QRegExp HIFI_SCHEME_REGEX = QRegExp(HIFI_URL_SCHEME + ":\\/{1,2}", Qt::CaseInsensitive);
-            sanitizedString = sanitizedString.remove(HIFI_SCHEME_REGEX);
-
-            lookupURL = QUrl(HIFI_URL_SCHEME + "://" + sanitizedString);
+        if (lookupString.toLower().startsWith("file://")) {
+            qApp->setProperty(hifi::properties::SERVERLESS, false);
+            handleUrl(QUrl(lookupString), fromSuggestions ? Suggestions : UserInput);
         } else {
-            lookupURL = QUrl(lookupString);
-        }
+            // make this a valid hifi URL and handle it off to handleUrl
+            QString sanitizedString = lookupString.trimmed();
+            QUrl lookupURL;
 
-        handleUrl(lookupURL, fromSuggestions ? Suggestions : UserInput);
+            if (!lookupString.startsWith('/')) {
+                const QRegExp HIFI_SCHEME_REGEX = QRegExp(HIFI_URL_SCHEME + ":\\/{1,2}", Qt::CaseInsensitive);
+                sanitizedString = sanitizedString.remove(HIFI_SCHEME_REGEX);
+
+                lookupURL = QUrl(HIFI_URL_SCHEME + "://" + sanitizedString);
+            } else {
+                lookupURL = QUrl(lookupString);
+            }
+            handleUrl(lookupURL, fromSuggestions ? Suggestions : UserInput);
+        }
     }
 }
 
