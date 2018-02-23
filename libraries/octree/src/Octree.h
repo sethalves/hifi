@@ -216,6 +216,7 @@ public:
     virtual bool mustIncludeAllChildData() const { return true; }
 
     virtual void update() { } // nothing to do by default
+    void setRootUrl(QUrl rootUrl);
 
     OctreeElementPointer getRoot() { return _rootElement; }
 
@@ -365,6 +366,7 @@ protected:
 
     bool _isViewing;
     bool _isServer;
+    QUrl _rootUrl;
 };
 
 #endif // hifi_Octree_h

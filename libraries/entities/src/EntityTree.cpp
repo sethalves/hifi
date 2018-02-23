@@ -2281,8 +2281,25 @@ bool EntityTree::writeToMap(QVariantMap& entityDescription, OctreeElementPointer
     return true;
 }
 
+void fixEntityUrls(EntityItemProperties& properties, QUrl rootUrl) {
+    if (rootUrl != QUrl()) {
+        QString baseUrl;
+        if (rootUrl.isLocalFile()) {
+            rootUrl.toLocalFile();
+            baseUrl = rootUrl.adjusted(QUrl::RemoveFilename).toLocalFile();
+        } else {
+            baseUrl = rootUrl.adjusted(QUrl::RemoveFilename).toString();
+        }
+
+        if (properties.getModelURL() != "" && QUrl(properties.getModelURL()).isRelative()) {
+            properties.setModelURL(baseUrl + properties.getModelURL());
+        }
+    }
+}
+
 bool EntityTree::readFromMap(QVariantMap& map) {
     // These are needed to deal with older content (before adding inheritance modes)
+    qDebug() << "----------------> " << _rootUrl;
     int contentVersion = map["Version"].toInt();
     bool needsConversion = (contentVersion < (int)EntityVersion::ZoneLightInheritModes);
 
@@ -2317,6 +2334,7 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         EntityItemProperties properties;
         EntityItemPropertiesFromScriptValueIgnoreReadOnly(entityScriptValue, properties);
 
+        fixEntityUrls(properties, _rootUrl);
         EntityItemID entityItemID;
         if (entityMap.contains("id")) {
             entityItemID = EntityItemID(QUuid(entityMap["id"].toString()));
@@ -2334,7 +2352,6 @@ bool EntityTree::readFromMap(QVariantMap& map) {
         if (needsConversion && (properties.getType() == EntityTypes::EntityType::Zone)) {
             // The legacy version had no keylight mode - this is set to on
             properties.setKeyLightMode(COMPONENT_MODE_ENABLED);
-            
             // The ambient URL has been moved from "keyLight" to "ambientLight"
             if (entityMap.contains("keyLight")) {
                 QVariantMap keyLightObject = entityMap["keyLight"].toMap();

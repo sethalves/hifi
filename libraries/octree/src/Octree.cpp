@@ -168,6 +168,10 @@ void Octree::recurseTreeWithOperationDistanceSorted(const RecurseOctreeOperation
     recurseElementWithOperationDistanceSorted(_rootElement, operation, point, extraData);
 }
 
+void Octree::setRootUrl(QUrl rootUrl) {
+    _rootUrl = PathUtils::expandToAppAbsolutePath(rootUrl);
+}
+
 // Recurses voxel element with an operation function
 void Octree::recurseElementWithOperationDistanceSorted(const OctreeElementPointer& element, const RecurseOctreeOperation& operation,
                                                        const glm::vec3& point, void* extraData, int recursionCount) {
@@ -1668,6 +1672,7 @@ QString getMarketplaceID(const QString& urlString) {
 
 bool Octree::readFromURL(const QString& urlString) {
     QString marketplaceID = getMarketplaceID(urlString);
+    setRootUrl(QUrl(urlString));
     auto request =
         std::unique_ptr<ResourceRequest>(DependencyManager::get<ResourceManager>()->createResourceRequest(this, urlString));
 
