@@ -43,6 +43,7 @@ Item {
         width: parent.width;
         height: (root.shouldShowTopAndBottomOfWallet || root.shouldShowTopOfWallet) ? parent.height : parent.height - root.parentAppTitleBarHeight - root.parentAppNavBarHeight;
         propagateComposedEvents: false;
+        hoverEnabled: true;
     }
 
     Connections {
@@ -57,6 +58,9 @@ Item {
 
             if (result.status === 'success') {
                 root.nextActiveView = 'paymentSuccess';
+                if (sendPubliclyCheckbox.checked && sendMoneyStep.referrer === "nearby") {
+                    sendSignalToWallet({method: 'sendMoney_sendPublicly', recipient: sendMoneyStep.selectedRecipientNodeID, amount: parseInt(amountTextField.text)});
+                }
             } else {
                 root.nextActiveView = 'paymentFailure';
             }
@@ -101,6 +105,12 @@ Item {
         } else if (root.currentActiveView === 'chooseRecipientNearby') {
             sendSignalToWallet({method: 'enable_ChooseRecipientNearbyMode'});
         }
+    }
+
+    HifiCommerceCommon.CommerceLightbox {
+        id: lightboxPopup;
+        visible: false;
+        anchors.fill: parent;
     }
 
     // Send Money Home BEGIN
@@ -326,6 +336,7 @@ Item {
         MouseArea {
             anchors.fill: parent;
             propagateComposedEvents: false;
+            hoverEnabled: true;
         }
         
         ListModel {
@@ -477,6 +488,7 @@ Item {
                             enabled: connectionsList.currentIndex !== index;
                             anchors.fill: parent;
                             propagateComposedEvents: false;
+                            hoverEnabled: true;
                             onClicked: {
                                 connectionsList.currentIndex = index;
                             }
@@ -505,6 +517,7 @@ Item {
         MouseArea {
             anchors.fill: parent;
             propagateComposedEvents: false;
+            hoverEnabled: true;
         }
 
         Rectangle {
@@ -910,14 +923,14 @@ Item {
             anchors.leftMargin: 20;
             anchors.right: parent.right;
             anchors.rightMargin: 20;
-            height: 140;
+            height: 95;
                 
             FontLoader { id: firaSansSemiBold; source: "../../../../../fonts/FiraSans-SemiBold.ttf"; }
             TextArea {
                 id: optionalMessage;
                 property int maximumLength: 72;
                 property string previousText: text;
-                placeholderText: "<i>Optional Message (" + maximumLength + " character limit)</i>";
+                placeholderText: "<i>Optional Public Message (" + maximumLength + " character limit)</i>";
                 font.family: firaSansSemiBold.name;
                 font.pixelSize: 20;
                 // Anchors
@@ -934,8 +947,14 @@ Item {
                 wrapMode: TextEdit.Wrap;
                 activeFocusOnPress: true;
                 activeFocusOnTab: true;
-                // Workaround for no max length on TextAreas
                 onTextChanged: {
+                    // Don't allow tabs or newlines
+                    if ((/[\n\r\t]/g).test(text)) {
+                        var cursor = cursorPosition;
+                        text = text.replace(/[\n\r\t]/g, '');
+                        cursorPosition = cursor-1;
+                    }
+                    // Workaround for no max length on TextAreas
                     if (text.length > maximumLength) {
                         var cursor = cursorPosition;
                         text = previousText;
@@ -967,16 +986,54 @@ Item {
 
         HifiControlsUit.CheckBox {
             id: sendPubliclyCheckbox;
-            visible: false; // FIXME ONCE PARTICLE EFFECTS ARE IN
-            text: "Send Publicly"
+            visible: sendMoneyStep.referrer === "nearby";
+            checked: Settings.getValue("sendMoneyNearbyPublicly", true);
+            text: "Show Effect"
             // Anchors
             anchors.top: messageContainer.bottom;
             anchors.topMargin: 16;
             anchors.left: parent.left;
             anchors.leftMargin: 20;
-            anchors.right: parent.right;
-            anchors.rightMargin: 16;
-            boxSize: 24;
+            width: 110;
+            boxSize: 28;
+            onCheckedChanged: {
+                Settings.setValue("sendMoneyNearbyPublicly", checked);
+            }
+        }
+        RalewaySemiBold {
+            id: sendPubliclyCheckboxHelp;
+            visible: sendPubliclyCheckbox.visible;
+            text: "[?]";
+            // Anchors
+            anchors.left: sendPubliclyCheckbox.right;
+            anchors.leftMargin: 8;
+            anchors.verticalCenter: sendPubliclyCheckbox.verticalCenter;
+            height: 30;
+            width: paintedWidth;
+            // Text size
+            size: 18;
+            // Style
+            color: hifi.colors.blueAccent;
+            MouseArea {
+                enabled: sendPubliclyCheckboxHelp.visible;
+                anchors.fill: parent;
+                hoverEnabled: true;
+                onEntered: {
+                    parent.color = hifi.colors.blueHighlight;
+                }
+                onExited: {
+                    parent.color = hifi.colors.blueAccent;
+                }
+                onClicked: {
+                    lightboxPopup.titleText = "Send Money Effect";
+                    lightboxPopup.bodyImageSource = "../wallet/sendMoney/images/send-money-effect-sm.jpg"; // Path relative to CommerceLightbox.qml
+                    lightboxPopup.bodyText = "Enabling this option will create a particle effect between you and " +
+                        "your recipient that is visible to everyone nearby.";
+                    lightboxPopup.button1text = "CLOSE";
+                    lightboxPopup.button1method = "root.visible = false;"
+                    lightboxPopup.visible = true;
+                }
+            }
         }
 
         Item {
@@ -1059,11 +1116,12 @@ Item {
         MouseArea {
             anchors.fill: parent;
             propagateComposedEvents: false;
+            hoverEnabled: true;
         }
                 
         AnimatedImage {
             id: sendingMoneyImage;
-            source: "./images/loader.gif"
+            source: "../../common/images/loader.gif"
             width: 96;
             height: width;
             anchors.verticalCenter: parent.verticalCenter;
@@ -1533,6 +1591,8 @@ Item {
         sendMoneyStep.selectedRecipientProfilePic = "";
         amountTextField.text = "";
         optionalMessage.text = "";
+        sendPubliclyCheckbox.checked = Settings.getValue("sendMoneyNearbyPublicly", true);
+        sendMoneyStep.referrer = "";
     }
 
     //
