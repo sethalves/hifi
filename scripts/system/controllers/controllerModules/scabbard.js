@@ -109,8 +109,10 @@ Script.include("/~/system/libraries/controllerDispatcherUtils.js");
             var secondarySqueezed = controllerData.secondaryValues[this.hand] > BUMPER_ON_VALUE;
             var gestureDetected = this.detectScabbardGesture(controllerData);
 
-            if (this.possibleStoreInScabbardID && gestureDetected) {
-                this.saveEntityInScabbard(controllerData, this.possibleStoreInScabbardID);
+            if (this.possibleStoreInScabbardID) {
+                if (gestureDetected) {
+                    this.saveEntityInScabbard(controllerData, this.possibleStoreInScabbardID);
+                }
                 this.possibleStoreInScabbardID = null;
             } else if ((triggerSqueezed || secondarySqueezed) && this.entityInScabbardProps && gestureDetected) {
 
