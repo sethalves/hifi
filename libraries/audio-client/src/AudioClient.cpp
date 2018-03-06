@@ -288,7 +288,6 @@ void AudioClient::cleanupBeforeQuit() {
 #endif
     stop();
     _checkDevicesTimer->stop();
-    // _checkPeakValuesTimer->stop();
     _runCheckPeakValuesTimer = false;
     guard.trigger();
 }
