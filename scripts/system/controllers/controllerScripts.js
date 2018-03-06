@@ -21,6 +21,7 @@ var CONTOLLER_SCRIPTS = [
     "controllerModules/farActionGrabEntity.js",
     "controllerModules/stylusInput.js",
     "controllerModules/equipEntity.js",
+    "controllerModules/scabbard.js",
     "controllerModules/nearTrigger.js",
     "controllerModules/webSurfaceLaserInput.js",
     "controllerModules/inEditMode.js",

@@ -161,10 +161,8 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
 (function() {
 
     var ATTACH_POINT_SETTINGS = "io.highfidelity.attachPoints";
-    var SCABBARD_SETTINGS = "io.highfidelity.scabbard";
 
     var EQUIP_RADIUS = 1.0; // radius used for palm vs equip-hotspot for equipping.
-    var DOWN = { x: 0, y: -1, z: 0 };
 
     var HAPTIC_PULSE_STRENGTH = 1.0;
     var HAPTIC_PULSE_DURATION = 13.0;
@@ -272,21 +270,12 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         this.shouldSendStart = false;
         this.equipedWithSecondary = false;
         this.handHasBeenRightsideUp = false;
-        this.entityInScabbardProps = null;
-
-        try {
-            this.entityInScabbardProps = JSON.parse(Settings.getValue(SCABBARD_SETTINGS + "." + this.hand));
-        }catch (err) {
-            // don't want to spam the logs
-        }
 
         this.parameters = makeDispatcherModuleParameters(
             300,
             this.hand === RIGHT_HAND ? ["rightHand", "rightHandEquip"] : ["leftHand", "leftHandEquip"],
             [],
             100);
-
-
 
         var equipHotspotBuddy = new EquipHotspotBuddy();
 
@@ -402,63 +391,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             return this.rawSecondaryValue > BUMPER_ON_VALUE;
         };
 
-        this.detectScabbardGesture = function(controllerData) {
-            var neckJointIndex = MyAvatar.getJointIndex("Neck");
-            var avatarFrameNeckPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(neckJointIndex);
-            var eyeJointIndex = MyAvatar.getJointIndex("LeftEye");
-            var avatarFrameEyePos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(eyeJointIndex);
-
-            var controllerLocation = controllerData.controllerLocations[this.hand];
-            var avatarFrameControllerPos = MyAvatar.worldToJointPoint(controllerLocation.position, -1);
-            var avatarFrameControllerRot = MyAvatar.worldToJointRotation(controllerLocation.orientation, -1);
-
-            if (avatarFrameControllerPos.y > avatarFrameNeckPos.y && // above the neck and
-                avatarFrameControllerPos.z > avatarFrameEyePos.z) { // behind the eyes
-                var localHandUpAxis = this.hand === RIGHT_HAND ? { x: 1, y: 0, z: 0 } : { x: -1, y: 0, z: 0 };
-                var localHandUp = Vec3.multiplyQbyV(avatarFrameControllerRot, localHandUpAxis);
-                if (Vec3.dot(localHandUp, DOWN) > 0.0) {
-                    return true; // hand is upside-down vs avatar
-                }
-            }
-            return false;
-        };
-
-        this.saveEntityInScabbard = function (controllerData) {
-            var props = Entities.getEntityProperties(this.targetEntityID);
-            if (!props || !props.localPosition) {
-                return;
-            }
-            delete props.clientOnly;
-            delete props.created;
-            delete props.lastEdited;
-            delete props.lastEditedBy;
-            delete props.owningAvatarID;
-            delete props.queryAACube;
-            delete props.age;
-            delete props.ageAsText;
-            delete props.naturalDimensions;
-            delete props.naturalPosition;
-            delete props.acceleration;
-            delete props.scriptTimestamp;
-            delete props.boundingBox;
-            delete props.Position;
-            delete props.Rotation;
-            delete props.Velocity;
-            delete props.AngularVelocity;
-            delete props.Dimensions;
-            delete props.renderInfo;
-
-            this.entityInScabbardProps = props;
-            Settings.setValue(SCABBARD_SETTINGS + "." + this.hand, JSON.stringify(props));
-            Entities.deleteEntity(this.targetEntityID);
-        };
-
-        this.storeInScabbard = function (controllerData) {
-            if (this.detectScabbardGesture(controllerData)) {
-                this.saveEntityInScabbard(controllerData);
-            }
-        };
-
         this.chooseNearEquipHotspots = function(candidateEntityProps, controllerData) {
             var _this = this;
             var collectedHotspots = flatten(candidateEntityProps.map(function(props) {
@@ -509,6 +441,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var worldHandRotation = getControllerWorldLocation(this.handToController(), true).orientation;
             var localHandUpAxis = this.hand === RIGHT_HAND ? { x: 1, y: 0, z: 0 } : { x: -1, y: 0, z: 0 };
             var worldHandUpAxis = Vec3.multiplyQbyV(worldHandRotation, localHandUpAxis);
+            var DOWN = { x: 0, y: -1, z: 0 };
 
             var DROP_ANGLE = Math.PI / 3;
             var HYSTERESIS_FACTOR = 1.1;
@@ -710,27 +643,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var timestamp = Date.now();
             this.updateInputs(controllerData);
             this.handHasBeenRightsideUp = false;
-
-            var runningValues = this.checkNearbyHotspots(controllerData, deltaTime, timestamp);
-            if (!runningValues.active) {
-                if ((this.triggerSmoothedSqueezed() || this.secondarySmoothedSqueezed()) &&
-                    this.entityInScabbardProps &&
-                    this.detectScabbardGesture(controllerData) &&
-                    this.waitForTriggerRelease === false) {
-                    var clientOnly = !(Entities.canRez() || Entities.canRezTmp());
-                    var entityIDFromScabbard = Entities.addEntity(this.entityInScabbardProps, clientOnly);
-                    controllerData.nearbyEntityPropertiesByID[entityIDFromScabbard] = this.entityInScabbardProps;
-                    this.entityInScabbardProps = null;
-                    this.grabbedHotspot = null;
-
-                    this.targetEntityID = entityIDFromScabbard;
-                    this.startEquipEntity(controllerData);
-                    this.messageGrabEntity = true;
-                    this.equipedWithSecondary = this.secondarySmoothedSqueezed();
-                    return makeRunningValues(true, [entityIDFromScabbard], []);
-                }
-            }
-            return runningValues;
+            return this.checkNearbyHotspots(controllerData, deltaTime, timestamp);
         };
 
         this.run = function (controllerData, deltaTime) {
@@ -738,7 +651,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             this.updateInputs(controllerData);
 
             if (!this.isTargetIDValid(controllerData)) {
-                this.storeInScabbard(controllerData);
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
@@ -758,7 +670,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 // we have an equipped object and the secondary trigger was released
                 // short-circuit the other checks and release it
                 this.preparingHoldRelease = false;
-                this.storeInScabbard(controllerData);
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
@@ -799,7 +710,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             if (dropDetected && !this.waitForTriggerRelease && this.triggerSmoothedGrab()) {
                 this.waitForTriggerRelease = true;
                 // store the offset attach points into preferences.
-                this.storeInScabbard(controllerData);
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
