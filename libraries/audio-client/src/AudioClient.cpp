@@ -232,7 +232,7 @@ AudioClient::AudioClient() :
     // initialize wasapi; if getAvailableDevices is called from the CheckDevicesThread before this, it will crash
     getAvailableDevices(QAudio::AudioInput);
     getAvailableDevices(QAudio::AudioOutput);
-    
+
     // start a thread to detect any device changes
     _checkDevicesTimer = new QTimer(this);
     connect(_checkDevicesTimer, &QTimer::timeout, [this] {
@@ -241,13 +241,9 @@ AudioClient::AudioClient() :
     const unsigned long DEVICE_CHECK_INTERVAL_MSECS = 2 * 1000;
     _checkDevicesTimer->start(DEVICE_CHECK_INTERVAL_MSECS);
 
-    // start a thread to detect peak value changes
-    _checkPeakValuesTimer = new QTimer(this);
-    connect(_checkPeakValuesTimer, &QTimer::timeout, [this] {
-        QtConcurrent::run(QThreadPool::globalInstance(), [this] { checkPeakValues(); });
-    });
-    const unsigned long PEAK_VALUES_CHECK_INTERVAL_MSECS = 50;
-    _checkPeakValuesTimer->start(PEAK_VALUES_CHECK_INTERVAL_MSECS);
+    // start a loop to detect peak value changes
+    _runCheckPeakValuesTimer = true;
+    callCheckPeakValues();
 
     configureReverb();
 
@@ -292,7 +288,8 @@ void AudioClient::cleanupBeforeQuit() {
 #endif
     stop();
     _checkDevicesTimer->stop();
-    _checkPeakValuesTimer->stop();
+    // _checkPeakValuesTimer->stop();
+    _runCheckPeakValuesTimer = false;
     guard.trigger();
 }
 
@@ -2023,4 +2020,15 @@ void AudioClient::setInputVolume(float volume) {
         _audioInput->setVolume(volume);
         emit inputVolumeChanged(_audioInput->volume());
     }
+}
+
+void AudioClient::callCheckPeakValues() {
+    // use a singleShot timer after checkPeakValues has completed to avoid timer calls overlapping
+    QtConcurrent::run(QThreadPool::globalInstance(), [this] {
+        if (_runCheckPeakValuesTimer) {
+            checkPeakValues();
+            const unsigned long PEAK_VALUES_CHECK_INTERVAL_MSECS = 50;
+            QTimer::singleShot(PEAK_VALUES_CHECK_INTERVAL_MSECS, this, SLOT(callCheckPeakValues));
+        }
+    });
 }

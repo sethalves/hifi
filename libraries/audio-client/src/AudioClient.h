@@ -144,7 +144,7 @@ public:
     void setIsPlayingBackRecording(bool isPlayingBackRecording) { _isPlayingBackRecording = isPlayingBackRecording; }
 
     Q_INVOKABLE void setAvatarBoundingBoxParameters(glm::vec3 corner, glm::vec3 scale);
-    
+
     bool outputLocalInjector(const AudioInjectorPointer& injector) override;
 
     QAudioDeviceInfo getActiveAudioDevice(QAudio::Mode mode) const;
@@ -225,6 +225,8 @@ public slots:
 
     void loadSettings();
     void saveSettings();
+
+    void callCheckPeakValues();
 
 signals:
     void inputVolumeChanged(float volume);
@@ -374,7 +376,7 @@ private:
     float* _localOutputMixBuffer { NULL };
     Mutex _localAudioMutex;
     AudioLimiter _audioLimiter;
-    
+
     // Adds Reverb
     void configureReverb();
     void updateReverbOptions();
@@ -429,9 +431,9 @@ private:
 #if defined(Q_OS_ANDROID)
     bool _shouldRestartInputSetup { true }; // Should we restart the input device because of an unintended stop?
 #endif
-    
+
     QTimer* _checkDevicesTimer { nullptr };
-    QTimer* _checkPeakValuesTimer { nullptr };
+    bool _runCheckPeakValuesTimer { true };
 
     bool _isRecording { false };
 };
