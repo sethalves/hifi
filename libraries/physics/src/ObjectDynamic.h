@@ -36,22 +36,18 @@ public:
     virtual QByteArray serialize() const override = 0;
     virtual void deserialize(QByteArray serializedArguments) override = 0;
 
-
     virtual QList<btRigidBody*> getRigidBodies();
 
 protected:
     quint64 localTimeToServerTime(quint64 timeValue) const;
     quint64 serverTimeToLocalTime(quint64 timeValue) const;
 
-    btRigidBody* getOtherRigidBody(EntityItemID otherEntityID);
     EntityItemPointer getEntityByID(EntityItemID entityID) const;
     virtual btRigidBody* getRigidBody();
     virtual void activateBody(bool forceActivation = false);
     virtual void forceBodyNonStatic();
 
-    EntityItemID _otherID;
-    SpatiallyNestableWeakPointer _other;
-    SpatiallyNestablePointer getOther();
+    btRigidBody* getOtherRigidBody(EntityItemID otherEntityID);
 
 private:
     qint64 getEntityServerClockSkew() const;

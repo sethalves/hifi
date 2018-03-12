@@ -18,13 +18,18 @@
 
 #include <shared/ReadWriteLockable.h>
 
+#include "EntityItemID.h"
+
 class EntityItem;
-class EntityItemID;
 class EntitySimulation;
 using EntityItemPointer = std::shared_ptr<EntityItem>;
 using EntityItemWeakPointer = std::weak_ptr<EntityItem>;
 class EntitySimulation;
 using EntitySimulationPointer = std::shared_ptr<EntitySimulation>;
+class SpatiallyNestable;
+using SpatiallyNestablePointer = std::shared_ptr<SpatiallyNestable>;
+using SpatiallyNestableWeakPointer = std::weak_ptr<SpatiallyNestable>;
+
 
 enum EntityDynamicType {
     // keep these synchronized with dynamicTypeFromString and dynamicTypeToString
@@ -48,8 +53,6 @@ public:
     virtual ~EntityDynamicInterface() { }
     const QUuid& getID() const { return _id; }
     EntityDynamicType getType() const { return _type; }
-
-    virtual void remapIDs(QHash<EntityItemID, EntityItemID>& map) = 0;
 
     virtual bool isAction() const { return false; }
     virtual bool isConstraint() const { return false; }
@@ -81,6 +84,8 @@ public:
 
     virtual void prepareForPhysicsSimulation() { }
 
+    virtual void remapIDs(QHash<EntityItemID, EntityItemID>& map) = 0;
+
     // these look in the arguments map for a named argument.  if it's not found or isn't well formed,
     // ok will be set to false (note that it's never set to true -- set it to true before calling these).
     // if required is true, failure to extract an argument will cause a warning to be printed.
@@ -105,6 +110,10 @@ protected:
     quint64 _expires { 0 }; // in seconds since epoch
     QString _tag;
     EntityItemWeakPointer _ownerEntity;
+
+    SpatiallyNestableWeakPointer _other;
+    SpatiallyNestablePointer getOther();
+    EntityItemID _otherID;
 };
 
 
