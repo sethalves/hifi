@@ -17,8 +17,7 @@
 
 
 ObjectDynamic::ObjectDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
-    EntityDynamicInterface(type, id),
-    _ownerEntity(ownerEntity) {
+    EntityDynamicInterface(type, id, ownerEntity) {
 }
 
 ObjectDynamic::~ObjectDynamic() {
@@ -59,64 +58,6 @@ qint64 ObjectDynamic::getEntityServerClockSkew() const {
         return entityServerNode->getClockSkewUsec();
     }
     return 0;
-}
-
-bool ObjectDynamic::updateArguments(QVariantMap arguments) {
-    bool somethingChanged = false;
-
-    withWriteLock([&]{
-        quint64 previousExpires = _expires;
-        QString previousTag = _tag;
-
-        bool ttlSet = true;
-        float ttl = EntityDynamicInterface::extractFloatArgument("dynamic", arguments, "ttl", ttlSet, false);
-        if (ttlSet) {
-            quint64 now = usecTimestampNow();
-            _expires = now + (quint64)(ttl * USECS_PER_SECOND);
-        } else {
-            _expires = 0;
-        }
-
-        bool tagSet = true;
-        QString tag = EntityDynamicInterface::extractStringArgument("dynamic", arguments, "tag", tagSet, false);
-        if (tagSet) {
-            _tag = tag;
-        } else {
-            tag = "";
-        }
-
-        if (previousExpires != _expires || previousTag != _tag) {
-            somethingChanged = true;
-        }
-    });
-
-    return somethingChanged;
-}
-
-QVariantMap ObjectDynamic::getArguments() {
-    QVariantMap arguments;
-    withReadLock([&]{
-        if (_expires == 0) {
-            arguments["ttl"] = 0.0f;
-        } else {
-            quint64 now = usecTimestampNow();
-            arguments["ttl"] = (float)(_expires - now) / (float)USECS_PER_SECOND;
-        }
-        arguments["tag"] = _tag;
-
-        EntityItemPointer entity = _ownerEntity.lock();
-        if (entity) {
-            ObjectMotionState* motionState = static_cast<ObjectMotionState*>(entity->getPhysicsInfo());
-            if (motionState) {
-                arguments["::active"] = motionState->isActive();
-                arguments["::motion-type"] = motionTypeToString(motionState->getMotionType());
-            } else {
-                arguments["::no-motion-state"] = true;
-            }
-        }
-        arguments["isMine"] = isMine();
-    });
-    return arguments;
 }
 
 void ObjectDynamic::removeFromSimulation(EntitySimulationPointer simulation) const {
@@ -179,18 +120,6 @@ void ObjectDynamic::forceBodyNonStatic() {
     if (motionState && motionState->getMotionType() == MOTION_TYPE_STATIC) {
         ownerEntity->flagForMotionStateChange();
     }
-}
-
-bool ObjectDynamic::lifetimeIsOver() {
-    if (_expires == 0) {
-        return false;
-    }
-
-    quint64 now = usecTimestampNow();
-    if (now >= _expires) {
-        return true;
-    }
-    return false;
 }
 
 quint64 ObjectDynamic::localTimeToServerTime(quint64 timeValue) const {

@@ -16,6 +16,8 @@
 #include <QUuid>
 #include <glm/glm.hpp>
 
+#include <shared/ReadWriteLockable.h>
+
 class EntityItem;
 class EntityItemID;
 class EntitySimulation;
@@ -40,9 +42,9 @@ enum EntityDynamicType {
 };
 
 
-class EntityDynamicInterface {
+class EntityDynamicInterface : public ReadWriteLockable {
 public:
-    EntityDynamicInterface(EntityDynamicType type, const QUuid& id) : _id(id), _type(type) { }
+    EntityDynamicInterface(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~EntityDynamicInterface() { }
     const QUuid& getID() const { return _id; }
     EntityDynamicType getType() const { return _type; }
@@ -54,12 +56,15 @@ public:
     virtual bool isReadyForAdd() const { return true; }
 
     bool isActive() { return _active; }
+    virtual quint64 getExpires() { return _expires; }
 
     virtual void removeFromSimulation(EntitySimulationPointer simulation) const = 0;
-    virtual EntityItemWeakPointer getOwnerEntity() const = 0;
-    virtual void setOwnerEntity(const EntityItemPointer ownerEntity) = 0;
-    virtual bool updateArguments(QVariantMap arguments) = 0;
-    virtual QVariantMap getArguments() = 0;
+
+    virtual EntityItemWeakPointer getOwnerEntity() const { return _ownerEntity; }
+    virtual void setOwnerEntity(const EntityItemPointer ownerEntity) { _ownerEntity = ownerEntity; }
+
+    virtual bool updateArguments(QVariantMap arguments);
+    virtual QVariantMap getArguments();
 
     virtual QByteArray serialize() const = 0;
     virtual void deserialize(QByteArray serializedArguments) = 0;
@@ -67,8 +72,7 @@ public:
     static EntityDynamicType dynamicTypeFromString(QString dynamicTypeString);
     static QString dynamicTypeToString(EntityDynamicType dynamicType);
 
-    virtual bool lifetimeIsOver() { return false; }
-    virtual quint64 getExpires() { return 0; }
+    virtual bool lifetimeIsOver();
 
     virtual bool isMine() { return _isMine; }
     virtual void setIsMine(bool value) { _isMine = value; }
@@ -98,6 +102,9 @@ protected:
     EntityDynamicType _type;
     bool _active { false };
     bool _isMine { false }; // did this interface create / edit this dynamic?
+    quint64 _expires { 0 }; // in seconds since epoch
+    QString _tag;
+    EntityItemWeakPointer _ownerEntity;
 };
 
 

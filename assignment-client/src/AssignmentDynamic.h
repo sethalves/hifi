@@ -19,7 +19,7 @@
 #include "EntityDynamicInterface.h"
 
 
-class AssignmentDynamic : public EntityDynamicInterface, public ReadWriteLockable {
+class AssignmentDynamic : public EntityDynamicInterface {
 public:
     AssignmentDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~AssignmentDynamic();

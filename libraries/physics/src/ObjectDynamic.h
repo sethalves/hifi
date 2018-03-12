@@ -17,14 +17,12 @@
 
 #include <btBulletDynamicsCommon.h>
 
-#include <shared/ReadWriteLockable.h>
-
 #include "ObjectMotionState.h"
 #include "BulletUtil.h"
 #include "EntityDynamicInterface.h"
 
 
-class ObjectDynamic : public EntityDynamicInterface, public ReadWriteLockable {
+class ObjectDynamic : public EntityDynamicInterface {
 public:
     ObjectDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectDynamic();
@@ -32,20 +30,12 @@ public:
     virtual void remapIDs(QHash<EntityItemID, EntityItemID>& map) override;
 
     virtual void removeFromSimulation(EntitySimulationPointer simulation) const override;
-    virtual EntityItemWeakPointer getOwnerEntity() const override { return _ownerEntity; }
-    virtual void setOwnerEntity(const EntityItemPointer ownerEntity) override { _ownerEntity = ownerEntity; }
 
     virtual void invalidate() {};
-
-    virtual bool updateArguments(QVariantMap arguments) override;
-    virtual QVariantMap getArguments() override;
-
 
     virtual QByteArray serialize() const override = 0;
     virtual void deserialize(QByteArray serializedArguments) override = 0;
 
-    virtual bool lifetimeIsOver() override;
-    virtual quint64 getExpires() override { return _expires; }
 
     virtual QList<btRigidBody*> getRigidBodies();
 
@@ -58,10 +48,6 @@ protected:
     virtual btRigidBody* getRigidBody();
     virtual void activateBody(bool forceActivation = false);
     virtual void forceBodyNonStatic();
-
-    EntityItemWeakPointer _ownerEntity;
-    QString _tag;
-    quint64 _expires { 0 }; // in seconds since epoch
 
     EntityItemID _otherID;
     SpatiallyNestableWeakPointer _other;

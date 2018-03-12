@@ -14,10 +14,9 @@
 #include "AssignmentDynamic.h"
 
 AssignmentDynamic::AssignmentDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
-    EntityDynamicInterface(type, id),
+    EntityDynamicInterface(type, id, ownerEntity),
     _data(QByteArray()),
-    _active(false),
-    _ownerEntity(ownerEntity) {
+    _active(false) {
 }
 
 AssignmentDynamic::~AssignmentDynamic() {

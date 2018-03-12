@@ -13,39 +13,46 @@
 
 /*
 
-     +-------------------------+                               +--------------------------------+
-     |                         |                               |                                |
-     | EntityDynamicsInterface |                               | EntityDynamicsFactoryInterface |
-     |     (entities)          |                               |         (entities)             |
-     +-------------------------+                               +--------------------------------+
-                  |       |                                           |                   |
-             +----+       +--+                                        |                   |
-             |               |                                        |                   |
- +---------------------+   +----------------+       +--------------------------+     +---------------------------+
- |                     |   |                |       |                          |     |                           |
- |  AssignmentDynamics |   | ObjectDynamics |       | InterfaceDynamicsFactory |     | AssignmentDynamicsFactory |
- |(assignment client)  |   |   (physics)    |       |       (interface)        |     |   (assignment client)     |
- +---------------------+   +----------------+       +--------------------------+     +---------------------------+
-                              |          |
-                              |          |
-  +---------------------+     |          |
-  |                     |     |          |
-  | btActionInterface   |     |          |
-  |    (bullet)         |     |          |
-  +---------------------+     |          |
-                    |         |          |
-                 +--------------+     +------------------+    +-------------------+
-                 |              |     |                  |    |                   |
-                 | ObjectAction |     | ObjectConstraint |    | btTypedConstraint |
-                 |   (physics)  |     |   (physics)    --|--->|   (bullet)        |
-                 +--------------+     +------------------+    +-------------------+
-                         |                        |
-                         |                        |
-              +--------------------+     +-----------------------+
-              |                    |     |                       |
-              | ObjectActionTractor|     | ObjectConstraintHinge |
-              |     (physics)      |     |       (physics)       |
-              +--------------------+     +-----------------------+
+               +-------------------------+                                 +--------------------------------+
+               |                         |                                 |                                |
+               | EntityDynamicsInterface |                                 | EntityDynamicsFactoryInterface |
+               |     (entities)          |                                 |         (entities)             |
+               +-------------------------+                                 +--------------------------------+
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                            |       |                                             |                   |
+                       +----+       +--+                                          |                   |
+                       |               |                                          |                   |
+           +---------------------+   +----------------+         +--------------------------+     +---------------------------+
+           |                     |   |                |         |                          |     |                           |
+           |  AssignmentDynamics |   | ObjectDynamics |         | InterfaceDynamicsFactory |     | AssignmentDynamicsFactory |
+           |(assignment client)  |   |   (physics)    |         |       (interface)        |     |   (assignment client)     |
+           +---------------------+   +----------------+         +--------------------------+     +---------------------------+
+                                        |          |
+                                        |          |
+            +---------------------+     |          |
+            |                     |     |          |
+            | btActionInterface   |     |          |
+            |    (bullet)         |     |          |
+            +---------------------+     |          |
+                              |         |          |
+                           +--------------+     +------------------+    +-------------------+
+                           |              |     |                  |    |                   |
+                           | ObjectAction |     | ObjectConstraint |    | btTypedConstraint |
+                           |   (physics)  |     |   (physics)    --|--->|   (bullet)        |
+                           +--------------+     +------------------+    +-------------------+
+                                   |                        |
+                                   |                        |
+                        +--------------------+     +-----------------------+
+                        |                    |     |                       |
+                        | ObjectActionTractor|     | ObjectConstraintHinge |
+                        |     (physics)      |     |       (physics)       |
+                        +--------------------+     +-----------------------+
 
 
 
@@ -92,6 +99,15 @@ variables.  These argument variables are used by the code which is run when bull
 #include "EntityItem.h"
 
 #include "EntityDynamicInterface.h"
+
+
+EntityDynamicInterface::EntityDynamicInterface(EntityDynamicType type,
+                                               const QUuid& id,
+                                               EntityItemPointer ownerEntity) :
+    _id(id),
+    _type(type),
+    _ownerEntity(ownerEntity) {
+}
 
 
 EntityDynamicType EntityDynamicInterface::dynamicTypeFromString(QString dynamicTypeString) {
@@ -331,6 +347,66 @@ bool EntityDynamicInterface::extractBooleanArgument(QString objectName, QVariant
         return false;
     }
     return arguments[argumentName].toBool();
+}
+
+bool EntityDynamicInterface::updateArguments(QVariantMap arguments) {
+    bool somethingChanged = false;
+
+    withWriteLock([&]{
+        quint64 previousExpires = _expires;
+        QString previousTag = _tag;
+
+        bool ttlSet = true;
+        float ttl = EntityDynamicInterface::extractFloatArgument("dynamic", arguments, "ttl", ttlSet, false);
+        if (ttlSet) {
+            quint64 now = usecTimestampNow();
+            _expires = now + (quint64)(ttl * USECS_PER_SECOND);
+        } else {
+            _expires = 0;
+        }
+
+        bool tagSet = true;
+        QString tag = EntityDynamicInterface::extractStringArgument("dynamic", arguments, "tag", tagSet, false);
+        if (tagSet) {
+            _tag = tag;
+        } else {
+            tag = "";
+        }
+
+        if (previousExpires != _expires || previousTag != _tag) {
+            somethingChanged = true;
+        }
+    });
+
+    return somethingChanged;
+}
+
+QVariantMap EntityDynamicInterface::getArguments() {
+    QVariantMap arguments;
+    withReadLock([&]{
+        if (_expires == 0) {
+            arguments["ttl"] = 0.0f;
+        } else {
+            quint64 now = usecTimestampNow();
+            arguments["ttl"] = (float)(_expires - now) / (float)USECS_PER_SECOND;
+        }
+        arguments["tag"] = _tag;
+
+        arguments["isMine"] = isMine();
+    });
+    return arguments;
+}
+
+bool EntityDynamicInterface::lifetimeIsOver() {
+    if (_expires == 0) {
+        return false;
+    }
+
+    quint64 now = usecTimestampNow();
+    if (now >= _expires) {
+        return true;
+    }
+    return false;
 }
 
 QDataStream& operator<<(QDataStream& stream, const EntityDynamicType& entityDynamicType) {
