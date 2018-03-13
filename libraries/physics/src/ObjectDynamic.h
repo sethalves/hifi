@@ -24,7 +24,7 @@
 #include "EntityDynamicInterface.h"
 
 
-class ObjectDynamic : public EntityDynamicInterface, public ReadWriteLockable {
+class ObjectDynamic : public EntityDynamicInterface, public EntityDynamic {
 public:
     ObjectDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectDynamic();
@@ -37,9 +37,8 @@ public:
 
     virtual void invalidate() {};
 
-    virtual bool updateArguments(QVariantMap arguments) override;
-    virtual QVariantMap getArguments() override;
-
+    virtual bool updateArguments(QVariantMap arguments) override { return EntityDynamic::updateArgumentsED(arguments); }
+    virtual QVariantMap getArguments() override { return EntityDynamic::getArgumentsED(); }
 
     virtual QByteArray serialize() const override = 0;
     virtual void deserialize(QByteArray serializedArguments) override = 0;
@@ -60,10 +59,7 @@ protected:
     virtual void forceBodyNonStatic();
 
     EntityItemWeakPointer _ownerEntity;
-    QString _tag;
-    quint64 _expires { 0 }; // in seconds since epoch
 
-    EntityItemID _otherID;
     SpatiallyNestableWeakPointer _other;
     SpatiallyNestablePointer getOther();
 

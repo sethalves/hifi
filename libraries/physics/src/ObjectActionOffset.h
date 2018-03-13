@@ -15,27 +15,23 @@
 #include <QUuid>
 
 #include <EntityItem.h>
+#include <EntityActionOffset.h>
+
 #include "ObjectAction.h"
 
-class ObjectActionOffset : public ObjectAction {
+class ObjectActionOffset : public ObjectAction, public EntityActionOffset {
 public:
     ObjectActionOffset(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectActionOffset();
 
-    virtual bool updateArguments(QVariantMap arguments) override;
-    virtual QVariantMap getArguments() override;
+    virtual QByteArray serialize() const override {
+        return EntityActionOffset::serializeED();
+    }
+    virtual void deserialize(QByteArray serializedArguments) override {
+        return EntityActionOffset::deserializeED(serializedArguments);
+    }
 
     virtual void updateActionWorker(float deltaTimeStep) override;
-
-    virtual QByteArray serialize() const override;
-    virtual void deserialize(QByteArray serializedArguments) override;
-
- private:
-    static const uint16_t offsetVersion;
-    glm::vec3 _pointToOffsetFrom;
-    float _linearDistance;
-    float _linearTimeScale;
-    bool _positionalTargetSet;
 };
 
 #endif // hifi_ObjectActionOffset_h
