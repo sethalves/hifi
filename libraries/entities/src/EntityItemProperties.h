@@ -320,6 +320,7 @@ public:
 
     void setCreated(QDateTime& v);
 
+    bool hasVelocityChanges() const;
     bool hasTerseUpdateChanges() const;
     bool hasMiscPhysicsChanges() const;
 
@@ -501,6 +502,12 @@ inline QDebug operator<<(QDebug debug, const EntityItemProperties& properties) {
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, EntityInstanceNumber, entityInstanceNumber, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, CertificateID, certificateID, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, StaticCertificateVersion, staticCertificateVersion, "");
+
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LocalPosition, localPosition, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LocalRotation, localRotation, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LocalVelocity, localVelocity, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LocalAngularVelocity, localAngularVelocity, "");
+    DEBUG_PROPERTY_IF_CHANGED(debug, properties, LocalDimensions, localDimensions, "");
 
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, HazeMode, hazeMode, "");
     DEBUG_PROPERTY_IF_CHANGED(debug, properties, KeyLightMode, keyLightMode, "");
