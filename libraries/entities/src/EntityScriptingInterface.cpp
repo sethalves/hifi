@@ -283,8 +283,10 @@ QUuid EntityScriptingInterface::addEntity(const EntityItemProperties& properties
                 }
 
                 entity->setLastBroadcast(usecTimestampNow());
-                // since we're creating this object we will immediately volunteer to own its simulation
-                if (properties.getDynamic() || entity->getDynamic()) {
+                bool isDynamic = properties.getDynamic();
+                bool isMoving = (properties.getVelocity() != Vectors::ZERO) || (properties.getLocalVelocity() != Vectors::ZERO);
+                if (isDynamic || isMoving) {
+                    // since we're creating this object we will immediately volunteer to own its simulation
                     entity->flagForOwnershipBid(VOLUNTEER_SIMULATION_PRIORITY);
                 }
                 propertiesWithSimID.setLastEdited(entity->getLastEdited());
@@ -478,7 +480,9 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             bool hasTerseUpdateChanges = properties.hasTerseUpdateChanges();
             bool hasPhysicsChanges = properties.hasMiscPhysicsChanges() || hasTerseUpdateChanges;
             bool isDynamic = properties.getDynamic() || entity->getDynamic();
-            if (_bidOnSimulationOwnership && hasPhysicsChanges && isDynamic) {
+            bool isMoving = (properties.getVelocity() != Vectors::ZERO) || (properties.getLocalVelocity() != Vectors::ZERO) ||
+                entity->isMoving() || entity->isMovingRelativeToParent();
+            if (_bidOnSimulationOwnership && hasPhysicsChanges && (isDynamic || isMoving)) {
                 auto nodeList = DependencyManager::get<NodeList>();
                 const QUuid myNodeID = nodeList->getSessionUUID();
 
