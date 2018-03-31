@@ -16,7 +16,7 @@
 #include <QUuid>
 #include <EntityItem.h>
 
-#include "EntityDynamicInterface.h"
+#include "dynamics/EntityDynamicInterface.h"
 
 
 class AssignmentDynamic : public EntityDynamicInterface, public ReadWriteLockable {

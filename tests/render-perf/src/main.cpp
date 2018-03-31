@@ -53,8 +53,8 @@
 
 #include <AnimationCache.h>
 #include <SimpleEntitySimulation.h>
-#include <EntityDynamicInterface.h>
-#include <EntityDynamicFactoryInterface.h>
+#include <dynamics/EntityDynamicInterface.h>
+#include <dynamics/EntityDynamicFactoryInterface.h>
 #include <WebEntityItem.h>
 #include <OctreeUtils.h>
 #include <render/Engine.h>

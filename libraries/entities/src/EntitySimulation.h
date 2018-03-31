@@ -18,7 +18,7 @@
 
 #include <PerfStat.h>
 
-#include "EntityDynamicInterface.h"
+#include "dynamics/EntityDynamicInterface.h"
 #include "EntityItem.h"
 #include "EntityTree.h"
 

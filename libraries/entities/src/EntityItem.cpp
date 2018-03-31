@@ -36,7 +36,7 @@
 #include "EntitiesLogging.h"
 #include "EntityTree.h"
 #include "EntitySimulation.h"
-#include "EntityDynamicFactoryInterface.h"
+#include "dynamics/EntityDynamicFactoryInterface.h"
 
 Q_DECLARE_METATYPE(EntityItemPointer);
 int entityItemPointernMetaTypeId = qRegisterMetaType<EntityItemPointer>();

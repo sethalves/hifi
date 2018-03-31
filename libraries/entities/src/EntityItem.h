@@ -34,7 +34,7 @@
 #include "EntityTypes.h"
 #include "SimulationOwner.h"
 #include "SimulationFlags.h"
-#include "EntityDynamicInterface.h"
+#include "dynamics/EntityDynamicInterface.h"
 
 #include "graphics/Material.h"
 

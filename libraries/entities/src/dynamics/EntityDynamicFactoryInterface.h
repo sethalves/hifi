@@ -1,6 +1,6 @@
 //
 //  EntityDynamicFactoryInterface.cpp
-//  libraries/entities/src
+//  libraries/entities/src/dynamics
 //
 //  Created by Seth Alves on 2015-6-2
 //  Copyright 2015 High Fidelity, Inc.

@@ -1,6 +1,6 @@
 //
 //  AssignmentDynamicFactory.cpp
-//  assignment-client/src/
+//  assignment-client/src/dynamics
 //
 //  Created by Seth Alves on 2015-6-19
 //  Copyright 2015 High Fidelity, Inc.
@@ -12,7 +12,7 @@
 #ifndef hifi_AssignmentDynamicFactory_h
 #define hifi_AssignmentDynamicFactory_h
 
-#include "EntityDynamicFactoryInterface.h"
+#include "dynamics/EntityDynamicFactoryInterface.h"
 #include "AssignmentDynamic.h"
 
 class AssignmentDynamicFactory : public EntityDynamicFactoryInterface {

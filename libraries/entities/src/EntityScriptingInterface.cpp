@@ -25,8 +25,8 @@
 
 #include "EntityItemID.h"
 #include "EntitiesLogging.h"
-#include "EntityDynamicFactoryInterface.h"
-#include "EntityDynamicInterface.h"
+#include "dynamics/EntityDynamicFactoryInterface.h"
+#include "dynamics/EntityDynamicInterface.h"
 #include "EntitySimulation.h"
 #include "EntityTree.h"
 #include "LightEntityItem.h"

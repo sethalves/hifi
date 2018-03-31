@@ -21,7 +21,7 @@
 
 #include "ObjectMotionState.h"
 #include "BulletUtil.h"
-#include "EntityDynamicInterface.h"
+#include "dynamics/EntityDynamicInterface.h"
 
 
 class ObjectDynamic : public EntityDynamicInterface, public ReadWriteLockable {

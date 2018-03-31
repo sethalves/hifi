@@ -12,7 +12,7 @@
 #ifndef hifi_InterfaceDynamicFactory_h
 #define hifi_InterfaceDynamicFactory_h
 
-#include "EntityDynamicFactoryInterface.h"
+#include "dynamics/EntityDynamicFactoryInterface.h"
 
 class InterfaceDynamicFactory : public EntityDynamicFactoryInterface {
 public:
