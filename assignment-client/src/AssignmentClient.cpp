@@ -34,7 +34,7 @@
 #include <UserActivityLoggerScriptingInterface.h>
 
 #include "AssignmentFactory.h"
-#include "AssignmentDynamicFactory.h"
+#include "dynamics/AssignmentDynamicFactory.h"
 
 #include "AssignmentClient.h"
 #include "AssignmentClientLogging.h"
