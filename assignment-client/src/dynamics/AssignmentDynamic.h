@@ -24,6 +24,10 @@ public:
     AssignmentDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~AssignmentDynamic();
 
+    quint64 localTimeToServerTime(quint64 timeValue) const;
+    quint64 serverTimeToLocalTime(quint64 timeValue) const;
+    qint64 getEntityServerClockSkew() const;
+
     virtual void remapIDs(QHash<EntityItemID, EntityItemID>& map) override {};
 
     virtual void removeFromSimulation(EntitySimulationPointer simulation) const override;
@@ -41,6 +45,11 @@ private:
 protected:
     bool _active;
     EntityItemWeakPointer _ownerEntity;
+    QString _tag;
+    quint64 _expires { 0 }; // in seconds since epoch
+
+    EntityItemID _otherID;
+    SpatiallyNestableWeakPointer _other;
 };
 
 #endif // hifi_AssignmentDynamic_h

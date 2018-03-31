@@ -23,6 +23,50 @@ AssignmentDynamic::AssignmentDynamic(EntityDynamicType type, const QUuid& id, En
 AssignmentDynamic::~AssignmentDynamic() {
 }
 
+quint64 AssignmentDynamic::localTimeToServerTime(quint64 timeValue) const {
+    // 0 indicates no expiration
+    if (timeValue == 0) {
+        return 0;
+    }
+
+    qint64 serverClockSkew = getEntityServerClockSkew();
+    if (serverClockSkew < 0 && timeValue <= (quint64)(-serverClockSkew)) {
+        return 1; // non-zero but long-expired value to avoid negative roll-over
+    }
+
+    return timeValue + serverClockSkew;
+}
+
+quint64 AssignmentDynamic::serverTimeToLocalTime(quint64 timeValue) const {
+    // 0 indicates no expiration
+    if (timeValue == 0) {
+        return 0;
+    }
+
+    qint64 serverClockSkew = getEntityServerClockSkew();
+    if (serverClockSkew > 0 && timeValue <= (quint64)serverClockSkew) {
+        return 1; // non-zero but long-expired value to avoid negative roll-over
+    }
+
+    return timeValue - serverClockSkew;
+}
+
+qint64 AssignmentDynamic::getEntityServerClockSkew() const {
+    auto nodeList = DependencyManager::get<NodeList>();
+
+    auto ownerEntity = _ownerEntity.lock();
+    if (!ownerEntity) {
+        return 0;
+    }
+
+    const QUuid& entityServerNodeID = ownerEntity->getSourceUUID();
+    auto entityServerNode = nodeList->nodeWithUUID(entityServerNodeID);
+    if (entityServerNode) {
+        return entityServerNode->getClockSkewUsec();
+    }
+    return 0;
+}
+
 void AssignmentDynamic::removeFromSimulation(EntitySimulationPointer simulation) const {
     withReadLock([&]{
         simulation->removeDynamic(_id);
@@ -45,11 +89,60 @@ void AssignmentDynamic::deserialize(QByteArray serializedArguments) {
 }
 
 bool AssignmentDynamic::updateArguments(QVariantMap arguments) {
-    qDebug() << "UNEXPECTED -- AssignmentDynamic::updateArguments called in assignment-client.";
-    return false;
+    bool somethingChanged = false;
+
+    withWriteLock([&]{
+        quint64 previousExpires = _expires;
+        QString previousTag = _tag;
+
+        bool ttlSet = true;
+        float ttl = EntityDynamicInterface::extractFloatArgument("dynamic", arguments, "ttl", ttlSet, false);
+        if (ttlSet) {
+            quint64 now = usecTimestampNow();
+            _expires = now + (quint64)(ttl * USECS_PER_SECOND);
+        } else {
+            _expires = 0;
+        }
+
+        bool tagSet = true;
+        QString tag = EntityDynamicInterface::extractStringArgument("dynamic", arguments, "tag", tagSet, false);
+        if (tagSet) {
+            _tag = tag;
+        } else {
+            tag = "";
+        }
+
+        if (previousExpires != _expires || previousTag != _tag) {
+            somethingChanged = true;
+        }
+    });
+
+    return somethingChanged;
 }
 
 QVariantMap AssignmentDynamic::getArguments() {
-    qDebug() << "UNEXPECTED -- AssignmentDynamic::getArguments called in assignment-client.";
-    return QVariantMap();
+    QVariantMap arguments;
+    withReadLock([&]{
+        if (_expires == 0) {
+            arguments["ttl"] = 0.0f;
+        } else {
+            quint64 now = usecTimestampNow();
+            arguments["ttl"] = (float)(_expires - now) / (float)USECS_PER_SECOND;
+        }
+        arguments["tag"] = _tag;
+
+        // XXX
+        // EntityItemPointer entity = _ownerEntity.lock();
+        // if (entity) {
+        //     ObjectMotionState* motionState = static_cast<ObjectMotionState*>(entity->getPhysicsInfo());
+        //     if (motionState) {
+        //         arguments["::active"] = motionState->isActive();
+        //         arguments["::motion-type"] = motionTypeToString(motionState->getMotionType());
+        //     } else {
+        //         arguments["::no-motion-state"] = true;
+        //     }
+        // }
+        arguments["isMine"] = isMine();
+    });
+    return arguments;
 }

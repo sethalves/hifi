@@ -10,9 +10,13 @@
 //
 
 #include "AssignmentDynamicFactory.h"
+#include "AssignmentActionOffset.h"
 
 
 EntityDynamicPointer assignmentDynamicFactory(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) {
+    if (type == DYNAMIC_TYPE_OFFSET) {
+        return EntityDynamicPointer(new AssignmentActionOffset(id, ownerEntity));
+    }
     return EntityDynamicPointer(new AssignmentDynamic(type, id, ownerEntity));
 }
 
