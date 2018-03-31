@@ -13,7 +13,7 @@
 #define hifi_AssignmentDynamicFactory_h
 
 #include "dynamics/EntityDynamicFactoryInterface.h"
-#include "AssignmentDynamic.h"
+#include "dynamics/EntityDynamic.h"
 
 class AssignmentDynamicFactory : public EntityDynamicFactoryInterface {
 public:

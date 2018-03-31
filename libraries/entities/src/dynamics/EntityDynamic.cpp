@@ -1,5 +1,5 @@
 //
-//  AssignmentDynamic.cpp
+//  EntityDynamic.cpp
 //  assignment-client/src/
 //
 //  Created by Seth Alves 2015-6-19
@@ -9,21 +9,21 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-#include "EntitySimulation.h"
+#include "../EntitySimulation.h"
 
-#include "AssignmentDynamic.h"
+#include "EntityDynamic.h"
 
-AssignmentDynamic::AssignmentDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
+EntityDynamic::EntityDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
     EntityDynamicInterface(type, id),
     _data(QByteArray()),
     _active(false),
     _ownerEntity(ownerEntity) {
 }
 
-AssignmentDynamic::~AssignmentDynamic() {
+EntityDynamic::~EntityDynamic() {
 }
 
-quint64 AssignmentDynamic::localTimeToServerTime(quint64 timeValue) const {
+quint64 EntityDynamic::localTimeToServerTime(quint64 timeValue) const {
     // 0 indicates no expiration
     if (timeValue == 0) {
         return 0;
@@ -37,7 +37,7 @@ quint64 AssignmentDynamic::localTimeToServerTime(quint64 timeValue) const {
     return timeValue + serverClockSkew;
 }
 
-quint64 AssignmentDynamic::serverTimeToLocalTime(quint64 timeValue) const {
+quint64 EntityDynamic::serverTimeToLocalTime(quint64 timeValue) const {
     // 0 indicates no expiration
     if (timeValue == 0) {
         return 0;
@@ -51,7 +51,7 @@ quint64 AssignmentDynamic::serverTimeToLocalTime(quint64 timeValue) const {
     return timeValue - serverClockSkew;
 }
 
-qint64 AssignmentDynamic::getEntityServerClockSkew() const {
+qint64 EntityDynamic::getEntityServerClockSkew() const {
     auto nodeList = DependencyManager::get<NodeList>();
 
     auto ownerEntity = _ownerEntity.lock();
@@ -67,14 +67,14 @@ qint64 AssignmentDynamic::getEntityServerClockSkew() const {
     return 0;
 }
 
-void AssignmentDynamic::removeFromSimulation(EntitySimulationPointer simulation) const {
+void EntityDynamic::removeFromSimulation(EntitySimulationPointer simulation) const {
     withReadLock([&]{
         simulation->removeDynamic(_id);
         simulation->applyDynamicChanges();
     });
 }
 
-QByteArray AssignmentDynamic::serialize() const {
+QByteArray EntityDynamic::serialize() const {
     QByteArray result;
     withReadLock([&]{
         result = _data;
@@ -82,13 +82,13 @@ QByteArray AssignmentDynamic::serialize() const {
     return result;
 }
 
-void AssignmentDynamic::deserialize(QByteArray serializedArguments) {
+void EntityDynamic::deserialize(QByteArray serializedArguments) {
     withWriteLock([&]{
         _data = serializedArguments;
     });
 }
 
-bool AssignmentDynamic::updateArguments(QVariantMap arguments) {
+bool EntityDynamic::updateArguments(QVariantMap arguments) {
     bool somethingChanged = false;
 
     withWriteLock([&]{
@@ -120,7 +120,7 @@ bool AssignmentDynamic::updateArguments(QVariantMap arguments) {
     return somethingChanged;
 }
 
-QVariantMap AssignmentDynamic::getArguments() {
+QVariantMap EntityDynamic::getArguments() {
     QVariantMap arguments;
     withReadLock([&]{
         if (_expires == 0) {

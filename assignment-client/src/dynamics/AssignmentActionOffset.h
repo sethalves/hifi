@@ -12,9 +12,9 @@
 #ifndef hifi_AssignmentActionOffset_h
 #define hifi_AssignmentActionOffset_h
 
-#include "AssignmentDynamic.h"
+#include "dynamics/EntityDynamic.h"
 
-class AssignmentActionOffset : public AssignmentDynamic {
+class AssignmentActionOffset : public EntityDynamic {
 public:
     AssignmentActionOffset(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~AssignmentActionOffset();

@@ -14,10 +14,41 @@
 
 
 EntityDynamicPointer assignmentDynamicFactory(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) {
-    if (type == DYNAMIC_TYPE_OFFSET) {
-        return EntityDynamicPointer(new AssignmentActionOffset(id, ownerEntity));
+    switch (type) {
+        case DYNAMIC_TYPE_NONE:
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_OFFSET:
+            return std::make_shared<AssignmentActionOffset>(id, ownerEntity);
+        case DYNAMIC_TYPE_SPRING:
+            qDebug() << "The 'spring' Action is deprecated.  Replacing with 'tractor' Action.";
+        case DYNAMIC_TYPE_TRACTOR:
+            // return std::make_shared<ObjectActionTractor>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_HOLD:
+            // return std::make_shared<AvatarActionHold>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_TRAVEL_ORIENTED:
+            // return std::make_shared<ObjectActionTravelOriented>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_HINGE:
+            // return std::make_shared<ObjectConstraintHinge>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_FAR_GRAB:
+            // return std::make_shared<AvatarActionFarGrab>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_SLIDER:
+            // return std::make_shared<ObjectConstraintSlider>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_BALL_SOCKET:
+            // return std::make_shared<ObjectConstraintBallSocket>(id, ownerEntity);
+            return EntityDynamicPointer();
+        case DYNAMIC_TYPE_CONE_TWIST:
+            // return std::make_shared<ObjectConstraintConeTwist>(id, ownerEntity);
+            return EntityDynamicPointer();
     }
-    return EntityDynamicPointer(new AssignmentDynamic(type, id, ownerEntity));
+
+    qDebug() << "upsupported entity dynamic type";
+    return EntityDynamicPointer();
 }
 
 EntityDynamicPointer AssignmentDynamicFactory::factory(EntityDynamicType type,

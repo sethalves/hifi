@@ -1,6 +1,6 @@
 //
-//  AssignmentDynamic.h
-//  assignment-client/src/
+//  EntityDynamic.h
+//  libraries/entities/src/dynamics/
 //
 //  Created by Seth Alves 2015-6-19
 //  Copyright 2015 High Fidelity, Inc.
@@ -10,19 +10,19 @@
 //
 //  http://bulletphysics.org/Bullet/BulletFull/classbtDynamicInterface.html
 
-#ifndef hifi_AssignmentDynamic_h
-#define hifi_AssignmentDynamic_h
+#ifndef hifi_EntityDynamic_h
+#define hifi_EntityDynamic_h
 
 #include <QUuid>
-#include <EntityItem.h>
+#include "../EntityItem.h"
 
-#include "dynamics/EntityDynamicInterface.h"
+#include "EntityDynamicInterface.h"
 
 
-class AssignmentDynamic : public EntityDynamicInterface, public ReadWriteLockable {
+class EntityDynamic : public EntityDynamicInterface, public ReadWriteLockable {
 public:
-    AssignmentDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
-    virtual ~AssignmentDynamic();
+    EntityDynamic(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
+    virtual ~EntityDynamic();
 
     quint64 localTimeToServerTime(quint64 timeValue) const;
     quint64 serverTimeToLocalTime(quint64 timeValue) const;
@@ -52,4 +52,4 @@ protected:
     SpatiallyNestableWeakPointer _other;
 };
 
-#endif // hifi_AssignmentDynamic_h
+#endif // hifi_EntityDynamic_h

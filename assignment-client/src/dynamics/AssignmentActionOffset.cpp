@@ -17,7 +17,7 @@
 const uint16_t AssignmentActionOffset::offsetVersion = 1;
 
 AssignmentActionOffset::AssignmentActionOffset(const QUuid& id, EntityItemPointer ownerEntity) :
-    AssignmentDynamic(DYNAMIC_TYPE_OFFSET, id, ownerEntity),
+    EntityDynamic(DYNAMIC_TYPE_OFFSET, id, ownerEntity),
     _pointToOffsetFrom(0.0f),
     _linearDistance(0.0f),
     _linearTimeScale(FLT_MAX),
@@ -39,7 +39,7 @@ bool AssignmentActionOffset::updateArguments(QVariantMap arguments) {
     float linearDistance;
 
     bool needUpdate = false;
-    bool somethingChanged = AssignmentDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
 
     withReadLock([&]{
         bool ok = true;
@@ -106,7 +106,7 @@ bool AssignmentActionOffset::updateArguments(QVariantMap arguments) {
  *     is applied using an exponential decay.
  */
 QVariantMap AssignmentActionOffset::getArguments() {
-    QVariantMap arguments = AssignmentDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["pointToOffsetFrom"] = glmToQMap(_pointToOffsetFrom);
         arguments["linearTimeScale"] = _linearTimeScale;
