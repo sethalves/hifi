@@ -10,11 +10,10 @@
 //
 
 #include "QVariantGLM.h"
-
 #include "ObjectActionOffset.h"
-
 #include "PhysicsLogging.h"
-
+#include "BulletUtil.h"
+#include "ObjectDynamicUtils.h"
 
 const uint16_t ObjectActionOffset::offsetVersion = 1;
 
@@ -88,7 +87,7 @@ bool ObjectActionOffset::updateArguments(QVariantMap arguments) {
     float linearDistance;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
 
     withReadLock([&]{
         bool ok = true;
@@ -136,7 +135,7 @@ bool ObjectActionOffset::updateArguments(QVariantMap arguments) {
                 ownerEntity->setDynamicDataNeedsTransmit(true);
             }
         });
-        activateBody();
+        activateDynamicBody(getThisPointer());
     }
 
     return true;
@@ -155,7 +154,7 @@ bool ObjectActionOffset::updateArguments(QVariantMap arguments) {
  *     is applied using an exponential decay.
  */
 QVariantMap ObjectActionOffset::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["pointToOffsetFrom"] = glmToQMap(_pointToOffsetFrom);
         arguments["linearTimeScale"] = _linearTimeScale;

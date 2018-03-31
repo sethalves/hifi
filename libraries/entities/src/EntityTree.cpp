@@ -38,6 +38,7 @@
 #include "LogHandler.h"
 #include "EntityEditFilters.h"
 #include "dynamics/EntityDynamicFactoryInterface.h"
+#include "dynamics/EntityDynamic.h"
 
 static const quint64 DELETED_ENTITIES_EXTRA_USECS_TO_CONSIDER = USECS_PER_MSEC * 50;
 const float EntityTree::DEFAULT_MAX_TMP_ENTITY_LIFETIME = 60 * 60; // 1 hour

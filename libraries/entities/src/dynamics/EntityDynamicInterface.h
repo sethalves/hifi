@@ -25,6 +25,14 @@ using EntityItemWeakPointer = std::weak_ptr<EntityItem>;
 class EntitySimulation;
 using EntitySimulationPointer = std::shared_ptr<EntitySimulation>;
 
+
+class EntityDynamic;
+using EntityDynamicWeakPointer = std::weak_ptr<EntityDynamic>;
+using EntityDynamicWeakConstPointer = std::weak_ptr<const EntityDynamic>;
+using EntityDynamicPointer = std::shared_ptr<EntityDynamic>;
+using EntityDynamicConstPointer = std::shared_ptr<const EntityDynamic>;
+
+
 enum EntityDynamicType {
     // keep these synchronized with dynamicTypeFromString and dynamicTypeToString
     DYNAMIC_TYPE_NONE = 0,
@@ -101,8 +109,6 @@ protected:
     bool _isMine { false }; // did this interface create / edit this dynamic?
 };
 
-
-typedef std::shared_ptr<EntityDynamicInterface> EntityDynamicPointer;
 
 QDataStream& operator<<(QDataStream& stream, const EntityDynamicType& entityDynamicType);
 QDataStream& operator>>(QDataStream& stream, EntityDynamicType& entityDynamicType);

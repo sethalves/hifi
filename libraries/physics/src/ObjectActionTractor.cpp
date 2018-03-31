@@ -10,10 +10,10 @@
 //
 
 #include "QVariantGLM.h"
-
 #include "ObjectActionTractor.h"
-
+#include "BulletUtil.h"
 #include "PhysicsLogging.h"
+#include "ObjectDynamicUtils.h"
 
 const float TRACTOR_MAX_SPEED = 10.0f;
 const float MAX_TRACTOR_TIMESCALE = 600.0f; // 10 min is a long time
@@ -186,7 +186,7 @@ void ObjectActionTractor::updateActionWorker(btScalar deltaTimeStep) {
                 float speed = glm::min(offsetLength / _linearTimeScale, TRACTOR_MAX_SPEED);
                 offsetVelocity = (-speed / offsetLength) * offset;
                 if (speed > rigidBody->getLinearSleepingThreshold()) {
-                    forceBodyNonStatic();
+                    forceBodyNonStatic(getThisPointer());
                     rigidBody->activate();
                 }
             }
@@ -237,7 +237,7 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
 
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         // targets are required, tractor-constants are optional
         bool ok = true;
@@ -301,7 +301,7 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
                 ownerEntity->setDynamicDataNeedsTransmit(true);
             }
         });
-        activateBody();
+        activateDynamicBody(getThisPointer());
     }
 
     return true;
@@ -325,7 +325,7 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
  *     action is applied using an exponential decay.
  */
 QVariantMap ObjectActionTractor::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["linearTimeScale"] = _linearTimeScale;
         arguments["targetPosition"] = glmToQMap(_desiredPositionalTarget);

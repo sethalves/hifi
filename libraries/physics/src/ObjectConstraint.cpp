@@ -16,7 +16,7 @@
 #include "PhysicsLogging.h"
 
 ObjectConstraint::ObjectConstraint(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectDynamic(type, id, ownerEntity)
+    EntityDynamic(type, id, ownerEntity)
 {
 }
 

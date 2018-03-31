@@ -14,6 +14,8 @@
 #include "QVariantGLM.h"
 #include "ObjectActionTravelOriented.h"
 #include "PhysicsLogging.h"
+#include "BulletUtil.h"
+#include "ObjectDynamicUtils.h"
 
 const uint16_t ObjectActionTravelOriented::actionVersion = 1;
 
@@ -106,7 +108,7 @@ bool ObjectActionTravelOriented::updateArguments(QVariantMap arguments) {
     float angularTimeScale;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         forward = EntityDynamicInterface::extractVec3Argument("travel oriented action", arguments, "forward", ok, true);
@@ -140,7 +142,7 @@ bool ObjectActionTravelOriented::updateArguments(QVariantMap arguments) {
                 ownerEntity->setDynamicDataNeedsTransmit(true);
             }
         });
-        activateBody();
+        activateDynamicBody(getThisPointer());
     }
 
     return true;
@@ -158,7 +160,7 @@ bool ObjectActionTravelOriented::updateArguments(QVariantMap arguments) {
  *     action is applied using an exponential decay.
  */
 QVariantMap ObjectActionTravelOriented::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["forward"] = glmToQMap(_forward);
         arguments["angularTimeScale"] = _angularTimeScale;

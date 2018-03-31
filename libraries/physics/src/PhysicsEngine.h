@@ -117,8 +117,8 @@ private:
 
     ContactMap _contactMap;
     CollisionEvents _collisionEvents;
-    QHash<QUuid, EntityDynamicPointer> _objectDynamics;
-    QHash<btRigidBody*, QSet<QUuid>> _objectDynamicsByBody;
+    QHash<QUuid, EntityDynamicPointer> _entityDynamics;
+    QHash<btRigidBody*, QSet<QUuid>> _entityDynamicsByBody;
     std::set<btRigidBody*> _activeStaticBodies;
     QString _statsFilename;
 

@@ -17,6 +17,9 @@
 #include "ObjectConstraintConeTwist.h"
 #include "PhysicsLogging.h"
 
+#include "ObjectDynamicUtils.h"
+
+
 const uint16_t CONE_TWIST_VERSION_WITH_UNUSED_PAREMETERS = 1;
 const uint16_t ObjectConstraintConeTwist::constraintVersion = 2;
 const glm::vec3 DEFAULT_CONE_TWIST_AXIS(1.0f, 0.0f, 0.0f);
@@ -35,19 +38,6 @@ ObjectConstraintConeTwist::~ObjectConstraintConeTwist() {
     #if WANT_DEBUG
     qCDebug(physics) << "ObjectConstraintConeTwist::~ObjectConstraintConeTwist";
     #endif
-}
-
-QList<btRigidBody*> ObjectConstraintConeTwist::getRigidBodies() {
-    QList<btRigidBody*> result;
-    result += getRigidBody();
-    QUuid otherEntityID;
-    withReadLock([&]{
-        otherEntityID = _otherID;
-    });
-    if (!otherEntityID.isNull()) {
-        result += getOtherRigidBody(otherEntityID);
-    }
-    return result;
 }
 
 void ObjectConstraintConeTwist::prepareForPhysicsSimulation() {
@@ -83,6 +73,7 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
     glm::vec3 axisInA;
     glm::vec3 pivotInB;
     glm::vec3 axisInB;
+    auto thisPointer = getThisPointer();
 
     withReadLock([&]{
         constraint = static_cast<btConeTwistConstraint*>(_constraint);
@@ -99,7 +90,7 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
     static QString repeatedConeTwistNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
         "ObjectConstraintConeTwist::getConstraint -- no rigidBody.*");
 
-    btRigidBody* rigidBodyA = getRigidBody();
+    btRigidBody* rigidBodyA = getRigidBody(getThisPointer());
     if (!rigidBodyA) {
         qCDebug(physics) << "ObjectConstraintConeTwist::getConstraint -- no rigidBodyA";
         return nullptr;
@@ -128,7 +119,7 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
         btTransform frameInA(glmToBullet(rotA), glmToBullet(pivotInA));
         btTransform frameInB(glmToBullet(rotB), glmToBullet(pivotInB));
 
-        btRigidBody* rigidBodyB = getOtherRigidBody(otherEntityID);
+        btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
             qCDebug(physics) << "ObjectConstraintConeTwist::getConstraint -- no rigidBodyB";
             return nullptr;
@@ -150,8 +141,8 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
     });
 
     // if we don't wake up rigidBodyA, we may not send the dynamicData property over the network
-    forceBodyNonStatic();
-    activateBody();
+    forceBodyNonStatic(thisPointer);
+    activateDynamicBody(thisPointer);
 
     updateConeTwist();
 
@@ -170,7 +161,7 @@ bool ObjectConstraintConeTwist::updateArguments(QVariantMap arguments) {
     float twistSpan;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         pivotInA = EntityDynamicInterface::extractVec3Argument("coneTwist constraint", arguments, "pivot", ok, false);
@@ -277,7 +268,7 @@ bool ObjectConstraintConeTwist::updateArguments(QVariantMap arguments) {
  * @property {number} twistSpan=6.238 - The angle through with the joint can twist, in radians.
  */
 QVariantMap ObjectConstraintConeTwist::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["pivot"] = glmToQMap(_pivotInA);
         arguments["axis"] = glmToQMap(_axisInA);

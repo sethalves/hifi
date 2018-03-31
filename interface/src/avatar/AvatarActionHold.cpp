@@ -112,7 +112,7 @@ void AvatarActionHold::prepareForPhysicsSimulation() {
         // _palmRotationFromRigidBody = avatarRotationInverse * palmRotation;
     });
 
-    activateBody(true);
+    activateDynamicBody(getThisPointer(), true);
 }
 
 bool AvatarActionHold::getTarget(float deltaTimeStep, glm::quat& rotation, glm::vec3& position,
@@ -231,7 +231,7 @@ void AvatarActionHold::updateActionWorker(float deltaTimeStep) {
             doKinematicUpdate(deltaTimeStep);
         }
     } else {
-        forceBodyNonStatic();
+        forceBodyNonStatic(getThisPointer());
         ObjectActionTractor::updateActionWorker(deltaTimeStep);
     }
 }
@@ -315,8 +315,9 @@ void AvatarActionHold::doKinematicUpdate(float deltaTimeStep) {
         _previousSet = true;
     });
 
-    forceBodyNonStatic();
-    activateBody(true);
+    auto thisPointer = getThisPointer();
+    forceBodyNonStatic(thisPointer);
+    activateDynamicBody(thisPointer, true);
 }
 
 bool AvatarActionHold::updateArguments(QVariantMap arguments) {
@@ -330,7 +331,7 @@ bool AvatarActionHold::updateArguments(QVariantMap arguments) {
     bool ignoreIK;
     bool needUpdate = false;
 
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         relativePosition = EntityDynamicInterface::extractVec3Argument("hold", arguments, "relativePosition", ok, false);
@@ -437,7 +438,7 @@ bool AvatarActionHold::updateArguments(QVariantMap arguments) {
  *    hand.
  */
 QVariantMap AvatarActionHold::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&]{
         arguments["holderID"] = _holderID;
         arguments["relativePosition"] = glmToQMap(_relativePosition);
@@ -517,7 +518,7 @@ void AvatarActionHold::deserialize(QByteArray serializedArguments) {
         _active = true;
     });
 
-    forceBodyNonStatic();
+    forceBodyNonStatic(getThisPointer());
 }
 
 void AvatarActionHold::lateAvatarUpdate(const AnimPose& prePhysicsRoomPose, const AnimPose& postAvatarUpdateRoomPose) {

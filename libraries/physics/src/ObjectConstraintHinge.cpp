@@ -38,19 +38,6 @@ ObjectConstraintHinge::~ObjectConstraintHinge() {
     #endif
 }
 
-QList<btRigidBody*> ObjectConstraintHinge::getRigidBodies() {
-    QList<btRigidBody*> result;
-    result += getRigidBody();
-    QUuid otherEntityID;
-    withReadLock([&]{
-        otherEntityID = _otherID;
-    });
-    if (!otherEntityID.isNull()) {
-        result += getOtherRigidBody(otherEntityID);
-    }
-    return result;
-}
-
 void ObjectConstraintHinge::prepareForPhysicsSimulation() {
 }
 
@@ -82,6 +69,7 @@ btTypedConstraint* ObjectConstraintHinge::getConstraint() {
     glm::vec3 axisInA;
     glm::vec3 pivotInB;
     glm::vec3 axisInB;
+    auto thisPointer = getThisPointer();
 
     withReadLock([&]{
         constraint = static_cast<btHingeConstraint*>(_constraint);
@@ -98,7 +86,7 @@ btTypedConstraint* ObjectConstraintHinge::getConstraint() {
     static QString repeatedHingeNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
         "ObjectConstraintHinge::getConstraint -- no rigidBody.*");
 
-    btRigidBody* rigidBodyA = getRigidBody();
+    btRigidBody* rigidBodyA = getRigidBody(thisPointer);
     if (!rigidBodyA) {
         qCDebug(physics) << "ObjectConstraintHinge::getConstraint -- no rigidBodyA";
         return nullptr;
@@ -113,7 +101,7 @@ btTypedConstraint* ObjectConstraintHinge::getConstraint() {
 
     if (!otherEntityID.isNull()) {
         // This hinge is between two entities... find the other rigid body.
-        btRigidBody* rigidBodyB = getOtherRigidBody(otherEntityID);
+        btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
             qCDebug(physics) << "ObjectConstraintHinge::getConstraint -- no rigidBodyB";
             return nullptr;
@@ -143,8 +131,8 @@ btTypedConstraint* ObjectConstraintHinge::getConstraint() {
     });
 
     // if we don't wake up rigidBodyA, we may not send the dynamicData property over the network
-    forceBodyNonStatic();
-    activateBody();
+    forceBodyNonStatic(thisPointer);
+    activateDynamicBody(thisPointer);
 
     updateHinge();
 
@@ -162,7 +150,7 @@ bool ObjectConstraintHinge::updateArguments(QVariantMap arguments) {
     float high;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         pivotInA = EntityDynamicInterface::extractVec3Argument("hinge constraint", arguments, "pivot", ok, false);
@@ -262,7 +250,7 @@ bool ObjectConstraintHinge::updateArguments(QVariantMap arguments) {
  * @property {number} angle=0 - The current angle of the hinge. <em>Read-only.</em>
  */
 QVariantMap ObjectConstraintHinge::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["pivot"] = glmToQMap(_pivotInA);
         arguments["axis"] = glmToQMap(_axisInA);

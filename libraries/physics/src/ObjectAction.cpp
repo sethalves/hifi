@@ -18,7 +18,7 @@
 
 ObjectAction::ObjectAction(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity) :
     btActionInterface(),
-    ObjectDynamic(type, id, ownerEntity)
+    EntityDynamic(type, id, ownerEntity)
 {
 }
 

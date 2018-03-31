@@ -23,6 +23,27 @@ EntityDynamic::EntityDynamic(EntityDynamicType type, const QUuid& id, EntityItem
 EntityDynamic::~EntityDynamic() {
 }
 
+void EntityDynamic::remapIDs(QHash<EntityItemID, EntityItemID>& map) {
+    withWriteLock([&]{
+        if (!_id.isNull()) {
+            // just force our ID to something new -- action IDs don't go into the map
+            _id = QUuid::createUuid();
+        }
+
+        if (!_otherID.isNull()) {
+            QHash<EntityItemID, EntityItemID>::iterator iter = map.find(_otherID);
+            if (iter == map.end()) {
+                // not found, add it
+                QUuid oldOtherID = _otherID;
+                _otherID = QUuid::createUuid();
+                map.insert(oldOtherID, _otherID);
+            } else {
+                _otherID = iter.value();
+            }
+        }
+    });
+}
+
 quint64 EntityDynamic::localTimeToServerTime(quint64 timeValue) const {
     // 0 indicates no expiration
     if (timeValue == 0) {
@@ -120,6 +141,38 @@ bool EntityDynamic::updateArguments(QVariantMap arguments) {
     return somethingChanged;
 }
 
+/**jsdoc
+* Different entity action types have different arguments: some common to all actions (listed below) and some specific to each
+* {@link Entities.ActionType|ActionType} (linked to below). The arguments are accessed as an object of property names and
+* values.
+*
+* @typedef {object} Entities.ActionArguments
+* @property {Entities.ActionType} type - The type of action.
+* @property {string} tag="" - A string that a script can use for its own purposes.
+* @property {number} ttl=0 - How long the action should exist, in seconds, before it is automatically deleted. A value of
+*     <code>0</code> means that the action should not be deleted.
+* @property {boolean} isMine=true - Is <code>true</code> if you created the action during your current Interface session,
+*     <code>false</code> otherwise. <em>Read-only.</em>
+* @property {boolean} ::no-motion-state - Is present when the entity hasn't been registered with the physics engine yet (e.g.,
+*     if the action hasn't been properly configured), otherwise <code>undefined</code>. <em>Read-only.</em>
+* @property {boolean} ::active - Is <code>true</code> when the action is modifying the entity's motion, <code>false</code>
+*     otherwise. Is present once the entity has been registered with the physics engine, otherwise <code>undefined</code>.
+*     <em>Read-only.</em>
+* @property {Entities.PhysicsMotionType} ::motion-type - How the entity moves with the action. Is present once the entity has
+*     been registered with the physics engine, otherwise <code>undefined</code>. <em>Read-only.</em>
+*
+* @see The different action types have additional arguments as follows:
+* @see {@link Entities.ActionArguments-FarGrab|ActionArguments-FarGrab}
+* @see {@link Entities.ActionArguments-Hold|ActionArguments-Hold}
+* @see {@link Entities.ActionArguments-Offset|ActionArguments-Offset}
+* @see {@link Entities.ActionArguments-Tractor|ActionArguments-Tractor}
+* @see {@link Entities.ActionArguments-TravelOriented|ActionArguments-TravelOriented}
+* @see {@link Entities.ActionArguments-Hinge|ActionArguments-Hinge}
+* @see {@link Entities.ActionArguments-Slider|ActionArguments-Slider}
+* @see {@link Entities.ActionArguments-ConeTwist|ActionArguments-ConeTwist}
+* @see {@link Entities.ActionArguments-BallSocket|ActionArguments-BallSocket}
+*/
+// Note: The "type" property is set in EntityItem::getActionArguments().
 QVariantMap EntityDynamic::getArguments() {
     QVariantMap arguments;
     withReadLock([&]{
@@ -145,4 +198,57 @@ QVariantMap EntityDynamic::getArguments() {
         arguments["isMine"] = isMine();
     });
     return arguments;
+}
+
+EntityItemPointer EntityDynamic::getOther() {
+    EntityItemPointer other;
+    withWriteLock([&]{
+        if (_otherID == QUuid()) {
+            // no other
+            return;
+        }
+        other = _other.lock();
+        if (other && other->getID() == _otherID) {
+            // other is already up-to-date
+            return;
+        }
+        if (other) {
+            // we have a pointer to other, but it's wrong
+            other.reset();
+            _other.reset();
+        }
+        // we have an other-id but no pointer to other cached
+        QSharedPointer<SpatialParentFinder> parentFinder = DependencyManager::get<SpatialParentFinder>();
+        if (!parentFinder) {
+            return;
+        }
+        EntityItemPointer ownerEntity = _ownerEntity.lock();
+        if (!ownerEntity) {
+            return;
+        }
+        bool success;
+        auto _other = parentFinder->find(_otherID, success, ownerEntity->getParentTree());
+        if (success) {
+            other = std::dynamic_pointer_cast<EntityItem>(_other.lock());
+        }
+    });
+    return other;
+}
+
+bool EntityDynamic::lifetimeIsOver() {
+    if (_expires == 0) {
+        return false;
+    }
+
+    quint64 now = usecTimestampNow();
+    if (now >= _expires) {
+        return true;
+    }
+    return false;
+}
+
+EntityDynamicPointer EntityDynamic::getThisPointer() const {
+    EntityDynamicConstPointer constThisPointer = shared_from_this();
+    EntityDynamicPointer thisPointer = std::const_pointer_cast<EntityDynamic>(constThisPointer);
+    return thisPointer;
 }

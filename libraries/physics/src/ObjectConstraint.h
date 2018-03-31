@@ -15,9 +15,12 @@
 
 #include <QUuid>
 #include <btBulletDynamicsCommon.h>
-#include "ObjectDynamic.h"
+#include <dynamics/EntityDynamic.h>
 
-class ObjectConstraint : public ObjectDynamic
+#include "ObjectDynamicUtils.h"
+
+
+class ObjectConstraint : public EntityDynamic
 {
 public:
     ObjectConstraint(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);

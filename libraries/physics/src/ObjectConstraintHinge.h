@@ -29,7 +29,6 @@ public:
     virtual QByteArray serialize() const override;
     virtual void deserialize(QByteArray serializedArguments) override;
 
-    virtual QList<btRigidBody*> getRigidBodies() override;
     virtual btTypedConstraint* getConstraint() override;
 
 protected:

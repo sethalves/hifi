@@ -17,6 +17,8 @@
 #include "ObjectConstraintBallSocket.h"
 #include "PhysicsLogging.h"
 
+#include "ObjectDynamicUtils.h"
+
 
 const uint16_t ObjectConstraintBallSocket::constraintVersion = 1;
 
@@ -35,19 +37,6 @@ ObjectConstraintBallSocket::~ObjectConstraintBallSocket() {
     #if WANT_DEBUG
     qCDebug(physics) << "ObjectConstraintBallSocket::~ObjectConstraintBallSocket";
     #endif
-}
-
-QList<btRigidBody*> ObjectConstraintBallSocket::getRigidBodies() {
-    QList<btRigidBody*> result;
-    result += getRigidBody();
-    QUuid otherEntityID;
-    withReadLock([&]{
-        otherEntityID = _otherID;
-    });
-    if (!otherEntityID.isNull()) {
-        result += getOtherRigidBody(otherEntityID);
-    }
-    return result;
 }
 
 void ObjectConstraintBallSocket::prepareForPhysicsSimulation() {
@@ -74,6 +63,7 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
     QUuid otherEntityID;
     glm::vec3 pivotInA;
     glm::vec3 pivotInB;
+    auto thisPointer = getThisPointer();
 
     withReadLock([&]{
         constraint = static_cast<btPoint2PointConstraint*>(_constraint);
@@ -88,7 +78,7 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
     static QString repeatedBallSocketNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
         "ObjectConstraintBallSocket::getConstraint -- no rigidBody.*");
 
-    btRigidBody* rigidBodyA = getRigidBody();
+    btRigidBody* rigidBodyA = getRigidBody(thisPointer);
     if (!rigidBodyA) {
         qCDebug(physics) << "ObjectConstraintBallSocket::getConstraint -- no rigidBodyA";
         return nullptr;
@@ -97,7 +87,7 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
     if (!otherEntityID.isNull()) {
         // This constraint is between two entities... find the other rigid body.
 
-        btRigidBody* rigidBodyB = getOtherRigidBody(otherEntityID);
+        btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
             qCDebug(physics) << "ObjectConstraintBallSocket::getConstraint -- no rigidBodyB";
             return nullptr;
@@ -115,8 +105,8 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
     });
 
     // if we don't wake up rigidBodyA, we may not send the dynamicData property over the network
-    forceBodyNonStatic();
-    activateBody();
+    forceBodyNonStatic(thisPointer);
+    activateDynamicBody(thisPointer);
 
     updateBallSocket();
 
@@ -130,7 +120,7 @@ bool ObjectConstraintBallSocket::updateArguments(QVariantMap arguments) {
     glm::vec3 pivotInB;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         pivotInA = EntityDynamicInterface::extractVec3Argument("ball-socket constraint", arguments, "pivot", ok, false);
@@ -191,7 +181,7 @@ bool ObjectConstraintBallSocket::updateArguments(QVariantMap arguments) {
  * @property {Vec3} otherPivot=0,0,0 - The local offset of the joint relative to the other entity's position.
  */
 QVariantMap ObjectConstraintBallSocket::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["pivot"] = glmToQMap(_pivotInA);
         arguments["otherEntityID"] = _otherID;

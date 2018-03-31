@@ -46,7 +46,6 @@ class EntityItemProperties;
 class EntityTree;
 class btCollisionShape;
 typedef std::shared_ptr<EntityTree> EntityTreePointer;
-typedef std::shared_ptr<EntityDynamicInterface> EntityDynamicPointer;
 typedef std::shared_ptr<EntityTreeElement> EntityTreeElementPointer;
 using EntityTreeElementExtraEncodeDataPointer = std::shared_ptr<EntityTreeElementExtraEncodeData>;
 

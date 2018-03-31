@@ -15,9 +15,11 @@
 
 #include <QUuid>
 #include <btBulletDynamicsCommon.h>
-#include "ObjectDynamic.h"
+#include <dynamics/EntityDynamic.h>
 
-class ObjectAction : public btActionInterface, public ObjectDynamic {
+#include "ObjectMotionState.h"
+
+class ObjectAction : public btActionInterface, public EntityDynamic {
 public:
     ObjectAction(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectAction() {}

@@ -31,19 +31,6 @@ ObjectConstraintSlider::ObjectConstraintSlider(const QUuid& id, EntityItemPointe
 ObjectConstraintSlider::~ObjectConstraintSlider() {
 }
 
-QList<btRigidBody*> ObjectConstraintSlider::getRigidBodies() {
-    QList<btRigidBody*> result;
-    result += getRigidBody();
-    QUuid otherEntityID;
-    withReadLock([&]{
-        otherEntityID = _otherID;
-    });
-    if (!otherEntityID.isNull()) {
-        result += getOtherRigidBody(otherEntityID);
-    }
-    return result;
-}
-
 void ObjectConstraintSlider::prepareForPhysicsSimulation() {
 }
 
@@ -74,6 +61,7 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
     glm::vec3 axisInA;
     glm::vec3 pointInB;
     glm::vec3 axisInB;
+    auto thisPointer = getThisPointer();
 
     withReadLock([&]{
         constraint = static_cast<btSliderConstraint*>(_constraint);
@@ -90,7 +78,7 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
     static QString repeatedSliderNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
         "ObjectConstraintSlider::getConstraint -- no rigidBody.*");
 
-    btRigidBody* rigidBodyA = getRigidBody();
+    btRigidBody* rigidBodyA = getRigidBody(thisPointer);
     if (!rigidBodyA) {
         qCDebug(physics) << "ObjectConstraintSlider::getConstraint -- no rigidBodyA";
         return nullptr;
@@ -119,7 +107,7 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
         btTransform frameInA(glmToBullet(rotA), glmToBullet(pointInA));
         btTransform frameInB(glmToBullet(rotB), glmToBullet(pointInB));
 
-        btRigidBody* rigidBodyB = getOtherRigidBody(otherEntityID);
+        btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
             qCDebug(physics) << "ObjectConstraintSlider::getConstraint -- no rigidBodyB";
             return nullptr;
@@ -141,8 +129,8 @@ btTypedConstraint* ObjectConstraintSlider::getConstraint() {
     });
 
     // if we don't wake up rigidBodyA, we may not send the dynamicData property over the network
-    forceBodyNonStatic();
-    activateBody();
+    forceBodyNonStatic(thisPointer);
+    activateDynamicBody(thisPointer);
 
     updateSlider();
 
@@ -162,7 +150,7 @@ bool ObjectConstraintSlider::updateArguments(QVariantMap arguments) {
     float angularHigh;
 
     bool needUpdate = false;
-    bool somethingChanged = ObjectDynamic::updateArguments(arguments);
+    bool somethingChanged = EntityDynamic::updateArguments(arguments);
     withReadLock([&]{
         bool ok = true;
         pointInA = EntityDynamicInterface::extractVec3Argument("slider constraint", arguments, "point", ok, false);
@@ -287,7 +275,7 @@ bool ObjectConstraintSlider::updateArguments(QVariantMap arguments) {
  *     involves only one entity, otherwise the angular offset between the two entities. <em>Read-only.</em>
  */
 QVariantMap ObjectConstraintSlider::getArguments() {
-    QVariantMap arguments = ObjectDynamic::getArguments();
+    QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["point"] = glmToQMap(_pointInA);
         arguments["axis"] = glmToQMap(_axisInA);
