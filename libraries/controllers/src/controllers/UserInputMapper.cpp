@@ -261,6 +261,15 @@ void UserInputMapper::update(float deltaTime) {
         channel = Pose();
     }
 
+    QString conditionalToken = "Application.PhysicsEnabled";
+    auto input = findDeviceInput(conditionalToken);
+    auto endpoint = endpointFor(input);
+    EndpointConditional physicsConditional(endpoint);
+
+    if (!physicsConditional.satisfied()) {
+        return;
+    }
+
     // Run the mappings code
     runMappings();
 

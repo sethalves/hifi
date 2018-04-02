@@ -76,6 +76,7 @@
 #include <EntityScriptServerLogClient.h>
 #include <EntityScriptingInterface.h>
 #include "ui/overlays/ContextOverlayInterface.h"
+#include "ui/overlays/ImageOverlay.h"
 #include <ErrorDialog.h>
 #include <FileScriptingInterface.h>
 #include <Finally.h>
@@ -698,6 +699,7 @@ static const QString STATE_SNAP_TURN = "SnapTurn";
 static const QString STATE_ADVANCED_MOVEMENT_CONTROLS = "AdvancedMovement";
 static const QString STATE_GROUNDED = "Grounded";
 static const QString STATE_NAV_FOCUSED = "NavigationFocused";
+static const QString STATE_PHYSICS_ENABLED = "PhysicsEnabled";
 
 // Statically provided display and input plugins
 extern DisplayPluginList getDisplayPlugins();
@@ -862,7 +864,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<MessagesClient>();
     controller::StateController::setStateVariables({ { STATE_IN_HMD, STATE_CAMERA_FULL_SCREEN_MIRROR,
                     STATE_CAMERA_FIRST_PERSON, STATE_CAMERA_THIRD_PERSON, STATE_CAMERA_ENTITY, STATE_CAMERA_INDEPENDENT,
-                    STATE_SNAP_TURN, STATE_ADVANCED_MOVEMENT_CONTROLS, STATE_GROUNDED, STATE_NAV_FOCUSED } });
+                    STATE_SNAP_TURN, STATE_ADVANCED_MOVEMENT_CONTROLS, STATE_GROUNDED, STATE_NAV_FOCUSED, STATE_PHYSICS_ENABLED } });
     DependencyManager::set<UserInputMapper>();
     DependencyManager::set<controller::ScriptingInterface, ControllerScriptingInterface>();
     DependencyManager::set<InterfaceParentFinder>();
@@ -1559,6 +1561,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         return DependencyManager::get<OffscreenUi>()->navigationFocused() ? 1 : 0;
     });
 
+    _applicationStateDevice->setInputVariant(STATE_PHYSICS_ENABLED, []() -> float {
+        return qApp->isPhysicsEnabled() ? 1 : 0;
+    });
+
     // Setup the _keyboardMouseDevice, _touchscreenDevice, _touchscreenVirtualPadDevice and the user input mapper with the default bindings
     userInputMapper->registerDevice(_keyboardMouseDevice->getInputDevice());
     // if the _touchscreenDevice is not supported it will not be registered
@@ -2217,6 +2223,10 @@ void Application::showCursor(const Cursor::Icon& cursor) {
 
 void Application::updateHeartbeat() const {
     DeadlockWatchdogThread::updateHeartbeat();
+}
+
+void Application::initializeInterstitialPage() {
+    _interstitialPage = std::make_shared<ImageOverlay>();
 }
 
 void Application::onAboutToQuit() {
@@ -4929,6 +4939,7 @@ void Application::resetPhysicsReadyInformation() {
     _nearbyEntitiesCountAtLastPhysicsCheck = 0;
     _nearbyEntitiesStabilityCount = 0;
     _physicsEnabled = false;
+    Menu::getInstance()->setEnabled(false);
 }
 
 
@@ -5096,6 +5107,7 @@ void Application::update(float deltaTime) {
             // scene is ready to compute its collision shape.
             if (nearbyEntitiesAreReadyForPhysics()) {
                 _physicsEnabled = true;
+                Menu::getInstance()->setEnabled(true);
                 getMyAvatar()->updateMotionBehaviorFromMenu();
             }
         }

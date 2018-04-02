@@ -85,6 +85,7 @@ class MainWindow;
 class AssetUpload;
 class CompositorHelper;
 class AudioInjector;
+class ImageOverlay;
 
 namespace controller {
     class StateController;
@@ -474,6 +475,7 @@ private:
     void checkSkeleton() const;
 
     void initializeAcceptedFiles();
+    void initializeInterstitialPage();
 
     void runRenderFrame(RenderArgs* renderArgs/*, Camera& whichCamera, bool selfAvatarOnly = false*/);
 
@@ -558,6 +560,7 @@ private:
     std::shared_ptr<KeyboardMouseDevice> _keyboardMouseDevice;   // Default input device, the good old keyboard mouse and maybe touchpad
     std::shared_ptr<TouchscreenDevice> _touchscreenDevice;   // the good old touchscreen
     std::shared_ptr<TouchscreenVirtualPadDevice> _touchscreenVirtualPadDevice;
+    std::shared_ptr<ImageOverlay> _interstitialPage;
     SimpleMovingAverage _avatarSimsPerSecond {10};
     int _avatarSimsPerSecondReport {0};
     quint64 _lastAvatarSimsPerSecondUpdate {0};
