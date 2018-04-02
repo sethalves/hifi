@@ -320,6 +320,7 @@ public:
 
     void setCreated(QDateTime& v);
 
+    bool hasVelocityChanges() const;
     bool hasTerseUpdateChanges() const;
     bool hasMiscPhysicsChanges() const;
 
