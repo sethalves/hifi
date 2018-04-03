@@ -308,6 +308,7 @@ var toolBar = (function () {
                             properties.dimensions, properties.rotation);
                         position = grid.snapToSurface(grid.snapToGrid(position, false, properties.dimensions),
                             properties.dimensions);
+                        print("QQQQ edit 5");
                         Entities.editEntity(entityID, {
                             position: position
                         });
@@ -1717,6 +1718,7 @@ function importSVO(importURL) {
                 if (!Vec3.equal(deltaPosition, Vec3.ZERO)) {
                     for (var editEntityIndex = 0, numEntities = pastedEntityIDs.length; editEntityIndex < numEntities; editEntityIndex++) {
                         if (Uuid.isNull(entityParentIDs[editEntityIndex])) {
+                            print("QQQQ edit 6");
                             Entities.editEntity(pastedEntityIDs[editEntityIndex], {
                                 position: Vec3.sum(deltaPosition, entityPositions[editEntityIndex])
                             });
@@ -1820,6 +1822,7 @@ function applyEntityProperties(data) {
         if (DELETED_ENTITY_MAP[entityID] !== undefined) {
             entityID = DELETED_ENTITY_MAP[entityID];
         }
+        print("QQQQ edit 7");
         Entities.editEntity(entityID, properties[i].properties);
         selectedEntityIDs.push(entityID);
     }
@@ -2009,6 +2012,7 @@ var PropertiesTool = function (opts) {
                     visible: data.properties.visible
                 };
                 for (i = 0; i < selectionManager.selections.length; i++) {
+                    print("QQQQ edit 8");
                     Entities.editEntity(selectionManager.selections[i], properties);
                 }
             } else if (data.properties) {
@@ -2035,6 +2039,7 @@ var PropertiesTool = function (opts) {
                         data.properties.keyLight.direction.y * DEGREES_TO_RADIANS
                     );
                 }
+                print("QQQQ edit 9");
                 Entities.editEntity(selectionManager.selections[0], data.properties);
                 if (data.properties.name !== undefined || data.properties.modelURL !== undefined || data.properties.materialURL !== undefined ||
                         data.properties.visible !== undefined || data.properties.locked !== undefined) {
@@ -2050,6 +2055,7 @@ var PropertiesTool = function (opts) {
         } else if (data.type === 'saveUserData') {
             //the event bridge and json parsing handle our avatar id string differently.
             var actualID = data.id.split('"')[1];
+            print("QQQQ edit 10");
             Entities.editEntity(actualID, data.properties);
         } else if (data.type === "showMarketplace") {
             showMarketplace();
@@ -2066,6 +2072,7 @@ var PropertiesTool = function (opts) {
                     for (i = 0; i < selectionManager.selections.length; i++) {
                         properties = selectionManager.savedProperties[selectionManager.selections[i]];
                         newPosition = Vec3.sum(properties.position, diff);
+                        print("QQQQ edit 11");
                         Entities.editEntity(selectionManager.selections[i], {
                             position: newPosition
                         });
@@ -2086,6 +2093,7 @@ var PropertiesTool = function (opts) {
                             z: 0
                         };
                         newPosition = Vec3.sum(properties.position, diff);
+                        print("QQQQ edit 12");
                         Entities.editEntity(selectionManager.selections[i], {
                             position: newPosition
                         });
@@ -2106,6 +2114,7 @@ var PropertiesTool = function (opts) {
                             Window.notifyEditError("Cannot reset entity to its natural dimensions: Model URL" +
                                 " is invalid or the model has not yet been loaded.");
                         } else {
+                            print("QQQQ edit 13");
                             Entities.editEntity(selectionManager.selections[i], {
                                 dimensions: properties.naturalDimensions
                             });
@@ -2125,6 +2134,7 @@ var PropertiesTool = function (opts) {
                     selectionManager.saveProperties();
                     for (i = 0; i < selectionManager.selections.length; i++) {
                         properties = selectionManager.savedProperties[selectionManager.selections[i]];
+                        print("QQQQ edit 14");
                         Entities.editEntity(selectionManager.selections[i], {
                             dimensions: Vec3.multiply(multiplier, properties.dimensions)
                         });
