@@ -101,6 +101,17 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
     if (type == PacketType::EntityAdd) {
         auto MAX_ADD_DATA_SIZE = NLPacket::maxPayloadSize(type) * 10; // a really big buffer
         bufferOut.resize(MAX_ADD_DATA_SIZE);
+    } else {
+
+
+        EntityItemPointer entity = entityTree->findEntityByEntityItemID(entityItemID);
+        if (entity && entity->getName() == "Piano Key 8") {
+            if (properties.positionChanged()) {
+                if (properties.getPosition() != entity->getLocalPosition()) {
+                    qDebug() << "QQQQ changing key:" << entity->getLocalPosition() << properties.getPosition();
+                }
+            }
+        }
     }
 
     OctreeElement::AppendState encodeResult = OctreeElement::PARTIAL; // start the loop assuming there's more to send
