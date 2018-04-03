@@ -1592,6 +1592,11 @@ void EntityItem::setRegistrationPoint(const glm::vec3& value) {
 
 void EntityItem::setPosition(const glm::vec3& value) {
     if (getLocalPosition() != value) {
+
+        if (getName() == "Piano Key 8") {
+            qDebug() << "QQQQ " << getLocalPosition() << value;
+        }
+
         setLocalPosition(value);
 
         EntityTreePointer tree = getTree();
