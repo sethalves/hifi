@@ -2227,10 +2227,12 @@ void Application::updateHeartbeat() const {
 
 void Application::initializeInterstitialPage() {
     QVariantMap interstitialPageProperties;
-    interstitialPageProperties["x"] = QVariant(getWindow()->x());
+    int windowWidth = getWindow()->width() + 100;
+    int windowHeight = getWindow()->height() + 100;
+    interstitialPageProperties["x"] = QVariant(windowWidth / 2);
     interstitialPageProperties["y"] = QVariant(getWindow()->y());
-    interstitialPageProperties["width"] = QVariant(getWindow()->width() + 100);
-    interstitialPageProperties["height"] = QVariant(getWindow()->height() + 100);
+    interstitialPageProperties["width"] = QVariant(windowWidth);
+    interstitialPageProperties["height"] = QVariant(windowHeight);
     interstitialPageProperties["visible"] = QVariant(true);
     interstitialPageProperties["imageURL"] = QVariant("http://hifi-content.s3.amazonaws.com/alan/dev/SKY-Splash-v1-eqr-4k.jpg");
     _interstitialPage = getOverlays().addOverlay("image", QVariant(interstitialPageProperties));
@@ -5868,6 +5870,7 @@ void Application::setInterstitialPageVisibility(bool visible) {
     QVariantMap interstitialPageProperties;
     interstitialPageProperties["visible"] = visible;
     getOverlays().editOverlay(_interstitialPage, QVariant(interstitialPageProperties));
+    centerUI();
 }
 
 void Application::clearDomainAvatars() {

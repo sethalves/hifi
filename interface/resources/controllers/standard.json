@@ -1,12 +1,12 @@
 {
     "name": "Standard to Action",
     "channels": [
-        { "from": "Standard.LY", "to": "Actions.TranslateZ" },
+        { "from": "Standard.LY", "when": "Application.PhysicsEnabled",  "to": "Actions.TranslateZ" },
 
         { "from": "Standard.LX",
           "when": [
             "Application.InHMD", "!Application.AdvancedMovement",
-            "Application.SnapTurn", "!Standard.RX"
+            "Application.SnapTurn", "!Standard.RX", "Application.PhysicsEnabled"
           ],
           "to": "Actions.StepYaw",
           "filters":
@@ -18,14 +18,14 @@
             ]
         },
         { "from": "Standard.LX", "to": "Actions.TranslateX",
-          "when": [ "Application.AdvancedMovement" ]
+          "when": [ "Application.AdvancedMovement", "Application.PhysicsEnabled" ]
         },
         { "from": "Standard.LX", "to": "Actions.Yaw",
-          "when": [ "!Application.AdvancedMovement", "!Application.SnapTurn" ]
+          "when": [ "!Application.AdvancedMovement", "!Application.SnapTurn", "Application.PhysicsEnabled" ]
         },
 
         { "from": "Standard.RX",
-          "when": [ "Application.SnapTurn" ],
+          "when": [ "Application.SnapTurn", "Application.PhysicsEnabled" ],
           "to": "Actions.StepYaw",
           "filters":
             [
@@ -36,11 +36,11 @@
             ]
         },
         { "from": "Standard.RX", "to": "Actions.Yaw",
-          "when": [ "!Application.SnapTurn" ]
+          "when": [ "!Application.SnapTurn", "Application.PhysicsEnabled" ]
         },
 
         { "from": "Standard.RY",
-          "when": "Application.Grounded",
+          "when": [ "Application.Grounded", "Application.PhysicsEnabled" ],
           "to": "Actions.Up",
           "filters":
             [
@@ -49,83 +49,83 @@
             ]
         },
 
-        { "from": "Standard.RY", "to": "Actions.Up", "filters": "invert"},
+        { "from": "Standard.RY", "when": "Application.PhysicsEnabled", "to": "Actions.Up", "filters": "invert"},
 
-        { "from": "Standard.Back", "to": "Actions.CycleCamera" },
-        { "from": "Standard.Start", "to": "Actions.ContextMenu" },
+        { "from": "Standard.Back", "when": "Application.PhysicsEnabled", "to": "Actions.CycleCamera" },
+        { "from": "Standard.Start", "when": "Application.PhysicsEnabled", "to": "Actions.ContextMenu" },
 
         { "from": "Standard.LT", "to": "Actions.LeftHandClick" },
-        { "from": "Standard.RT", "to": "Actions.RightHandClick" },
+        { "from": "Standard.RT", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandClick" },
 
         { "from": "Standard.LeftHand", "to": "Actions.LeftHand" },
-        { "from": "Standard.LeftHandThumb1", "to": "Actions.LeftHandThumb1"},
-        { "from": "Standard.LeftHandThumb2", "to": "Actions.LeftHandThumb2"},
-        { "from": "Standard.LeftHandThumb3", "to": "Actions.LeftHandThumb3"},
-        { "from": "Standard.LeftHandThumb4", "to": "Actions.LeftHandThumb4"},
-        { "from": "Standard.LeftHandIndex1", "to": "Actions.LeftHandIndex1"},
-        { "from": "Standard.LeftHandIndex2", "to": "Actions.LeftHandIndex2"},
-        { "from": "Standard.LeftHandIndex3", "to": "Actions.LeftHandIndex3"},
-        { "from": "Standard.LeftHandIndex4", "to": "Actions.LeftHandIndex4"},
-        { "from": "Standard.LeftHandMiddle1", "to": "Actions.LeftHandMiddle1"},
-        { "from": "Standard.LeftHandMiddle2", "to": "Actions.LeftHandMiddle2"},
-        { "from": "Standard.LeftHandMiddle3", "to": "Actions.LeftHandMiddle3"},
-        { "from": "Standard.LeftHandMiddle4", "to": "Actions.LeftHandMiddle4"},
-        { "from": "Standard.LeftHandRing1", "to": "Actions.LeftHandRing1"},
-        { "from": "Standard.LeftHandRing2", "to": "Actions.LeftHandRing2"},
-        { "from": "Standard.LeftHandRing3", "to": "Actions.LeftHandRing3"},
-        { "from": "Standard.LeftHandRing4", "to": "Actions.LeftHandRing4"},
-        { "from": "Standard.LeftHandPinky1", "to": "Actions.LeftHandPinky1"},
-        { "from": "Standard.LeftHandPinky2", "to": "Actions.LeftHandPinky2"},
-        { "from": "Standard.LeftHandPinky3", "to": "Actions.LeftHandPinky3"},
-        { "from": "Standard.LeftHandPinky4", "to": "Actions.LeftHandPinky4"},
+        { "from": "Standard.LeftHandThumb1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandThumb1"},
+        { "from": "Standard.LeftHandThumb2", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandThumb2"},
+        { "from": "Standard.LeftHandThumb3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandThumb3"},
+        { "from": "Standard.LeftHandThumb4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandThumb4"},
+        { "from": "Standard.LeftHandIndex1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandIndex1"},
+        { "from": "Standard.LeftHandIndex2", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandIndex2"},
+        { "from": "Standard.LeftHandIndex3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandIndex3"},
+        { "from": "Standard.LeftHandIndex4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandIndex4"},
+        { "from": "Standard.LeftHandMiddle1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandMiddle1"},
+        { "from": "Standard.LeftHandMiddle2", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandMiddle2"},
+        { "from": "Standard.LeftHandMiddle3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandMiddle3"},
+        { "from": "Standard.LeftHandMiddle4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandMiddle4"},
+        { "from": "Standard.LeftHandRing1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandRing1"},
+        { "from": "Standard.LeftHandRing2", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandRing2"},
+        { "from": "Standard.LeftHandRing3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandRing3"},
+        { "from": "Standard.LeftHandRing4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandRing4"},
+        { "from": "Standard.LeftHandPinky1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky1"},
+        { "from": "Standard.LeftHandPinky2", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky2"},
+        { "from": "Standard.LeftHandPinky3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky3"},
+        { "from": "Standard.LeftHandPinky4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky4"},
 
-        { "from": "Standard.RightHand", "to": "Actions.RightHand" },
-        { "from": "Standard.RightHandThumb1", "to": "Actions.RightHandThumb1"},
-        { "from": "Standard.RightHandThumb2", "to": "Actions.RightHandThumb2"},
-        { "from": "Standard.RightHandThumb3", "to": "Actions.RightHandThumb3"},
-        { "from": "Standard.RightHandThumb4", "to": "Actions.RightHandThumb4"},
-        { "from": "Standard.RightHandIndex1", "to": "Actions.RightHandIndex1"},
-        { "from": "Standard.RightHandIndex2", "to": "Actions.RightHandIndex2"},
-        { "from": "Standard.RightHandIndex3", "to": "Actions.RightHandIndex3"},
-        { "from": "Standard.RightHandIndex4", "to": "Actions.RightHandIndex4"},
-        { "from": "Standard.RightHandMiddle1", "to": "Actions.RightHandMiddle1"},
-        { "from": "Standard.RightHandMiddle2", "to": "Actions.RightHandMiddle2"},
-        { "from": "Standard.RightHandMiddle3", "to": "Actions.RightHandMiddle3"},
-        { "from": "Standard.RightHandMiddle4", "to": "Actions.RightHandMiddle4"},
-        { "from": "Standard.RightHandRing1", "to": "Actions.RightHandRing1"},
-        { "from": "Standard.RightHandRing2", "to": "Actions.RightHandRing2"},
-        { "from": "Standard.RightHandRing3", "to": "Actions.RightHandRing3"},
-        { "from": "Standard.RightHandRing4", "to": "Actions.RightHandRing4"},
-        { "from": "Standard.RightHandPinky1", "to": "Actions.RightHandPinky1"},
-        { "from": "Standard.RightHandPinky2", "to": "Actions.RightHandPinky2"},
-        { "from": "Standard.RightHandPinky3", "to": "Actions.RightHandPinky3"},
-        { "from": "Standard.RightHandPinky4", "to": "Actions.RightHandPinky4"},
+        { "from": "Standard.RightHand", "when": "Application.PhysicsEnabled", "to": "Actions.RightHand" },
+        { "from": "Standard.RightHandThumb1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb1"},
+        { "from": "Standard.RightHandThumb2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb2"},
+        { "from": "Standard.RightHandThumb3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb3"},
+        { "from": "Standard.RightHandThumb4", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb4"},
+        { "from": "Standard.RightHandIndex1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandIndex1"},
+        { "from": "Standard.RightHandIndex2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandIndex2"},
+        { "from": "Standard.RightHandIndex3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandIndex3"},
+        { "from": "Standard.RightHandIndex4", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandIndex4"},
+        { "from": "Standard.RightHandMiddle1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandMiddle1"},
+        { "from": "Standard.RightHandMiddle2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandMiddle2"},
+        { "from": "Standard.RightHandMiddle3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandMiddle3"},
+        { "from": "Standard.RightHandMiddle4", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandMiddle4"},
+        { "from": "Standard.RightHandRing1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandRing1"},
+        { "from": "Standard.RightHandRing2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandRing2"},
+        { "from": "Standard.RightHandRing3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandRing3"},
+        { "from": "Standard.RightHandRing4", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandRing4"},
+        { "from": "Standard.RightHandPinky1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandPinky1"},
+        { "from": "Standard.RightHandPinky2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandPinky2"},
+        { "from": "Standard.RightHandPinky3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandPinky3"},
+        { "from": "Standard.RightHandPinky4", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandPinky4"},
 
-        { "from": "Standard.LeftFoot", "to": "Actions.LeftFoot" },
-        { "from": "Standard.RightFoot", "to": "Actions.RightFoot" },
+        { "from": "Standard.LeftFoot", "when": "Application.PhysicsEnabled", "to": "Actions.LeftFoot" },
+        { "from": "Standard.RightFoot", "when": "Application.PhysicsEnabled", "to": "Actions.RightFoot" },
 
-        { "from": "Standard.Hips", "to": "Actions.Hips" },
-        { "from": "Standard.Spine2", "to": "Actions.Spine2" },
+        { "from": "Standard.Hips", "when": "Application.PhysicsEnabled", "to": "Actions.Hips" },
+        { "from": "Standard.Spine2", "when": "Application.PhysicsEnabled", "to": "Actions.Spine2" },
 
         { "from": "Standard.Head", "to": "Actions.Head" },
-        { "from": "Standard.LeftArm", "to": "Actions.LeftArm" },
-        { "from": "Standard.RightArm", "to": "Actions.RightArm" },
-        
-        { "from": "Standard.TrackedObject00", "to" : "Actions.TrackedObject00" },
-        { "from": "Standard.TrackedObject01", "to" : "Actions.TrackedObject01" },
-        { "from": "Standard.TrackedObject02", "to" : "Actions.TrackedObject02" },
-        { "from": "Standard.TrackedObject03", "to" : "Actions.TrackedObject03" },
-        { "from": "Standard.TrackedObject04", "to" : "Actions.TrackedObject04" },
-        { "from": "Standard.TrackedObject05", "to" : "Actions.TrackedObject05" },
-        { "from": "Standard.TrackedObject06", "to" : "Actions.TrackedObject06" },
-        { "from": "Standard.TrackedObject07", "to" : "Actions.TrackedObject07" },
-        { "from": "Standard.TrackedObject08", "to" : "Actions.TrackedObject08" },
-        { "from": "Standard.TrackedObject09", "to" : "Actions.TrackedObject09" },
-        { "from": "Standard.TrackedObject10", "to" : "Actions.TrackedObject10" },
-        { "from": "Standard.TrackedObject11", "to" : "Actions.TrackedObject11" },
-        { "from": "Standard.TrackedObject12", "to" : "Actions.TrackedObject12" },
-        { "from": "Standard.TrackedObject13", "to" : "Actions.TrackedObject13" },
-        { "from": "Standard.TrackedObject14", "to" : "Actions.TrackedObject14" },
-        { "from": "Standard.TrackedObject15", "to" : "Actions.TrackedObject15" }
+        { "from": "Standard.LeftArm", "when": "Application.PhysicsEnabled", "to": "Actions.LeftArm" },
+        { "from": "Standard.RightArm", "when": "Application.PhysicsEnabled", "to": "Actions.RightArm" },
+
+        { "from": "Standard.TrackedObject00", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject00" },
+        { "from": "Standard.TrackedObject01", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject01" },
+        { "from": "Standard.TrackedObject02", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject02" },
+        { "from": "Standard.TrackedObject03", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject03" },
+        { "from": "Standard.TrackedObject04", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject04" },
+        { "from": "Standard.TrackedObject05", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject05" },
+        { "from": "Standard.TrackedObject06", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject06" },
+        { "from": "Standard.TrackedObject07", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject07" },
+        { "from": "Standard.TrackedObject08", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject08" },
+        { "from": "Standard.TrackedObject09", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject09" },
+        { "from": "Standard.TrackedObject10", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject10" },
+        { "from": "Standard.TrackedObject11", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject11" },
+        { "from": "Standard.TrackedObject12", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject12" },
+        { "from": "Standard.TrackedObject13", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject13" },
+        { "from": "Standard.TrackedObject14", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject14" },
+        { "from": "Standard.TrackedObject15", "when": "Application.PhysicsEnabled", "to" : "Actions.TrackedObject15" }
     ]
 }
