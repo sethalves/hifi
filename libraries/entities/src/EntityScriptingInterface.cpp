@@ -416,7 +416,17 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             return;
         }
 
+        if (entity->getName() == "Piano Key 8") {
+            qDebug() << "QQQQ editing "
+                     << scriptSideProperties.localPositionChanged() << scriptSideProperties.positionChanged()
+                     << scriptSideProperties;
+        }
+
         if (scriptSideProperties.parentRelatedPropertyChanged()) {
+            if (entity->getName() == "Piano Key 8") {
+                qDebug() << "QQQQ parentRelatedPropertyChanged";
+            }
+
             // All of parentID, parentJointIndex, position, rotation are needed to make sense of any of them.
             // If any of these changed, pull any missing properties from the entity.
 
@@ -430,7 +440,10 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
                 properties.setParentJointIndex(entity->getParentJointIndex());
             }
             if (!scriptSideProperties.localPositionChanged() && !scriptSideProperties.positionChanged()) {
-                properties.setPosition(entity->getWorldPosition());
+                if (entity->getName() == "Piano Key 8") {
+                    qDebug() << "QQQQ filling in position";
+                }
+                properties.setLocalPosition(entity->getLocalPosition());
             }
             if (!scriptSideProperties.localRotationChanged() && !scriptSideProperties.rotationChanged()) {
                 properties.setRotation(entity->getWorldOrientation());
@@ -475,7 +488,7 @@ QUuid EntityScriptingInterface::editEntity(QUuid id, const EntityItemProperties&
             properties.setType(entity->getType());
             bool hasTerseUpdateChanges = properties.hasTerseUpdateChanges();
             bool hasPhysicsChanges = properties.hasMiscPhysicsChanges() || hasTerseUpdateChanges;
-            if (_bidOnSimulationOwnership && hasPhysicsChanges) {
+            if (entity->getParentID().isNull() && _bidOnSimulationOwnership && hasPhysicsChanges) {
                 auto nodeList = DependencyManager::get<NodeList>();
                 const QUuid myNodeID = nodeList->getSessionUUID();
 

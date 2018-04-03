@@ -107,9 +107,9 @@ void EntityEditPacketSender::queueEditEntityMessage(PacketType type,
         EntityItemPointer entity = entityTree->findEntityByEntityItemID(entityItemID);
         if (entity && entity->getName() == "Piano Key 8") {
             if (properties.positionChanged()) {
-                if (properties.getPosition() != entity->getLocalPosition()) {
+                // if (properties.getPosition() != entity->getLocalPosition()) {
                     qDebug() << "QQQQ changing key:" << entity->getLocalPosition() << properties.getPosition();
-                }
+                // }
             }
         }
     }

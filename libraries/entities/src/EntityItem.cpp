@@ -1594,7 +1594,8 @@ void EntityItem::setPosition(const glm::vec3& value) {
     if (getLocalPosition() != value) {
 
         if (getName() == "Piano Key 8") {
-            qDebug() << "QQQQ " << getLocalPosition() << value;
+            qDebug() << "QQQQ setPosition " << getLocalPosition() << value;
+            qDebug() << "QQQQ HERE";
         }
 
         setLocalPosition(value);
