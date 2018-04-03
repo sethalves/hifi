@@ -1628,6 +1628,7 @@ SelectionDisplay = (function() {
                     y: 0,
                     z: vector.z
                 });
+                print("QQQQ edit 0");
                 Entities.editEntity(SelectionManager.selections[i], {
                     position: newPosition
                 });
@@ -1732,6 +1733,7 @@ SelectionDisplay = (function() {
                     var id = SelectionManager.selections[i];
                     var properties = SelectionManager.savedProperties[id];
                     var newPosition = Vec3.sum(properties.position, vector);
+                    print("QQQQ edit 1");
                     Entities.editEntity(id, { position: newPosition });
                 }
     
@@ -2058,6 +2060,7 @@ SelectionDisplay = (function() {
             var newPosition = Vec3.sum(initialPosition, changeInPosition);
     
             for (var i = 0; i < SelectionManager.selections.length; i++) {
+                print("QQQQ edit 2");
                 Entities.editEntity(SelectionManager.selections[i], {
                     position: newPosition,
                     dimensions: newDimensions
@@ -2180,6 +2183,7 @@ SelectionDisplay = (function() {
                 newProperties.position = Vec3.sum(initialPosition, dPos);
             }
 
+            print("QQQQ edit 3");
             Entities.editEntity(entityID, newProperties);
         }
     }
