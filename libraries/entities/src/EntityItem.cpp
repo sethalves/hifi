@@ -1054,7 +1054,7 @@ bool EntityItem::stepKinematicMotion(float timeElapsed) {
     glm::vec3 angularVelocity;
 
     if (!getParentID().isNull()) {
-        return;
+        return false;
     }
 
     getLocalTransformAndVelocities(transform, linearVelocity, angularVelocity);
