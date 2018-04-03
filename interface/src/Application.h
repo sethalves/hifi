@@ -334,6 +334,7 @@ public slots:
 
     void handleLocalServerConnection() const;
     void readArgumentsFromLocalSocket() const;
+    void setInterstitialPageVisibility(bool visible);
 
     static void packageModel();
 
@@ -560,7 +561,7 @@ private:
     std::shared_ptr<KeyboardMouseDevice> _keyboardMouseDevice;   // Default input device, the good old keyboard mouse and maybe touchpad
     std::shared_ptr<TouchscreenDevice> _touchscreenDevice;   // the good old touchscreen
     std::shared_ptr<TouchscreenVirtualPadDevice> _touchscreenVirtualPadDevice;
-    std::shared_ptr<ImageOverlay> _interstitialPage;
+    OverlayID _interstitialPage;
     SimpleMovingAverage _avatarSimsPerSecond {10};
     int _avatarSimsPerSecondReport {0};
     quint64 _lastAvatarSimsPerSecondUpdate {0};

@@ -2226,7 +2226,14 @@ void Application::updateHeartbeat() const {
 }
 
 void Application::initializeInterstitialPage() {
-    _interstitialPage = std::make_shared<ImageOverlay>();
+    QVariantMap interstitialPageProperties;
+    interstitialPageProperties["x"] = QVariant(getWindow()->x());
+    interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    interstitialPageProperties["width"] = QVariant(getWindow()->width() + 100);
+    interstitialPageProperties["height"] = QVariant(getWindow()->height() + 100);
+    interstitialPageProperties["visible"] = QVariant(true);
+    interstitialPageProperties["imageURL"] = QVariant("http://hifi-content.s3.amazonaws.com/alan/dev/SKY-Splash-v1-eqr-4k.jpg");
+    _interstitialPage = getOverlays().addOverlay("image", QVariant(interstitialPageProperties));
 }
 
 void Application::onAboutToQuit() {
@@ -2543,6 +2550,7 @@ void Application::initializeGL() {
         qFatal("Unable to make offscreen context current");
     }
 
+    initializeInterstitialPage();
     // update before the first render
     update(0);
 }
@@ -4940,6 +4948,7 @@ void Application::resetPhysicsReadyInformation() {
     _nearbyEntitiesStabilityCount = 0;
     _physicsEnabled = false;
     Menu::getInstance()->setEnabled(false);
+    setInterstitialPageVisibility(true);
 }
 
 
@@ -5108,6 +5117,7 @@ void Application::update(float deltaTime) {
             if (nearbyEntitiesAreReadyForPhysics()) {
                 _physicsEnabled = true;
                 Menu::getInstance()->setEnabled(true);
+                setInterstitialPageVisibility(false);
                 getMyAvatar()->updateMotionBehaviorFromMenu();
             }
         }
@@ -5852,6 +5862,12 @@ void Application::clearDomainOctreeDetails() {
     DependencyManager::get<TextureCache>()->clearUnusedResources();
 
     getMyAvatar()->setAvatarEntityDataChanged(true);
+}
+
+void Application::setInterstitialPageVisibility(bool visible) {
+    QVariantMap interstitialPageProperties;
+    interstitialPageProperties["visible"] = visible;
+    getOverlays().editOverlay(_interstitialPage, QVariant(interstitialPageProperties));
 }
 
 void Application::clearDomainAvatars() {
