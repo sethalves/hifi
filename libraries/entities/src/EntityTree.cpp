@@ -1796,7 +1796,9 @@ void EntityTree::addToNeedsParentFixupList(EntityItemPointer entity) {
 
 void EntityTree::update(bool simulate) {
     PROFILE_RANGE(simulation_physics, "UpdateTree");
-    fixupNeedsParentFixups();
+    withWriteLock([&] {
+        fixupNeedsParentFixups();
+    });
     if (simulate && _simulation) {
         withWriteLock([&] {
             _simulation->updateEntities();
