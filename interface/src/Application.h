@@ -709,6 +709,7 @@ private:
     DisplayPluginPointer _autoSwitchDisplayModeSupportedHMDPlugin;
     QString _autoSwitchDisplayModeSupportedHMDPluginName;
     bool _previousHMDWornStatus;
+    bool _goingHome = false;
     void startHMDStandBySession();
     void endHMDSession();
 

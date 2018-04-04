@@ -5125,6 +5125,7 @@ void Application::update(float deltaTime) {
                 _physicsEnabled = true;
                 Menu::getInstance()->setEnabled(true);
                 setInterstitialPageVisibility(false);
+                _goingHome = false;
                 getMyAvatar()->updateMotionBehaviorFromMenu();
             }
         }
@@ -5887,15 +5888,16 @@ void Application::setInterstitialPageVisibility(bool visible) {
 
     const QString DEFAULT_HOME_LOCATION = "localhost";
     auto addressManager = DependencyManager::get<AddressManager>();
-    if (visible && !_interstitialPageMessage) {
+    qDebug() << "------> " << addressManager->getPlaceName();
+    if (visible && !_interstitialPageMessage && !_goingHome) {
         qDebug() << "--------> creating question dialog";
         _interstitialPageMessage = OffscreenUi::asyncWarning("Interstatial Page Demo",
-                                                              "Go to Sandbox?",
-                                                              QMessageBox::Yes);
+                                                              "Cancel domain loading and head to Sandbox",
+                                                             QMessageBox::Cancel);
         QObject::connect(_interstitialPageMessage, &ModalDialogListener::response, this, [=] (QVariant answer) {
             QObject::disconnect(_interstitialPageMessage, &ModalDialogListener::response, this, nullptr);
             _interstitialPageMessage = nullptr;
-            bool yes = (QMessageBox::Yes == static_cast<QMessageBox::StandardButton>(answer.toInt()));
+            bool yes = (QMessageBox::Cancel == static_cast<QMessageBox::StandardButton>(answer.toInt()));
             if (yes) {
                 auto locationBookmarks = DependencyManager::get<LocationBookmarks>();
                 QString homeLocation = locationBookmarks->addressForBookmark(LocationBookmarks::HOME_BOOKMARK);
@@ -5904,6 +5906,7 @@ void Application::setInterstitialPageVisibility(bool visible) {
                     homeLocation = DEFAULT_HOME_LOCATION;
                 }
                 addressManager->handleLookupString(homeLocation);
+                _goingHome = true;
             }
         });
     } else if (!visible && _interstitialPageMessage) {
