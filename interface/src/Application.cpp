@@ -2229,8 +2229,13 @@ void Application::initializeInterstitialPage() {
     QVariantMap interstitialPageProperties;
     int windowWidth = getWindow()->width() + 100;
     int windowHeight = getWindow()->height() + 100;
-    interstitialPageProperties["x"] = QVariant(windowWidth / 2);
-    interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    if (isHMDMode()) {
+        interstitialPageProperties["x"] = QVariant(windowWidth / 2);
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    } else {
+        interstitialPageProperties["x"] = QVariant(getWindow()->x());
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    }
     interstitialPageProperties["width"] = QVariant(windowWidth);
     interstitialPageProperties["height"] = QVariant(windowHeight);
     interstitialPageProperties["visible"] = QVariant(true);
@@ -5869,8 +5874,39 @@ void Application::clearDomainOctreeDetails() {
 void Application::setInterstitialPageVisibility(bool visible) {
     QVariantMap interstitialPageProperties;
     interstitialPageProperties["visible"] = visible;
+    if (isHMDMode()) {
+        int windowWidth = getWindow()->width() + 100;
+        interstitialPageProperties["x"] = QVariant(windowWidth / 2);
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    } else {
+        interstitialPageProperties["x"] = QVariant(getWindow()->x());
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    }
     getOverlays().editOverlay(_interstitialPage, QVariant(interstitialPageProperties));
     centerUI();
+
+    const QString DEFAULT_HOME_LOCATION = "localhost";
+    auto addressManager = DependencyManager::get<AddressManager>();
+    if (visible && addressManager->getPlaceName() != DEFAULT_HOME_LOCATION) {
+        qDebug() << "--------> creating question dialog";
+        ModalDialogListener* dlg = OffscreenUi::asyncQuestion("Interstatial Page Demo",
+                                                              "Go to Sandbox?",
+                                                              QMessageBox::Yes | QMessageBox::No);
+        QObject::connect(dlg, &ModalDialogListener::response, this, [=] (QVariant answer) {
+            QObject::disconnect(dlg, &ModalDialogListener::response, this, nullptr);
+
+            bool yes = (QMessageBox::Yes == static_cast<QMessageBox::StandardButton>(answer.toInt()));
+            if (yes) {
+                auto locationBookmarks = DependencyManager::get<LocationBookmarks>();
+                QString homeLocation = locationBookmarks->addressForBookmark(LocationBookmarks::HOME_BOOKMARK);
+                const QString DEFAULT_HOME_LOCATION = "localhost";
+                if (homeLocation == "") {
+                    homeLocation = DEFAULT_HOME_LOCATION;
+                }
+                addressManager->handleLookupString(homeLocation);
+            }
+        });
+    }
 }
 
 void Application::clearDomainAvatars() {

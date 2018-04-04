@@ -125,7 +125,7 @@
         { "from": "Keyboard.PgDown", "when": "Application.PhysicsEnabled", "to": "Actions.VERTICAL_DOWN" },
         { "from": "Keyboard.PgUp", "when": "Application.PhysicsEnabled", "to": "Actions.VERTICAL_UP" },
 
-        { "from": "Keyboard.MouseMoveUp", "when": ["Keyboard.RightMouseButton", "Appliction.PhysicsEnabled"], "to": "Actions.PITCH_UP",
+        { "from": "Keyboard.MouseMoveUp", "when": ["Keyboard.RightMouseButton", "Application.PhysicsEnabled"], "to": "Actions.PITCH_UP",
           "filters":
             [
                 { "type": "scale", "scale": 0.6 }

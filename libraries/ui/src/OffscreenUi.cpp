@@ -228,17 +228,17 @@ QQuickItem* OffscreenUi::createMessageBox(Icon icon, const QString& title, const
     bool invokeResult;
     auto tabletScriptingInterface = DependencyManager::get<TabletScriptingInterface>();
     TabletProxy* tablet = dynamic_cast<TabletProxy*>(tabletScriptingInterface->getTablet("com.highfidelity.interface.tablet.system"));
-    if (tablet->getToolbarMode()) {
-       invokeResult =  QMetaObject::invokeMethod(_desktop, "messageBox",
-                                  Q_RETURN_ARG(QVariant, result),
-                                  Q_ARG(QVariant, QVariant::fromValue(map)));
-    } else {
+    //if (tablet->getToolbarMode()) {
+    invokeResult =  QMetaObject::invokeMethod(_desktop, "messageBox",
+                                              Q_RETURN_ARG(QVariant, result),
+                                              Q_ARG(QVariant, QVariant::fromValue(map)));
+       /* } else {
         QQuickItem* tabletRoot = tablet->getTabletRoot();
         invokeResult =  QMetaObject::invokeMethod(tabletRoot, "messageBox",
                                                   Q_RETURN_ARG(QVariant, result),
                                                   Q_ARG(QVariant, QVariant::fromValue(map)));
         emit tabletScriptingInterface->tabletNotification();
-    }
+        }*/
 
     if (!invokeResult) {
         qWarning() << "Failed to create message box";
