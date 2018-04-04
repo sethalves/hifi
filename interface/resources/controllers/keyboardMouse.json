@@ -111,10 +111,11 @@
             ]
         },
 
+
         { "from": "Keyboard.W", "when": ["!Keyboard.Control", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_FORWARD" },
         { "from": "Keyboard.S", "when": ["!Keyboard.Control", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_BACKWARD" },
         { "from": "Keyboard.Shift", "when": ["!Keyboard.Left", "!Keyboard.Right", "Application.PhysicsEnabled"], "to": "Actions.SPRINT" },
-        { "from": "Keyboard.Control", "when" : "Application.PhysicsEnabled", "to": "Actions.VERTICAL_DOWN" },
+        { "from": "Keyboard.C", "when" : "Application.PhysicsEnabled", "to": "Actions.VERTICAL_DOWN" },
         { "from": "Keyboard.Left", "when": ["Keyboard.Shift", "Application.PhysicsEnabled"], "to": "Actions.LATERAL_LEFT" },
         { "from": "Keyboard.Right", "when": ["Keyboard.Shift", "Application.PhysicsEnabled"], "to": "Actions.LATERAL_RIGHT" },
         { "from": "Keyboard.Up", "when": ["Application.CameraFirstPerson", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_FORWARD" },
