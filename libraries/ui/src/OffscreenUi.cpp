@@ -1141,6 +1141,14 @@ ModalDialogListener::~ModalDialogListener() {
     }
 }
 
+void ModalDialogListener::destroyQmlModalDialog() {
+    if (_dialog) {
+        QQmlProperty(_dialog, OFFSCREEN_VISIBILITY_PROPERTY).write(false);
+        _dialog->setParent(nullptr);
+        _dialog->deleteLater();
+    }
+}
+
 QVariant ModalDialogListener::waitForResult() {
     while (!_finished) {
         QCoreApplication::processEvents();

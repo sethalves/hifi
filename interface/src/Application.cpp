@@ -5887,14 +5887,14 @@ void Application::setInterstitialPageVisibility(bool visible) {
 
     const QString DEFAULT_HOME_LOCATION = "localhost";
     auto addressManager = DependencyManager::get<AddressManager>();
-    if (visible && addressManager->getPlaceName() != DEFAULT_HOME_LOCATION) {
+    if (visible && !_interstitialPageMessage) {
         qDebug() << "--------> creating question dialog";
-        ModalDialogListener* dlg = OffscreenUi::asyncQuestion("Interstatial Page Demo",
+        _interstitialPageMessage = OffscreenUi::asyncWarning("Interstatial Page Demo",
                                                               "Go to Sandbox?",
-                                                              QMessageBox::Yes | QMessageBox::No);
-        QObject::connect(dlg, &ModalDialogListener::response, this, [=] (QVariant answer) {
-            QObject::disconnect(dlg, &ModalDialogListener::response, this, nullptr);
-
+                                                              QMessageBox::Yes);
+        QObject::connect(_interstitialPageMessage, &ModalDialogListener::response, this, [=] (QVariant answer) {
+            QObject::disconnect(_interstitialPageMessage, &ModalDialogListener::response, this, nullptr);
+            _interstitialPageMessage = nullptr;
             bool yes = (QMessageBox::Yes == static_cast<QMessageBox::StandardButton>(answer.toInt()));
             if (yes) {
                 auto locationBookmarks = DependencyManager::get<LocationBookmarks>();
@@ -5906,6 +5906,12 @@ void Application::setInterstitialPageVisibility(bool visible) {
                 addressManager->handleLookupString(homeLocation);
             }
         });
+    } else if (!visible && _interstitialPageMessage) {
+        qDebug() << "-----> destroy interstitialPageMessage <-----";
+        QObject::disconnect(_interstitialPageMessage, &ModalDialogListener::response, this, nullptr);
+        _interstitialPageMessage->destroyQmlModalDialog();
+        DependencyManager::get<OffscreenUi>()->removeModalDialog(_interstitialPageMessage);
+        _interstitialPageMessage = nullptr;
     }
 }
 

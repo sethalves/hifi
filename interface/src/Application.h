@@ -86,6 +86,7 @@ class AssetUpload;
 class CompositorHelper;
 class AudioInjector;
 class ImageOverlay;
+class ModalDialogListener;
 
 namespace controller {
     class StateController;
@@ -684,6 +685,7 @@ private:
     QString _returnFromFullScreenMirrorTo;
 
     ConnectionMonitor _connectionMonitor;
+    ModalDialogListener* _interstitialPageMessage { nullptr };
 
     QTimer _addAssetToWorldResizeTimer;
     QHash<QUuid, int> _addAssetToWorldResizeList;
