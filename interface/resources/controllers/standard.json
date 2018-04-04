@@ -55,7 +55,7 @@
         { "from": "Standard.Start", "when": "Application.PhysicsEnabled", "to": "Actions.ContextMenu" },
 
         { "from": "Standard.LT", "to": "Actions.LeftHandClick" },
-        { "from": "Standard.RT", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandClick" },
+        { "from": "Standard.RT", "to": "Actions.RightHandClick" },
 
         { "from": "Standard.LeftHand", "to": "Actions.LeftHand" },
         { "from": "Standard.LeftHandThumb1", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandThumb1"},
@@ -79,7 +79,7 @@
         { "from": "Standard.LeftHandPinky3", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky3"},
         { "from": "Standard.LeftHandPinky4", "when": "Application.PhysicsEnabled", "to": "Actions.LeftHandPinky4"},
 
-        { "from": "Standard.RightHand", "when": "Application.PhysicsEnabled", "to": "Actions.RightHand" },
+        { "from": "Standard.RightHand", "to": "Actions.RightHand" },
         { "from": "Standard.RightHandThumb1", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb1"},
         { "from": "Standard.RightHandThumb2", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb2"},
         { "from": "Standard.RightHandThumb3", "when": "Application.PhysicsEnabled", "to": "Actions.RightHandThumb3"},
