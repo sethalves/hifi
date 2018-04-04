@@ -76,6 +76,7 @@
 #include <EntityScriptServerLogClient.h>
 #include <EntityScriptingInterface.h>
 #include "ui/overlays/ContextOverlayInterface.h"
+#include "ui/overlays/ImageOverlay.h"
 #include <ErrorDialog.h>
 #include <FileScriptingInterface.h>
 #include <Finally.h>
@@ -698,6 +699,7 @@ static const QString STATE_SNAP_TURN = "SnapTurn";
 static const QString STATE_ADVANCED_MOVEMENT_CONTROLS = "AdvancedMovement";
 static const QString STATE_GROUNDED = "Grounded";
 static const QString STATE_NAV_FOCUSED = "NavigationFocused";
+static const QString STATE_PHYSICS_ENABLED = "PhysicsEnabled";
 
 // Statically provided display and input plugins
 extern DisplayPluginList getDisplayPlugins();
@@ -862,7 +864,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<MessagesClient>();
     controller::StateController::setStateVariables({ { STATE_IN_HMD, STATE_CAMERA_FULL_SCREEN_MIRROR,
                     STATE_CAMERA_FIRST_PERSON, STATE_CAMERA_THIRD_PERSON, STATE_CAMERA_ENTITY, STATE_CAMERA_INDEPENDENT,
-                    STATE_SNAP_TURN, STATE_ADVANCED_MOVEMENT_CONTROLS, STATE_GROUNDED, STATE_NAV_FOCUSED } });
+                    STATE_SNAP_TURN, STATE_ADVANCED_MOVEMENT_CONTROLS, STATE_GROUNDED, STATE_NAV_FOCUSED, STATE_PHYSICS_ENABLED } });
     DependencyManager::set<UserInputMapper>();
     DependencyManager::set<controller::ScriptingInterface, ControllerScriptingInterface>();
     DependencyManager::set<InterfaceParentFinder>();
@@ -1559,6 +1561,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
         return DependencyManager::get<OffscreenUi>()->navigationFocused() ? 1 : 0;
     });
 
+    _applicationStateDevice->setInputVariant(STATE_PHYSICS_ENABLED, []() -> float {
+        return qApp->isPhysicsEnabled() ? 1 : 0;
+    });
+
     // Setup the _keyboardMouseDevice, _touchscreenDevice, _touchscreenVirtualPadDevice and the user input mapper with the default bindings
     userInputMapper->registerDevice(_keyboardMouseDevice->getInputDevice());
     // if the _touchscreenDevice is not supported it will not be registered
@@ -2219,6 +2225,24 @@ void Application::updateHeartbeat() const {
     DeadlockWatchdogThread::updateHeartbeat();
 }
 
+void Application::initializeInterstitialPage() {
+    QVariantMap interstitialPageProperties;
+    int windowWidth = getWindow()->width() + 100;
+    int windowHeight = getWindow()->height() + 100;
+    if (isHMDMode()) {
+        interstitialPageProperties["x"] = QVariant(windowWidth / 2);
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    } else {
+        interstitialPageProperties["x"] = QVariant(getWindow()->x());
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    }
+    interstitialPageProperties["width"] = QVariant(windowWidth);
+    interstitialPageProperties["height"] = QVariant(windowHeight);
+    interstitialPageProperties["visible"] = QVariant(true);
+    interstitialPageProperties["imageURL"] = QVariant("http://hifi-content.s3.amazonaws.com/alan/dev/SKY-Splash-v1-eqr-4k.jpg");
+    _interstitialPage = getOverlays().addOverlay("image", QVariant(interstitialPageProperties));
+}
+
 void Application::onAboutToQuit() {
     emit beforeAboutToQuit();
 
@@ -2533,6 +2557,7 @@ void Application::initializeGL() {
         qFatal("Unable to make offscreen context current");
     }
 
+    initializeInterstitialPage();
     // update before the first render
     update(0);
 }
@@ -4929,6 +4954,8 @@ void Application::resetPhysicsReadyInformation() {
     _nearbyEntitiesCountAtLastPhysicsCheck = 0;
     _nearbyEntitiesStabilityCount = 0;
     _physicsEnabled = false;
+    Menu::getInstance()->setEnabled(false);
+    setInterstitialPageVisibility(true);
 }
 
 
@@ -5096,6 +5123,9 @@ void Application::update(float deltaTime) {
             // scene is ready to compute its collision shape.
             if (nearbyEntitiesAreReadyForPhysics()) {
                 _physicsEnabled = true;
+                Menu::getInstance()->setEnabled(true);
+                setInterstitialPageVisibility(false);
+                _goingHome = false;
                 getMyAvatar()->updateMotionBehaviorFromMenu();
             }
         }
@@ -5840,6 +5870,52 @@ void Application::clearDomainOctreeDetails() {
     DependencyManager::get<TextureCache>()->clearUnusedResources();
 
     getMyAvatar()->setAvatarEntityDataChanged(true);
+}
+
+void Application::setInterstitialPageVisibility(bool visible) {
+    QVariantMap interstitialPageProperties;
+    interstitialPageProperties["visible"] = visible;
+    if (isHMDMode()) {
+        int windowWidth = getWindow()->width() + 100;
+        interstitialPageProperties["x"] = QVariant(windowWidth / 2);
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    } else {
+        interstitialPageProperties["x"] = QVariant(getWindow()->x());
+        interstitialPageProperties["y"] = QVariant(getWindow()->y());
+    }
+    getOverlays().editOverlay(_interstitialPage, QVariant(interstitialPageProperties));
+    centerUI();
+
+    const QString DEFAULT_HOME_LOCATION = "localhost";
+    auto addressManager = DependencyManager::get<AddressManager>();
+    qDebug() << "------> " << addressManager->getPlaceName();
+    if (visible && !_interstitialPageMessage && !_goingHome) {
+        qDebug() << "--------> creating question dialog";
+        _interstitialPageMessage = OffscreenUi::asyncWarning("Interstatial Page Demo",
+                                                              "Cancel domain loading and head to Sandbox",
+                                                             QMessageBox::Cancel);
+        QObject::connect(_interstitialPageMessage, &ModalDialogListener::response, this, [=] (QVariant answer) {
+            QObject::disconnect(_interstitialPageMessage, &ModalDialogListener::response, this, nullptr);
+            _interstitialPageMessage = nullptr;
+            bool yes = (QMessageBox::Cancel == static_cast<QMessageBox::StandardButton>(answer.toInt()));
+            if (yes) {
+                auto locationBookmarks = DependencyManager::get<LocationBookmarks>();
+                QString homeLocation = locationBookmarks->addressForBookmark(LocationBookmarks::HOME_BOOKMARK);
+                const QString DEFAULT_HOME_LOCATION = "localhost";
+                if (homeLocation == "") {
+                    homeLocation = DEFAULT_HOME_LOCATION;
+                }
+                addressManager->handleLookupString(homeLocation);
+                _goingHome = true;
+            }
+        });
+    } else if (!visible && _interstitialPageMessage) {
+        qDebug() << "-----> destroy interstitialPageMessage <-----";
+        QObject::disconnect(_interstitialPageMessage, &ModalDialogListener::response, this, nullptr);
+        _interstitialPageMessage->destroyQmlModalDialog();
+        DependencyManager::get<OffscreenUi>()->removeModalDialog(_interstitialPageMessage);
+        _interstitialPageMessage = nullptr;
+    }
 }
 
 void Application::clearDomainAvatars() {

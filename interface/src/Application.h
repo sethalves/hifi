@@ -85,6 +85,8 @@ class MainWindow;
 class AssetUpload;
 class CompositorHelper;
 class AudioInjector;
+class ImageOverlay;
+class ModalDialogListener;
 
 namespace controller {
     class StateController;
@@ -333,6 +335,7 @@ public slots:
 
     void handleLocalServerConnection() const;
     void readArgumentsFromLocalSocket() const;
+    void setInterstitialPageVisibility(bool visible);
 
     static void packageModel();
 
@@ -474,6 +477,7 @@ private:
     void checkSkeleton() const;
 
     void initializeAcceptedFiles();
+    void initializeInterstitialPage();
 
     void runRenderFrame(RenderArgs* renderArgs/*, Camera& whichCamera, bool selfAvatarOnly = false*/);
 
@@ -558,6 +562,7 @@ private:
     std::shared_ptr<KeyboardMouseDevice> _keyboardMouseDevice;   // Default input device, the good old keyboard mouse and maybe touchpad
     std::shared_ptr<TouchscreenDevice> _touchscreenDevice;   // the good old touchscreen
     std::shared_ptr<TouchscreenVirtualPadDevice> _touchscreenVirtualPadDevice;
+    OverlayID _interstitialPage;
     SimpleMovingAverage _avatarSimsPerSecond {10};
     int _avatarSimsPerSecondReport {0};
     quint64 _lastAvatarSimsPerSecondUpdate {0};
@@ -680,6 +685,7 @@ private:
     QString _returnFromFullScreenMirrorTo;
 
     ConnectionMonitor _connectionMonitor;
+    ModalDialogListener* _interstitialPageMessage { nullptr };
 
     QTimer _addAssetToWorldResizeTimer;
     QHash<QUuid, int> _addAssetToWorldResizeList;
@@ -703,6 +709,7 @@ private:
     DisplayPluginPointer _autoSwitchDisplayModeSupportedHMDPlugin;
     QString _autoSwitchDisplayModeSupportedHMDPluginName;
     bool _previousHMDWornStatus;
+    bool _goingHome = false;
     void startHMDStandBySession();
     void endHMDSession();
 

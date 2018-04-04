@@ -1,10 +1,10 @@
 {
     "name": "Keyboard/Mouse to Actions",
     "channels": [
-        { "from": "Keyboard.A", "when": "Keyboard.RightMouseButton", "to": "Actions.LATERAL_LEFT" },
-        { "from": "Keyboard.D", "when": "Keyboard.RightMouseButton", "to": "Actions.LATERAL_RIGHT" },
-        { "from": "Keyboard.E", "to": "Actions.LATERAL_RIGHT" },
-        { "from": "Keyboard.Q", "to": "Actions.LATERAL_LEFT" },
+        { "from": "Keyboard.A", "when": [ "Keyboard.RightMouseButton", "Application.PhysicsEnabled" ], "to": "Actions.LATERAL_LEFT" },
+        { "from": "Keyboard.D", "when": [ "Keyboard.RightMouseButton", "Application.PhysicsEnabled" ], "to": "Actions.LATERAL_RIGHT" },
+        { "from": "Keyboard.E", "when": "Application.PhysicsEnabled", "to": "Actions.LATERAL_RIGHT" },
+        { "from": "Keyboard.Q", "when": "Application.PhysicsEnabled", "to": "Actions.LATERAL_LEFT" },
 
 
         { "comment" : "Mouse turn need to be small continuous increments",
@@ -13,7 +13,7 @@
                 [ "Keyboard.MouseMoveRight" ]
             ]
           },
-          "when": [ "Application.InHMD", "Application.SnapTurn", "Keyboard.RightMouseButton" ],
+          "when": [ "Application.InHMD", "Application.SnapTurn", "Keyboard.RightMouseButton", "Application.PhysicsEnabled" ],
           "to": "Actions.StepYaw",
           "filters":
             [
@@ -29,7 +29,7 @@
                 [ "Keyboard.TouchpadRight" ]
             ]
           },
-          "when": [ "Application.InHMD", "Application.SnapTurn" ],
+          "when": [ "Application.InHMD", "Application.SnapTurn", "Application.PhysicsEnabled" ],
           "to": "Actions.StepYaw",
           "filters":
             [
@@ -45,7 +45,7 @@
                 ["Keyboard.Right"]
             ]
           },
-          "when": ["Application.InHMD", "Application.SnapTurn", "!Keyboard.Shift"],
+          "when": ["Application.InHMD", "Application.SnapTurn", "!Keyboard.Shift", "Application.PhysicsEnabled"],
           "to": "Actions.StepYaw",
           "filters":
             [
@@ -59,7 +59,7 @@
                 ["Keyboard.D"]
             ]
           },
-          "when": [ "Application.InHMD", "Application.SnapTurn" ],
+          "when": [ "Application.InHMD", "Application.SnapTurn", "Application.PhysicsEnabled" ],
           "to": "Actions.StepYaw",
           "filters":
             [
@@ -73,7 +73,7 @@
                 ["Keyboard.Right"]
              ]
           },
-          "when": ["Application.CameraFirstPerson", "!Keyboard.Shift"],
+          "when": ["Application.CameraFirstPerson", "!Keyboard.Shift", "Application.PhysicsEnabled"],
           "to": "Actions.Yaw"
         },
 
@@ -82,7 +82,7 @@
                 ["Keyboard.Right"]
              ]
           },
-          "when": ["Application.CameraThirdPerson", "!Keyboard.Shift"],
+          "when": ["Application.CameraThirdPerson", "!Keyboard.Shift", "Application.PhysicsEnabled"],
           "to": "Actions.Yaw"
         },
 
@@ -91,7 +91,7 @@
                 ["Keyboard.D", "Keyboard.TouchpadRight"]
             ]
           },
-          "when": "Application.CameraFirstPerson",
+          "when": [ "Application.CameraFirstPerson", "Application.PhysicsEnabled" ],
           "to": "Actions.Yaw"
         },
         { "from": { "makeAxis" : [
@@ -99,11 +99,11 @@
                 ["Keyboard.D", "Keyboard.TouchpadRight"]
             ]
           },
-          "when": "Application.CameraThirdPerson",
+          "when": [ "Application.CameraThirdPerson", "Application.PhysicsEnabled" ],
           "to": "Actions.Yaw"
         },
         { "from": { "makeAxis" : ["Keyboard.MouseMoveLeft", "Keyboard.MouseMoveRight"] },
-          "when": "Keyboard.RightMouseButton",
+          "when": [ "Keyboard.RightMouseButton", "Application.PhysicsEnabled" ],
           "to": "Actions.Yaw",
           "filters":
             [
@@ -111,45 +111,46 @@
             ]
         },
 
-        { "from": "Keyboard.W", "when": "!Keyboard.Control", "to": "Actions.LONGITUDINAL_FORWARD" },
-        { "from": "Keyboard.S", "when": "!Keyboard.Control", "to": "Actions.LONGITUDINAL_BACKWARD" },
-        { "from": "Keyboard.Shift", "when": ["!Keyboard.Left", "!Keyboard.Right"], "to": "Actions.SPRINT" },
-        { "from": "Keyboard.C", "to": "Actions.VERTICAL_DOWN" },
-        { "from": "Keyboard.Left", "when": "Keyboard.Shift", "to": "Actions.LATERAL_LEFT" },
-        { "from": "Keyboard.Right", "when": "Keyboard.Shift", "to": "Actions.LATERAL_RIGHT" },
-        { "from": "Keyboard.Up", "when": "Application.CameraFirstPerson", "to": "Actions.LONGITUDINAL_FORWARD" },
-        { "from": "Keyboard.Up", "when": "Application.CameraThirdPerson", "to": "Actions.LONGITUDINAL_FORWARD" },
-        { "from": "Keyboard.Down", "when": "Application.CameraFirstPerson", "to": "Actions.LONGITUDINAL_BACKWARD" },
-        { "from": "Keyboard.Down", "when": "Application.CameraThirdPerson", "to": "Actions.LONGITUDINAL_BACKWARD" },
 
-        { "from": "Keyboard.PgDown", "to": "Actions.VERTICAL_DOWN" },
-        { "from": "Keyboard.PgUp", "to": "Actions.VERTICAL_UP" },
+        { "from": "Keyboard.W", "when": ["!Keyboard.Control", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_FORWARD" },
+        { "from": "Keyboard.S", "when": ["!Keyboard.Control", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_BACKWARD" },
+        { "from": "Keyboard.Shift", "when": ["!Keyboard.Left", "!Keyboard.Right", "Application.PhysicsEnabled"], "to": "Actions.SPRINT" },
+        { "from": "Keyboard.C", "when" : "Application.PhysicsEnabled", "to": "Actions.VERTICAL_DOWN" },
+        { "from": "Keyboard.Left", "when": ["Keyboard.Shift", "Application.PhysicsEnabled"], "to": "Actions.LATERAL_LEFT" },
+        { "from": "Keyboard.Right", "when": ["Keyboard.Shift", "Application.PhysicsEnabled"], "to": "Actions.LATERAL_RIGHT" },
+        { "from": "Keyboard.Up", "when": ["Application.CameraFirstPerson", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_FORWARD" },
+        { "from": "Keyboard.Up", "when": ["Application.CameraThirdPerson", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_FORWARD" },
+        { "from": "Keyboard.Down", "when": ["Application.CameraFirstPerson", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_BACKWARD" },
+        { "from": "Keyboard.Down", "when": ["Application.CameraThirdPerson", "Application.PhysicsEnabled"], "to": "Actions.LONGITUDINAL_BACKWARD" },
 
-        { "from": "Keyboard.MouseMoveUp", "when": "Keyboard.RightMouseButton", "to": "Actions.PITCH_UP",
+        { "from": "Keyboard.PgDown", "when": "Application.PhysicsEnabled", "to": "Actions.VERTICAL_DOWN" },
+        { "from": "Keyboard.PgUp", "when": "Application.PhysicsEnabled", "to": "Actions.VERTICAL_UP" },
+
+        { "from": "Keyboard.MouseMoveUp", "when": ["Keyboard.RightMouseButton", "Application.PhysicsEnabled"], "to": "Actions.PITCH_UP",
           "filters":
             [
                 { "type": "scale", "scale": 0.6 }
             ]
 
         },
-        { "from": "Keyboard.MouseMoveDown", "when": "Keyboard.RightMouseButton", "to": "Actions.PITCH_DOWN",
+        { "from": "Keyboard.MouseMoveDown", "when": ["Keyboard.RightMouseButton", "Application.PhysicsEnabled"] , "to": "Actions.PITCH_DOWN",
           "filters":
             [
                 { "type": "scale", "scale": 0.6 }
             ]
         },
 
-        { "from": "Keyboard.TouchpadDown", "to": "Actions.PITCH_DOWN" },
-        { "from": "Keyboard.TouchpadUp", "to": "Actions.PITCH_UP" },
+        { "from": "Keyboard.TouchpadDown", "when": "Application.PhysicsEnabled", "to": "Actions.PITCH_DOWN" },
+        { "from": "Keyboard.TouchpadUp", "when": "Application.PhysicsEnabled", "to": "Actions.PITCH_UP" },
 
-        { "from": "Keyboard.MouseWheelUp", "to": "Actions.LATERAL_RIGHT" },
-        { "from": "Keyboard.MouseWheelDown", "to": "Actions.LATERAL_LEFT" },
-        { "from": "Keyboard.MouseWheelLeft", "to": "Actions.BOOM_OUT", "filters": [ { "type": "scale", "scale": 0.02 } ]},
-        { "from": "Keyboard.MouseWheelRight", "to": "Actions.BOOM_IN", "filters": [ { "type": "scale", "scale": 0.02 } ]},
+        { "from": "Keyboard.MouseWheelUp", "when": "Application.PhysicsEnabled", "to": "Actions.LATERAL_RIGHT" },
+        { "from": "Keyboard.MouseWheelDown", "when": "Application.PhysicsEnabled", "to": "Actions.LATERAL_LEFT" },
+        { "from": "Keyboard.MouseWheelLeft", "when": "Application.PhysicsEnabled", "to": "Actions.BOOM_OUT", "filters": [ { "type": "scale", "scale": 0.02 } ]},
+        { "from": "Keyboard.MouseWheelRight", "when": "Application.PhysicsEnabled", "to": "Actions.BOOM_IN", "filters": [ { "type": "scale", "scale": 0.02 } ]},
 
-        { "from": "Keyboard.Space", "to": "Actions.VERTICAL_UP" },
-        { "from": "Keyboard.R", "to": "Actions.ACTION1" },
-        { "from": "Keyboard.T", "to": "Actions.ACTION2" },
-        { "from": "Keyboard.Tab", "to": "Actions.ContextMenu" }
+        { "from": "Keyboard.Space", "when": "Application.PhysicsEnabled", "to": "Actions.VERTICAL_UP" },
+        { "from": "Keyboard.R", "when": "Application.PhysicsEnabled", "to": "Actions.ACTION1" },
+        { "from": "Keyboard.T", "when": "Application.PhysicsEnabled", "to": "Actions.ACTION2" },
+        { "from": "Keyboard.Tab", "when": "Application.PhysicsEnabled", "to": "Actions.ContextMenu" }
     ]
 }

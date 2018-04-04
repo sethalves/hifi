@@ -34,6 +34,8 @@ class ModalDialogListener : public QObject {
     Q_OBJECT
     friend class OffscreenUi;
 
+public:
+    void destroyQmlModalDialog();
 protected:
     ModalDialogListener(QQuickItem* dialog);
     virtual ~ModalDialogListener();
@@ -41,7 +43,6 @@ protected:
 
 signals:
     void response(const QVariant& value);
-
 protected slots:
     void onDestroyed();
 
