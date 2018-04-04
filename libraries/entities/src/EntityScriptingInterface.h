@@ -1416,7 +1416,7 @@ public slots:
 
     /**jsdoc
      * Check whether an axis-aligned box and a capsule intersect.
-     * @function Entities.AABoxIntersectsCapsule
+     * @function Entities.aaBoxIntersectsCapsule
      * @param {Vec3} brn - The bottom right near (minimum axes values) corner of the AA box.
      * @param {Vec3} dimensions - The dimensions of the AA box.
      * @param {Vec3} start - One end of the capsule.
@@ -1424,8 +1424,13 @@ public slots:
      * @param {number} radius - The radiues of the capsule.
      * @returns {boolean} <code>true</code> if the AA box and capsule intersect, otherwise <code>false</code>.
      */
+    Q_INVOKABLE bool aaBoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
+                                            const glm::vec3& start, const glm::vec3& end, float radius);
+
+    // legacy support
     Q_INVOKABLE bool AABoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
                                             const glm::vec3& start, const glm::vec3& end, float radius);
+
 
     /**jsdoc
      * Get the meshes in a {@link Entities.EntityType|Model} or {@link Entities.EntityType|PolyVox} entity.

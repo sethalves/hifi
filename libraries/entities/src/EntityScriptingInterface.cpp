@@ -1752,12 +1752,19 @@ void EntityScriptingInterface::emitScriptEvent(const EntityItemID& entityID, con
 }
 
 // TODO move this someplace that makes more sense...
-bool EntityScriptingInterface::AABoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
+bool EntityScriptingInterface::aaBoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
                                                       const glm::vec3& start, const glm::vec3& end, float radius) {
     glm::vec3 penetration;
     AABox aaBox(low, dimensions);
     return aaBox.findCapsulePenetration(start, end, radius, penetration);
 }
+
+bool EntityScriptingInterface::AABoxIntersectsCapsule(const glm::vec3& low, const glm::vec3& dimensions,
+                                                      const glm::vec3& start, const glm::vec3& end, float radius) {
+    qCDebug(entities) << "Entities.AABoxIntersectsCapsule is deprecated, use Entities.aaBoxIntersectsCapsule instead";
+    return aaBoxIntersectsCapsule(low, dimensions, start, end, radius);
+}
+
 
 void EntityScriptingInterface::getMeshes(QUuid entityID, QScriptValue callback) {
     PROFILE_RANGE(script_entities, __FUNCTION__);
