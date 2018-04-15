@@ -95,7 +95,6 @@ OctreeElementPointer EntityTree::createNewElement(unsigned char* octalCode) {
 void EntityTree::eraseAllOctreeElements(bool createNewRoot) {
     emit clearingEntities();
 
-    // this would be a good place to clean up our entities...
     if (_simulation) {
         _simulation->clearEntities();
     }
@@ -261,7 +260,7 @@ void EntityTree::postAddEntity(EntityItemPointer entity) {
             return;
         }
     }
-    
+
     // check to see if we need to simulate this entity..
     if (_simulation) {
         _simulation->addEntity(entity);
@@ -372,12 +371,18 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
                             simulationBlocked = false;
                         }
                     }
+                    if (!simulationBlocked) {
+                        entity->setSimulationOwnershipExpiry(usecTimestampNow() + MAX_INCOMING_SIMULATION_UPDATE_PERIOD);
+                    }
                 } else {
                     // the entire update is suspect --> ignore it
                     return false;
                 }
             } else if (simulationBlocked) {
                 simulationBlocked = senderID != entity->getSimulatorID();
+                if (!simulationBlocked) {
+                    entity->setSimulationOwnershipExpiry(usecTimestampNow() + MAX_INCOMING_SIMULATION_UPDATE_PERIOD);
+                }
             }
             if (simulationBlocked) {
                 // squash ownership and physics-related changes.
@@ -426,8 +431,8 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
             if (!childEntity) {
                 continue;
             }
-            EntityTreeElementPointer containingElement = childEntity->getElement();
-            if (!containingElement) {
+            EntityTreeElementPointer childContainingElement = childEntity->getElement();
+            if (!childContainingElement) {
                 continue;
             }
 
@@ -441,7 +446,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
                 addToNeedsParentFixupList(childEntity);
             }
 
-            UpdateEntityOperator theChildOperator(getThisPointer(), containingElement, childEntity, queryCube);
+            UpdateEntityOperator theChildOperator(getThisPointer(), childContainingElement, childEntity, queryCube);
             recurseTreeWithOperator(&theChildOperator);
             foreach (SpatiallyNestablePointer childChild, childEntity->getChildren()) {
                 if (childChild && childChild->getNestableType() == NestableType::Entity) {
@@ -454,12 +459,13 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
 
         uint32_t newFlags = entity->getDirtyFlags() & ~preFlags;
         if (newFlags) {
-            if (_simulation) {
+            if (entity->isSimulated()) {
+                assert((bool)_simulation);
                 if (newFlags & DIRTY_SIMULATION_FLAGS) {
                     _simulation->changeEntity(entity);
                 }
             } else {
-                // normally the _simulation clears ALL updateFlags, but since there is none we do it explicitly
+                // normally the _simulation clears ALL dirtyFlags, but when not possible we do it explicitly
                 entity->clearDirtyFlags();
             }
         }
@@ -470,7 +476,7 @@ bool EntityTree::updateEntity(EntityItemPointer entity, const EntityItemProperti
         if (entityScriptBefore != entityScriptAfter || reload) {
             emitEntityScriptChanging(entity->getEntityItemID(), reload); // the entity script has changed
         }
-     }
+    }
 
     // TODO: this final containingElement check should eventually be removed (or wrapped in an #ifdef DEBUG).
     if (!entity->getElement()) {
@@ -552,8 +558,6 @@ void EntityTree::setSimulation(EntitySimulationPointer simulation) {
             assert(simulation->getEntityTree().get() == this);
         }
         if (_simulation && _simulation != simulation) {
-            // It's important to clearEntities() on the simulation since taht will update each
-            // EntityItem::_simulationState correctly so as to not confuse the next _simulation.
             _simulation->clearEntities();
         }
         _simulation = simulation;
@@ -651,7 +655,7 @@ void EntityTree::deleteEntities(QSet<EntityItemID> entityIDs, bool force, bool i
         emit deletingEntityPointer(existingEntity.get());
     }
 
-    if (theOperator.getEntities().size() > 0) {
+    if (!theOperator.getEntities().empty()) {
         recurseTreeWithOperator(&theOperator);
         processRemovedEntities(theOperator);
         _isDirty = true;
@@ -693,7 +697,7 @@ void EntityTree::processRemovedEntities(const DeleteEntityOperator& theOperator)
             trackDeletedEntity(theEntity->getEntityItemID());
         }
 
-        if (_simulation) {
+        if (theEntity->isSimulated()) {
             _simulation->prepareEntityForDelete(theEntity);
         }
     }
@@ -1152,7 +1156,9 @@ void EntityTree::startChallengeOwnershipTimer(const EntityItemID& entityItemID) 
     });
     connect(_challengeOwnershipTimeoutTimer, &QTimer::timeout, this, [=]() {
         qCDebug(entities) << "Ownership challenge timed out, deleting entity" << entityItemID;
-        deleteEntity(entityItemID, true);
+        withWriteLock([&] {
+            deleteEntity(entityItemID, true);
+        });
         if (_challengeOwnershipTimeoutTimer) {
             _challengeOwnershipTimeoutTimer->stop();
             _challengeOwnershipTimeoutTimer->deleteLater();
@@ -1260,7 +1266,9 @@ void EntityTree::sendChallengeOwnershipPacket(const QString& certID, const QStri
 
     if (text == "") {
         qCDebug(entities) << "CRITICAL ERROR: Couldn't compute nonce. Deleting entity...";
-        deleteEntity(entityItemID, true);
+        withWriteLock([&] {
+            deleteEntity(entityItemID, true);
+        });
     } else {
         qCDebug(entities) << "Challenging ownership of Cert ID" << certID;
         // 2. Send the nonce to the rezzing avatar's node
@@ -1323,8 +1331,7 @@ void EntityTree::validatePop(const QString& certID, const EntityItemID& entityIt
     request["certificate_id"] = certID;
     networkRequest.setUrl(requestURL);
 
-    QNetworkReply* networkReply = NULL;
-    networkReply = networkAccessManager.put(networkRequest, QJsonDocument(request).toJson());
+    QNetworkReply* networkReply = networkAccessManager.put(networkRequest, QJsonDocument(request).toJson());
 
     connect(networkReply, &QNetworkReply::finished, [=]() {
         QJsonObject jsonObject = QJsonDocument::fromJson(networkReply->readAll()).object();
@@ -1333,14 +1340,20 @@ void EntityTree::validatePop(const QString& certID, const EntityItemID& entityIt
         if (networkReply->error() == QNetworkReply::NoError) {
             if (!jsonObject["invalid_reason"].toString().isEmpty()) {
                 qCDebug(entities) << "invalid_reason not empty, deleting entity" << entityItemID;
-                deleteEntity(entityItemID, true);
+                withWriteLock([&] {
+                    deleteEntity(entityItemID, true);
+                });
             } else if (jsonObject["transfer_status"].toArray().first().toString() == "failed") {
                 qCDebug(entities) << "'transfer_status' is 'failed', deleting entity" << entityItemID;
-                deleteEntity(entityItemID, true);
+                withWriteLock([&] {
+                    deleteEntity(entityItemID, true);
+                });
             } else if (jsonObject["transfer_status"].toArray().first().toString() == "pending") {
                 if (isRetryingValidation) {
                     qCDebug(entities) << "'transfer_status' is 'pending' after retry, deleting entity" << entityItemID;
-                    deleteEntity(entityItemID, true);
+                    withWriteLock([&] {
+                        deleteEntity(entityItemID, true);
+                    });
                 } else {
                     if (thread() != QThread::currentThread()) {
                         QMetaObject::invokeMethod(this, "startPendingTransferStatusTimer",
@@ -1363,7 +1376,9 @@ void EntityTree::validatePop(const QString& certID, const EntityItemID& entityIt
         } else {
             qCDebug(entities) << "Call to" << networkReply->url() << "failed with error" << networkReply->error() << "; deleting entity" << entityItemID
                 << "More info:" << jsonObject;
-            deleteEntity(entityItemID, true);
+            withWriteLock([&] {
+                deleteEntity(entityItemID, true);
+            });
         }
 
         networkReply->deleteLater();
@@ -1689,7 +1704,7 @@ void EntityTree::releaseSceneEncodeData(OctreeElementExtraEncodeData* extraEncod
 }
 
 void EntityTree::entityChanged(EntityItemPointer entity) {
-    if (_simulation) {
+    if (entity->isSimulated()) {
         _simulation->changeEntity(entity);
     }
 }
@@ -1797,19 +1812,19 @@ void EntityTree::addToNeedsParentFixupList(EntityItemPointer entity) {
 
 void EntityTree::update(bool simulate) {
     PROFILE_RANGE(simulation_physics, "UpdateTree");
-    fixupNeedsParentFixups();
-    if (simulate && _simulation) {
-        withWriteLock([&] {
+    withWriteLock([&] {
+        fixupNeedsParentFixups();
+        if (simulate && _simulation) {
             _simulation->updateEntities();
             {
                 PROFILE_RANGE(simulation_physics, "Deletes");
-                VectorOfEntities pendingDeletes;
-                _simulation->takeEntitiesToDelete(pendingDeletes);
-                if (pendingDeletes.size() > 0) {
+                SetOfEntities deadEntities;
+                _simulation->takeDeadEntities(deadEntities);
+                if (!deadEntities.empty()) {
                     // translate into list of ID's
                     QSet<EntityItemID> idsToDelete;
 
-                    for (auto entity : pendingDeletes) {
+                    for (auto entity : deadEntities) {
                         idsToDelete.insert(entity->getEntityItemID());
                     }
 
@@ -1817,8 +1832,8 @@ void EntityTree::update(bool simulate) {
                     deleteEntities(idsToDelete, true);
                 }
             }
-        });
-    }
+        }
+    });
 }
 
 quint64 EntityTree::getAdjustedConsiderSince(quint64 sinceTime) {
@@ -2287,7 +2302,9 @@ bool EntityTree::writeToMap(QVariantMap& entityDescription, OctreeElementPointer
     QScriptEngine scriptEngine;
     RecurseOctreeToMapOperator theOperator(entityDescription, element, &scriptEngine, skipDefaultValues,
                                             skipThoseWithBadParents, _myAvatar);
-    recurseTreeWithOperator(&theOperator);
+    withReadLock([&] {
+        recurseTreeWithOperator(&theOperator);
+    });
     return true;
 }
 
@@ -2376,6 +2393,30 @@ bool EntityTree::readFromMap(QVariantMap& map) {
                 properties.setSkyboxMode(COMPONENT_MODE_ENABLED);
             } else {
                 properties.setSkyboxMode(COMPONENT_MODE_INHERIT);
+            }
+        }
+
+        // Convert old materials so that they use materialData instead of userData
+        if (contentVersion < (int)EntityVersion::MaterialData && properties.getType() == EntityTypes::EntityType::Material) {
+            if (properties.getMaterialURL().startsWith("userData")) {
+                QString materialURL = properties.getMaterialURL();
+                properties.setMaterialURL(materialURL.replace("userData", "materialData"));
+
+                QJsonObject userData = QJsonDocument::fromJson(properties.getUserData().toUtf8()).object();
+                QJsonObject materialData;
+                QJsonValue materialVersion = userData["materialVersion"];
+                if (!materialVersion.isNull()) {
+                    materialData.insert("materialVersion", materialVersion);
+                    userData.remove("materialVersion");
+                }
+                QJsonValue materials = userData["materials"];
+                if (!materials.isNull()) {
+                    materialData.insert("materials", materials);
+                    userData.remove("materials");
+                }
+
+                properties.setMaterialData(QJsonDocument(materialData).toJson());
+                properties.setUserData(QJsonDocument(userData).toJson());
             }
         }
 
