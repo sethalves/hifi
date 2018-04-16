@@ -13,6 +13,8 @@
 
 #include <QVariantGLM.h>
 
+#include <ObjectDynamicUtils.h>
+
 #include "avatar/AvatarManager.h"
 #include "CharacterController.h"
 

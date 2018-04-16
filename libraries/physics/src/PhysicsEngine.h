@@ -20,12 +20,13 @@
 #include <btBulletDynamicsCommon.h>
 #include <BulletCollision/CollisionDispatch/btGhostObject.h>
 
+#include <dynamics/EntityConstraint.h>
+
 #include "BulletUtil.h"
 #include "ContactInfo.h"
 #include "ObjectMotionState.h"
 #include "ThreadSafeDynamicsWorld.h"
 #include "ObjectAction.h"
-#include "ObjectConstraint.h"
 
 const float HALF_SIMULATION_EXTENT = 512.0f; // meters
 

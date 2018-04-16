@@ -12,11 +12,11 @@
 #ifndef hifi_ObjectConstraintConeTwist_h
 #define hifi_ObjectConstraintConeTwist_h
 
-#include "ObjectConstraint.h"
+#include <dynamics/EntityConstraint.h>
 
 // http://bulletphysics.org/Bullet/BulletFull/classbtConeTwistConstraint.html
 
-class ObjectConstraintConeTwist : public ObjectConstraint {
+class ObjectConstraintConeTwist : public EntityConstraint {
 public:
     ObjectConstraintConeTwist(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectConstraintConeTwist();

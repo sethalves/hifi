@@ -16,13 +16,13 @@
 #include "EntityTree.h"
 #include "ObjectConstraintSlider.h"
 #include "PhysicsLogging.h"
-
+#include "ObjectDynamicUtils.h"
 
 const uint16_t ObjectConstraintSlider::constraintVersion = 1;
 const glm::vec3 DEFAULT_SLIDER_AXIS(1.0f, 0.0f, 0.0f);
 
 ObjectConstraintSlider::ObjectConstraintSlider(const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectConstraint(DYNAMIC_TYPE_SLIDER, id, ownerEntity),
+    EntityConstraint(DYNAMIC_TYPE_SLIDER, id, ownerEntity),
     _axisInA(DEFAULT_SLIDER_AXIS),
     _axisInB(DEFAULT_SLIDER_AXIS)
 {

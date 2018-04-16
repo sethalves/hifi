@@ -24,7 +24,7 @@ const uint16_t ObjectConstraintBallSocket::constraintVersion = 1;
 
 
 ObjectConstraintBallSocket::ObjectConstraintBallSocket(const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectConstraint(DYNAMIC_TYPE_BALL_SOCKET, id, ownerEntity),
+    EntityConstraint(DYNAMIC_TYPE_BALL_SOCKET, id, ownerEntity),
     _pivotInA(glm::vec3(0.0f)),
     _pivotInB(glm::vec3(0.0f))
 {

@@ -24,7 +24,6 @@ public:
     ObjectAction(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectAction() {}
 
-    virtual bool isAction() const override { return true; }
 
     // this is called from updateAction and should be overridden by subclasses
     virtual void updateActionWorker(float deltaTimeStep) = 0;

@@ -26,6 +26,7 @@
 #include "PhysicsHelpers.h"
 #include "ThreadSafeDynamicsWorld.h"
 #include "PhysicsLogging.h"
+#include "ObjectDynamicUtils.h"
 
 PhysicsEngine::PhysicsEngine(const glm::vec3& offset) :
         _originOffset(offset),
@@ -735,8 +736,8 @@ bool PhysicsEngine::addDynamic(EntityDynamicPointer dynamic) {
         _dynamicsWorld->addAction(objectAction);
         success = true;
     } else if (dynamic->isConstraint()) {
-        ObjectConstraint* objectConstraint = static_cast<ObjectConstraint*>(dynamic.get());
-        btTypedConstraint* constraint = objectConstraint->getConstraint();
+        EntityConstraint* entityConstraint = static_cast<EntityConstraint*>(dynamic.get());
+        btTypedConstraint* constraint = entityConstraint->getConstraint();
         if (constraint) {
             _dynamicsWorld->addConstraint(constraint);
             success = true;
@@ -764,8 +765,8 @@ void PhysicsEngine::removeDynamic(const QUuid dynamicID) {
             ObjectAction* objectAction = static_cast<ObjectAction*>(dynamic.get());
             _dynamicsWorld->removeAction(objectAction);
         } else {
-            ObjectConstraint* objectConstraint = static_cast<ObjectConstraint*>(dynamic.get());
-            btTypedConstraint* constraint = objectConstraint->getConstraint();
+            EntityConstraint* entityConstraint = static_cast<EntityConstraint*>(dynamic.get());
+            btTypedConstraint* constraint = entityConstraint->getConstraint();
             if (constraint) {
                 _dynamicsWorld->removeConstraint(constraint);
             } else {

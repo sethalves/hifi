@@ -12,11 +12,11 @@
 #ifndef hifi_ObjectConstraintHinge_h
 #define hifi_ObjectConstraintHinge_h
 
-#include "ObjectConstraint.h"
+#include <dynamics/EntityConstraint.h>
 
 // http://bulletphysics.org/Bullet/BulletFull/classbtHingeConstraint.html
 
-class ObjectConstraintHinge : public ObjectConstraint {
+class ObjectConstraintHinge : public EntityConstraint {
 public:
     ObjectConstraintHinge(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectConstraintHinge();

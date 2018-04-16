@@ -12,11 +12,11 @@
 #ifndef hifi_ObjectConstraintBallSocket_h
 #define hifi_ObjectConstraintBallSocket_h
 
-#include "ObjectConstraint.h"
+#include <dynamics/EntityConstraint.h>
 
 // http://bulletphysics.org/Bullet/BulletFull/classbtBallSocketConstraint.html
 
-class ObjectConstraintBallSocket : public ObjectConstraint {
+class ObjectConstraintBallSocket : public EntityConstraint {
 public:
     ObjectConstraintBallSocket(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectConstraintBallSocket();

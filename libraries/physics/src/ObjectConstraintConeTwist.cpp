@@ -25,7 +25,7 @@ const uint16_t ObjectConstraintConeTwist::constraintVersion = 2;
 const glm::vec3 DEFAULT_CONE_TWIST_AXIS(1.0f, 0.0f, 0.0f);
 
 ObjectConstraintConeTwist::ObjectConstraintConeTwist(const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectConstraint(DYNAMIC_TYPE_CONE_TWIST, id, ownerEntity),
+    EntityConstraint(DYNAMIC_TYPE_CONE_TWIST, id, ownerEntity),
     _axisInA(DEFAULT_CONE_TWIST_AXIS),
     _axisInB(DEFAULT_CONE_TWIST_AXIS)
 {

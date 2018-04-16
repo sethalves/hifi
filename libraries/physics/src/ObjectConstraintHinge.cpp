@@ -16,6 +16,7 @@
 #include "EntityTree.h"
 #include "ObjectConstraintHinge.h"
 #include "PhysicsLogging.h"
+#include "ObjectDynamicUtils.h"
 
 
 const uint16_t HINGE_VERSION_WITH_UNUSED_PAREMETERS = 1;
@@ -23,7 +24,7 @@ const uint16_t ObjectConstraintHinge::constraintVersion = 2;
 const glm::vec3 DEFAULT_HINGE_AXIS(1.0f, 0.0f, 0.0f);
 
 ObjectConstraintHinge::ObjectConstraintHinge(const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectConstraint(DYNAMIC_TYPE_HINGE, id, ownerEntity),
+    EntityConstraint(DYNAMIC_TYPE_HINGE, id, ownerEntity),
     _axisInA(DEFAULT_HINGE_AXIS),
     _axisInB(DEFAULT_HINGE_AXIS)
 {

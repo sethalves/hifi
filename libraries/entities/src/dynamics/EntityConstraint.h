@@ -1,38 +1,36 @@
 //
-//  ObjectConstraint.h
+//  EntityConstraint.h
 //  libraries/physcis/src
 //
-//  Created by Seth Alves 2017-4-11
-//  Copyright 2015 High Fidelity, Inc.
+//  Created by Seth Alves 2018-4-15
+//  Copyright 2018 High Fidelity, Inc.
 //
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 //  http://bulletphysics.org/Bullet/BulletFull/classbtConstraintInterface.html
 
-#ifndef hifi_ObjectConstraint_h
-#define hifi_ObjectConstraint_h
+#ifndef hifi_EntityConstraint_h
+#define hifi_EntityConstraint_h
 
 #include <QUuid>
 #include <btBulletDynamicsCommon.h>
 #include <dynamics/EntityDynamic.h>
 
-#include "ObjectDynamicUtils.h"
-
-
-class ObjectConstraint : public EntityDynamic
+class EntityConstraint : public EntityDynamic
 {
 public:
-    ObjectConstraint(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity);
-    virtual ~ObjectConstraint() {}
+    EntityConstraint(EntityDynamicType type, const QUuid& id, EntityItemPointer ownerEntity)  :
+        EntityDynamic(type, id, ownerEntity) {}
+    virtual ~EntityConstraint() {}
 
     virtual btTypedConstraint* getConstraint() = 0;
 
     virtual bool isConstraint() const override { return true; }
-    virtual void invalidate() override;
+    virtual void invalidate() override { _constraint = nullptr; }
 
 protected:
     btTypedConstraint* _constraint { nullptr };
 };
 
-#endif // hifi_ObjectConstraint_h
+#endif // hifi_EntityConstraint_h

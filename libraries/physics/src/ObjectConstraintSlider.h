@@ -12,11 +12,11 @@
 #ifndef hifi_ObjectConstraintSlider_h
 #define hifi_ObjectConstraintSlider_h
 
-#include "ObjectConstraint.h"
+#include <dynamics/EntityConstraint.h>
 
 // http://bulletphysics.org/Bullet/BulletFull/classbtSliderConstraint.html
 
-class ObjectConstraintSlider : public ObjectConstraint {
+class ObjectConstraintSlider : public EntityConstraint {
 public:
     ObjectConstraintSlider(const QUuid& id, EntityItemPointer ownerEntity);
     virtual ~ObjectConstraintSlider();
