@@ -226,8 +226,8 @@
 #ifdef DEBUG_EVENT_QUEUE
 // This is a HACK that uses private headers included with the qt source distrubution.
 // To use this feature you need to add these directores to your include path:
-// E:/Qt/5.9.1/Src/qtbase/include/QtCore/5.9.1/QtCore
-// E:/Qt/5.9.1/Src/qtbase/include/QtCore/5.9.1
+// E:/Qt/5.10.1/Src/qtbase/include/QtCore/5.10.1/QtCore
+// E:/Qt/5.10.1/Src/qtbase/include/QtCore/5.10.1
 #define QT_BOOTSTRAPPED
 #include <private/qthread_p.h>
 #include <private/qobject_p.h>
@@ -491,7 +491,7 @@ public:
                 // Don't actually crash in debug builds, in case this apparent deadlock is simply from
                 // the developer actively debugging code
                 #ifdef NDEBUG
-                    deadlockDetectionCrash();
+                deadlockDetectionCrash();
                 #endif
             }
         }
@@ -775,7 +775,6 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
         steamClient->init();
     }
 
-    DependencyManager::set<tracing::Tracer>();
     PROFILE_SET_THREAD_NAME("Main Thread");
 
 #if defined(Q_OS_WIN)
@@ -960,10 +959,8 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto steamClient = PluginManager::getInstance()->getSteamClientPlugin();
     setProperty(hifi::properties::STEAM, (steamClient && steamClient->isRunning()));
     setProperty(hifi::properties::CRASHED, _previousSessionCrashed);
-
     {
         const QString TEST_SCRIPT = "--testScript";
-        const QString TRACE_FILE = "--traceFile";
         const QStringList args = arguments();
         for (int i = 0; i < args.size() - 1; ++i) {
             if (args.at(i) == TEST_SCRIPT) {
@@ -971,10 +968,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
                 if (QFileInfo(testScriptPath).exists()) {
                     setProperty(hifi::properties::TEST, QUrl::fromLocalFile(testScriptPath));
                 }
-            } else if (args.at(i) == TRACE_FILE) {
-                QString traceFilePath = args.at(i + 1);
-                setProperty(hifi::properties::TRACING, traceFilePath);
-                DependencyManager::get<tracing::Tracer>()->startTracing();
             }
         }
     }
@@ -1020,6 +1013,10 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     auto nodeList = DependencyManager::get<NodeList>();
     nodeList->startThread();
 
+    const char** constArgv = const_cast<const char**>(argv);
+    if (cmdOptionExists(argc, constArgv, "--disableWatchdog")) {
+        DISABLE_WATCHDOG = true;
+    }
     // Set up a watchdog thread to intentionally crash the application on deadlocks
     if (!DISABLE_WATCHDOG) {
         (new DeadlockWatchdogThread())->start();
@@ -1229,7 +1226,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     connect(&_entityEditSender, &EntityEditPacketSender::packetSent, this, &Application::packetSent);
     connect(&_entityEditSender, &EntityEditPacketSender::addingEntityWithCertificate, this, &Application::addingEntityWithCertificate);
 
-    const char** constArgv = const_cast<const char**>(argv);
     QString concurrentDownloadsStr = getCmdOption(argc, constArgv, "--concurrent-downloads");
     bool success;
     int concurrentDownloads = concurrentDownloadsStr.toInt(&success);
@@ -2044,7 +2040,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     });
 
     _snapshotSound = DependencyManager::get<SoundCache>()->getSound(PathUtils::resourcesUrl("sounds/snap.wav"));
-    
+
     QVariant testProperty = property(hifi::properties::TEST);
     qDebug() << testProperty;
     if (testProperty.isValid()) {
@@ -3071,7 +3067,6 @@ void Application::handleSandboxStatus(QNetworkReply* reply) {
 
     static const QString SENT_TO_PREVIOUS_LOCATION = "previous_location";
     static const QString SENT_TO_ENTRY = "entry";
-    static const QString SENT_TO_SANDBOX = "sandbox";
 
     QString sentTo;
 
@@ -3080,15 +3075,8 @@ void Application::handleSandboxStatus(QNetworkReply* reply) {
 #if !defined(Q_OS_ANDROID)
         showHelp();
 #endif
-        if (sandboxIsRunning) {
-            qCDebug(interfaceapp) << "Home sandbox appears to be running, going to Home.";
-            DependencyManager::get<AddressManager>()->goToLocalSandbox();
-            sentTo = SENT_TO_SANDBOX;
-        } else {
-            qCDebug(interfaceapp) << "Home sandbox does not appear to be running, going to Entry.";
-            DependencyManager::get<AddressManager>()->goToEntry();
-            sentTo = SENT_TO_ENTRY;
-        }
+        DependencyManager::get<AddressManager>()->goToEntry();
+        sentTo = SENT_TO_ENTRY;
         firstRun.set(false);
 
     } else {
@@ -4704,7 +4692,7 @@ void Application::init() {
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
 
     // connect the _entityCollisionSystem to our EntityTreeRenderer since that's what handles running entity scripts
-    connect(_entitySimulation.get(), &EntitySimulation::entityCollisionWithEntity,
+    connect(_entitySimulation.get(), &PhysicalEntitySimulation::entityCollisionWithEntity,
             getEntities().data(), &EntityTreeRenderer::entityCollisionWithEntity);
 
     // connect the _entities (EntityTreeRenderer) to our script engine's EntityScriptingInterface for firing
@@ -5304,11 +5292,13 @@ void Application::update(float deltaTime) {
             {
                 PROFILE_RANGE(simulation_physics, "PreStep");
                 PerformanceTimer perfTimer("preStep)");
-                static VectorOfMotionStates motionStates;
-                _entitySimulation->getObjectsToRemoveFromPhysics(motionStates);
-                _physicsEngine->removeObjects(motionStates);
-                _entitySimulation->deleteObjectsRemovedFromPhysics();
+                {
+                    const VectorOfMotionStates& motionStates = _entitySimulation->getObjectsToRemoveFromPhysics();
+                    _physicsEngine->removeObjects(motionStates);
+                    _entitySimulation->deleteObjectsRemovedFromPhysics();
+                }
 
+                VectorOfMotionStates motionStates;
                 getEntities()->getTree()->withReadLock([&] {
                     _entitySimulation->getObjectsToAddToPhysics(motionStates);
                     _physicsEngine->addObjects(motionStates);
@@ -5322,7 +5312,7 @@ void Application::update(float deltaTime) {
 
                 _entitySimulation->applyDynamicChanges();
 
-                 avatarManager->getObjectsToRemoveFromPhysics(motionStates);
+                avatarManager->getObjectsToRemoveFromPhysics(motionStates);
                 _physicsEngine->removeObjects(motionStates);
                 avatarManager->getObjectsToAddToPhysics(motionStates);
                 _physicsEngine->addObjects(motionStates);
@@ -6659,7 +6649,7 @@ void Application::addAssetToWorldFromURL(QString url) {
         } else {
             filename.remove(".zip");
         }
-        
+
     }
 
     if (!DependencyManager::get<NodeList>()->getThisNodeCanWriteAssets()) {
@@ -6833,7 +6823,7 @@ void Application::addAssetToWorldSetMapping(QString filePath, QString mapping, Q
             addAssetToWorldError(filenameFromPath(filePath), errorInfo);
         } else {
             // to prevent files that aren't models or texture files from being loaded into world automatically
-            if ((filePath.toLower().endsWith(OBJ_EXTENSION) || filePath.toLower().endsWith(FBX_EXTENSION)) || 
+            if ((filePath.toLower().endsWith(OBJ_EXTENSION) || filePath.toLower().endsWith(FBX_EXTENSION)) ||
                 ((filePath.toLower().endsWith(JPG_EXTENSION) || filePath.toLower().endsWith(PNG_EXTENSION)) &&
                 ((!isBlocks) && (!isZip)))) {
                 addAssetToWorldAddEntity(filePath, mapping);
@@ -7482,8 +7472,8 @@ bool Application::isThrottleRendering() const {
 bool Application::hasFocus() const {
     bool result = (QApplication::activeWindow() != nullptr);
 #if defined(Q_OS_WIN)
-    // On Windows, QWidget::activateWindow() - as called in setFocus() - makes the application's taskbar icon flash but doesn't 
-    // take user focus away from their current window. So also check whether the application is the user's current foreground 
+    // On Windows, QWidget::activateWindow() - as called in setFocus() - makes the application's taskbar icon flash but doesn't
+    // take user focus away from their current window. So also check whether the application is the user's current foreground
     // window.
     result = result && (HWND)QApplication::activeWindow()->winId() == GetForegroundWindow();
 #endif
@@ -7491,7 +7481,7 @@ bool Application::hasFocus() const {
 }
 
 void Application::setFocus() {
-    // Note: Windows doesn't allow a user focus to be taken away from another application. Instead, it changes the color of and 
+    // Note: Windows doesn't allow a user focus to be taken away from another application. Instead, it changes the color of and
     // flashes the taskbar icon.
     auto window = qApp->getWindow();
     window->activateWindow();
@@ -7732,7 +7722,7 @@ void Application::updateDisplayMode() {
         menu->setIsOptionChecked(MenuOption::FirstPerson, true);
         cameraMenuChanged();
     }
-    
+
     // Remove the mirror camera option from menu if in HMD mode
     auto mirrorAction = menu->getActionForOption(MenuOption::FullscreenMirror);
     mirrorAction->setVisible(!isHmd);

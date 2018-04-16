@@ -304,7 +304,7 @@ void Test::createRecursiveScript() {
 }
 
 // This method creates a `testRecursive.js` script in every sub-folder.
-void Test::createRecursiveScriptsRecursively() {
+void Test::createAllRecursiveScripts() {
     // Select folder to start recursing from
     QString topLevelDirectory = QFileDialog::getExistingDirectory(nullptr, "Please select the root folder for the recursive scripts", ".", QFileDialog::ShowDirsOnly);
     if (topLevelDirectory == "") {
@@ -554,11 +554,49 @@ ExtractedText Test::getTestScriptLines(QString testFileName) {
 // The folder selected must contain a script named "test.js", the file produced is named "test.md"
 void Test::createMDFile() {
     // Folder selection
-    QString testDirectory = QFileDialog::getExistingDirectory(nullptr, "Please select folder containing the test images", ".", QFileDialog::ShowDirsOnly);
+    QString testDirectory = QFileDialog::getExistingDirectory(nullptr, "Please select folder containing the test", ".", QFileDialog::ShowDirsOnly);
     if (testDirectory == "") {
         return;
     }
 
+    createMDFile(testDirectory);
+}
+
+void Test::createAllMDFiles() {
+    // Select folder to start recursing from
+    QString topLevelDirectory = QFileDialog::getExistingDirectory(nullptr, "Please select the root folder for the MD files", ".", QFileDialog::ShowDirsOnly);
+    if (topLevelDirectory == "") {
+        return;
+    }
+
+    // First test if top-level folder has a test.js file
+    const QString testPathname{ topLevelDirectory + "/" + TEST_FILENAME };
+    QFileInfo fileInfo(testPathname);
+    if (fileInfo.exists()) {
+        createMDFile(topLevelDirectory);
+    }
+
+    QDirIterator it(topLevelDirectory.toStdString().c_str(), QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString directory = it.next();
+
+        // Only process directories
+        QDir dir;
+        if (!isAValidDirectory(directory)) {
+            continue;
+        }
+
+        const QString testPathname{ directory + "/" + TEST_FILENAME };
+        QFileInfo fileInfo(testPathname);
+        if (fileInfo.exists()) {
+            createMDFile(directory);
+        }
+    }
+
+    messageBox.information(0, "Success", "MD files have been created");
+}
+
+void Test::createMDFile(QString testDirectory) {
     // Verify folder contains test.js file
     QString testFileName(testDirectory + "/" + TEST_FILENAME);
     QFileInfo testFileInfo(testFileName);
@@ -571,7 +609,7 @@ void Test::createMDFile() {
 
     QString mdFilename(testDirectory + "/" + "test.md");
     QFile mdFile(mdFilename);
-    if (!mdFile.open(QIODevice::ReadWrite)) {
+    if (!mdFile.open(QIODevice::WriteOnly)) {
         messageBox.critical(0, "Internal error: " + QString(__FILE__) + ":" + QString::number(__LINE__), "Failed to create file " + mdFilename);
         exit(-1);
     }
@@ -639,7 +677,7 @@ void Test::createMDFile() {
 
     int snapShotIndex { 0 };
     for (size_t i = 0; i < testScriptLines.stepList.size(); ++i) {
-        stream << "### Step " << QString::number(i) << "\n";
+        stream << "### Step " << QString::number(i + 1) << "\n";
         stream << "- " << testScriptLines.stepList[i]->text << "\n";
         if (testScriptLines.stepList[i]->takeSnapshot) {
             stream << "- ![](./ExpectedImage_" << QString::number(snapShotIndex).rightJustified(5, '0') << ".png)\n";
@@ -648,6 +686,77 @@ void Test::createMDFile() {
     }
 
     mdFile.close();
+}
+
+void Test::createTestsOutline() {
+    QString testsRootDirectory = QFileDialog::getExistingDirectory(nullptr, "Please select the tests root folder", ".", QFileDialog::ShowDirsOnly);
+    if (testsRootDirectory == "") {
+        return;
+    }
+
+    const QString testsOutlineFilename { "testsOutline.md" };
+    QString mdFilename(testsRootDirectory + "/" + testsOutlineFilename);
+    QFile mdFile(mdFilename);
+    if (!mdFile.open(QIODevice::WriteOnly)) {
+        messageBox.critical(0, "Internal error: " + QString(__FILE__) + ":" + QString::number(__LINE__), "Failed to create file " + mdFilename);
+        exit(-1);
+    }
+
+    QTextStream stream(&mdFile);
+
+    //Test title
+    stream << "# Outline of all tests\n";
+    stream << "Directories with an appended (*) have an automatic test\n\n";
+
+    // We need to know our current depth, as this isn't given by QDirIterator
+    int rootDepth { testsRootDirectory.count('/') };
+
+    // Each test is shown as the folder name linking to the matching GitHub URL, and the path to the associated test.md file
+    QDirIterator it(testsRootDirectory.toStdString().c_str(), QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString directory = it.next();
+
+        // Only process directories
+        QDir dir;
+        if (!isAValidDirectory(directory)) {
+            continue;
+        }
+
+        // Ignore the utils directory
+        if (directory.right(5) == "utils") {
+            continue;
+        }
+
+        // The prefix is the MarkDown prefix needed for correct indentation
+        // It consists of 2 spaces for each level of indentation, folled by a dash sign
+        int currentDepth = directory.count('/') - rootDepth;
+        QString prefix = QString(" ").repeated(2 * currentDepth - 1) + " - ";
+
+        // The directory name appears after the last slash (we are assured there is at least 1).
+        QString directoryName = directory.right(directory.length() - directory.lastIndexOf("/") - 1);
+
+        // autoTester is run on a clone of the repository.  We use relative paths, so we can use both local disk and GitHub
+        // For a test in "D:/GitHub/hifi_tests/tests/content/entity/zone/ambientLightInheritance" the
+        // GitHub URL  is "./content/entity/zone/ambientLightInheritance?raw=true"
+        QString partialPath = directory.right(directory.length() - (directory.lastIndexOf("/tests/") + QString("/tests").length() + 1));
+        QString url = "./" + partialPath;
+
+        stream << prefix << "[" << directoryName << "](" << url << "?raw=true" << ")";
+        QFileInfo fileInfo1(directory + "/test.md");
+        if (fileInfo1.exists()) {
+            stream << "  [(test description)](" << url << "/test.md)";
+        }
+
+        QFileInfo fileInfo2(directory + "/" + TEST_FILENAME);
+        if (fileInfo2.exists()) {
+            stream << " (*)";
+        }
+        stream << "\n";
+    }
+
+    mdFile.close();
+
+    messageBox.information(0, "Success", "Test outline file " + testsOutlineFilename + " has been created");
 }
 
 void Test::copyJPGtoPNG(QString sourceJPGFullFilename, QString destinationPNGFullFilename) {
