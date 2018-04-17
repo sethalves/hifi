@@ -52,33 +52,31 @@ void setupPreferences() {
         preferences->addPreference(preference);
     }
 
-    {
-        auto getter = [=]()->bool { return myAvatar->getSnapTurn(); };
-        auto setter = [=](bool value) { myAvatar->setSnapTurn(value); };
-        preferences->addPreference(new CheckPreference(AVATAR_BASICS, "Snap turn when in HMD", getter, setter));
-    }
-    {
-        auto getter = [=]()->bool { return myAvatar->getClearOverlayWhenMoving(); };
-        auto setter = [=](bool value) { myAvatar->setClearOverlayWhenMoving(value); };
-        preferences->addPreference(new CheckPreference(AVATAR_BASICS, "Clear overlays when moving", getter, setter));
-    }
-
     // UI
-    static const QString UI_CATEGORY { "UI" };
+    static const QString UI_CATEGORY { "User Interface" };
     {
         auto getter = []()->bool { return qApp->getSettingConstrainToolbarPosition(); };
         auto setter = [](bool value) { qApp->setSettingConstrainToolbarPosition(value); };
         preferences->addPreference(new CheckPreference(UI_CATEGORY, "Constrain Toolbar Position to Horizontal Center", getter, setter));
     }
+
     {
-        auto getter = []()->float { return qApp->getHMDTabletScale(); };
-        auto setter = [](float value) { qApp->setHMDTabletScale(value); };
-        auto preference = new SpinnerPreference(UI_CATEGORY, "HMD Tablet Scale %", getter, setter);
+        auto getter = []()->float { return qApp->getDesktopTabletScale(); };
+        auto setter = [](float value) { qApp->setDesktopTabletScale(value); };
+        auto preference = new SpinnerPreference(UI_CATEGORY, "Desktop Tablet Scale %", getter, setter);
         preference->setMin(20);
         preference->setMax(500);
         preferences->addPreference(preference);
     }
 
+    {
+        auto getter = []()->float { return qApp->getHMDTabletScale(); };
+        auto setter = [](float value) { qApp->setHMDTabletScale(value); };
+        auto preference = new SpinnerPreference(UI_CATEGORY, "VR Tablet Scale %", getter, setter);
+        preference->setMin(20);
+        preference->setMax(500);
+        preferences->addPreference(preference);
+    }
 
     {
         auto getter = []()->bool { return qApp->getPreferStylusOverLaser(); };
@@ -86,19 +84,18 @@ void setupPreferences() {
         preferences->addPreference(new CheckPreference(UI_CATEGORY, "Prefer Stylus Over Laser", getter, setter));
     }
 
-    static const QString ADVANCED_UI_CATEGORY { "Advanced UI" };
     {
-        auto getter = []()->float { return qApp->getDesktopTabletScale(); };
-        auto setter = [](float value) { qApp->setDesktopTabletScale(value); };
-        auto preference = new SpinnerPreference(ADVANCED_UI_CATEGORY, "Desktop Tablet Scale %", getter, setter);
-        preference->setMin(20);
-        preference->setMax(500);
-        preferences->addPreference(preference);
+        static const QString RETICLE_ICON_NAME = { Cursor::Manager::getIconName(Cursor::Icon::RETICLE) };
+        auto getter = []()->bool { return qApp->getPreferredCursor() == RETICLE_ICON_NAME; };
+        auto setter = [](bool value) { qApp->setPreferredCursor(value ? RETICLE_ICON_NAME : QString()); };
+        preferences->addPreference(new CheckPreference(UI_CATEGORY, "Use reticle cursor instead of arrow", getter, setter));
     }
+
+    static const QString VIEW_CATEGORY{ "View" };
     {
         auto getter = [=]()->float { return myAvatar->getRealWorldFieldOfView(); };
         auto setter = [=](float value) { myAvatar->setRealWorldFieldOfView(value); };
-        auto preference = new SpinnerPreference(ADVANCED_UI_CATEGORY, "Real world vertical field of view (angular size of monitor)", getter, setter);
+        auto preference = new SpinnerPreference(VIEW_CATEGORY, "Real world vertical field of view (angular size of monitor)", getter, setter);
         preference->setMin(1);
         preference->setMax(180);
         preferences->addPreference(preference);
@@ -106,7 +103,7 @@ void setupPreferences() {
     {
         auto getter = []()->float { return qApp->getFieldOfView(); };
         auto setter = [](float value) { qApp->setFieldOfView(value); };
-        auto preference = new SpinnerPreference(ADVANCED_UI_CATEGORY, "Vertical field of view", getter, setter);
+        auto preference = new SpinnerPreference(VIEW_CATEGORY, "Vertical field of view", getter, setter);
         preference->setMin(1);
         preference->setMax(180);
         preference->setStep(1);
@@ -122,12 +119,6 @@ void setupPreferences() {
         preferences->addPreference(new CheckPreference(UI_CATEGORY, "Prefer Avatar Finger Over Stylus", getter, setter));
     }
     */
-    {
-        static const QString RETICLE_ICON_NAME = { Cursor::Manager::getIconName(Cursor::Icon::RETICLE) };
-        auto getter = []()->bool { return qApp->getPreferredCursor() == RETICLE_ICON_NAME; };
-        auto setter = [](bool value) { qApp->setPreferredCursor(value ? RETICLE_ICON_NAME : QString()); };
-        preferences->addPreference(new CheckPreference(UI_CATEGORY, "Use reticle cursor instead of arrow", getter, setter));
-    }
 
     // Snapshots
     static const QString SNAPSHOTS { "Snapshots" };
@@ -156,27 +147,6 @@ void setupPreferences() {
                                 "this information you are helping to improve the product. ", getter, setter));
     }
     
-    static const QString LOD_TUNING("Level of Detail Tuning");
-    {
-        auto getter = []()->float { return DependencyManager::get<LODManager>()->getDesktopLODDecreaseFPS(); };
-        auto setter = [](float value) { DependencyManager::get<LODManager>()->setDesktopLODDecreaseFPS(value); };
-        auto preference = new SpinnerPreference(LOD_TUNING, "Minimum desktop FPS", getter, setter);
-        preference->setMin(0);
-        preference->setMax(120);
-        preference->setStep(1);
-        preferences->addPreference(preference);
-    }
-
-    {
-        auto getter = []()->float { return DependencyManager::get<LODManager>()->getHMDLODDecreaseFPS(); };
-        auto setter = [](float value) { DependencyManager::get<LODManager>()->setHMDLODDecreaseFPS(value); };
-        auto preference = new SpinnerPreference(LOD_TUNING, "Minimum HMD FPS", getter, setter);
-        preference->setMin(0);
-        preference->setMax(120);
-        preference->setStep(1);
-        preferences->addPreference(preference);
-    }
-
     static const QString AVATAR_TUNING { "Avatar Tuning" };
     {
         auto getter = [=]()->QString { return myAvatar->getDominantHand(); };
@@ -196,26 +166,7 @@ void setupPreferences() {
         // which can't be changed across domain switches. Having these values loaded up when you load the Dialog each time
         // is a way around this, therefore they're not specified here but in the QML.
     }
-    {
-        auto getter = [=]()->float { return myAvatar->getUserHeight(); };
-        auto setter = [=](float value) { myAvatar->setUserHeight(value); };
-        auto preference = new SpinnerPreference(AVATAR_TUNING, "User height (meters)", getter, setter);
-        preference->setMin(1.0f);
-        preference->setMax(2.2f);
-        preference->setDecimals(3);
-        preference->setStep(0.001f);
-        preferences->addPreference(preference);
-    }
-    {
-        auto getter = []()->float { return DependencyManager::get<DdeFaceTracker>()->getEyeClosingThreshold(); };
-        auto setter = [](float value) { DependencyManager::get<DdeFaceTracker>()->setEyeClosingThreshold(value); };
-        preferences->addPreference(new SliderPreference(AVATAR_TUNING, "Camera binary eyelid threshold", getter, setter));
-    }
-    {
-        auto getter = []()->float { return FaceTracker::getEyeDeflection(); };
-        auto setter = [](float value) { FaceTracker::setEyeDeflection(value); };
-        preferences->addPreference(new SliderPreference(AVATAR_TUNING, "Face tracker eye deflection", getter, setter));
-    }
+
     {
         auto getter = [=]()->QString { return myAvatar->getAnimGraphOverrideUrl().toString(); };
         auto setter = [=](const QString& value) { myAvatar->setAnimGraphOverrideUrl(QUrl(value)); };
@@ -224,11 +175,49 @@ void setupPreferences() {
         preferences->addPreference(preference);
     }
 
-    static const QString AVATAR_CAMERA { "Avatar Camera" };
+    static const QString FACE_TRACKING{ "Face Tracking" };
+    {
+        auto getter = []()->float { return DependencyManager::get<DdeFaceTracker>()->getEyeClosingThreshold(); };
+        auto setter = [](float value) { DependencyManager::get<DdeFaceTracker>()->setEyeClosingThreshold(value); };
+        preferences->addPreference(new SliderPreference(FACE_TRACKING, "Eye Closing Threshold", getter, setter));
+    }
+    {
+        auto getter = []()->float { return FaceTracker::getEyeDeflection(); };
+        auto setter = [](float value) { FaceTracker::setEyeDeflection(value); };
+        preferences->addPreference(new SliderPreference(FACE_TRACKING, "Eye Deflection", getter, setter));
+    }
+
+    static const QString MOVEMENT{ "VR Movement" };
+
+    {
+        auto getter = [=]()->bool { return myAvatar->getSnapTurn(); };
+        auto setter = [=](bool value) { myAvatar->setSnapTurn(value); };
+        preferences->addPreference(new CheckPreference(MOVEMENT, "Snap turn rotation", getter, setter));
+    }
+
+    //TODO: Update with advanced movement logic, test that it works
+    {
+        auto getter = [=]()->bool { return myAvatar->useAdvancedMovementControls(); };
+        auto setter = [=](bool value) { myAvatar->setUseAdvancedMovementControls(value); };
+        preferences->addPreference(new CheckPreference(MOVEMENT, "Advanced movement for hand controllers", getter, setter));
+    }
+
+    {
+        auto getter = [=]()->float { return myAvatar->getUserHeight(); };
+        auto setter = [=](float value) { myAvatar->setUserHeight(value); };
+        auto preference = new SpinnerPreference(MOVEMENT, "User real-world height (meters)", getter, setter);
+        preference->setMin(1.0f);
+        preference->setMax(2.2f);
+        preference->setDecimals(3);
+        preference->setStep(0.001f);
+        preferences->addPreference(preference);
+    }
+
+    static const QString AVATAR_CAMERA{ "Mouse Sensitivity" };
     {
         auto getter = [=]()->float { return myAvatar->getPitchSpeed(); };
         auto setter = [=](float value) { myAvatar->setPitchSpeed(value); };
-        auto preference = new SpinnerPreference(AVATAR_CAMERA, "Camera pitch speed (degrees/second)", getter, setter);
+        auto preference = new SpinnerPreference(AVATAR_CAMERA, "Pitch speed (degrees/second)", getter, setter);
         preference->setMin(1.0f);
         preference->setMax(360.0f);
         preferences->addPreference(preference);
@@ -236,7 +225,7 @@ void setupPreferences() {
     {
         auto getter = [=]()->float { return myAvatar->getYawSpeed(); };
         auto setter = [=](float value) { myAvatar->setYawSpeed(value); };
-        auto preference = new SpinnerPreference(AVATAR_CAMERA, "Camera yaw speed (degrees/second)", getter, setter);
+        auto preference = new SpinnerPreference(AVATAR_CAMERA, "Yaw speed (degrees/second)", getter, setter);
         preference->setMin(1.0f);
         preference->setMax(360.0f);
         preferences->addPreference(preference);
