@@ -3457,6 +3457,20 @@ void Application::keyPressEvent(QKeyEvent* event) {
                 }
                 break;
 
+            case Qt::Key_8:
+            {
+                QVector<QString> toReload;
+                toReload << "test 0";
+                toReload << "test 1";
+                toReload << "test 2";
+                QTimer::singleShot(1000, this, [=]() {
+                    for(const auto &scriptName : toReload) {
+                        qDebug() << "QQQQ in loop" << scriptName;
+                    }
+                });
+                qDebug() << "QQQQ okay";
+            }
+
             case Qt::Key_X:
                 if (isShifted && isMeta) {
                     auto offscreenUi = DependencyManager::get<OffscreenUi>();

@@ -223,6 +223,13 @@ void AudioHandler::run() {
     qDebug() << "QML Audio changed to " << _newTargetDevice;
 }
 
+OffscreenQmlSurface::~OffscreenQmlSurface() {
+    if (_currentFocusItem) {
+        disconnect(_currentFocusItem, &QObject::destroyed, this, &OffscreenQmlSurface::focusDestroyed);
+    }
+    _currentFocusItem = nullptr;
+}
+
 void OffscreenQmlSurface::initializeEngine(QQmlEngine* engine) {
     Parent::initializeEngine(engine);
     new QQmlFileSelector(engine);

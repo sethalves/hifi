@@ -303,7 +303,8 @@ void ScriptEngine::runDebuggable() {
             emit runningStateChanged();
             emit doneRunning();
 
-            timer->deleteLater();
+            // timer->deleteLater();
+            delete timer;
             return;
         }
 
@@ -1205,6 +1206,7 @@ void ScriptEngine::stopAllTimers() {
 
 void ScriptEngine::stopAllTimersForEntityScript(const EntityItemID& entityID) {
      // We could maintain a separate map of entityID => QTimer, but someone will have to prove to me that it's worth the complexity. -HRS
+    qDebug() << "QQQQ ScriptEngine::stopAllTimersForEntityScript" << entityID;
     QVector<QTimer*> toDelete;
     QMutableHashIterator<QTimer*, CallbackData> i(_timerFunctionMap);
     while (i.hasNext()) {
@@ -1343,6 +1345,7 @@ QObject* ScriptEngine::setTimeout(const QScriptValue& function, int timeoutMS) {
 
 void ScriptEngine::stopTimer(QTimer *timer) {
     if (_timerFunctionMap.contains(timer)) {
+        qDebug() << "QQQQ stopTimer: " << timer;
         timer->stop();
         _timerFunctionMap.remove(timer);
         delete timer;

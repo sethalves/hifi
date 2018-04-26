@@ -22,7 +22,8 @@ class OffscreenQmlSurface : public hifi::qml::OffscreenSurface {
     Q_OBJECT
     Q_PROPERTY(bool focusText READ isFocusText NOTIFY focusTextChanged)
 public:
-    
+    ~OffscreenQmlSurface();
+
     static void addWhitelistContextHandler(const std::initializer_list<QUrl>& urls, const QmlContextCallback& callback);
     static void addWhitelistContextHandler(const QUrl& url, const QmlContextCallback& callback) { addWhitelistContextHandler({ { url } }, callback); };
 
