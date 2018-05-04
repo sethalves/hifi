@@ -145,7 +145,7 @@ void TestWindow::initGl() {
     gl::initModuleGl();
 
     _glf.initializeOpenGLFunctions();
-    _glf.glCreateFramebuffers(1, &_fbo);
+    _glf.glGenFramebuffers(1, &_fbo);
 
     if (!_sharedContext.create(&_glContext) || !_sharedContext.makeCurrent()) {
         qFatal("Unable to intialize Shared GL context");
@@ -274,14 +274,15 @@ void TestWindow::draw() {
             if (!qmlInfo.surface || !qmlInfo.texture) {
                 continue;
             }
-            _glf.glNamedFramebufferTexture(_fbo, GL_COLOR_ATTACHMENT0, qmlInfo.texture, 0);
-            _glf.glBlitNamedFramebuffer(_fbo, 0,
-                                        // src coordinates
-                                        0, 0, _qmlSize.width() - 1, _qmlSize.height() - 1,
-                                        // dst coordinates
-                                        incrementX * x, incrementY * y, incrementX * (x + 1), incrementY * (y + 1),
-                                        // blit mask and filter
-                                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            _glf.glBindFramebuffer(GL_READ_FRAMEBUFFER, _fbo);
+            _glf.glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, qmlInfo.texture, 0);
+            _glf.glBlitFramebuffer(
+                // src coordinates
+                0, 0, _qmlSize.width() - 1, _qmlSize.height() - 1,
+                // dst coordinates
+                incrementX * x, incrementY * y, incrementX * (x + 1), incrementY * (y + 1),
+                // blit mask and filter
+                GL_COLOR_BUFFER_BIT, GL_NEAREST);
         }
     }
     _glContext.swapBuffers(this);
