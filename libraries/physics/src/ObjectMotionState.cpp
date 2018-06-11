@@ -11,6 +11,7 @@
 
 #include "ObjectMotionState.h"
 
+#include <iostream> // needed for HACK
 #include <math.h>
 
 #include "BulletUtil.h"
@@ -25,9 +26,9 @@ const float ACTIVATION_LINEAR_VELOCITY_DELTA = 0.01f;
 const float ACTIVATION_GRAVITY_DELTA = 0.1f;
 const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 
-
+// HACK
 void ObjectMotionState::crashWithMessage(QString msg) {
-    qCDebug(physics) << "Error: " << msg;
+    std::cout << "crash: " << msg.toStdString() << std::endl;
     // force a crash
     int32_t* np = nullptr;
     (*np) = 7;
