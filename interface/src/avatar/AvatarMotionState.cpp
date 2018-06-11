@@ -70,11 +70,27 @@ bool AvatarMotionState::isMoving() const {
 
 // virtual
 void AvatarMotionState::getWorldTransform(btTransform& worldTrans) const {
-    worldTrans.setOrigin(glmToBullet(getObjectPosition()));
-    worldTrans.setRotation(glmToBullet(getObjectRotation()));
+    glm::vec3 position = getObjectPosition();
+    if (glm::any(glm::isnan(position))) {
+        ObjectMotionState::crashWithMessage("AvatarMotionState::getWorldTransform() with NaN postion");
+    }
+    glm::quat rotation = getObjectRotation();
+    if (glm::any(glm::isnan(rotation))) {
+        ObjectMotionState::crashWithMessage("AvatarMotionState::getWorldTransform() with NaN rotation");
+    }
+    worldTrans.setOrigin(glmToBullet(position));
+    worldTrans.setRotation(glmToBullet(rotation));
     if (_body) {
+        glm::vec3 velocity = getObjectLinearVelocity();
+        if (glm::any(glm::isnan(velocity))) {
+            ObjectMotionState::crashWithMessage("AvatarMotionState::getWorldTransform() with NaN linearVelocity");
+        }
         _body->setLinearVelocity(glmToBullet(getObjectLinearVelocity()));
-        _body->setAngularVelocity(glmToBullet(getObjectAngularVelocity()));
+        velocity = getObjectAngularVelocity();
+        if (glm::any(glm::isnan(velocity))) {
+            ObjectMotionState::crashWithMessage("AvatarMotionState::getWorldTransform() with NaN angularVelocity");
+        }
+        _body->setAngularVelocity(glmToBullet(velocity));
     }
 }
 
@@ -85,14 +101,30 @@ void AvatarMotionState::setWorldTransform(const btTransform& worldTrans) {
     btVector3 currentPosition = worldTrans.getOrigin();
     btVector3 offsetToTarget = glmToBullet(getObjectPosition()) - currentPosition;
     float distance = offsetToTarget.length();
+    if (glm::isnan(distance)) {
+        ObjectMotionState::crashWithMessage("AvatarMotionState::setWorldTransform() with NaN offsetToTarget");
+    }
     if ((1.0f - tau) * distance > _diameter) {
         // the avatar body is far from its target --> slam position
         btTransform newTransform;
         newTransform.setOrigin(currentPosition + offsetToTarget);
-        newTransform.setRotation(glmToBullet(getObjectRotation()));
+        glm::quat rotation = getObjectRotation();
+        if (glm::any(glm::isnan(rotation))) {
+            ObjectMotionState::crashWithMessage("AvatarMotionState::wetWorldTransform() with NaN rotation");
+        }
+        newTransform.setRotation(glmToBullet(rotation));
         _body->setWorldTransform(newTransform);
+
+        glm::vec3 velocity = getObjectLinearVelocity();
+        if (glm::any(glm::isnan(velocity))) {
+            ObjectMotionState::crashWithMessage("AvatarMotionState::setWorldTransform() with NaN linearVelocity");
+        }
         _body->setLinearVelocity(glmToBullet(getObjectLinearVelocity()));
-        _body->setAngularVelocity(glmToBullet(getObjectAngularVelocity()));
+        velocity = getObjectAngularVelocity();
+        if (glm::any(glm::isnan(velocity))) {
+            ObjectMotionState::crashWithMessage("AvatarMotionState::setWorldTransform() with NaN angularVelocity");
+        }
+        _body->setAngularVelocity(glmToBullet(velocity));
     } else {
         // the avatar body is near its target --> slam velocity
         btVector3 velocity = glmToBullet(getObjectLinearVelocity()) + (1.0f / SPRING_TIMESCALE) * offsetToTarget;

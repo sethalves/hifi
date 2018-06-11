@@ -26,6 +26,13 @@ const float ACTIVATION_GRAVITY_DELTA = 0.1f;
 const float ACTIVATION_ANGULAR_VELOCITY_DELTA = 0.03f;
 
 
+void ObjectMotionState::crashWithMessage(QString msg) {
+    qCDebug(physics) << "Error: " << msg;
+    // force a crash
+    int32_t* np = nullptr;
+    (*np) = 7;
+}
+
 // origin of physics simulation in world-frame
 glm::vec3 _worldOffset(0.0f);
 

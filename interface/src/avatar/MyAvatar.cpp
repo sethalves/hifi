@@ -1721,7 +1721,16 @@ void MyAvatar::prepareForPhysicsSimulation() {
     _characterController.setParentVelocity(parentVelocity);
     _characterController.setScaleFactor(getSensorToWorldScale());
 
-    _characterController.setPositionAndOrientation(getWorldPosition(), getWorldOrientation());
+    glm::vec3 position = getWorldPosition();
+    if (glm::any(glm::isnan(position))) {
+        ObjectMotionState::crashWithMessage("MyAvatar::prepareForPhysicsSimulation() with nan position");
+    }
+    glm::quat orientation = getWorldOrientation();
+    if (glm::any(glm::isnan(orientation))) {
+        ObjectMotionState::crashWithMessage("MyAvatar::prepareForPhysicsSimulation() with nan orientation");
+    }
+
+    _characterController.setPositionAndOrientation(position, orientation);
     auto headPose = getControllerPoseInAvatarFrame(controller::Action::HEAD);
     if (headPose.isValid()) {
         _follow.prePhysicsUpdate(*this, deriveBodyFromHMDSensor(), _bodySensorMatrix, hasDriveInput());

@@ -83,6 +83,8 @@ class PhysicsEngine;
 
 class ObjectMotionState : public btMotionState {
 public:
+    static void crashWithMessage(QString msg);
+
     // These properties of the PhysicsEngine are "global" within the context of all ObjectMotionStates
     // (assuming just one PhysicsEngine).  They are cached as statics for fast calculations in the
     // ObjectMotionState context.
