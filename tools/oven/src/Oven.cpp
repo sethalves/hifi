@@ -9,29 +9,33 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "Oven.h"
+
 #include <QtCore/QDebug>
 #include <QtCore/QThread>
 
 #include <image/Image.h>
 
-#include "Oven.h"
+#include <DependencyManager.h>
+#include <StatTracker.h>
+#include <ResourceManager.h>
 
 Oven* Oven::_staticInstance { nullptr };
 
 Oven::Oven() {
     _staticInstance = this;
 
-    // enable compression in image library
-    image::setColorTexturesCompressionEnabled(true);
-    image::setGrayscaleTexturesCompressionEnabled(true);
-    image::setNormalTexturesCompressionEnabled(true);
-    image::setCubeTexturesCompressionEnabled(true);
-
     // setup our worker threads
     setupWorkerThreads(QThread::idealThreadCount());
+
+    // Initialize dependencies for OBJ Baker
+    DependencyManager::set<StatTracker>();
+    DependencyManager::set<ResourceManager>(false);
 }
 
 Oven::~Oven() {
+    DependencyManager::get<ResourceManager>()->cleanup();
+
     // quit all worker threads and wait on them
     for (auto& thread : _workerThreads) {
         thread->quit();

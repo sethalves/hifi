@@ -13,8 +13,9 @@
 
 #include <display-plugins/CompositorHelper.h>
 #include <FramebufferCache.h>
-#include "ui/Stats.h"
+#include <plugins/PluginManager.h>
 #include <SceneScriptingInterface.h>
+#include "ui/Stats.h"
 #include "Util.h"
 
 
@@ -29,9 +30,6 @@ void Application::editRenderArgs(RenderArgsEditor editor) {
 
 void Application::paintGL() {
     // Some plugins process message events, allowing paintGL to be called reentrantly.
-    if (_aboutToQuit || _window->isMinimized()) {
-        return;
-    }
 
     _renderFrameCount++;
     _lastTimeRendered.start();
@@ -90,10 +88,10 @@ void Application::paintGL() {
 
     {
         PROFILE_RANGE(render, "/gpuContextReset");
-        _gpuContext->beginFrame(HMDSensorPose);
+        _gpuContext->beginFrame(_appRenderArgs._view, HMDSensorPose);
         // Reset the gpu::Context Stages
         // Back to the default framebuffer;
-        gpu::doInBatch(_gpuContext, [&](gpu::Batch& batch) {
+        gpu::doInBatch("Application_render::gpuContextReset", _gpuContext, [&](gpu::Batch& batch) {
             batch.resetStages();
         });
     }
@@ -104,7 +102,7 @@ void Application::paintGL() {
         PerformanceTimer perfTimer("renderOverlay");
         // NOTE: There is no batch associated with this renderArgs
         // the ApplicationOverlay class assumes it's viewport is setup to be the device size
-        renderArgs._viewport = glm::ivec4(0, 0, getDeviceSize());
+        renderArgs._viewport = glm::ivec4(0, 0, getDeviceSize() * getRenderResolutionScale());
         _applicationOverlay.renderOverlay(&renderArgs);
     }
 
@@ -207,16 +205,12 @@ void Application::runRenderFrame(RenderArgs* renderArgs) {
 
         RenderArgs::DebugFlags renderDebugFlags = RenderArgs::RENDER_DEBUG_NONE;
 
-        if (Menu::getInstance()->isOptionChecked(MenuOption::PhysicsShowHulls)) {
-            renderDebugFlags = static_cast<RenderArgs::DebugFlags>(renderDebugFlags |
-                static_cast<int>(RenderArgs::RENDER_DEBUG_HULLS));
-        }
         renderArgs->_debugFlags = renderDebugFlags;
     }
 
     // Make sure the WorldBox is in the scene
     // For the record, this one RenderItem is the first one we created and added to the scene.
-    // We could meoee that code elsewhere but you know...
+    // We could move that code elsewhere but you know...
     if (!render::Item::isValidID(WorldBoxRenderData::_item)) {
         auto worldBoxRenderData = std::make_shared<WorldBoxRenderData>();
         auto worldBoxRenderPayload = std::make_shared<WorldBoxRenderData::Payload>(worldBoxRenderData);
@@ -233,3 +227,4 @@ void Application::runRenderFrame(RenderArgs* renderArgs) {
         _renderEngine->run();
     }
 }
+

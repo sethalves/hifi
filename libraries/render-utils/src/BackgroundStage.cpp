@@ -93,7 +93,7 @@ void DrawBackgroundStage::run(const render::RenderContextPointer& renderContext,
             PerformanceTimer perfTimer("skybox");
             auto args = renderContext->args;
 
-            gpu::doInBatch(args->_context, [&](gpu::Batch& batch) {
+            gpu::doInBatch("DrawBackgroundStage::run", args->_context, [&](gpu::Batch& batch) {
                 args->_batch = &batch;
 
                 batch.enableSkybox(true);
@@ -126,9 +126,6 @@ void DrawBackgroundStage::run(const render::RenderContextPointer& renderContext,
             if (defaultSkyboxAmbientTexture) {
                 sceneKeyLight->setAmbientSphere(defaultSkyboxAmbientTexture->getIrradiance());
                 sceneKeyLight->setAmbientMap(defaultSkyboxAmbientTexture);
-            } else {
-                static QString repeatedMessage = LogHandler::getInstance().addRepeatedMessageRegex(
-                    "Failed to get a valid Default Skybox Ambient Texture ? probably because it couldn't be find during initialization step");
             }
             // fall through: render defaults skybox
         } else {

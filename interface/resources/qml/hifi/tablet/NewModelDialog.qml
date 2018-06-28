@@ -10,7 +10,6 @@
 //
 
 import QtQuick 2.5
-import QtQuick.Controls 1.4
 import QtQuick.Dialogs 1.2 as OriginalDialogs
 
 import "../../styles-uit"
@@ -25,6 +24,7 @@ Rectangle {
     color: hifi.colors.baseGray;
     signal sendToScript(var message);
     property bool keyboardEnabled: false
+    property bool keyboardRaised: false
     property bool punctuationMode: false
     property bool keyboardRasied: false
 
@@ -70,6 +70,14 @@ Rectangle {
 
             onAccepted: {
                 newModelDialog.keyboardEnabled = false;
+            }
+
+            onTextChanged : {
+                if (modelURL.text.length === 0){
+                    button1.enabled = false;
+                } else {
+                    button1.enabled = true;
+                }
             }
             
             MouseArea {
@@ -200,6 +208,7 @@ Rectangle {
                         id: button1
                         text: qsTr("Add")
                         z: -1
+                        enabled: false
                         onClicked: {
                             newModelDialog.sendToScript({
                                 method: "newModelDialogAdd",
@@ -227,10 +236,11 @@ Rectangle {
 
     Keyboard {
         id: keyboard
-        raised: parent.keyboardEnabled
+        raised: parent.keyboardEnabled && parent.keyboardRaised
         numeric: parent.punctuationMode
         anchors {
             bottom: parent.bottom
+            bottomMargin: 40
             left: parent.left
             right: parent.right
         }

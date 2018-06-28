@@ -39,14 +39,14 @@ public slots:
     /// runs the avatar mixer
     void run() override;
 
-    void nodeKilled(SharedNodePointer killedNode);
+    void handleAvatarKilled(SharedNodePointer killedNode);
 
     void sendStatsPacket() override;
 
 private slots:
     void queueIncomingPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer node);
     void handleAdjustAvatarSorting(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
-    void handleViewFrustumPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
+    void handleAvatarQueryPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleAvatarIdentityPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleKillAvatarPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleNodeIgnoreRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);

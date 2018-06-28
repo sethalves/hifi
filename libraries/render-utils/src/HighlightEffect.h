@@ -113,7 +113,7 @@ private:
 class DrawHighlightMask {
 public:
 
-    using Inputs = render::VaryingSet2<render::ShapeBounds, HighlightRessourcesPointer>;
+    using Inputs = render::VaryingSet3<render::ShapeBounds, HighlightRessourcesPointer, glm::vec2>;
     using Outputs = glm::ivec4;
     using JobModel = render::Job::ModelIO<DrawHighlightMask, Inputs, Outputs>;
 
@@ -135,7 +135,7 @@ protected:
 class DrawHighlight {
 public:
 
-    using Inputs = render::VaryingSet4<DeferredFrameTransformPointer, HighlightRessourcesPointer, DeferredFramebufferPointer, glm::ivec4>;
+    using Inputs = render::VaryingSet5<DeferredFrameTransformPointer, HighlightRessourcesPointer, DeferredFramebufferPointer, glm::ivec4, gpu::FramebufferPointer>;
     using Config = render::Job::Config;
     using JobModel = render::Job::ModelI<DrawHighlight, Inputs, Config>;
 
@@ -182,7 +182,7 @@ signals:
 
 class DebugHighlight {
 public:
-    using Inputs = render::VaryingSet2<HighlightRessourcesPointer, glm::ivec4>;
+    using Inputs = render::VaryingSet4<HighlightRessourcesPointer, glm::ivec4, glm::vec2, gpu::FramebufferPointer>;
     using Config = DebugHighlightConfig;
     using JobModel = render::Job::ModelI<DebugHighlight, Inputs, Config>;
 
@@ -205,7 +205,7 @@ private:
 class DrawHighlightTask {
 public:
 
-    using Inputs = render::VaryingSet4<RenderFetchCullSortTask::BucketList, DeferredFramebufferPointer, gpu::FramebufferPointer, DeferredFrameTransformPointer>;
+    using Inputs = render::VaryingSet5<RenderFetchCullSortTask::BucketList, DeferredFramebufferPointer, gpu::FramebufferPointer, DeferredFrameTransformPointer, glm::vec2>;
     using Config = render::Task::Config;
     using JobModel = render::Task::ModelI<DrawHighlightTask, Inputs, Config>;
 

@@ -9,11 +9,11 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-
-#include <glm/gtc/random.hpp>
+#include "AmbientOcclusionEffect.h"
 
 #include <algorithm> //min max and more
 
+#include <glm/gtc/random.hpp>
 
 #include <PathUtils.h>
 #include <SharedUtil.h>
@@ -22,7 +22,6 @@
 #include "RenderUtilsLogging.h"
 
 #include "DeferredLightingEffect.h"
-#include "AmbientOcclusionEffect.h"
 #include "TextureCache.h"
 #include "FramebufferCache.h"
 #include "DependencyManager.h"
@@ -385,7 +384,7 @@ void AmbientOcclusionEffect::run(const render::RenderContextPointer& renderConte
     auto firstHBlurPipeline = getHBlurPipeline();
     auto lastVBlurPipeline = getVBlurPipeline();
     
-    gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
+    gpu::doInBatch("AmbientOcclusionEffect::run", args->_context, [=](gpu::Batch& batch) {
         batch.enableStereo(false);
 
         _gpuTimer->begin(batch);
@@ -518,7 +517,7 @@ void DebugAmbientOcclusion::run(const render::RenderContextPointer& renderContex
     
     auto debugPipeline = getDebugPipeline();
     
-    gpu::doInBatch(args->_context, [=](gpu::Batch& batch) {
+    gpu::doInBatch("DebugAmbientOcclusion::run", args->_context, [=](gpu::Batch& batch) {
         batch.enableStereo(false);
 
         batch.setViewportTransform(sourceViewport);

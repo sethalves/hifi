@@ -22,12 +22,14 @@ namespace gpu {
     public:
         Frame();
         virtual ~Frame();
-        using Batches = std::vector<Batch>;
+        using Batches = std::vector<BatchPointer>;
         using FramebufferRecycler = std::function<void(const FramebufferPointer&)>;
         using OverlayRecycler = std::function<void(const TexturePointer&)>;
 
         StereoState stereoState;
         uint32_t frameIndex{ 0 };
+        /// The view matrix used for rendering the frame, only applicable for HMDs
+        Mat4 view;
         /// The sensor pose used for rendering the frame, only applicable for HMDs
         Mat4 pose;
         /// The collection of batches which make up the frame

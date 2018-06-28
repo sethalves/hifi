@@ -64,7 +64,7 @@ void ApplicationOverlay::renderOverlay(RenderArgs* renderArgs) {
     }
 
     // Execute the batch into our framebuffer
-    doInBatch(renderArgs->_context, [&](gpu::Batch& batch) {
+    doInBatch("ApplicationOverlay::render", renderArgs->_context, [&](gpu::Batch& batch) {
         PROFILE_RANGE_BATCH(batch, "ApplicationOverlayRender");
         renderArgs->_batch = &batch;
         batch.enableStereo(false);
@@ -179,7 +179,7 @@ static const auto DEPTH_FORMAT = gpu::Element(gpu::SCALAR, gpu::FLOAT, gpu::DEPT
 void ApplicationOverlay::buildFramebufferObject() {
     PROFILE_RANGE(app, __FUNCTION__);
 
-    auto uiSize = qApp->getUiSize();
+    auto uiSize = glm::uvec2(glm::vec2(qApp->getUiSize()) * qApp->getRenderResolutionScale());
     if (!_overlayFramebuffer || uiSize != _overlayFramebuffer->getSize()) {
         _overlayFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create("ApplicationOverlay"));
     }

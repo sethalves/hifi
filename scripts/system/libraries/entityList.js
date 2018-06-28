@@ -57,6 +57,15 @@ EntityListTool = function(opts) {
         webView.emitScriptEvent(JSON.stringify(data));
     };
 
+    that.removeEntities = function (deletedIDs, selectedIDs) {
+        var data = {
+            type: 'removeEntities',
+            deletedIDs: deletedIDs,
+            selectedIDs: selectedIDs
+        };
+        webView.emitScriptEvent(JSON.stringify(data));
+    };
+
     function valueIfDefined(value) {
         return value !== undefined ? value : "";
     }
@@ -103,7 +112,7 @@ EntityListTool = function(opts) {
 
         var selectedIDs = [];
         for (var j = 0; j < selectionManager.selections.length; j++) {
-            selectedIDs.push(selectionManager.selections[j].id);
+            selectedIDs.push(selectionManager.selections[j]);
         }
 
         var data = {

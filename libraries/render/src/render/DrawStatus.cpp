@@ -104,13 +104,16 @@ void DrawStatus::configure(const Config& config) {
     _showNetwork = config.showNetwork;
 }
 
-void DrawStatus::run(const RenderContextPointer& renderContext, const ItemBounds& inItems) {
+void DrawStatus::run(const RenderContextPointer& renderContext, const Input& input) {
     assert(renderContext->args);
     assert(renderContext->args->hasViewFrustum());
     RenderArgs* args = renderContext->args;
     auto& scene = renderContext->_scene;
     const int NUM_STATUS_VEC4_PER_ITEM = 2;
     const int VEC4_LENGTH = 4;
+
+    const auto& inItems = input.get0();
+    const auto jitter = input.get1();
 
     // FIrst thing, we collect the bound and the status for all the items we want to render
     int nbItems = 0;
@@ -163,7 +166,7 @@ void DrawStatus::run(const RenderContextPointer& renderContext, const ItemBounds
     }
 
     // Allright, something to render let's do it
-    gpu::doInBatch(args->_context, [&](gpu::Batch& batch) {
+    gpu::doInBatch("DrawStatus::run", args->_context, [&](gpu::Batch& batch) {
         glm::mat4 projMat;
         Transform viewMat;
         args->getViewFrustum().evalProjectionMatrix(projMat);
@@ -171,6 +174,7 @@ void DrawStatus::run(const RenderContextPointer& renderContext, const ItemBounds
         batch.setViewportTransform(args->_viewport);
 
         batch.setProjectionTransform(projMat);
+        batch.setProjectionJitter(jitter.x, jitter.y);
         batch.setViewTransform(viewMat, true);
         batch.setModelTransform(Transform());
 
