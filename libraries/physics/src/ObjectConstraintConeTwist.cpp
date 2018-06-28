@@ -9,12 +9,13 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "ObjectConstraintConeTwist.h"
+
 #include <LogHandler.h>
 
 #include "QVariantGLM.h"
 
 #include "EntityTree.h"
-#include "ObjectConstraintConeTwist.h"
 #include "PhysicsLogging.h"
 
 #include "ObjectDynamicUtils.h"
@@ -87,12 +88,11 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
         return constraint;
     }
 
-    static QString repeatedConeTwistNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
-        "ObjectConstraintConeTwist::getConstraint -- no rigidBody.*");
+    static int repeatMessageID = LogHandler::getInstance().newRepeatedMessageID();
 
     btRigidBody* rigidBodyA = getRigidBody(getThisPointer());
     if (!rigidBodyA) {
-        qCDebug(physics) << "ObjectConstraintConeTwist::getConstraint -- no rigidBodyA";
+        HIFI_FCDEBUG_ID(physics(), repeatMessageID, "ObjectConstraintConeTwist::getConstraint -- no rigidBodyA");
         return nullptr;
     }
 
@@ -121,7 +121,7 @@ btTypedConstraint* ObjectConstraintConeTwist::getConstraint() {
 
         btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
-            qCDebug(physics) << "ObjectConstraintConeTwist::getConstraint -- no rigidBodyB";
+            HIFI_FCDEBUG_ID(physics(), repeatMessageID, "ObjectConstraintConeTwist::getConstraint -- no rigidBodyB");
             return nullptr;
         }
 
@@ -270,11 +270,11 @@ bool ObjectConstraintConeTwist::updateArguments(QVariantMap arguments) {
 QVariantMap ObjectConstraintConeTwist::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
-        arguments["pivot"] = glmToQMap(_pivotInA);
-        arguments["axis"] = glmToQMap(_axisInA);
+        arguments["pivot"] = vec3ToQMap(_pivotInA);
+        arguments["axis"] = vec3ToQMap(_axisInA);
         arguments["otherEntityID"] = _otherID;
-        arguments["otherPivot"] = glmToQMap(_pivotInB);
-        arguments["otherAxis"] = glmToQMap(_axisInB);
+        arguments["otherPivot"] = vec3ToQMap(_pivotInB);
+        arguments["otherAxis"] = vec3ToQMap(_axisInB);
         arguments["swingSpan1"] = _swingSpan1;
         arguments["swingSpan2"] = _swingSpan2;
         arguments["twistSpan"] = _twistSpan;

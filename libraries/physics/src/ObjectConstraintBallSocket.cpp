@@ -9,12 +9,13 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "ObjectConstraintBallSocket.h"
+
 #include <LogHandler.h>
 
 #include "QVariantGLM.h"
 
 #include "EntityTree.h"
-#include "ObjectConstraintBallSocket.h"
 #include "PhysicsLogging.h"
 
 #include "ObjectDynamicUtils.h"
@@ -75,12 +76,11 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
         return constraint;
     }
 
-    static QString repeatedBallSocketNoRigidBody = LogHandler::getInstance().addRepeatedMessageRegex(
-        "ObjectConstraintBallSocket::getConstraint -- no rigidBody.*");
+    static int repeatMessageID = LogHandler::getInstance().newRepeatedMessageID();
 
     btRigidBody* rigidBodyA = getRigidBody(thisPointer);
     if (!rigidBodyA) {
-        qCDebug(physics) << "ObjectConstraintBallSocket::getConstraint -- no rigidBodyA";
+        HIFI_FCDEBUG_ID(physics(), repeatMessageID, "ObjectConstraintBallSocket::getConstraint -- no rigidBodyA");
         return nullptr;
     }
 
@@ -89,7 +89,7 @@ btTypedConstraint* ObjectConstraintBallSocket::getConstraint() {
 
         btRigidBody* rigidBodyB = getOtherRigidBody(thisPointer);
         if (!rigidBodyB) {
-            qCDebug(physics) << "ObjectConstraintBallSocket::getConstraint -- no rigidBodyB";
+            HIFI_FCDEBUG_ID(physics(), repeatMessageID, "ObjectConstraintBallSocket::getConstraint -- no rigidBodyB");
             return nullptr;
         }
 
@@ -183,9 +183,9 @@ bool ObjectConstraintBallSocket::updateArguments(QVariantMap arguments) {
 QVariantMap ObjectConstraintBallSocket::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
-        arguments["pivot"] = glmToQMap(_pivotInA);
+        arguments["pivot"] = vec3ToQMap(_pivotInA);
         arguments["otherEntityID"] = _otherID;
-        arguments["otherPivot"] = glmToQMap(_pivotInB);
+        arguments["otherPivot"] = vec3ToQMap(_pivotInB);
     });
     return arguments;
 }

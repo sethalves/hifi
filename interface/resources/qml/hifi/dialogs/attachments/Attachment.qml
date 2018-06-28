@@ -119,8 +119,8 @@ Item {
                 colorScheme: hifi.colorSchemes.dark
                 currentIndex: attachment ? model.indexOf(attachment.jointName) : -1
                 onCurrentIndexChanged: {
-                    if (completed && attachment && currentIndex != -1 && currentText && currentText !== attachment.jointName) {
-                        attachment.jointName = currentText;
+                    if (completed && attachment && currentIndex != -1 && attachment.jointName !== model[currentIndex]) {
+                        attachment.jointName = model[currentIndex];
                         updateAttachment();
                     }
                 }
@@ -181,11 +181,11 @@ Item {
                     minimumValue: 0.01
                     maximumValue: 10
                     realStepSize: 0.05;
-                    value: attachment ? attachment.scale : 1.0
+                    realValue: attachment ? attachment.scale : 1.0
                     colorScheme: hifi.colorSchemes.dark
-                    onValueChanged: {
-                        if (completed && attachment && attachment.scale !== value) {
-                            attachment.scale = value;
+                    onRealValueChanged: {
+                        if (completed && attachment && attachment.scale !== realValue) {
+                            attachment.scale = realValue;
                             updateAttachment();
                         }
                     }

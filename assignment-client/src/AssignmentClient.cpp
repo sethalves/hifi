@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "AssignmentClient.h"
+
 #include <assert.h>
 
 #include <QProcess>
@@ -32,15 +34,17 @@
 #include <SoundCache.h>
 #include <ResourceScriptingInterface.h>
 #include <UserActivityLoggerScriptingInterface.h>
+#include <Trace.h>
+#include <StatTracker.h>
 
 #include "AssignmentFactory.h"
 #include "dynamics/AssignmentDynamicFactory.h"
 
 #include "AssignmentClient.h"
 #include "AssignmentClientLogging.h"
+#include "dynamics/AssignmentDynamicFactory.h"
+#include "AssignmentFactory.h"
 #include "avatars/ScriptableAvatar.h"
-#include <Trace.h>
-#include <StatTracker.h>
 
 const QString ASSIGNMENT_CLIENT_TARGET_NAME = "assignment-client";
 const long long ASSIGNMENT_REQUEST_INTERVAL_MSECS = 1 * 1000;

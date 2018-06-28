@@ -443,8 +443,8 @@ QVariantMap AvatarActionHold::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&]{
         arguments["holderID"] = _holderID;
-        arguments["relativePosition"] = glmToQMap(_relativePosition);
-        arguments["relativeRotation"] = glmToQMap(_relativeRotation);
+        arguments["relativePosition"] = vec3ToQMap(_relativePosition);
+        arguments["relativeRotation"] = quatToQMap(_relativeRotation);
         arguments["timeScale"] = _linearTimeScale;
         arguments["hand"] = _hand;
         arguments["kinematic"] = _kinematic;

@@ -108,7 +108,7 @@ bool AssignmentActionOffset::updateArguments(QVariantMap arguments) {
 QVariantMap AssignmentActionOffset::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
-        arguments["pointToOffsetFrom"] = glmToQMap(_pointToOffsetFrom);
+        arguments["pointToOffsetFrom"] = vec3ToQMap(_pointToOffsetFrom);
         arguments["linearTimeScale"] = _linearTimeScale;
         arguments["linearDistance"] = _linearDistance;
     });

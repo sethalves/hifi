@@ -12,6 +12,8 @@
 #include "QVariantGLM.h"
 #include "ObjectActionTractor.h"
 #include "BulletUtil.h"
+#include "QVariantGLM.h"
+
 #include "PhysicsLogging.h"
 #include "ObjectDynamicUtils.h"
 
@@ -47,19 +49,22 @@ ObjectActionTractor::~ObjectActionTractor() {
 bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, glm::vec3& position,
                                    glm::vec3& linearVelocity, glm::vec3& angularVelocity,
                                    float& linearTimeScale, float& angularTimeScale) {
-    SpatiallyNestablePointer other = getOther();
+    bool success { true };
+    EntityItemPointer other = std::dynamic_pointer_cast<EntityItem>(getOther());
     withReadLock([&]{
         linearTimeScale = _linearTimeScale;
         angularTimeScale = _angularTimeScale;
 
         if (!_otherID.isNull()) {
-            if (other) {
+            if (other && other->isReadyToComputeShape()) {
                 rotation = _desiredRotationalTarget * other->getWorldOrientation();
                 position = other->getWorldOrientation() * _desiredPositionalTarget + other->getWorldPosition();
             } else {
-                // we should have an "other" but can't find it, so disable the tractor.
+                // we should have an "other" but can't find it, or its collision shape isn't loaded,
+                // so disable the tractor.
                 linearTimeScale = FLT_MAX;
                 angularTimeScale = FLT_MAX;
+                success = false;
             }
         } else {
             rotation = _desiredRotationalTarget;
@@ -68,7 +73,7 @@ bool ObjectActionTractor::getTarget(float deltaTimeStep, glm::quat& rotation, gl
         linearVelocity = glm::vec3();
         angularVelocity = glm::vec3();
     });
-    return true;
+    return success;
 }
 
 bool ObjectActionTractor::prepareForTractorUpdate(btScalar deltaTimeStep) {
@@ -122,6 +127,8 @@ bool ObjectActionTractor::prepareForTractorUpdate(btScalar deltaTimeStep) {
                 linearTractorCount++;
                 position += positionForAction;
             }
+        } else {
+            return false; // we don't have both entities loaded, so don't do anything
         }
     }
 
@@ -328,9 +335,9 @@ QVariantMap ObjectActionTractor::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
         arguments["linearTimeScale"] = _linearTimeScale;
-        arguments["targetPosition"] = glmToQMap(_desiredPositionalTarget);
+        arguments["targetPosition"] = vec3ToQMap(_desiredPositionalTarget);
 
-        arguments["targetRotation"] = glmToQMap(_desiredRotationalTarget);
+        arguments["targetRotation"] = quatToQMap(_desiredRotationalTarget);
         arguments["angularTimeScale"] = _angularTimeScale;
 
         arguments["otherID"] = _otherID;
@@ -392,7 +399,7 @@ void ObjectActionTractor::deserialize(QByteArray serializedArguments) {
 
     EntityDynamicType type;
     dataStream >> type;
-    assert(type == getType());
+    assert(type == getType() || type == DYNAMIC_TYPE_SPRING);
 
     QUuid id;
     dataStream >> id;

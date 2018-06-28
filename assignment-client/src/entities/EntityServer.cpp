@@ -9,21 +9,23 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "EntityServer.h"
+
 #include <QtCore/QEventLoop>
 #include <QTimer>
+#include <QJsonArray>
+#include <QJsonDocument>
+
 #include <EntityTree.h>
 #include <SimpleEntitySimulation.h>
 #include <ResourceCache.h>
 #include <ScriptCache.h>
 #include <EntityEditFilters.h>
 #include <NetworkingConstants.h>
-#include <QJsonArray>
-#include <QJsonDocument>
 #include <AddressManager.h>
 
 #include "AssignmentParentFinder.h"
 #include "EntityNodeData.h"
-#include "EntityServer.h"
 #include "EntityServerConsts.h"
 #include "EntityTreeSendThread.h"
 
@@ -42,6 +44,7 @@ EntityServer::EntityServer(ReceivedMessage& message) :
 
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
     packetReceiver.registerListenerForTypes({ PacketType::EntityAdd,
+        PacketType::EntityClone,
         PacketType::EntityEdit,
         PacketType::EntityErase,
         PacketType::EntityPhysics,
@@ -380,10 +383,15 @@ void EntityServer::trackSend(const QUuid& dataID, quint64 dataLastEdited, const 
 }
 
 void EntityServer::trackViewerGone(const QUuid& sessionID) {
-    QWriteLocker locker(&_viewerSendingStatsLock);
-    _viewerSendingStats.remove(sessionID);
+    {
+        QWriteLocker locker(&_viewerSendingStatsLock);
+        _viewerSendingStats.remove(sessionID);
+    }
+
     if (_entitySimulation) {
-        _entitySimulation->clearOwnership(sessionID);
+        _tree->withReadLock([&] {
+            _entitySimulation->clearOwnership(sessionID);
+        });
     }
 }
 
@@ -496,6 +504,11 @@ void EntityServer::startDynamicDomainVerification() {
                         QString thisDomainID = DependencyManager::get<AddressManager>()->getDomainID().remove(QRegExp("\\{|\\}"));
                         if (jsonObject["domain_id"].toString() != thisDomainID) {
                             EntityItemPointer entity = tree->findEntityByEntityItemID(entityID);
+                            if (!entity) {
+                                qCDebug(entities) << "Entity undergoing dynamic domain verification is no longer available:" << entityID;
+                                networkReply->deleteLater();
+                                return;
+                            }
                             if (entity->getAge() > (_MAXIMUM_DYNAMIC_DOMAIN_VERIFICATION_TIMER_MS/MSECS_PER_SECOND)) {
                                 qCDebug(entities) << "Entity's cert's domain ID" << jsonObject["domain_id"].toString()
                                                 << "doesn't match the current Domain ID" << thisDomainID << "; deleting entity" << entityID;

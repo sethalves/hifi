@@ -72,6 +72,8 @@ public:
 
     static const QString REPLACEMENT_FILE_EXTENSION;
 
+    bool isAssetServerEnabled();
+
 public slots:
     /// Called by NodeList to inform us a node has been added
     void nodeAdded(SharedNodePointer node);
@@ -106,10 +108,10 @@ private slots:
     void sendHeartbeatToIceServer();
 
     void handleConnectedNode(SharedNodePointer newNode); 
-    void handleTempDomainSuccess(QNetworkReply& requestReply);
-    void handleTempDomainError(QNetworkReply& requestReply);
+    void handleTempDomainSuccess(QNetworkReply* requestReply);
+    void handleTempDomainError(QNetworkReply* requestReply);
 
-    void handleMetaverseHeartbeatError(QNetworkReply& requestReply);
+    void handleMetaverseHeartbeatError(QNetworkReply* requestReply);
 
     void queuedQuit(QString quitMessage, int exitCode);
 
@@ -119,8 +121,8 @@ private slots:
     void handleICEHostInfo(const QHostInfo& hostInfo);
 
     void sendICEServerAddressToMetaverseAPI();
-    void handleSuccessfulICEServerAddressUpdate(QNetworkReply& requestReply);
-    void handleFailedICEServerAddressUpdate(QNetworkReply& requestReply);
+    void handleSuccessfulICEServerAddressUpdate(QNetworkReply* requestReply);
+    void handleFailedICEServerAddressUpdate(QNetworkReply* requestReply);
 
     void updateReplicatedNodes();
     void updateDownstreamNodes();
@@ -165,6 +167,7 @@ private:
     unsigned int countConnectedUsers();
 
     void handleKillNode(SharedNodePointer nodeToKill);
+    void broadcastNodeDisconnect(const SharedNodePointer& disconnnectedNode);
 
     void sendDomainListToNode(const SharedNodePointer& node, const HifiSockAddr& senderSockAddr);
 
@@ -219,7 +222,7 @@ private:
     DomainGatekeeper _gatekeeper;
 
     HTTPManager _httpManager;
-    HTTPSManager* _httpsManager;
+    std::unique_ptr<HTTPSManager> _httpsManager;
 
     QHash<QUuid, SharedAssignmentPointer> _allAssignments;
     QQueue<SharedAssignmentPointer> _unfulfilledAssignments;

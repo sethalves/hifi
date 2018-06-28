@@ -169,6 +169,7 @@ void DrawHighlightMask::run(const render::RenderContextPointer& renderContext, c
 
         glm::mat4 projMat;
         Transform viewMat;
+        const auto jitter = inputs.get2();
         args->getViewFrustum().evalProjectionMatrix(projMat);
         args->getViewFrustum().evalViewTransform(viewMat);
 
@@ -183,6 +184,7 @@ void DrawHighlightMask::run(const render::RenderContextPointer& renderContext, c
             // Setup camera, projection and viewport for all items
             batch.setViewportTransform(args->_viewport);
             batch.setProjectionTransform(projMat);
+            batch.setProjectionJitter(jitter.x, jitter.y);
             batch.setViewTransform(viewMat);
 
             std::vector<ShapeKey> skinnedShapeKeys{};
@@ -284,6 +286,7 @@ void DrawHighlight::run(const render::RenderContextPointer& renderContext, const
                     shaderParameters._size.y = size;
                 }
 
+                auto primaryFramebuffer = inputs.get4();
                 gpu::doInBatch("DrawHighlight::run", args->_context, [&](gpu::Batch& batch) {
                     batch.enableStereo(false);
                     batch.setFramebuffer(destinationFrameBuffer);
@@ -299,6 +302,9 @@ void DrawHighlight::run(const render::RenderContextPointer& renderContext, const
                     batch.setResourceTexture(SCENE_DEPTH_MAP_SLOT, sceneDepthBuffer->getPrimaryDepthTexture());
                     batch.setResourceTexture(HIGHLIGHTED_DEPTH_MAP_SLOT, highlightedDepthTexture);
                     batch.draw(gpu::TRIANGLE_STRIP, 4);
+
+                    // Reset the framebuffer for overlay drawing
+                    batch.setFramebuffer(primaryFramebuffer);
                 });
             }
         }
@@ -356,7 +362,9 @@ void DebugHighlight::run(const render::RenderContextPointer& renderContext, cons
         assert(renderContext->args);
         assert(renderContext->args->hasViewFrustum());
         RenderArgs* args = renderContext->args;
+        const auto jitter = input.get2();
 
+        auto primaryFramebuffer = input.get3();
         gpu::doInBatch("DebugHighlight::run", args->_context, [&](gpu::Batch& batch) {
             batch.setViewportTransform(args->_viewport);
             batch.setFramebuffer(highlightRessources->getColorFramebuffer());
@@ -368,6 +376,7 @@ void DebugHighlight::run(const render::RenderContextPointer& renderContext, cons
             args->getViewFrustum().evalProjectionMatrix(projMat);
             args->getViewFrustum().evalViewTransform(viewMat);
             batch.setProjectionTransform(projMat);
+            batch.setProjectionJitter(jitter.x, jitter.y);
             batch.setViewTransform(viewMat, true);
             batch.setModelTransform(Transform());
 
@@ -380,6 +389,9 @@ void DebugHighlight::run(const render::RenderContextPointer& renderContext, cons
             geometryBuffer->renderQuad(batch, bottomLeft, topRight, color, _geometryDepthId);
 
             batch.setResourceTexture(0, nullptr);
+
+            // Reset the framebuffer for overlay drawing
+            batch.setFramebuffer(primaryFramebuffer);
         });
     }
 }
@@ -480,6 +492,7 @@ void DrawHighlightTask::build(JobModel& task, const render::Varying& inputs, ren
     const auto sceneFrameBuffer = inputs.getN<Inputs>(1);
     const auto primaryFramebuffer = inputs.getN<Inputs>(2);
     const auto deferredFrameTransform = inputs.getN<Inputs>(3);
+    const auto jitter = inputs.getN<Inputs>(4);
 
     // Prepare the ShapePipeline
     auto shapePlumber = std::make_shared<ShapePlumber>();
@@ -515,7 +528,7 @@ void DrawHighlightTask::build(JobModel& task, const render::Varying& inputs, ren
             stream << "HighlightMask" << i;
             name = stream.str();
         }
-        const auto drawMaskInputs = DrawHighlightMask::Inputs(sortedBounds, highlightRessources).asVarying();
+        const auto drawMaskInputs = DrawHighlightMask::Inputs(sortedBounds, highlightRessources, jitter).asVarying();
         const auto highlightedRect = task.addJob<DrawHighlightMask>(name, drawMaskInputs, i, shapePlumber, sharedParameters);
         if (i == 0) {
             highlight0Rect = highlightedRect;
@@ -527,12 +540,12 @@ void DrawHighlightTask::build(JobModel& task, const render::Varying& inputs, ren
             stream << "HighlightEffect" << i;
             name = stream.str();
         }
-        const auto drawHighlightInputs = DrawHighlight::Inputs(deferredFrameTransform, highlightRessources, sceneFrameBuffer, highlightedRect).asVarying();
+        const auto drawHighlightInputs = DrawHighlight::Inputs(deferredFrameTransform, highlightRessources, sceneFrameBuffer, highlightedRect, primaryFramebuffer).asVarying();
         task.addJob<DrawHighlight>(name, drawHighlightInputs, i, sharedParameters);
     }
 
     // Debug highlight
-    const auto debugInputs = DebugHighlight::Inputs(highlightRessources, const_cast<const render::Varying&>(highlight0Rect)).asVarying();
+    const auto debugInputs = DebugHighlight::Inputs(highlightRessources, const_cast<const render::Varying&>(highlight0Rect), jitter, primaryFramebuffer).asVarying();
     task.addJob<DebugHighlight>("HighlightDebug", debugInputs);
 }
 

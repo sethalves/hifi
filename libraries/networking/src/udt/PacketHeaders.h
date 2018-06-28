@@ -103,7 +103,7 @@ public:
         RadiusIgnoreRequest,
         UsernameFromIDRequest,
         UsernameFromIDReply,
-        ViewFrustum,
+        AvatarQuery,
         RequestsDomainListData,
         PerAvatarGainSet,
         EntityScriptGetStatus,
@@ -130,6 +130,8 @@ public:
         OctreeDataFileRequest,
         OctreeDataFileReply,
         OctreeDataPersist,
+
+        EntityClone,
 
         NUM_PACKET_TYPE
     };
@@ -232,7 +234,11 @@ enum class EntityVersion : PacketVersion {
     SoftEntities,
     MaterialEntities,
     ShadowControl,
-    MaterialData
+    MaterialData,
+    CloneableData,
+    CollisionMask16Bytes,
+    YieldSimulationOwnership,
+    ParticleEntityFix
 };
 
 enum class EntityScriptCallMethodVersion : PacketVersion {
@@ -244,13 +250,16 @@ enum class EntityQueryPacketVersion: PacketVersion {
     JSONFilter = 18,
     JSONFilterWithFamilyTree = 19,
     ConnectionIdentifier = 20,
-    RemovedJurisdictions = 21
+    RemovedJurisdictions = 21,
+    MultiFrustumQuery = 22,
+    ConicalFrustums = 23
 };
 
 enum class AssetServerPacketVersion: PacketVersion {
     VegasCongestionControl = 19,
     RangeRequestSupport,
-    RedirectedMappings
+    RedirectedMappings,
+    BakingTextureMeta
 };
 
 enum class AvatarMixerPacketVersion : PacketVersion {
@@ -275,7 +284,9 @@ enum class AvatarMixerPacketVersion : PacketVersion {
     AvatarIdentityLookAtSnapping,
     UpdatedMannequinDefaultAvatar,
     AvatarJointDefaultPoseFlags,
-    FBXReaderNodeReparenting
+    FBXReaderNodeReparenting,
+    FixMannequinDefaultAvatarFeet,
+    ProceduralFaceMovementFlagsAndBlendshapes
 };
 
 enum class DomainConnectRequestVersion : PacketVersion {
@@ -321,6 +332,15 @@ enum class MessageDataVersion : PacketVersion {
 
 enum class IcePingVersion : PacketVersion {
     SendICEPeerID = 18
+};
+
+enum class PingVersion : PacketVersion {
+    IncludeConnectionID = 18
+};
+
+enum class AvatarQueryVersion : PacketVersion {
+    SendMultipleFrustums = 21,
+    ConicalFrustums = 22
 };
 
 #endif // hifi_PacketHeaders_h

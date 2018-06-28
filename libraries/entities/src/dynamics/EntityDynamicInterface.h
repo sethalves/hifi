@@ -14,7 +14,9 @@
 
 #include <memory>
 #include <QVariant>
+#include <QVariantMap>
 #include <QUuid>
+
 #include <glm/glm.hpp>
 
 class EntityItem;

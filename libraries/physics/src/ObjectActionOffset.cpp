@@ -11,6 +11,8 @@
 
 #include "QVariantGLM.h"
 #include "ObjectActionOffset.h"
+#include "QVariantGLM.h"
+
 #include "PhysicsLogging.h"
 #include "BulletUtil.h"
 #include "ObjectDynamicUtils.h"
@@ -156,7 +158,7 @@ bool ObjectActionOffset::updateArguments(QVariantMap arguments) {
 QVariantMap ObjectActionOffset::getArguments() {
     QVariantMap arguments = EntityDynamic::getArguments();
     withReadLock([&] {
-        arguments["pointToOffsetFrom"] = glmToQMap(_pointToOffsetFrom);
+        arguments["pointToOffsetFrom"] = vec3ToQMap(_pointToOffsetFrom);
         arguments["linearTimeScale"] = _linearTimeScale;
         arguments["linearDistance"] = _linearDistance;
     });
