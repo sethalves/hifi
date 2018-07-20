@@ -10,8 +10,9 @@
 /* global Script, Entities, Overlays, Controller, Vec3, Quat, getControllerWorldLocation,
    controllerDispatcherPlugins:true, controllerDispatcherPluginsNeedSort:true,
    LEFT_HAND, RIGHT_HAND, NEAR_GRAB_PICK_RADIUS, DEFAULT_SEARCH_SPHERE_DISTANCE, DISPATCHER_PROPERTIES,
-   getGrabPointSphereOffset, HMD, MyAvatar, Messages, findHandChildEntities, Picks, PickType, Pointers,
-   PointerManager
+   getGrabPointSphereOffset, HMD, MyAvatar, Messages, findHandChildEntities, Picks, PickType, Pointers, COLORS_GRAB_SEARCHING_HALF_SQUEEZE
+   COLORS_GRAB_SEARCHING_FULL_SQUEEZE, COLORS_GRAB_DISTANCE_HOLD, TRIGGER_ON_VALUE, PointerManager, print
+   Selection, DISPATCHER_HOVERING_LIST, DISPATCHER_HOVERING_STYLE
 */
 
 controllerDispatcherPlugins = {};
@@ -125,6 +126,9 @@ Script.include("/~/system/libraries/controllerDispatcherUtils.js");
             return getControllerWorldLocation(Controller.Standard.RightHand, true);
         };
 
+        Selection.enableListHighlight(DISPATCHER_HOVERING_LIST, DISPATCHER_HOVERING_STYLE);
+        Selection.enableListToScene(DISPATCHER_HOVERING_LIST);
+
         this.updateTimings = function () {
             _this.intervalCount++;
             var thisInterval = Date.now();
@@ -159,7 +163,7 @@ Script.include("/~/system/libraries/controllerDispatcherUtils.js");
         this.update = function () {
             try {
                 _this.updateInternal();
-            }  catch (e) {
+            } catch (e) {
                 print(e);
             }
             Script.setTimeout(_this.update, BASIC_TIMER_INTERVAL_MS);
@@ -525,6 +529,7 @@ Script.include("/~/system/libraries/controllerDispatcherUtils.js");
                 Overlays.deleteOverlay(_this.debugOverlayID);
             }
             Pointers.removePointer(this.mouseRayPick);
+            Selection.disableListHighlight(DISPATCHER_HOVERING_LIST);
         };
     }
     function mouseReleaseOnOverlay(overlayID, event) {

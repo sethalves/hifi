@@ -236,10 +236,11 @@ public:
             TEXMAPARRAY,
             LIGHTING_MODEL,
             KEY_LIGHT,
-            LIGHT,
+            LIGHT_ARRAY_BUFFER,
             LIGHT_AMBIENT_BUFFER,
             HAZE_MODEL,
             FADE_PARAMETERS,
+            FADE_OBJECT_PARAMETERS,
             LIGHT_CLUSTER_GRID_FRUSTUM_GRID_SLOT,
             LIGHT_CLUSTER_GRID_CLUSTER_GRID_SLOT,
             LIGHT_CLUSTER_GRID_CLUSTER_CONTENT_SLOT,
@@ -254,7 +255,8 @@ public:
             ROUGHNESS,
             OCCLUSION,
             SCATTERING,
-            LIGHT_AMBIENT,
+
+            LIGHT_AMBIENT_MAP = 10,
             FADE_MASK,
         };
     };
@@ -277,6 +279,7 @@ public:
         int lightAmbientMapUnit;
         int fadeMaskTextureUnit;
         int fadeParameterBufferUnit;
+        int fadeObjectParameterBufferUnit;
         int hazeParameterBufferUnit;
         int lightClusterGridBufferUnit;
         int lightClusterContentBufferUnit;

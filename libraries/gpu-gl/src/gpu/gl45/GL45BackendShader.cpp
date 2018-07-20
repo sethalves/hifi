@@ -6,7 +6,7 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 #include "GL45Backend.h"
-#include "../gl/GLShader.h"
+#include <gpu/gl/GLShader.h>
 //#include <gl/GLShaders.h>
 
 using namespace gpu;
@@ -15,18 +15,20 @@ using namespace gpu::gl45;
 
 // GLSL version
 std::string GL45Backend::getBackendShaderHeader() const {
-    const char header[] = 
-R"GLSL(#version 450 core
-#define GPU_GL450
-)GLSL"
+    static const std::string header(
+        R"SHADER(#version 450 core
+        #define GPU_GL450
+        #define BITFIELD int
+        )SHADER"
 #ifdef GPU_SSBO_TRANSFORM_OBJECT
-        R"GLSL(#define GPU_SSBO_TRANSFORM_OBJECT 1)GLSL"
+        R"SHADER(#define GPU_SSBO_TRANSFORM_OBJECT)SHADER"
 #endif
-    ;
-    return std::string(header);
+    );
+    return header;
 }
 
-int GL45Backend::makeResourceBufferSlots(GLuint glprogram, const Shader::BindingSet& slotBindings,Shader::SlotSet& resourceBuffers) {
+int GL45Backend::makeResourceBufferSlots(const ShaderObject& shaderProgram, const Shader::BindingSet& slotBindings,Shader::SlotSet& resourceBuffers) {
+    const auto& glprogram = shaderProgram.glprogram;
     GLint buffersCount = 0;
     glGetProgramInterfaceiv(glprogram, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES, &buffersCount);
 
@@ -70,7 +72,7 @@ int GL45Backend::makeResourceBufferSlots(GLuint glprogram, const Shader::Binding
         auto requestedBinding = slotBindings.find(info.name);
         if (requestedBinding != slotBindings.end()) {
             info.binding = (*requestedBinding)._location;
-            glUniformBlockBinding(glprogram, info.index, info.binding);
+            glShaderStorageBlockBinding(glprogram, info.index, info.binding);
             resourceBufferSlotMap[info.binding] = info.index;
         }
     }
@@ -86,7 +88,7 @@ int GL45Backend::makeResourceBufferSlots(GLuint glprogram, const Shader::Binding
             auto slotIt = std::find_if(resourceBufferSlotMap.begin(), resourceBufferSlotMap.end(), GLBackend::isUnusedSlot);
             if (slotIt != resourceBufferSlotMap.end()) {
                 info.binding = slotIt - resourceBufferSlotMap.begin();
-                glUniformBlockBinding(glprogram, info.index, info.binding);
+                glShaderStorageBlockBinding(glprogram, info.index, info.binding);
             } else {
                 // This should never happen, an active ssbo cannot find an available slot among the max available?!
                 info.binding = -1;
@@ -163,6 +165,11 @@ void GL45Backend::makeProgramBindings(ShaderObject& shaderObject) {
     if (loc >= 0) {
         glUniformBlockBinding(glprogram, loc, gpu::TRANSFORM_CAMERA_SLOT);
         shaderObject.transformCameraSlot = gpu::TRANSFORM_CAMERA_SLOT;
+    }
+
+    loc = glGetUniformBlockIndex(glprogram, "gpu_resourceTextureTable0");
+    if (loc >= 0) {
+        glUniformBlockBinding(glprogram, loc, RESOURCE_TABLE_TEXTURE_SLOT_OFFSET);
     }
 
     (void)CHECK_GL_ERROR();

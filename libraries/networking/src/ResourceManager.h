@@ -22,19 +22,13 @@
 
 #include "ResourceRequest.h"
 
-const QString URL_SCHEME_QRC = "qrc";
-const QString URL_SCHEME_FILE = "file";
-const QString URL_SCHEME_HTTP = "http";
-const QString URL_SCHEME_HTTPS = "https";
-const QString URL_SCHEME_FTP = "ftp";
-const QString URL_SCHEME_ATP = "atp";
-
 class ResourceManager: public QObject, public Dependency {
     Q_OBJECT
     SINGLETON_DEPENDENCY
 
 public:
     ResourceManager(bool atpSupportEnabled = true);
+    ~ResourceManager();
 
     void setUrlPrefixOverride(const QString& prefix, const QString& replacement);
     QString normalizeURL(const QString& urlString);

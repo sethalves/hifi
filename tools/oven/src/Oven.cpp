@@ -25,12 +25,6 @@ Oven* Oven::_staticInstance { nullptr };
 Oven::Oven() {
     _staticInstance = this;
 
-    // enable compression in image library
-    image::setColorTexturesCompressionEnabled(true);
-    image::setGrayscaleTexturesCompressionEnabled(true);
-    image::setNormalTexturesCompressionEnabled(true);
-    image::setCubeTexturesCompressionEnabled(true);
-
     // setup our worker threads
     setupWorkerThreads(QThread::idealThreadCount());
 
@@ -40,6 +34,8 @@ Oven::Oven() {
 }
 
 Oven::~Oven() {
+    DependencyManager::get<ResourceManager>()->cleanup();
+
     // quit all worker threads and wait on them
     for (auto& thread : _workerThreads) {
         thread->quit();

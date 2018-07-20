@@ -49,13 +49,21 @@ const float DISPLAYNAME_FADE_FACTOR = pow(0.01f, 1.0f / DISPLAYNAME_FADE_TIME);
 const float DISPLAYNAME_ALPHA = 1.0f;
 const float DISPLAYNAME_BACKGROUND_ALPHA = 0.4f;
 const glm::vec3 HAND_TO_PALM_OFFSET(0.0f, 0.12f, 0.08f);
+const float Avatar::MYAVATAR_LOADING_PRIORITY = (float)M_PI; // Entity priority is computed as atan2(maxDim, distance) which is <= PI / 2
+const float Avatar::OTHERAVATAR_LOADING_PRIORITY = MYAVATAR_LOADING_PRIORITY - EPSILON;
+const float Avatar::ATTACHMENT_LOADING_PRIORITY = OTHERAVATAR_LOADING_PRIORITY - EPSILON;
 
 namespace render {
     template <> const ItemKey payloadGetKey(const AvatarSharedPointer& avatar) {
-        return ItemKey::Builder::opaqueShape().withTypeMeta().withTagBits(ItemKey::TAG_BITS_0 | ItemKey::TAG_BITS_1).withMetaCullGroup();
+        ItemKey::Builder keyBuilder = ItemKey::Builder::opaqueShape().withTypeMeta().withTagBits(render::hifi::TAG_ALL_VIEWS).withMetaCullGroup();
+        auto avatarPtr = static_pointer_cast<Avatar>(avatar);
+        if (!avatarPtr->getEnableMeshVisible()) {
+            keyBuilder.withInvisible();
+        }
+        return keyBuilder.build();
     }
     template <> const Item::Bound payloadGetBound(const AvatarSharedPointer& avatar) {
-        return static_pointer_cast<Avatar>(avatar)->getBounds();
+        return static_pointer_cast<Avatar>(avatar)->getRenderBounds();
     }
     template <> void payloadRender(const AvatarSharedPointer& avatar, RenderArgs* args) {
         auto avatarPtr = static_pointer_cast<Avatar>(avatar);
@@ -164,6 +172,11 @@ AABox Avatar::getBounds() const {
     return _skeletonModel->getRenderableMeshBound();
 }
 
+
+AABox Avatar::getRenderBounds() const {
+    return _renderBound;
+}
+
 void Avatar::animateScaleChanges(float deltaTime) {
 
     if (_isAnimatingScale) {
@@ -199,6 +212,8 @@ void Avatar::setTargetScale(float targetScale) {
         _targetScale = newValue;
         _scaleChanged = usecTimestampNow();
         _isAnimatingScale = true;
+
+        emit targetScaleChanged(targetScale);
     }
 }
 
@@ -221,8 +236,12 @@ void Avatar::updateAvatarEntities() {
         return;
     }
 
-    if (getID() == QUuid() || getID() == AVATAR_SELF_ID) {
-        return; // wait until MyAvatar gets an ID before doing this.
+    if (getID().isNull() ||
+        getID() == AVATAR_SELF_ID ||
+        DependencyManager::get<NodeList>()->getSessionUUID() == QUuid()) {
+        // wait until MyAvatar and this Node gets an ID before doing this.  Otherwise, various things go wrong --
+        // things get their parent fixed up from AVATAR_SELF_ID to a null uuid which means "no parent".
+        return;
     }
 
     auto treeRenderer = DependencyManager::get<EntityTreeRenderer>();
@@ -290,7 +309,6 @@ void Avatar::updateAvatarEntities() {
             // NOTE: if this avatar entity is not attached to us, strip its entity script completely...
             auto attachedScript = properties.getScript();
             if (!isMyAvatar() && !attachedScript.isEmpty()) {
-                qCDebug(avatars_renderer) << "removing entity script from avatar attached entity:" << entityID << "old script:" << attachedScript;
                 QString noScript;
                 properties.setScript(noScript);
             }
@@ -537,10 +555,17 @@ void Avatar::measureMotionDerivatives(float deltaTime) {
 
     // angular
     glm::quat orientation = getWorldOrientation();
-    glm::quat delta = glm::inverse(_lastOrientation) * orientation;
-    glm::vec3 angularVelocity = glm::axis(delta) * glm::angle(delta) * invDeltaTime;
-    setWorldAngularVelocity(angularVelocity);
-    _lastOrientation = getWorldOrientation();
+    float changeDot = glm::abs(glm::dot(orientation, _lastOrientation));
+    float CHANGE_DOT_THRESHOLD = 0.9999f;
+    if (changeDot < CHANGE_DOT_THRESHOLD) {
+        float angle = 2.0f * acosf(changeDot);
+        glm::quat delta = glm::inverse(_lastOrientation) * orientation;
+        glm::vec3 angularVelocity = (angle * invDeltaTime) * glm::axis(delta);
+        setWorldAngularVelocity(angularVelocity);
+        _lastOrientation = orientation;
+    } else {
+        setWorldAngularVelocity(glm::vec3(0.0f));
+    }
 }
 
 enum TextRendererType {
@@ -565,16 +590,26 @@ static TextRenderer3D* textRenderer(TextRendererType type) {
 
 void Avatar::addToScene(AvatarSharedPointer self, const render::ScenePointer& scene, render::Transaction& transaction) {
     auto avatarPayload = new render::Payload<AvatarData>(self);
-    auto avatarPayloadPointer = Avatar::PayloadPointer(avatarPayload);
-
+    auto avatarPayloadPointer = std::shared_ptr<render::Payload<AvatarData>>(avatarPayload);
     if (_renderItemID == render::Item::INVALID_ITEM_ID) {
         _renderItemID = scene->allocateID();
     }
+    // INitialize the _render bound as we are creating the avatar render item
+    _renderBound = getBounds();
     transaction.resetItem(_renderItemID, avatarPayloadPointer);
     _skeletonModel->addToScene(scene, transaction);
+    _skeletonModel->setTagMask(render::hifi::TAG_ALL_VIEWS);
+    _skeletonModel->setGroupCulled(true);
+    _skeletonModel->setCanCastShadow(true);
+    _skeletonModel->setVisibleInScene(_isMeshVisible, scene);
+
     processMaterials();
     for (auto& attachmentModel : _attachmentModels) {
         attachmentModel->addToScene(scene, transaction);
+        attachmentModel->setTagMask(render::hifi::TAG_ALL_VIEWS);
+        attachmentModel->setGroupCulled(false);
+        attachmentModel->setCanCastShadow(true);
+        attachmentModel->setVisibleInScene(_isMeshVisible, scene);
     }
 
     _mustFadeIn = true;
@@ -633,7 +668,15 @@ void Avatar::removeFromScene(AvatarSharedPointer self, const render::ScenePointe
 
 void Avatar::updateRenderItem(render::Transaction& transaction) {
     if (render::Item::isValidID(_renderItemID)) {
-        transaction.updateItem<render::Payload<AvatarData>>(_renderItemID, [](render::Payload<AvatarData>& p) {});
+        auto renderBound = getBounds();
+        transaction.updateItem<AvatarData>(_renderItemID,
+            [renderBound](AvatarData& avatar) {
+                auto avatarPtr = dynamic_cast<Avatar*>(&avatar);
+                if (avatarPtr) {
+                    avatarPtr->_renderBound = renderBound;
+                }
+            }
+      );
     }
 }
 
@@ -755,6 +798,18 @@ void Avatar::render(RenderArgs* renderArgs) {
     }
 }
 
+
+void Avatar::setEnableMeshVisible(bool isEnabled) {
+    if (_isMeshVisible != isEnabled) {
+        _isMeshVisible = isEnabled;
+        _needMeshVisibleSwitch = true;
+    }
+}
+
+bool Avatar::getEnableMeshVisible() const {
+    return _isMeshVisible;
+}
+
 void Avatar::fixupModelsInScene(const render::ScenePointer& scene) {
     bool canTryFade{ false };
 
@@ -766,6 +821,12 @@ void Avatar::fixupModelsInScene(const render::ScenePointer& scene) {
     if (_skeletonModel->isRenderable() && _skeletonModel->needsFixupInScene()) {
         _skeletonModel->removeFromScene(scene, transaction);
         _skeletonModel->addToScene(scene, transaction);
+
+        _skeletonModel->setTagMask(render::hifi::TAG_ALL_VIEWS);
+        _skeletonModel->setGroupCulled(true);
+        _skeletonModel->setCanCastShadow(true);
+        _skeletonModel->setVisibleInScene(_isMeshVisible, scene);
+
         processMaterials();
         canTryFade = true;
         _isAnimatingScale = true;
@@ -774,7 +835,23 @@ void Avatar::fixupModelsInScene(const render::ScenePointer& scene) {
         if (attachmentModel->isRenderable() && attachmentModel->needsFixupInScene()) {
             attachmentModel->removeFromScene(scene, transaction);
             attachmentModel->addToScene(scene, transaction);
+
+            attachmentModel->setTagMask(render::hifi::TAG_ALL_VIEWS);
+            attachmentModel->setGroupCulled(false);
+            attachmentModel->setCanCastShadow(true);
+            attachmentModel->setVisibleInScene(_isMeshVisible, scene);
         }
+    }
+
+    if (_needMeshVisibleSwitch) {
+        _skeletonModel->setVisibleInScene(_isMeshVisible, scene);
+        for (auto attachmentModel : _attachmentModels) {
+            if (attachmentModel->isRenderable()) {
+                attachmentModel->setVisibleInScene(_isMeshVisible, scene);
+            }
+        }
+        updateRenderItem(transaction);
+        _needMeshVisibleSwitch = false;
     }
 
     if (_mustFadeIn && canTryFade) {
@@ -795,7 +872,6 @@ bool Avatar::shouldRenderHead(const RenderArgs* renderArgs) const {
     return true;
 }
 
-// virtual
 void Avatar::simulateAttachments(float deltaTime) {
     assert(_attachmentModels.size() == _attachmentModelsTexturesLoaded.size());
     PerformanceTimer perfTimer("attachments");
@@ -1264,6 +1340,9 @@ void Avatar::scaleVectorRelativeToPosition(glm::vec3 &positionToScale) const {
 }
 
 void Avatar::setSkeletonModelURL(const QUrl& skeletonModelURL) {
+    if (!isMyAvatar()) {
+        createOrb();
+    }
     AvatarData::setSkeletonModelURL(skeletonModelURL);
     if (QThread::currentThread() == thread()) {
         _skeletonModel->setURL(_skeletonModelURL);
@@ -1353,6 +1432,7 @@ void Avatar::setAttachmentData(const QVector<AttachmentData>& attachmentData) {
         if (_attachmentModels[i]->getURL() != attachmentData[i].modelURL) {
             _attachmentModelsTexturesLoaded[i] = false;
         }
+        _attachmentModels[i]->setLoadingPriority(ATTACHMENT_LOADING_PRIORITY);
         _attachmentModels[i]->setURL(attachmentData[i].modelURL);
     }
 }
@@ -1478,12 +1558,13 @@ void Avatar::updateDisplayNameAlpha(bool showDisplayName) {
     }
 }
 
-// virtual
 void Avatar::computeShapeInfo(ShapeInfo& shapeInfo) {
     float uniformScale = getModelScale();
-    shapeInfo.setCapsuleY(uniformScale * _skeletonModel->getBoundingCapsuleRadius(),
-            0.5f * uniformScale *  _skeletonModel->getBoundingCapsuleHeight());
-    shapeInfo.setOffset(uniformScale * _skeletonModel->getBoundingCapsuleOffset());
+    float radius = glm::max(MIN_AVATAR_RADIUS, uniformScale * _skeletonModel->getBoundingCapsuleRadius());
+    float height = glm::max(MIN_AVATAR_HEIGHT, uniformScale *  _skeletonModel->getBoundingCapsuleHeight());
+    shapeInfo.setCapsuleY(radius, 0.5f * height);
+    glm::vec3 offset = uniformScale * _skeletonModel->getBoundingCapsuleOffset();
+    shapeInfo.setOffset(offset);
 }
 
 void Avatar::getCapsule(glm::vec3& start, glm::vec3& end, float& radius) {
@@ -1506,9 +1587,8 @@ float Avatar::computeMass() {
     return _density * TWO_PI * radius * radius * (glm::length(end - start) + 2.0f * radius / 3.0f);
 }
 
-// virtual
 void Avatar::rebuildCollisionShape() {
-    addPhysicsFlags(Simulation::DIRTY_SHAPE);
+    addPhysicsFlags(Simulation::DIRTY_SHAPE | Simulation::DIRTY_MASS);
 }
 
 void Avatar::setPhysicsCallback(AvatarPhysicsCallback cb) {

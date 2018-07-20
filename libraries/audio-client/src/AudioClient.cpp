@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "AudioClient.h"
+
 #include <cstring>
 #include <math.h>
 #include <sys/stat.h>
@@ -49,8 +51,6 @@
 #include "AudioClientLogging.h"
 #include "AudioLogging.h"
 #include "AudioHelpers.h"
-
-#include "AudioClient.h"
 
 const int AudioClient::MIN_BUFFER_FRAMES = 1;
 
@@ -757,7 +757,7 @@ void AudioClient::Gate::flush() {
 
 void AudioClient::handleNoisyMutePacket(QSharedPointer<ReceivedMessage> message) {
     if (!_muted) {
-        toggleMute();
+        setMuted(true);
 
         // have the audio scripting interface emit a signal to say we were muted by the mixer
         emit mutedByMixer();
@@ -1384,15 +1384,21 @@ void AudioClient::sendMuteEnvironmentPacket() {
     }
 }
 
-void AudioClient::toggleMute() {
-    _muted = !_muted;
-    emit muteToggled();
+void AudioClient::setMuted(bool muted, bool emitSignal) {
+    if (_muted != muted) {
+        _muted = muted;
+        if (emitSignal) {
+            emit muteToggled(_muted);
+        }
+    }
 }
 
-void AudioClient::setNoiseReduction(bool enable) {
+void AudioClient::setNoiseReduction(bool enable, bool emitSignal) {
     if (_isNoiseGateEnabled != enable) {
         _isNoiseGateEnabled = enable;
-        emit noiseReductionChanged();
+        if (emitSignal) {
+            emit noiseReductionChanged(_isNoiseGateEnabled);
+        }
     }
 }
 
@@ -1420,6 +1426,8 @@ bool AudioClient::setIsStereoInput(bool isStereoInput) {
 
         // restart the input device
         switchInputToAudioDevice(_inputDeviceInfo);
+
+        emit isStereoInputChanged(_isStereoInput);
     }
 
     return stereoInputChanged;
@@ -1457,6 +1465,8 @@ void AudioClient::outputFormatChanged() {
 }
 
 bool AudioClient::switchInputToAudioDevice(const QAudioDeviceInfo inputDeviceInfo, bool isShutdownRequest) {
+    Q_ASSERT_X(QThread::currentThread() == thread(), Q_FUNC_INFO, "Function invoked on wrong thread");
+
     qCDebug(audioclient) << __FUNCTION__ << "inputDeviceInfo: [" << inputDeviceInfo.deviceName() << "]";
     bool supportedFormat = false;
 
@@ -1657,6 +1667,8 @@ void AudioClient::outputNotify() {
 }
 
 bool AudioClient::switchOutputToAudioDevice(const QAudioDeviceInfo outputDeviceInfo, bool isShutdownRequest) {
+    Q_ASSERT_X(QThread::currentThread() == thread(), Q_FUNC_INFO, "Function invoked on wrong thread");
+
     qCDebug(audioclient) << "AudioClient::switchOutputToAudioDevice() outputDeviceInfo: [" << outputDeviceInfo.deviceName() << "]";
     bool supportedFormat = false;
 
@@ -2015,12 +2027,14 @@ void AudioClient::setAvatarBoundingBoxParameters(glm::vec3 corner, glm::vec3 sca
 
 
 void AudioClient::startThread() {
-    moveToNewNamedThread(this, "Audio Thread", [this] { start(); });
+    moveToNewNamedThread(this, "Audio Thread", [this] { start(); }, QThread::TimeCriticalPriority);
 }
 
-void AudioClient::setInputVolume(float volume) {
+void AudioClient::setInputVolume(float volume, bool emitSignal) {
     if (_audioInput && volume != (float)_audioInput->volume()) {
         _audioInput->setVolume(volume);
-        emit inputVolumeChanged(_audioInput->volume());
+        if (emitSignal) {
+            emit inputVolumeChanged(_audioInput->volume());
+        }
     }
 }

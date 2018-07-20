@@ -19,13 +19,15 @@ void RenderViewTask::build(JobModel& task, const render::Varying& input, render:
 
     // Warning : the cull functor passed to the shadow pass should only be testing for LOD culling. If frustum culling
     // is performed, then casters not in the view frustum will be removed, which is not what we wish.
-    task.addJob<RenderShadowTask>("RenderShadowTask", cullFunctor, tagBits, tagMask);
+    if (isDeferred) {
+        task.addJob<RenderShadowTask>("RenderShadowTask", cullFunctor, tagBits, tagMask);
+    }
 
     const auto items = task.addJob<RenderFetchCullSortTask>("FetchCullSort", cullFunctor, tagBits, tagMask);
     assert(items.canCast<RenderFetchCullSortTask::Output>());
 
     if (isDeferred) {
-        task.addJob<RenderDeferredTask>("RenderDeferredTask", items);
+        task.addJob<RenderDeferredTask>("RenderDeferredTask", items, true);
     } else {
         task.addJob<RenderForwardTask>("Forward", items);
     }

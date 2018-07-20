@@ -46,7 +46,7 @@ public slots:
 private slots:
     void queueIncomingPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer node);
     void handleAdjustAvatarSorting(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
-    void handleViewFrustumPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
+    void handleAvatarQueryPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleAvatarIdentityPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleKillAvatarPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleNodeIgnoreRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
@@ -54,6 +54,7 @@ private slots:
     void handleRequestsDomainListDataPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void handleReplicatedPacket(QSharedPointer<ReceivedMessage> message);
     void handleReplicatedBulkAvatarPacket(QSharedPointer<ReceivedMessage> message);
+    void handleAvatarIdentityRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer senderNode);
     void domainSettingsRequestComplete();
     void handlePacketVersionMismatch(PacketType type, const HifiSockAddr& senderSockAddr, const QUuid& senderUUID);
     void start();

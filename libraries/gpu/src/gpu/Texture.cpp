@@ -184,12 +184,20 @@ TexturePointer Texture::createRenderBuffer(const Element& texelFormat, uint16 wi
     return create(TextureUsageType::RENDERBUFFER, TEX_2D, texelFormat, width, height, 1, 1, 0, numMips, sampler);
 }
 
+TexturePointer Texture::createRenderBufferArray(const Element& texelFormat, uint16 width, uint16 height, uint16 numSlices, uint16 numMips, const Sampler& sampler) {
+    return create(TextureUsageType::RENDERBUFFER, TEX_2D, texelFormat, width, height, 1, 1, numSlices, numMips, sampler);
+}
+
 TexturePointer Texture::create1D(const Element& texelFormat, uint16 width, uint16 numMips, const Sampler& sampler) {
     return create(TextureUsageType::RESOURCE, TEX_1D, texelFormat, width, 1, 1, 1, 0, numMips, sampler);
 }
 
 TexturePointer Texture::create2D(const Element& texelFormat, uint16 width, uint16 height, uint16 numMips, const Sampler& sampler) {
     return create(TextureUsageType::RESOURCE, TEX_2D, texelFormat, width, height, 1, 1, 0, numMips, sampler);
+}
+
+TexturePointer Texture::create2DArray(const Element& texelFormat, uint16 width, uint16 height, uint16 numSlices, uint16 numMips, const Sampler& sampler) {
+    return create(TextureUsageType::STRICT_RESOURCE, TEX_2D, texelFormat, width, height, 1, 1, numSlices, numMips, sampler);
 }
 
 TexturePointer Texture::createStrict(const Element& texelFormat, uint16 width, uint16 height, uint16 numMips, const Sampler& sampler) {
@@ -684,9 +692,9 @@ bool sphericalHarmonicsFromTexture(const gpu::Texture& cubeTexture, std::vector<
 
     PROFILE_RANGE(render_gpu, "sphericalHarmonicsFromTexture");
 
+#ifndef USE_GLES
     auto mipFormat = cubeTexture.getStoredMipFormat();
     std::function<glm::vec3(uint32)> unpackFunc;
-
     switch (mipFormat.getSemantic()) {
         case gpu::R11G11B10:
             unpackFunc = glm::unpackF2x11_1x10;
@@ -698,6 +706,7 @@ bool sphericalHarmonicsFromTexture(const gpu::Texture& cubeTexture, std::vector<
             assert(false);
             break;
     }
+#endif
 
     const uint sqOrder = order*order;
 
@@ -732,7 +741,11 @@ bool sphericalHarmonicsFromTexture(const gpu::Texture& cubeTexture, std::vector<
     for(int face=0; face < gpu::Texture::NUM_CUBE_FACES; face++) {
         PROFILE_RANGE(render_gpu, "ProcessFace");
 
+#ifndef USE_GLES
         auto data = reinterpret_cast<const uint32*>( cubeTexture.accessStoredMipFace(0, face)->readData() );
+#else
+        auto data = cubeTexture.accessStoredMipFace(0, face)->readData();
+#endif
         if (data == nullptr) {
             continue;
         }
@@ -816,8 +829,15 @@ bool sphericalHarmonicsFromTexture(const gpu::Texture& cubeTexture, std::vector<
                 glm::vec3 color{ 0.0f, 0.0f, 0.0f };
                 for (int i = 0; i < stride; ++i) {
                     for (int j = 0; j < stride; ++j) {
+#ifndef USE_GLES
                         int k = (int)(x + i - halfStride + (y + j - halfStride) * width);
                         color += unpackFunc(data[k]);
+#else
+                        const int NUM_COMPONENTS_PER_PIXEL = 4;
+                        int k = NUM_COMPONENTS_PER_PIXEL * (int)(x + i - halfStride + (y + j - halfStride) * width);
+                        // BGRA -> RGBA
+                        color += glm::pow(glm::vec3(data[k + 2], data[k + 1], data[k]) / 255.0f, glm::vec3(2.2f));
+#endif
                     }
                 }
 

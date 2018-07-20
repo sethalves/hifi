@@ -9,9 +9,14 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "AvatarManager.h"
+
 #include <string>
 
 #include <QScriptEngine>
+#include <QtCore/QJsonDocument>
+
+#include "AvatarLogging.h"
 
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
@@ -34,13 +39,13 @@
 #include <SettingHandle.h>
 #include <UsersScriptingInterface.h>
 #include <UUID.h>
-#include <avatars-renderer/OtherAvatar.h>
+#include <shared/ConicalViewFrustum.h>
 
 #include "Application.h"
-#include "AvatarManager.h"
 #include "InterfaceLogging.h"
 #include "Menu.h"
 #include "MyAvatar.h"
+#include "OtherAvatar.h"
 #include "SceneScriptingInterface.h"
 
 // 50 times per second - target is 45hz, but this helps account for any small deviations
@@ -51,6 +56,13 @@ static const quint64 MIN_TIME_BETWEEN_MY_AVATAR_DATA_SENDS = USECS_PER_SECOND / 
 
 // We add _myAvatar into the hash with all the other AvatarData, and we use the default NULL QUid as the key.
 const QUuid MY_AVATAR_KEY;  // NULL key
+
+namespace {
+    // For an unknown avatar-data packet, wait this long before requesting the identity.
+    constexpr std::chrono::milliseconds REQUEST_UNKNOWN_IDENTITY_DELAY { 5 * 1000 };
+    constexpr int REQUEST_UNKNOWN_IDENTITY_TRANSMITS = 3;
+}
+using std::chrono::steady_clock;
 
 AvatarManager::AvatarManager(QObject* parent) :
     _avatarsToFade(),
@@ -102,6 +114,9 @@ void AvatarManager::updateMyAvatar(float deltaTime) {
     PerformanceWarning warn(showWarnings, "AvatarManager::updateMyAvatar()");
 
     _myAvatar->update(deltaTime);
+    render::Transaction transaction;
+    _myAvatar->updateRenderItem(transaction);
+    qApp->getMain3DScene()->enqueueTransaction(transaction);
 
     quint64 now = usecTimestampNow();
     quint64 dt = now - _lastSendAvatarDataTime;
@@ -113,6 +128,7 @@ void AvatarManager::updateMyAvatar(float deltaTime) {
         _lastSendAvatarDataTime = now;
         _myAvatarSendRate.increment();
     }
+
 }
 
 
@@ -155,9 +171,9 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
         AvatarSharedPointer _avatar;
     };
 
-    ViewFrustum cameraView;
-    qApp->copyDisplayViewFrustum(cameraView);
-    PrioritySortUtil::PriorityQueue<SortableAvatar> sortedAvatars(cameraView,
+
+    const auto& views = qApp->getConicalViews();
+    PrioritySortUtil::PriorityQueue<SortableAvatar> sortedAvatars(views,
             AvatarData::_avatarSortCoefficientSize,
             AvatarData::_avatarSortCoefficientCenter,
             AvatarData::_avatarSortCoefficientAge);
@@ -181,11 +197,21 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
     uint64_t updateExpiry = startTime + UPDATE_BUDGET;
     int numAvatarsUpdated = 0;
     int numAVatarsNotUpdated = 0;
+    bool physicsEnabled = qApp->isPhysicsEnabled();
 
     render::Transaction transaction;
     while (!sortedAvatars.empty()) {
         const SortableAvatar& sortData = sortedAvatars.top();
         const auto avatar = std::static_pointer_cast<Avatar>(sortData.getAvatar());
+        const auto otherAvatar = std::static_pointer_cast<OtherAvatar>(sortData.getAvatar());
+
+        // if the geometry is loaded then turn off the orb
+        if (avatar->getSkeletonModel()->isLoaded()) {
+            // remove the orb if it is there
+            otherAvatar->removeOrb();
+        } else {
+            otherAvatar->updateOrbPosition();
+        }
 
         bool ignoring = DependencyManager::get<NodeList>()->isPersonalMutingNode(avatar->getID());
         if (ignoring) {
@@ -197,7 +223,7 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
         if (_shouldRender) {
             avatar->ensureInScene(avatar, qApp->getMain3DScene());
         }
-        if (!avatar->isInPhysicsSimulation()) {
+        if (physicsEnabled && !avatar->isInPhysicsSimulation()) {
             ShapeInfo shapeInfo;
             avatar->computeShapeInfo(shapeInfo);
             btCollisionShape* shape = const_cast<btCollisionShape*>(ObjectMotionState::getShapeManager()->getShape(shapeInfo));
@@ -271,6 +297,28 @@ void AvatarManager::updateOtherAvatars(float deltaTime) {
 
     simulateAvatarFades(deltaTime);
 
+    // Check on avatars with pending identities:
+    steady_clock::time_point now = steady_clock::now();
+    QWriteLocker writeLock(&_hashLock);
+    for (auto pendingAvatar = _pendingAvatars.begin(); pendingAvatar != _pendingAvatars.end(); ++pendingAvatar) {
+        if (now - pendingAvatar->creationTime >= REQUEST_UNKNOWN_IDENTITY_DELAY) {
+            // Too long without an ID
+            sendIdentityRequest(pendingAvatar->avatar->getID());
+            if (++pendingAvatar->transmits >= REQUEST_UNKNOWN_IDENTITY_TRANSMITS) {
+                qCDebug(avatars) << "Requesting identity for unknown avatar (final request)" <<
+                    pendingAvatar->avatar->getID().toString();
+
+                pendingAvatar = _pendingAvatars.erase(pendingAvatar);
+                if (pendingAvatar == _pendingAvatars.end()) {
+                    break;
+                }
+            } else {
+                pendingAvatar->creationTime = now;
+                qCDebug(avatars) << "Requesting identity for unknown avatar" << pendingAvatar->avatar->getID().toString();
+            }
+        }
+    }
+
     _avatarSimulationTime = (float)(usecTimestampNow() - startTime) / (float)USECS_PER_MSEC;
 }
 
@@ -281,6 +329,20 @@ void AvatarManager::postUpdate(float deltaTime, const render::ScenePointer& scen
         auto avatar = std::static_pointer_cast<Avatar>(avatarIterator.value());
         avatar->postUpdate(deltaTime, scene);
     }
+}
+
+void AvatarManager::sendIdentityRequest(const QUuid& avatarID) const {
+    auto nodeList = DependencyManager::get<NodeList>();
+    nodeList->eachMatchingNode(
+        [&](const SharedNodePointer& node)->bool {
+        return node->getType() == NodeType::AvatarMixer && node->getActiveSocket();
+    },
+        [&](const SharedNodePointer& node) {
+        auto packet = NLPacket::create(PacketType::AvatarIdentityRequest, NUM_BYTES_RFC4122_UUID, true);
+        packet->write(avatarID.toRfc4122());
+        nodeList->sendPacket(std::move(packet), *node);
+        ++_identityRequestsSent;
+    });
 }
 
 void AvatarManager::simulateAvatarFades(float deltaTime) {
@@ -463,13 +525,14 @@ void AvatarManager::updateAvatarRenderStatus(bool shouldRenderAvatars) {
     _shouldRender = shouldRenderAvatars;
     const render::ScenePointer& scene = qApp->getMain3DScene();
     render::Transaction transaction;
+    auto avatarHashCopy = getHashCopy();
     if (_shouldRender) {
-        for (auto avatarData : _avatarHash) {
+        for (auto avatarData : avatarHashCopy) {
             auto avatar = std::static_pointer_cast<Avatar>(avatarData);
             avatar->addToScene(avatar, scene, transaction);
         }
     } else {
-        for (auto avatarData : _avatarHash) {
+        for (auto avatarData : avatarHashCopy) {
             auto avatar = std::static_pointer_cast<Avatar>(avatarData);
             avatar->removeFromScene(avatar, scene, transaction);
         }
@@ -509,7 +572,8 @@ RayToAvatarIntersectionResult AvatarManager::findRayIntersectionVector(const Pic
 
     glm::vec3 normDirection = glm::normalize(ray.direction);
 
-    for (auto avatarData : _avatarHash) {
+    auto avatarHashCopy = getHashCopy();
+    for (auto avatarData : avatarHashCopy) {
         auto avatar = std::static_pointer_cast<Avatar>(avatarData);
         if ((avatarsToInclude.size() > 0 && !avatarsToInclude.contains(avatar->getID())) ||
             (avatarsToDiscard.size() > 0 && avatarsToDiscard.contains(avatar->getID()))) {
@@ -604,4 +668,50 @@ void AvatarManager::setAvatarSortCoefficient(const QString& name, const QScriptV
         packet->writePrimitive(AvatarData::_avatarSortCoefficientAge);
         DependencyManager::get<NodeList>()->broadcastToNodes(std::move(packet), NodeSet() << NodeType::AvatarMixer);
     }
+}
+
+ QVariantMap AvatarManager::getPalData(const QList<QString> specificAvatarIdentifiers) {
+    QJsonArray palData;
+
+    auto avatarMap = getHashCopy();
+    AvatarHash::iterator itr = avatarMap.begin();
+    while (itr != avatarMap.end()) {
+        std::shared_ptr<Avatar> avatar = std::static_pointer_cast<Avatar>(*itr);
+        QString currentSessionUUID = avatar->getSessionUUID().toString();
+        if (specificAvatarIdentifiers.isEmpty() || specificAvatarIdentifiers.contains(currentSessionUUID)) {
+            QJsonObject thisAvatarPalData;
+            
+            auto myAvatar = DependencyManager::get<AvatarManager>()->getMyAvatar();
+
+            if (currentSessionUUID == myAvatar->getSessionUUID().toString()) {
+                currentSessionUUID = "";
+            }
+            
+            thisAvatarPalData.insert("sessionUUID", currentSessionUUID);
+            thisAvatarPalData.insert("sessionDisplayName", avatar->getSessionDisplayName());
+            thisAvatarPalData.insert("audioLoudness", avatar->getAudioLoudness());
+            thisAvatarPalData.insert("isReplicated", avatar->getIsReplicated());
+
+            glm::vec3 position = avatar->getWorldPosition();
+            QJsonObject jsonPosition;
+            jsonPosition.insert("x", position.x);
+            jsonPosition.insert("y", position.y);
+            jsonPosition.insert("z", position.z);
+            thisAvatarPalData.insert("position", jsonPosition);
+
+            float palOrbOffset = 0.2f;
+            int headIndex = avatar->getJointIndex("Head");
+            if (headIndex > 0) {
+                glm::vec3 jointTranslation = avatar->getAbsoluteJointTranslationInObjectFrame(headIndex);
+                palOrbOffset = jointTranslation.y / 2;
+            }
+            thisAvatarPalData.insert("palOrbOffset", palOrbOffset);
+
+            palData.append(thisAvatarPalData);
+        }
+        ++itr;
+    }
+    QJsonObject doc;
+    doc.insert("data", palData);
+    return doc.toVariantMap();
 }

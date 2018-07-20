@@ -46,6 +46,8 @@
 
 const char* SRGB_TO_LINEAR_FRAG = R"SCRIBE(
 
+// OpenGLDisplayPlugin_present.frag
+
 uniform sampler2D colorMap;
 
 in vec2 varTexCoord0;
@@ -81,6 +83,7 @@ public:
         connect(qApp, &QCoreApplication::aboutToQuit, [this] {
             shutdown();
         });
+        setObjectName("Present");
     }
 
     ~PresentThread() {
@@ -336,9 +339,8 @@ void OpenGLDisplayPlugin::deactivate() {
 
     _container->showDisplayPluginsTools(false);
     if (!_container->currentDisplayActions().isEmpty()) {
-        auto menu = _container->getPrimaryMenu();
         foreach(auto itemInfo, _container->currentDisplayActions()) {
-            menu->removeMenuItem(itemInfo.first, itemInfo.second);
+            _container->removeMenuItem(itemInfo.first, itemInfo.second);
         }
         _container->currentDisplayActions().clear();
     }
@@ -530,7 +532,11 @@ void OpenGLDisplayPlugin::renderFromTexture(gpu::Batch& batch, const gpu::Textur
     batch.setStateScissorRect(scissor);
     batch.setViewportTransform(viewport);
     batch.setResourceTexture(0, texture);
+#ifndef USE_GLES
     batch.setPipeline(_presentPipeline);
+#else
+    batch.setPipeline(_simplePipeline);
+#endif
     batch.draw(gpu::TRIANGLE_STRIP, 4);
     if (copyFbo) {
         gpu::Vec4i copyFboRect(0, 0, copyFbo->getWidth(), copyFbo->getHeight());
@@ -583,7 +589,7 @@ void OpenGLDisplayPlugin::updateFrameData() {
 
 std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> OpenGLDisplayPlugin::getHUDOperator() {
     return [this](gpu::Batch& batch, const gpu::TexturePointer& hudTexture, bool mirror) {
-        if (_hudPipeline) {
+        if (_hudPipeline && hudTexture) {
             batch.enableStereo(false);
             batch.setPipeline(mirror ? _mirrorHUDPipeline : _hudPipeline);
             batch.setResourceTexture(0, hudTexture);
@@ -831,11 +837,6 @@ glm::uvec2 OpenGLDisplayPlugin::getSurfaceSize() const {
     return result;
 }
 
-bool OpenGLDisplayPlugin::hasFocus() const {
-    auto window = _container->getPrimaryWidget();
-    return window ? window->hasFocus() : false;
-}
-
 void OpenGLDisplayPlugin::assertNotPresentThread() const {
     Q_ASSERT(QThread::currentThread() != _presentThread);
 }
@@ -887,7 +888,7 @@ OpenGLDisplayPlugin::~OpenGLDisplayPlugin() {
 }
 
 void OpenGLDisplayPlugin::updateCompositeFramebuffer() {
-    auto renderSize = getRecommendedRenderSize();
+    auto renderSize = glm::uvec2(getRecommendedRenderSize());
     if (!_compositeFramebuffer || _compositeFramebuffer->getSize() != renderSize) {
         _compositeFramebuffer = gpu::FramebufferPointer(gpu::Framebuffer::create("OpenGLDisplayPlugin::composite", gpu::Element::COLOR_RGBA_32, renderSize.x, renderSize.y));
     }
