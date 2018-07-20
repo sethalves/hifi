@@ -127,13 +127,28 @@ QScriptValue vec3toScriptValue(QScriptEngine* engine, const glm::vec3 &vec3) {
     obj.setProperty("x", vec3.x);
     obj.setProperty("y", vec3.y);
     obj.setProperty("z", vec3.z);
+    obj.setProperty("red", vec3.x);
+    obj.setProperty("green", vec3.y);
+    obj.setProperty("blue", vec3.z);
     return obj;
 }
 
 void vec3FromScriptValue(const QScriptValue &object, glm::vec3 &vec3) {
-    vec3.x = object.property("x").toVariant().toFloat();
-    vec3.y = object.property("y").toVariant().toFloat();
-    vec3.z = object.property("z").toVariant().toFloat();
+    auto x = object.property("x").toVariant();
+    if (!x.isValid()) {
+        x = object.property("red").toVariant();
+    }
+    auto y = object.property("y").toVariant();
+    if (!y.isValid()) {
+        y = object.property("green").toVariant();
+    }
+    auto z = object.property("z").toVariant();
+    if (!z.isValid()) {
+        z = object.property("blue").toVariant();
+    }
+    vec3.x = x.toFloat();
+    vec3.y = y.toFloat();
+    vec3.z = z.toFloat();
 }
 
 QVariant vec3toVariant(const glm::vec3& vec3) {
@@ -689,6 +704,15 @@ QScriptValue qColorToScriptValue(QScriptEngine* engine, const QColor& color) {
     return object;
 }
 
+/**jsdoc
+ * An axis-aligned cube, defined as the bottom right near (minimum axes values) corner of the cube plus the dimension of its 
+ * sides.
+ * @typedef {object} AACube
+ * @property {number} x - X coordinate of the brn corner of the cube.
+ * @property {number} y - Y coordinate of the brn corner of the cube.
+ * @property {number} z - Z coordinate of the brn corner of the cube.
+ * @property {number} scale - The dimensions of each side of the cube.
+ */
 QScriptValue aaCubeToScriptValue(QScriptEngine* engine, const AACube& aaCube) {
     QScriptValue obj = engine->newObject();
     const glm::vec3& corner = aaCube.getCorner();
@@ -765,6 +789,15 @@ void pickRayFromScriptValue(const QScriptValue& object, PickRay& pickRay) {
     }
 }
 
+/**jsdoc
+ * @typedef {object} Collision
+ * @property {ContactEventType} type - The contact type of the collision event.
+ * @property {Uuid} idA - The ID of one of the entities in the collision.
+ * @property {Uuid} idB - The ID of the other of the entities in the collision.
+ * @property {Vec3} penetration - The amount of penetration between the two entities.
+ * @property {Vec3} contactPoint - The point of contact.
+ * @property {Vec3} velocityChange - The change in relative velocity of the two entities, in m/s.
+ */
 QScriptValue collisionToScriptValue(QScriptEngine* engine, const Collision& collision) {
     QScriptValue obj = engine->newObject();
     obj.setProperty("type", collision.type);
@@ -834,7 +867,21 @@ AnimationDetails::AnimationDetails(QString role, QUrl url, float fps, float prio
     running(running), currentFrame(currentFrame), allowTranslation(allowTranslation) {
 }
 
-
+/**jsdoc
+ * @typedef {object} Avatar.AnimationDetails
+ * @property {string} role
+ * @property {string} url
+ * @property {number} fps
+ * @property {number} priority
+ * @property {boolean} loop
+ * @property {boolean} hold
+ * @property {boolean} startAutomatically
+ * @property {number} firstFrame
+ * @property {number} lastFrame
+ * @property {boolean} running
+ * @property {number} currentFrame
+ * @property {boolean} allowTranslation
+ */
 QScriptValue animationDetailsToScriptValue(QScriptEngine* engine, const AnimationDetails& details) {
     QScriptValue obj = engine->newObject();
     obj.setProperty("role", details.role);

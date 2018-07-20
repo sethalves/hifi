@@ -8,12 +8,12 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-import QtQuick 2.5
-import QtQuick.Controls 1.4
+import QtQuick 2.7
 import Qt.labs.folderlistmodel 2.1
 import Qt.labs.settings 1.0
-import QtQuick.Controls.Styles 1.4
 import QtQuick.Dialogs 1.2 as OriginalDialogs
+import QtQuick.Controls 1.4 as QQC1
+import QtQuick.Controls 2.3
 
 import ".."
 import "../controls-uit"
@@ -55,7 +55,7 @@ TabletModalWindow {
     property int iconSize: 40
 
     property bool selectDirectory: false;
-    property bool showHidden: false;
+    property bool showHidden: true;
     // FIXME implement
     property bool multiSelect: false;
     property bool saveDialog: false;
@@ -288,12 +288,15 @@ TabletModalWindow {
             showDirsFirst: true
             showDotAndDotDot: false
             showFiles: !root.selectDirectory
+            showHidden: root.showHidden
             Component.onCompleted: {
                 showFiles = !root.selectDirectory
+                showHidden = root.showHidden
             }
 
             onFolderChanged: {
-                fileTableModel.update()
+                d.clearSelection();
+                fileTableModel.update();
             }
 
             function getItem(index, field) {
@@ -411,7 +414,7 @@ TabletModalWindow {
                     rows = 0,
                     i;
 
-                var newFilesModel = filesModelBuilder.createObject(root);
+                filesModel = filesModelBuilder.createObject(root);
 
                 comparisonFunction = sortOrder === Qt.AscendingOrder
                     ? function(a, b) { return a < b; }
@@ -433,7 +436,7 @@ TabletModalWindow {
                     while (lower < upper) {
                         middle = Math.floor((lower + upper) / 2);
                         var lessThan;
-                        if (comparisonFunction(sortValue, newFilesModel.get(middle)[sortField])) {
+                        if (comparisonFunction(sortValue, filesModel.get(middle)[sortField])) {
                             lessThan = true;
                             upper = middle;
                         } else {
@@ -442,7 +445,7 @@ TabletModalWindow {
                         }
                     }
 
-                    newFilesModel.insert(lower, {
+                    filesModel.insert(lower, {
                        fileName: fileName,
                        fileModified: (fileIsDir ? new Date(0) : model.getItem(i, "fileModified")),
                        fileSize: model.getItem(i, "fileSize"),
@@ -453,9 +456,6 @@ TabletModalWindow {
 
                     rows++;
                 }
-                filesModel = newFilesModel;
-
-                d.clearSelection();
             }
         }
 
@@ -496,9 +496,6 @@ TabletModalWindow {
             itemDelegate: Item {
                 clip: true
 
-                //FontLoader { id: firaSansSemiBold; source: "../../fonts/FiraSans-SemiBold.ttf"; }
-                //FontLoader { id: firaSansRegular; source: "../../fonts/FiraSans-Regular.ttf"; }
-
                 FiraSansSemiBold {
                     text: getText();
                     elide: styleData.elideMode
@@ -512,7 +509,7 @@ TabletModalWindow {
                     size: hifi.fontSizes.tableText
                     color: hifi.colors.baseGrayHighlight
                     //font.family: (styleData.row !== -1 && fileTableView.model.get(styleData.row).fileIsDir)
-                        //? firaSansSemiBold.name : firaSansRegular.name
+                        //? "Fira Sans SemiBold" : "Fira Sans"
 
                     function getText() {
                         if (styleData.row === -1) {
@@ -541,7 +538,7 @@ TabletModalWindow {
                 }
             }
 
-            TableViewColumn {
+            QQC1.TableViewColumn {
                 id: fileNameColumn
                 role: "fileName"
                 title: "Name"
@@ -549,7 +546,7 @@ TabletModalWindow {
                 movable: false
                 resizable: true
             }
-            TableViewColumn {
+            QQC1.TableViewColumn {
                 id: fileMofifiedColumn
                 role: "fileModified"
                 title: "Date"
@@ -558,7 +555,7 @@ TabletModalWindow {
                 resizable: true
                 visible: !selectDirectory
             }
-            TableViewColumn {
+            QQC1.TableViewColumn {
                 role: "fileSize"
                 title: "Size"
                 width: fileTableView.width - fileNameColumn.width - fileMofifiedColumn.width

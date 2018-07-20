@@ -10,9 +10,9 @@
 
 /* jslint bitwise: true */
 
-/* global Script, Entities, MyAvatar, Controller, RIGHT_HAND, LEFT_HAND, getControllerJointIndex,
+/* global Script, Entities, MyAvatar, Controller, RIGHT_HAND, LEFT_HAND,
    enableDispatcherModule, disableDispatcherModule, Messages, makeDispatcherModuleParameters, makeRunningValues, Vec3,
-   RayPick, HMD, Uuid, AvatarList, Picks, Pointers, PickType
+   HMD, Uuid, AvatarList, Picks, Pointers, PickType
 */
 
 Script.include("/~/system/libraries/Xform.js");

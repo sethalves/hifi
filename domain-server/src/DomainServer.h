@@ -26,14 +26,19 @@
 #include <HTTPSConnection.h>
 #include <LimitedNodeList.h>
 
-#include "BackupSupervisor.h"
+#include "AssetsBackupHandler.h"
 #include "DomainGatekeeper.h"
 #include "DomainMetadata.h"
 #include "DomainServerSettingsManager.h"
 #include "DomainServerWebSessionData.h"
 #include "WalletTransaction.h"
+#include "DomainContentBackupManager.h"
 
 #include "PendingAssignedNodeData.h"
+
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(domain_server)
 
 typedef QSharedPointer<Assignment> SharedAssignmentPointer;
 typedef QMultiHash<QUuid, WalletTransaction*> TransactionHash;
@@ -65,6 +70,10 @@ public:
     bool handleHTTPRequest(HTTPConnection* connection, const QUrl& url, bool skipSubHandler = false) override;
     bool handleHTTPSRequest(HTTPSConnection* connection, const QUrl& url, bool skipSubHandler = false) override;
 
+    static const QString REPLACEMENT_FILE_EXTENSION;
+
+    bool isAssetServerEnabled();
+
 public slots:
     /// Called by NodeList to inform us a node has been added
     void nodeAdded(SharedNodePointer node);
@@ -84,6 +93,13 @@ private slots:
     void processICEServerHeartbeatDenialPacket(QSharedPointer<ReceivedMessage> message);
     void processICEServerHeartbeatACK(QSharedPointer<ReceivedMessage> message);
 
+    void handleDomainContentReplacementFromURLRequest(QSharedPointer<ReceivedMessage> message);
+    void handleOctreeFileReplacementRequest(QSharedPointer<ReceivedMessage> message);
+    void handleOctreeFileReplacement(QByteArray octreeFile);
+
+    void processOctreeDataRequestMessage(QSharedPointer<ReceivedMessage> message);
+    void processOctreeDataPersistMessage(QSharedPointer<ReceivedMessage> message);
+
     void setupPendingAssignmentCredits();
     void sendPendingTransactionsToServer();
 
@@ -91,12 +107,11 @@ private slots:
     void sendHeartbeatToMetaverse() { sendHeartbeatToMetaverse(QString()); }
     void sendHeartbeatToIceServer();
 
-    void handleConnectedNode(SharedNodePointer newNode);
+    void handleConnectedNode(SharedNodePointer newNode); 
+    void handleTempDomainSuccess(QNetworkReply* requestReply);
+    void handleTempDomainError(QNetworkReply* requestReply);
 
-    void handleTempDomainSuccess(QNetworkReply& requestReply);
-    void handleTempDomainError(QNetworkReply& requestReply);
-
-    void handleMetaverseHeartbeatError(QNetworkReply& requestReply);
+    void handleMetaverseHeartbeatError(QNetworkReply* requestReply);
 
     void queuedQuit(QString quitMessage, int exitCode);
 
@@ -106,10 +121,8 @@ private slots:
     void handleICEHostInfo(const QHostInfo& hostInfo);
 
     void sendICEServerAddressToMetaverseAPI();
-    void handleSuccessfulICEServerAddressUpdate(QNetworkReply& requestReply);
-    void handleFailedICEServerAddressUpdate(QNetworkReply& requestReply);
-
-    void handleOctreeFileReplacement(QByteArray octreeFile);
+    void handleSuccessfulICEServerAddressUpdate(QNetworkReply* requestReply);
+    void handleFailedICEServerAddressUpdate(QNetworkReply* requestReply);
 
     void updateReplicatedNodes();
     void updateDownstreamNodes();
@@ -124,8 +137,15 @@ signals:
     void userDisconnected();
 
 private:
-    const QUuid& getID();
+    QUuid getID();
     void parseCommandLine();
+
+    QString getContentBackupDir();
+    QString getEntitiesDirPath();
+    QString getEntitiesFilePath();
+    QString getEntitiesReplacementFilePath();
+
+    void maybeHandleReplacementEntityFile();
 
     void setupNodeListAndAssignments();
     bool optionallySetupOAuth();
@@ -147,6 +167,7 @@ private:
     unsigned int countConnectedUsers();
 
     void handleKillNode(SharedNodePointer nodeToKill);
+    void broadcastNodeDisconnect(const SharedNodePointer& disconnnectedNode);
 
     void sendDomainListToNode(const SharedNodePointer& node, const HifiSockAddr& senderSockAddr);
 
@@ -201,7 +222,7 @@ private:
     DomainGatekeeper _gatekeeper;
 
     HTTPManager _httpManager;
-    HTTPSManager* _httpsManager;
+    std::unique_ptr<HTTPSManager> _httpsManager;
 
     QHash<QUuid, SharedAssignmentPointer> _allAssignments;
     QQueue<SharedAssignmentPointer> _unfulfilledAssignments;
@@ -251,6 +272,8 @@ private:
 
     bool _sendICEServerAddressToMetaverseAPIInProgress { false };
     bool _sendICEServerAddressToMetaverseAPIRedo { false };
+
+    std::unique_ptr<DomainContentBackupManager> _contentManager { nullptr };
 
     QHash<QUuid, QPointer<HTTPSConnection>> _pendingOAuthConnections;
 

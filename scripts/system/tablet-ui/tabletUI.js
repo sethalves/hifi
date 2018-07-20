@@ -19,12 +19,12 @@
     var tabletRezzed = false;
     var activeHand = null;
     var DEFAULT_WIDTH = 0.4375;
-    var DEFAULT_TABLET_SCALE = 100;
+    var DEFAULT_TABLET_SCALE = 70;
     var preMakeTime = Date.now();
     var validCheckTime = Date.now();
     var debugTablet = false;
-    var tabletScalePercentage = 100.0;
-    UIWebTablet = null;
+    var tabletScalePercentage = 70.0;
+    var UIWebTablet = null;
     var MSECS_PER_SEC = 1000.0;
     var MUTE_MICROPHONE_MENU_ITEM = "Mute Microphone";
     var gTablet = null;
@@ -41,14 +41,14 @@
         if (!UIWebTablet) {
             return false;
         }
-        if (Overlays.getProperty(HMD.tabletID, "type") != "model") {
+        if (Overlays.getProperty(HMD.tabletID, "type") !== "model") {
             if (debugTablet) {
                 print("TABLET is invalid due to frame: " + JSON.stringify(Overlays.getProperty(HMD.tabletID, "type")));
             }
             return false;
         }
-        if (Overlays.getProperty(HMD.homeButtonID, "type") != "circle3d" ||
-            Overlays.getProperty(HMD.tabletScreenID, "type") != "web3d") {
+        if (Overlays.getProperty(HMD.homeButtonID, "type") !== "circle3d" ||
+                Overlays.getProperty(HMD.tabletScreenID, "type") !== "web3d") {
             if (debugTablet) {
                 print("TABLET is invalid due to other");
             }
@@ -103,8 +103,9 @@
         UIWebTablet.register();
         HMD.tabletID = UIWebTablet.tabletEntityID;
         HMD.homeButtonID = UIWebTablet.homeButtonID;
-        HMD.homeButtonHighlightID = UIWebTablet.homeButtonHighlightID;
         HMD.tabletScreenID = UIWebTablet.webOverlayID;
+        HMD.homeButtonHighlightMaterialID = UIWebTablet.homeButtonHighlightMaterial;
+        HMD.homeButtonUnhighlightMaterialID = UIWebTablet.homeButtonUnhighlightMaterial;
         HMD.displayModeChanged.connect(onHmdChanged);
         MyAvatar.sensorToWorldScaleChanged.connect(onSensorToWorldScaleChanged);
 
@@ -112,7 +113,7 @@
     }
 
     function showTabletUI() {
-        checkTablet()
+        checkTablet();
 
         if (!tabletRezzed || !tabletIsValid()) {
             closeTabletUI();
@@ -130,7 +131,6 @@
             tabletProperties.visible = true;
             Overlays.editOverlay(HMD.tabletID, tabletProperties);
             Overlays.editOverlay(HMD.homeButtonID, { visible: true });
-            Overlays.editOverlay(HMD.homeButtonHighlightID, { visible: true });
             Overlays.editOverlay(HMD.tabletScreenID, { visible: true });
             Overlays.editOverlay(HMD.tabletScreenID, { maxFPS: 90 });
             updateTabletWidthFromSettings(true);
@@ -151,13 +151,12 @@
 
         Overlays.editOverlay(HMD.tabletID, { visible: false });
         Overlays.editOverlay(HMD.homeButtonID, { visible: false });
-        Overlays.editOverlay(HMD.homeButtonHighlightID, { visible: false });
         Overlays.editOverlay(HMD.tabletScreenID, { visible: false });
         Overlays.editOverlay(HMD.tabletScreenID, { maxFPS: 1 });
     }
 
     function closeTabletUI() {
-        checkTablet()
+        checkTablet();
         gTablet.tabletShown = false;
         if (UIWebTablet) {
             if (UIWebTablet.onClose) {
@@ -172,20 +171,19 @@
             UIWebTablet = null;
             HMD.tabletID = null;
             HMD.homeButtonID = null;
-            HMD.homeButtonHighlightID = null;
             HMD.tabletScreenID = null;
         } else if (debugTablet) {
             print("TABLET closeTabletUI, UIWebTablet is null");
         }
         tabletRezzed = false;
-        gTablet = null
+        gTablet = null;
     }
 
 
     function updateShowTablet() {
         var now = Date.now();
 
-        checkTablet()
+        checkTablet();
 
         // close the WebTablet if it we go into toolbar mode.
         var tabletShown = gTablet.tabletShown;
@@ -270,7 +268,7 @@
         }
         if (channel === "home") {
             if (UIWebTablet) {
-                checkTablet()
+                checkTablet();
                 gTablet.landscape = false;
             }
         }
@@ -325,7 +323,8 @@
         Overlays.deleteOverlay(tabletID);
         HMD.tabletID = null;
         HMD.homeButtonID = null;
-        HMD.homeButtonHighlightID = null;
         HMD.tabletScreenID = null;
+        HMD.homeButtonHighlightMaterialID = null;
+        HMD.homeButtonUnhighlightMaterialID = null;
     });
 }()); // END LOCAL_SCOPE

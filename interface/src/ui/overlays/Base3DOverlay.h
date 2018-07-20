@@ -13,10 +13,10 @@
 
 #include <Transform.h>
 #include <SpatiallyNestable.h>
-
+#include <graphics-scripting/Forward.h>
 #include "Overlay.h"
 
-class Base3DOverlay : public Overlay, public SpatiallyNestable {
+class Base3DOverlay : public Overlay, public SpatiallyNestable, public scriptable::ModelProvider {
     Q_OBJECT
     using Parent = Overlay;
 
@@ -35,7 +35,9 @@ public:
     // getters
     virtual bool is3D() const override { return true; }
 
+    virtual render::ItemKey getKey() override;
     virtual uint32_t fetchMetaSubItems(render::ItemIDs& subItems) const override { subItems.push_back(getRenderItemID()); return (uint32_t) subItems.size(); }
+    virtual scriptable::ScriptableModelBase getScriptableModel() override { return scriptable::ScriptableModelBase(); }
 
     // TODO: consider implementing registration points in this class
     glm::vec3 getCenter() const { return getWorldPosition(); }
@@ -47,6 +49,7 @@ public:
     bool getDrawInFront() const { return _drawInFront; }
     bool getDrawHUDLayer() const { return _drawHUDLayer; }
     bool getIsGrabbable() const { return _isGrabbable; }
+    virtual bool getIsVisibleInSecondaryCamera() const override { return _isVisibleInSecondaryCamera; }
 
     void setIsSolid(bool isSolid) { _isSolid = isSolid; }
     void setIsDashedLine(bool isDashedLine) { _isDashedLine = isDashedLine; }
@@ -54,6 +57,7 @@ public:
     virtual void setDrawInFront(bool value) { _drawInFront = value; }
     virtual void setDrawHUDLayer(bool value) { _drawHUDLayer = value; }
     void setIsGrabbable(bool value) { _isGrabbable = value; }
+    virtual void setIsVisibleInSecondaryCamera(bool value) { _isVisibleInSecondaryCamera = value; }
 
     virtual AABox getBounds() const override = 0;
 
@@ -65,11 +69,11 @@ public:
     virtual QVariant getProperty(const QString& property) override;
 
     virtual bool findRayIntersection(const glm::vec3& origin, const glm::vec3& direction, float& distance,
-                                        BoxFace& face, glm::vec3& surfaceNormal);
+                                     BoxFace& face, glm::vec3& surfaceNormal, bool precisionPicking = false);
 
     virtual bool findRayIntersectionExtraInfo(const glm::vec3& origin, const glm::vec3& direction,
-                                        float& distance, BoxFace& face, glm::vec3& surfaceNormal, QVariantMap& extraInfo) {
-        return findRayIntersection(origin, direction, distance, face, surfaceNormal);
+                                              float& distance, BoxFace& face, glm::vec3& surfaceNormal, QVariantMap& extraInfo, bool precisionPicking = false) {
+        return findRayIntersection(origin, direction, distance, face, surfaceNormal, precisionPicking);
     }
 
     virtual SpatialParentTree* getParentTree() const override;
@@ -91,6 +95,7 @@ protected:
     bool _drawInFront;
     bool _drawHUDLayer;
     bool _isGrabbable { false };
+    bool _isVisibleInSecondaryCamera { false };
     mutable bool _renderVariableDirty { true };
 
     QString _name;

@@ -6,11 +6,11 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 
 
-/* global Script, Entities, MyAvatar, Controller, RIGHT_HAND, LEFT_HAND,
-   getControllerJointIndex, enableDispatcherModule, disableDispatcherModule,
+/* global Script, Entities, MyAvatar, Controller, RIGHT_HAND, LEFT_HAND, Camera,
+   getControllerJointIndex, enableDispatcherModule, disableDispatcherModule, entityIsFarGrabbedByOther,
    Messages, makeDispatcherModuleParameters, makeRunningValues, Settings, entityHasActions,
    Vec3, Overlays, flatten, Xform, getControllerWorldLocation, ensureDynamic, entityIsCloneable,
-   cloneEntity, DISPATCHER_PROPERTIES, TEAR_AWAY_DISTANCE, Uuid
+   cloneEntity, DISPATCHER_PROPERTIES, Uuid, unhighlightTargetEntity, isInEditMode
 */
 
 Script.include("/~/system/libraries/Xform.js");
@@ -161,10 +161,8 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
 (function() {
 
     var ATTACH_POINT_SETTINGS = "io.highfidelity.attachPoints";
-    var SCABBARD_SETTINGS = "io.highfidelity.scabbard";
 
     var EQUIP_RADIUS = 1.0; // radius used for palm vs equip-hotspot for equipping.
-    var DOWN = { x: 0, y: -1, z: 0 };
 
     var HAPTIC_PULSE_STRENGTH = 1.0;
     var HAPTIC_PULSE_DURATION = 13.0;
@@ -178,7 +176,10 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
     var TRIGGER_OFF_VALUE = 0.1;
     var TRIGGER_ON_VALUE = TRIGGER_OFF_VALUE + 0.05; //  Squeezed just enough to activate search or near grab
     var BUMPER_ON_VALUE = 0.5;
-
+    
+    var EMPTY_PARENT_ID = "{00000000-0000-0000-0000-000000000000}";
+    
+    var UNEQUIP_KEY = "u";
 
     function getWearableData(props) {
         var wearable = {};
@@ -272,21 +273,12 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         this.shouldSendStart = false;
         this.equipedWithSecondary = false;
         this.handHasBeenRightsideUp = false;
-        this.entityInScabbardProps = null;
-
-        try {
-            this.entityInScabbardProps = JSON.parse(Settings.getValue(SCABBARD_SETTINGS + "." + this.hand));
-        }catch (err) {
-            // don't want to spam the logs
-        }
 
         this.parameters = makeDispatcherModuleParameters(
             300,
             this.hand === RIGHT_HAND ? ["rightHand", "rightHandEquip"] : ["leftHand", "leftHandEquip"],
             [],
             100);
-
-
 
         var equipHotspotBuddy = new EquipHotspotBuddy();
 
@@ -402,63 +394,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             return this.rawSecondaryValue > BUMPER_ON_VALUE;
         };
 
-        this.detectScabbardGesture = function(controllerData) {
-            var neckJointIndex = MyAvatar.getJointIndex("Neck");
-            var avatarFrameNeckPos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(neckJointIndex);
-            var eyeJointIndex = MyAvatar.getJointIndex("LeftEye");
-            var avatarFrameEyePos = MyAvatar.getAbsoluteJointTranslationInObjectFrame(eyeJointIndex);
-
-            var controllerLocation = controllerData.controllerLocations[this.hand];
-            var avatarFrameControllerPos = MyAvatar.worldToJointPoint(controllerLocation.position, -1);
-            var avatarFrameControllerRot = MyAvatar.worldToJointRotation(controllerLocation.orientation, -1);
-
-            if (avatarFrameControllerPos.y > avatarFrameNeckPos.y && // above the neck and
-                avatarFrameControllerPos.z > avatarFrameEyePos.z) { // behind the eyes
-                var localHandUpAxis = this.hand === RIGHT_HAND ? { x: 1, y: 0, z: 0 } : { x: -1, y: 0, z: 0 };
-                var localHandUp = Vec3.multiplyQbyV(avatarFrameControllerRot, localHandUpAxis);
-                if (Vec3.dot(localHandUp, DOWN) > 0.0) {
-                    return true; // hand is upside-down vs avatar
-                }
-            }
-            return false;
-        };
-
-        this.saveEntityInScabbard = function (controllerData) {
-            var props = Entities.getEntityProperties(this.targetEntityID);
-            if (!props || !props.localPosition) {
-                return;
-            }
-            delete props.clientOnly;
-            delete props.created;
-            delete props.lastEdited;
-            delete props.lastEditedBy;
-            delete props.owningAvatarID;
-            delete props.queryAACube;
-            delete props.age;
-            delete props.ageAsText;
-            delete props.naturalDimensions;
-            delete props.naturalPosition;
-            delete props.acceleration;
-            delete props.scriptTimestamp;
-            delete props.boundingBox;
-            delete props.Position;
-            delete props.Rotation;
-            delete props.Velocity;
-            delete props.AngularVelocity;
-            delete props.Dimensions;
-            delete props.renderInfo;
-
-            this.entityInScabbardProps = props;
-            Settings.setValue(SCABBARD_SETTINGS + "." + this.hand, JSON.stringify(props));
-            Entities.deleteEntity(this.targetEntityID);
-        };
-
-        this.storeInScabbard = function (controllerData) {
-            if (this.detectScabbardGesture(controllerData)) {
-                this.saveEntityInScabbard(controllerData);
-            }
-        };
-
         this.chooseNearEquipHotspots = function(candidateEntityProps, controllerData) {
             var _this = this;
             var collectedHotspots = flatten(candidateEntityProps.map(function(props) {
@@ -476,8 +411,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
 
         this.cloneHotspot = function(props, controllerData) {
             if (entityIsCloneable(props)) {
-                var worldEntityProps = controllerData.nearbyEntityProperties[this.hand];
-                var cloneID = cloneEntity(props, worldEntityProps);
+                var cloneID = cloneEntity(props);
                 return cloneID;
             }
 
@@ -509,6 +443,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var worldHandRotation = getControllerWorldLocation(this.handToController(), true).orientation;
             var localHandUpAxis = this.hand === RIGHT_HAND ? { x: 1, y: 0, z: 0 } : { x: -1, y: 0, z: 0 };
             var worldHandUpAxis = Vec3.multiplyQbyV(worldHandRotation, localHandUpAxis);
+            var DOWN = { x: 0, y: -1, z: 0 };
 
             var DROP_ANGLE = Math.PI / 3;
             var HYSTERESIS_FACTOR = 1.1;
@@ -550,7 +485,13 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             this.dropGestureReset();
             this.clearEquipHaptics();
             Controller.triggerHapticPulse(HAPTIC_PULSE_STRENGTH, HAPTIC_PULSE_DURATION, this.hand);
+            unhighlightTargetEntity(this.targetEntityID);
+            var message = {
+                hand: this.hand,
+                entityID: this.targetEntityID
+            };
 
+            Messages.sendLocalMessage('Hifi-unhighlight-entity', JSON.stringify(message));
             var grabbedProperties = Entities.getEntityProperties(this.targetEntityID);
 
             // if an object is "equipped" and has a predefined offset, use it.
@@ -686,14 +627,12 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
 
             // if the potentialHotspot is cloneable, clone it and return it
             // if the potentialHotspot os not cloneable and locked return null
-
             if (potentialEquipHotspot &&
                 (((this.triggerSmoothedSqueezed() || this.secondarySmoothedSqueezed()) && !this.waitForTriggerRelease) ||
                  this.messageGrabEntity)) {
                 this.grabbedHotspot = potentialEquipHotspot;
                 this.targetEntityID = this.grabbedHotspot.entityID;
                 this.startEquipEntity(controllerData);
-                this.messageGrabEntity = false;
                 this.equipedWithSecondary = this.secondarySmoothedSqueezed();
                 return makeRunningValues(true, [potentialEquipHotspot.entityID], []);
             } else {
@@ -710,35 +649,14 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var timestamp = Date.now();
             this.updateInputs(controllerData);
             this.handHasBeenRightsideUp = false;
-
-            var runningValues = this.checkNearbyHotspots(controllerData, deltaTime, timestamp);
-            if (!runningValues.active) {
-                if ((this.triggerSmoothedSqueezed() || this.secondarySmoothedSqueezed()) &&
-                    this.entityInScabbardProps &&
-                    this.detectScabbardGesture(controllerData) &&
-                    this.waitForTriggerRelease === false) {
-                    var clientOnly = !(Entities.canRez() || Entities.canRezTmp());
-                    var entityIDFromScabbard = Entities.addEntity(this.entityInScabbardProps, clientOnly);
-                    controllerData.nearbyEntityPropertiesByID[entityIDFromScabbard] = this.entityInScabbardProps;
-                    this.entityInScabbardProps = null;
-                    this.grabbedHotspot = null;
-
-                    this.targetEntityID = entityIDFromScabbard;
-                    this.startEquipEntity(controllerData);
-                    this.messageGrabEntity = true;
-                    this.equipedWithSecondary = this.secondarySmoothedSqueezed();
-                    return makeRunningValues(true, [entityIDFromScabbard], []);
-                }
-            }
-            return runningValues;
+            return this.checkNearbyHotspots(controllerData, deltaTime, timestamp);
         };
 
         this.run = function (controllerData, deltaTime) {
             var timestamp = Date.now();
             this.updateInputs(controllerData);
 
-            if (!this.isTargetIDValid(controllerData)) {
-                this.storeInScabbard(controllerData);
+            if (!this.messageGrabEntity && !this.isTargetIDValid(controllerData)) {
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
@@ -758,7 +676,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 // we have an equipped object and the secondary trigger was released
                 // short-circuit the other checks and release it
                 this.preparingHoldRelease = false;
-                this.storeInScabbard(controllerData);
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
@@ -799,7 +716,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             if (dropDetected && !this.waitForTriggerRelease && this.triggerSmoothedGrab()) {
                 this.waitForTriggerRelease = true;
                 // store the offset attach points into preferences.
-                this.storeInScabbard(controllerData);
                 this.endEquipEntity();
                 return makeRunningValues(false, [], []);
             }
@@ -842,7 +758,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                     var entityProperties = Entities.getEntityProperties(data.entityID, DISPATCHER_PROPERTIES);
                     entityProperties.id = data.entityID;
                     equipModule.setMessageGrabData(entityProperties);
-
                 } catch (e) {
                     print("WARNING: equipEntity.js -- error parsing Hifi-Hand-Grab message: " + message);
                 }
@@ -859,9 +774,86 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         }
     };
 
+    var clearGrabActions = function(entityID) {
+        var actionIDs = Entities.getActionIDs(entityID);
+        var myGrabTag = "grab-" + MyAvatar.sessionUUID;
+        for (var actionIndex = 0; actionIndex < actionIDs.length; actionIndex++) {
+            var actionID = actionIDs[actionIndex];
+            var actionArguments = Entities.getActionArguments(entityID, actionID);
+            var tag = actionArguments.tag;
+            if (tag === myGrabTag) {
+                Entities.deleteAction(entityID, actionID);
+            }
+        }
+    };
+
+    var onMousePress = function(event) {
+        if (isInEditMode() || !event.isLeftButton) { // don't consider any left clicks on the entity while in edit
+            return;
+        }
+        var pickRay = Camera.computePickRay(event.x, event.y);
+        var intersection = Entities.findRayIntersection(pickRay, true);
+        if (intersection.intersects) {
+            var entityID = intersection.entityID;
+            var entityProperties = Entities.getEntityProperties(entityID, DISPATCHER_PROPERTIES);
+            var hasEquipData = getWearableData(entityProperties).joints || getEquipHotspotsData(entityProperties).length > 0;
+            if (hasEquipData && entityProperties.parentID === EMPTY_PARENT_ID && !entityIsFarGrabbedByOther(entityID)) {
+                entityProperties.id = entityID;
+                var rightHandPosition = MyAvatar.getJointPosition("RightHand");
+                var leftHandPosition = MyAvatar.getJointPosition("LeftHand");
+                var distanceToRightHand = Vec3.distance(entityProperties.position, rightHandPosition);
+                var distanceToLeftHand = Vec3.distance(entityProperties.position, leftHandPosition);
+                var leftHandAvailable = leftEquipEntity.targetEntityID === null;
+                var rightHandAvailable = rightEquipEntity.targetEntityID === null;          
+                if (rightHandAvailable && (distanceToRightHand < distanceToLeftHand || !leftHandAvailable)) {
+                    // clear any existing grab actions on the entity now (their later removal could affect bootstrapping flags)
+                    clearGrabActions(entityID);
+                    rightEquipEntity.setMessageGrabData(entityProperties);
+                } else if (leftHandAvailable && (distanceToLeftHand < distanceToRightHand || !rightHandAvailable)) {
+                    // clear any existing grab actions on the entity now (their later removal could affect bootstrapping flags)
+                    clearGrabActions(entityID);
+                    leftEquipEntity.setMessageGrabData(entityProperties);
+                }
+            }
+        }
+    };
+    
+    var onKeyPress = function(event) {
+        if (event.text.toLowerCase() === UNEQUIP_KEY) {
+            if (rightEquipEntity.targetEntityID) {
+                rightEquipEntity.endEquipEntity();
+            }
+            if (leftEquipEntity.targetEntityID) {
+                leftEquipEntity.endEquipEntity();
+            }
+        }
+    };
+    
+    var deleteEntity = function(entityID) {
+        if (rightEquipEntity.targetEntityID === entityID) {
+            rightEquipEntity.endEquipEntity();
+        }
+        if (leftEquipEntity.targetEntityID === entityID) {
+            leftEquipEntity.endEquipEntity();
+        }
+    };
+    
+    var clearEntities = function() {
+        if (rightEquipEntity.targetEntityID) {
+            rightEquipEntity.endEquipEntity();
+        }
+        if (leftEquipEntity.targetEntityID) {
+            leftEquipEntity.endEquipEntity();
+        }
+    };
+    
     Messages.subscribe('Hifi-Hand-Grab');
     Messages.subscribe('Hifi-Hand-Drop');
     Messages.messageReceived.connect(handleMessage);
+    Controller.mousePressEvent.connect(onMousePress);
+    Controller.keyPressEvent.connect(onKeyPress);
+    Entities.deletingEntity.connect(deleteEntity);
+    Entities.clearingEntities.connect(clearEntities);
 
     var leftEquipEntity = new EquipEntity(LEFT_HAND);
     var rightEquipEntity = new EquipEntity(RIGHT_HAND);
@@ -875,6 +867,11 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         disableDispatcherModule("LeftEquipEntity");
         disableDispatcherModule("RightEquipEntity");
         clearAttachPoints();
+        Messages.messageReceived.disconnect(handleMessage);
+        Controller.mousePressEvent.disconnect(onMousePress);
+        Controller.keyPressEvent.disconnect(onKeyPress);
+        Entities.deletingEntity.disconnect(deleteEntity);
+        Entities.clearingEntities.disconnect(clearEntities);
     }
     Script.scriptEnding.connect(cleanup);
 }());

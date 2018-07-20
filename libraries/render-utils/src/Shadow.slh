@@ -17,11 +17,11 @@
 #define SHADOW_SCREEN_SPACE_DITHER      1
 
 // the shadow texture
-uniform sampler2DShadow shadowMaps[SHADOW_CASCADE_MAX_COUNT];
+uniform sampler2DArrayShadow shadowMaps;
 
 // Sample the shadowMap with PCF (built-in)
 float fetchShadow(int cascadeIndex, vec3 shadowTexcoord) {
-    return texture(shadowMaps[cascadeIndex], shadowTexcoord);
+    return texture(shadowMaps, vec4(shadowTexcoord.xy, cascadeIndex, shadowTexcoord.z));
 }
 
 vec2 PCFkernel[4] = vec2[4](
@@ -89,7 +89,9 @@ float evalShadowCascadeAttenuation(int cascadeIndex, ShadowSampleOffsets offsets
 
 float evalShadowAttenuation(vec3 worldLightDir, vec4 worldPosition, float viewDepth, vec3 worldNormal) {
     ShadowSampleOffsets offsets = evalShadowFilterOffsets(worldPosition);
-    vec4 cascadeShadowCoords[2] = { vec4(0), vec4(0) };
+    vec4 cascadeShadowCoords[2];
+    cascadeShadowCoords[0] = vec4(0);
+    cascadeShadowCoords[1] = vec4(0);
     ivec2 cascadeIndices;
     float cascadeMix = determineShadowCascadesOnPixel(worldPosition, viewDepth, cascadeShadowCoords, cascadeIndices);
 	

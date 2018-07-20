@@ -53,13 +53,15 @@ enum TextureSlot {
     DiffusedCurvature,
     Scattering,
     AmbientOcclusion,
-    AmbientOcclusionBlurred
+    AmbientOcclusionBlurred,
+    Velocity,
 };
 
 enum ParamSlot {
     CameraCorrection = 0,
     DeferredFrameTransform,
-    ShadowTransform
+    ShadowTransform,
+    DebugParametersBuffer
 };
 
 static const std::string DEFAULT_ALBEDO_SHADER {
@@ -138,12 +140,11 @@ static const std::string DEFAULT_LIGHTING_SHADER {
     " }"
 };
 
-static const std::string DEFAULT_SHADOW_SHADER{
-    "uniform sampler2DShadow shadowMap;"
+static const std::string DEFAULT_SHADOW_DEPTH_SHADER{
     "vec4 getFragmentColor() {"
     "    for (int i = 255; i >= 0; --i) {"
     "        float depth = i / 255.0;"
-    "        if (texture(shadowMap, vec3(uv, depth)) > 0.5) {"
+    "        if (texture(shadowMaps, vec4(uv, parameters._shadowCascadeIndex, depth)) > 0.5) {"
     "            return vec4(vec3(depth), 1.0);"
     "        }"
     "    }"
@@ -254,6 +255,12 @@ static const std::string DEFAULT_AMBIENT_OCCLUSION_BLURRED_SHADER{
     " }"
 };
 
+static const std::string DEFAULT_VELOCITY_SHADER{
+    "vec4 getFragmentColor() {"
+    "    return vec4(vec2(texture(velocityMap, uv).xy), 0.0, 1.0);"
+    " }"
+};
+
 static const std::string DEFAULT_CUSTOM_SHADER {
     "vec4 getFragmentColor() {"
     "    return vec4(1.0, 0.0, 0.0, 1.0);"
@@ -316,7 +323,7 @@ std::string DebugDeferredBuffer::getShaderSourceCode(Mode mode, std::string cust
         case ShadowCascade1Mode:
         case ShadowCascade2Mode:
         case ShadowCascade3Mode:
-            return DEFAULT_SHADOW_SHADER;
+            return DEFAULT_SHADOW_DEPTH_SHADER;
         case ShadowCascadeIndicesMode:
             return DEFAULT_SHADOW_CASCADE_SHADER;
         case LinearDepthMode:
@@ -341,6 +348,8 @@ std::string DebugDeferredBuffer::getShaderSourceCode(Mode mode, std::string cust
             return DEFAULT_AMBIENT_OCCLUSION_SHADER;
         case AmbientOcclusionBlurredMode:
             return DEFAULT_AMBIENT_OCCLUSION_BLURRED_SHADER;
+        case VelocityMode:
+            return DEFAULT_VELOCITY_SHADER;
         case CustomMode:
             return getFileContent(customFile, DEFAULT_CUSTOM_SHADER);
         default:
@@ -387,6 +396,7 @@ const gpu::PipelinePointer& DebugDeferredBuffer::getPipeline(Mode mode, std::str
         slotBindings.insert(gpu::Shader::Binding("cameraCorrectionBuffer", CameraCorrection));
         slotBindings.insert(gpu::Shader::Binding("deferredFrameTransformBuffer", DeferredFrameTransform));
         slotBindings.insert(gpu::Shader::Binding("shadowTransformBuffer", ShadowTransform));
+        slotBindings.insert(gpu::Shader::Binding("parametersBuffer", DebugParametersBuffer));
 
         slotBindings.insert(gpu::Shader::Binding("albedoMap", Albedo));
         slotBindings.insert(gpu::Shader::Binding("normalMap", Normal));
@@ -394,7 +404,7 @@ const gpu::PipelinePointer& DebugDeferredBuffer::getPipeline(Mode mode, std::str
         slotBindings.insert(gpu::Shader::Binding("depthMap", Depth));
         slotBindings.insert(gpu::Shader::Binding("obscuranceMap", AmbientOcclusion));
         slotBindings.insert(gpu::Shader::Binding("lightingMap", Lighting));
-        slotBindings.insert(gpu::Shader::Binding("shadowMap", Shadow));
+        slotBindings.insert(gpu::Shader::Binding("shadowMaps", Shadow));
         slotBindings.insert(gpu::Shader::Binding("linearDepthMap", LinearDepth));
         slotBindings.insert(gpu::Shader::Binding("halfLinearDepthMap", HalfLinearDepth));
         slotBindings.insert(gpu::Shader::Binding("halfNormalMap", HalfNormal));
@@ -402,6 +412,7 @@ const gpu::PipelinePointer& DebugDeferredBuffer::getPipeline(Mode mode, std::str
         slotBindings.insert(gpu::Shader::Binding("diffusedCurvatureMap", DiffusedCurvature));
         slotBindings.insert(gpu::Shader::Binding("scatteringMap", Scattering));
         slotBindings.insert(gpu::Shader::Binding("occlusionBlurredMap", AmbientOcclusionBlurred));
+        slotBindings.insert(gpu::Shader::Binding("velocityMap", Velocity));
         gpu::Shader::makeProgram(*program, slotBindings);
         
         auto pipeline = gpu::Pipeline::create(program, std::make_shared<gpu::State>());
@@ -422,8 +433,11 @@ const gpu::PipelinePointer& DebugDeferredBuffer::getPipeline(Mode mode, std::str
 }
 
 void DebugDeferredBuffer::configure(const Config& config) {
+    auto& parameters = _parameters.edit();
+
     _mode = (Mode)config.mode;
     _size = config.size;
+    parameters._shadowCascadeIndex = glm::clamp(_mode - Mode::ShadowCascade0Mode, 0, (int)SHADOW_CASCADE_MAX_COUNT - 1);
 }
 
 void DebugDeferredBuffer::run(const RenderContextPointer& renderContext, const Inputs& inputs) {
@@ -439,9 +453,10 @@ void DebugDeferredBuffer::run(const RenderContextPointer& renderContext, const I
     auto& linearDepthTarget = inputs.get1();
     auto& surfaceGeometryFramebuffer = inputs.get2();
     auto& ambientOcclusionFramebuffer = inputs.get3();
-    auto& frameTransform = inputs.get4();
+    auto& velocityFramebuffer = inputs.get4();
+    auto& frameTransform = inputs.get5();
 
-    gpu::doInBatch(args->_context, [&](gpu::Batch& batch) {
+    gpu::doInBatch("DebugDeferredBuffer::run", args->_context, [&](gpu::Batch& batch) {
         batch.enableStereo(false);
         batch.setViewportTransform(args->_viewport);
 
@@ -468,6 +483,11 @@ void DebugDeferredBuffer::run(const RenderContextPointer& renderContext, const I
             batch.setResourceTexture(Depth, deferredFramebuffer->getPrimaryDepthTexture());
             batch.setResourceTexture(Lighting, deferredFramebuffer->getLightingTexture());
         }
+        if (velocityFramebuffer) {
+            batch.setResourceTexture(Velocity, velocityFramebuffer->getVelocityTexture());
+        }
+
+        batch.setUniformBuffer(DebugParametersBuffer, _parameters);
 
         auto lightStage = renderContext->_scene->getStage<LightStage>();
         assert(lightStage);
@@ -475,8 +495,7 @@ void DebugDeferredBuffer::run(const RenderContextPointer& renderContext, const I
         auto lightAndShadow = lightStage->getCurrentKeyLightAndShadow();
         const auto& globalShadow = lightAndShadow.second;
         if (globalShadow) {
-            const auto cascadeIndex = glm::clamp(_mode - Mode::ShadowCascade0Mode, 0, (int)globalShadow->getCascadeCount() - 1);
-            batch.setResourceTexture(Shadow, globalShadow->getCascade(cascadeIndex).map);
+            batch.setResourceTexture(Shadow, globalShadow->map);
             batch.setUniformBuffer(ShadowTransform, globalShadow->getBuffer());
             batch.setUniformBuffer(DeferredFrameTransform, frameTransform->getFrameTransformBuffer());
         }
@@ -514,6 +533,8 @@ void DebugDeferredBuffer::run(const RenderContextPointer& renderContext, const I
 
         batch.setResourceTexture(AmbientOcclusion, nullptr);
         batch.setResourceTexture(AmbientOcclusionBlurred, nullptr);
+
+        batch.setResourceTexture(Velocity, nullptr);
 
     });
 }

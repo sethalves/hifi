@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "EntityTypes.h"
+
 #include <QtCore/QObject>
 
 #include <ByteCountCoding.h>
@@ -16,7 +18,6 @@
 
 #include "EntityItem.h"
 #include "EntityItemProperties.h"
-#include "EntityTypes.h"
 #include "EntitiesLogging.h"
 
 #include "LightEntityItem.h"
@@ -29,6 +30,7 @@
 #include "PolyVoxEntityItem.h"
 #include "PolyLineEntityItem.h"
 #include "ShapeEntityItem.h"
+#include "MaterialEntityItem.h"
 
 QMap<EntityTypes::EntityType, QString> EntityTypes::_typeToNameMap;
 QMap<QString, EntityTypes::EntityType> EntityTypes::_nameToTypeMap;
@@ -50,6 +52,7 @@ REGISTER_ENTITY_TYPE(PolyLine)
 REGISTER_ENTITY_TYPE(Shape)
 REGISTER_ENTITY_TYPE_WITH_FACTORY(Box, ShapeEntityItem::boxFactory)
 REGISTER_ENTITY_TYPE_WITH_FACTORY(Sphere, ShapeEntityItem::sphereFactory)
+REGISTER_ENTITY_TYPE(Material)
 
 const QString& EntityTypes::getEntityTypeName(EntityType entityType) {
     QMap<EntityType, QString>::iterator matchedTypeName = _typeToNameMap.find(entityType);
@@ -95,6 +98,7 @@ EntityItemPointer EntityTypes::constructEntityItem(EntityType entityType, const 
         auto mutableProperties = properties;
         mutableProperties.markAllChanged();
         newEntityItem = factory(entityID, mutableProperties);
+        newEntityItem->moveToThread(qApp->thread());
     }
     return newEntityItem;
 }

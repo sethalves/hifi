@@ -46,10 +46,7 @@ static Stats* INSTANCE{ nullptr };
 QString getTextureMemoryPressureModeString();
 #endif
 Stats* Stats::getInstance() {
-    if (!INSTANCE) {
-        Stats::registerType();
-        Q_ASSERT(INSTANCE);
-    }
+    Q_ASSERT(INSTANCE);
     return INSTANCE;
 }
 
@@ -63,8 +60,8 @@ Stats::Stats(QQuickItem* parent) :  QQuickItem(parent) {
 bool Stats::includeTimingRecord(const QString& name) {
     if (Menu::getInstance()->isOptionChecked(MenuOption::DisplayDebugTimingDetails)) {
         if (name.startsWith("/idle/update/")) {
-            if (name.startsWith("/idle/update/physics/")) {
-                return Menu::getInstance()->isOptionChecked(MenuOption::ExpandPhysicsSimulationTiming);
+            if (name.startsWith("/idle/update/simulation/")) {
+                return Menu::getInstance()->isOptionChecked(MenuOption::ExpandSimulationTiming);
             } else if (name.startsWith("/idle/update/myAvatar/")) {
                 if (name.startsWith("/idle/update/myAvatar/simulate/")) {
                     return Menu::getInstance()->isOptionChecked(MenuOption::ExpandMyAvatarSimulateTiming);
@@ -78,8 +75,8 @@ bool Stats::includeTimingRecord(const QString& name) {
             return Menu::getInstance()->isOptionChecked(MenuOption::ExpandPaintGLTiming);
         } else if (name.startsWith("/paintGL/")) {
             return Menu::getInstance()->isOptionChecked(MenuOption::ExpandPaintGLTiming);
-        } else if (name.startsWith("step/")) {
-            return Menu::getInstance()->isOptionChecked(MenuOption::ExpandPhysicsSimulationTiming);
+        } else if (name.startsWith("physics/")) {
+            return Menu::getInstance()->isOptionChecked(MenuOption::ExpandPhysicsTiming);
         }
         return true;
     }
@@ -336,7 +333,13 @@ void Stats::updateStats(bool force) {
     }
 
     auto gpuContext = qApp->getGPUContext();
-
+    auto displayPlugin = qApp->getActiveDisplayPlugin();
+    if (displayPlugin) {
+        QVector2D dims(displayPlugin->getRecommendedRenderSize().x, displayPlugin->getRecommendedRenderSize().y);
+        dims *= displayPlugin->getRenderResolutionScale();
+        STAT_UPDATE(gpuFrameSize, dims);
+        STAT_UPDATE(gpuFrameTimePerPixel, (float)(gpuContext->getFrameTimerGPUAverage()*1000000.0 / double(dims.x()*dims.y())));
+    }
     // Update Frame timing (in ms)
     STAT_UPDATE(gpuFrameTime, (float)gpuContext->getFrameTimerGPUAverage());
     STAT_UPDATE(batchFrameTime, (float)gpuContext->getFrameTimerBatchAverage());
@@ -357,6 +360,7 @@ void Stats::updateStats(bool force) {
     STAT_UPDATE(gpuTextureResidentMemory, (int)BYTES_TO_MB(gpu::Context::getTextureResidentGPUMemSize()));
     STAT_UPDATE(gpuTextureFramebufferMemory, (int)BYTES_TO_MB(gpu::Context::getTextureFramebufferGPUMemSize()));
     STAT_UPDATE(gpuTextureResourceMemory, (int)BYTES_TO_MB(gpu::Context::getTextureResourceGPUMemSize()));
+    STAT_UPDATE(gpuTextureResourceIdealMemory, (int)BYTES_TO_MB(gpu::Context::getTextureResourceIdealGPUMemSize()));
     STAT_UPDATE(gpuTextureResourcePopulatedMemory, (int)BYTES_TO_MB(gpu::Context::getTextureResourcePopulatedGPUMemSize()));
     STAT_UPDATE(gpuTextureExternalMemory, (int)BYTES_TO_MB(gpu::Context::getTextureExternalGPUMemSize()));
 #if !defined(Q_OS_ANDROID)
@@ -482,12 +486,19 @@ void Stats::updateStats(bool force) {
             float dt = (float)itr.value().getMovingAverage() / (float)USECS_PER_MSEC;
             _gameUpdateStats = QString("/idle/update = %1 ms").arg(dt);
 
-            QVector<QString> categories = { "devices", "physics", "otherAvatars", "MyAvatar", "misc" };
+            QVector<QString> categories = {
+                "devices",
+                "MyAvatar",
+                "otherAvatars",
+                "pickManager",
+                "pointerManager",
+                "simulation"
+            };
             for (int32_t j = 0; j < categories.size(); ++j) {
                 QString recordKey = "/idle/update/" + categories[j];
-                itr = allRecords.find(recordKey);
-                if (itr != allRecords.end()) {
-                    float dt = (float)itr.value().getMovingAverage() / (float)USECS_PER_MSEC;
+                auto record = PerformanceTimer::getTimerRecord(recordKey);
+                if (record.getCount()) {
+                    float dt = (float) record.getMovingAverage() / (float)USECS_PER_MSEC;
                     QString message = QString("\n    %1 = %2").arg(categories[j]).arg(dt);
                     idleUpdateStats.push(SortableStat(message, dt));
                 }

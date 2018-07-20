@@ -38,7 +38,7 @@ class RenderShadowTaskConfig : public render::Task::Config::Persistent {
     Q_OBJECT
     Q_PROPERTY(bool enabled MEMBER enabled NOTIFY dirty)
 public:
-    RenderShadowTaskConfig() : render::Task::Config::Persistent(QStringList() << "Render" << "Engine" << "Shadows", false) {}
+    RenderShadowTaskConfig() : render::Task::Config::Persistent(QStringList() << "Render" << "Engine" << "Shadows", true) {}
 
 signals:
     void dirty();
@@ -118,7 +118,7 @@ private:
 
 class RenderShadowCascadeSetup {
 public:
-    using Outputs = render::VaryingSet2<render::ItemFilter, ViewFrustumPointer>;
+    using Outputs = render::VaryingSet3<render::ItemFilter, render::ItemFilter, ViewFrustumPointer>;
     using JobModel = render::Job::ModelO<RenderShadowCascadeSetup, Outputs>;
 
     RenderShadowCascadeSetup(unsigned int cascadeIndex, RenderShadowTask::CullFunctor& cullFunctor, uint8_t tagBits = 0x00, uint8_t tagMask = 0x00) : 

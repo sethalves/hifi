@@ -9,11 +9,12 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "OctreePacketData.h"
+
 #include <GLMHelpers.h>
 #include <PerfStat.h>
 
 #include "OctreeLogging.h"
-#include "OctreePacketData.h"
 #include "NumericalConstants.h"
 
 bool OctreePacketData::_debug = false;
@@ -371,6 +372,17 @@ bool OctreePacketData::appendValue(quint64 value) {
 
 bool OctreePacketData::appendValue(float value) {
     
+    const unsigned char* data = (const unsigned char*)&value;
+    int length = sizeof(value);
+    bool success = append(data, length);
+    if (success) {
+        _bytesOfValues += length;
+        _totalBytesOfValues += length;
+    }
+    return success;
+}
+
+bool OctreePacketData::appendValue(const glm::vec2& value) {
     const unsigned char* data = (const unsigned char*)&value;
     int length = sizeof(value);
     bool success = append(data, length);

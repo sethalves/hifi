@@ -153,6 +153,12 @@
                     max: 5
                 },
                 {
+                    id: "speedSpread",
+                    name: "Speed Spread",
+                    type: "SliderFloat",
+                    max: 5
+                },
+                {
                     type: "Row"
                 },
                 {
@@ -236,7 +242,10 @@
                         red: 255,
                         green: 255,
                         blue: 255
-                    }
+                    },
+                    layoutType: "hex",
+                    layoutColorScheme: "dark",
+                    useSubmitButton: false
                 },
                 {
                     type: "Row"
@@ -249,7 +258,10 @@
                         red: 0,
                         green: 0,
                         blue: 0
-                    }
+                    },
+                    layoutType: "hex",
+                    layoutColorScheme: "dark",
+                    useSubmitButton: false
                 },
                 {
                     type: "Row"
@@ -262,7 +274,10 @@
                         red: 255,
                         green: 255,
                         blue: 255
-                    }
+                    },
+                    layoutType: "hex",
+                    layoutColorScheme: "dark",
+                    useSubmitButton: false
                 },
                 {
                     type: "Row"
@@ -275,7 +290,10 @@
                         red: 255,
                         green: 255,
                         blue: 255
-                    }
+                    },
+                    layoutType: "hex",
+                    layoutColorScheme: "dark",
+                    useSubmitButton: false
                 },
                 {
                     type: "Row"
@@ -309,7 +327,8 @@
                 {
                     id: "alpha",
                     name: "Alpha",
-                    type: "SliderFloat"
+                    type: "SliderFloat",
+                    max: 1.0
                 },
                 {
                     type: "Row"
@@ -317,7 +336,8 @@
                 {
                     id: "alphaSpread",
                     name: "Alpha Spread",
-                    type: "SliderFloat"
+                    type: "SliderFloat",
+                    max: 1.0
                 },
                 {
                     type: "Row"
@@ -325,7 +345,8 @@
                 {
                     id: "alphaStart",
                     name: "Alpha Start",
-                    type: "SliderFloat"
+                    type: "SliderFloat",
+                    max: 1.0
                 },
                 {
                     type: "Row"
@@ -333,7 +354,8 @@
                 {
                     id: "alphaFinish",
                     name: "Alpha Finish",
-                    type: "SliderFloat"
+                    type: "SliderFloat",
+                    max: 1.0
                 },
                 {
                     type: "Row"

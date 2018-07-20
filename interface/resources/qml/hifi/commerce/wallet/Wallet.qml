@@ -14,12 +14,12 @@
 import Hifi 1.0 as Hifi
 import QtQuick 2.5
 import QtGraphicalEffects 1.0
-import QtQuick.Controls 1.4
 import "../../../styles-uit"
 import "../../../controls-uit" as HifiControlsUit
 import "../../../controls" as HifiControls
 import "../common" as HifiCommerceCommon
-import "./sendMoney"
+import "../common/sendAsset"
+import "../.." as HifiCommon
 
 Rectangle {
     HifiConstants { id: hifi; }
@@ -47,20 +47,22 @@ Rectangle {
                 }
             } else if (walletStatus === 1) {
                 if (root.activeView !== "walletSetup") {
-                    root.activeView = "walletSetup";
-                    Commerce.resetLocalWalletOnly();
-                    var timestamp = new Date();
-                    walletSetup.startingTimestamp = timestamp;
-                    walletSetup.setupAttemptID = generateUUID();
-                    UserActivityLogger.commerceWalletSetupStarted(timestamp, setupAttemptID, walletSetup.setupFlowVersion, walletSetup.referrer ? walletSetup.referrer : "wallet app",
-                        (AddressManager.placename || AddressManager.hostname || '') + (AddressManager.pathname ? AddressManager.pathname.match(/\/[^\/]+/)[0] : ''));
+                    walletResetSetup();
                 }
             } else if (walletStatus === 2) {
+                if (root.activeView != "preexisting") {
+                    root.activeView = "preexisting";
+                }
+            } else if (walletStatus === 3) {
+                if (root.activeView != "conflicting") {
+                    root.activeView = "conflicting";
+                }
+            } else if (walletStatus === 4) {
                 if (root.activeView !== "passphraseModal") {
                     root.activeView = "passphraseModal";
                     UserActivityLogger.commercePassphraseEntry("wallet app");
                 }
-            } else if (walletStatus === 3) {
+            } else if (walletStatus === 5) {
                 if (root.activeView !== "walletSetup") {
                     root.activeView = "walletHome";
                     Commerce.getSecurityImage();
@@ -159,7 +161,9 @@ Rectangle {
                     lightboxPopup.bodyImageSource = titleBarSecurityImage.source;
                     lightboxPopup.bodyText = lightboxPopup.securityPicBodyText;
                     lightboxPopup.button1text = "CLOSE";
-                    lightboxPopup.button1method = "root.visible = false;"
+                    lightboxPopup.button1method = function() {
+                        lightboxPopup.visible = false;
+                    }
                     lightboxPopup.visible = true;
                 }
             }
@@ -168,6 +172,26 @@ Rectangle {
     //
     // TITLE BAR END
     //
+
+    WalletChoice {
+        id: walletChoice;
+        proceedFunction: function (isReset) {
+            console.log("WalletChoice", isReset ? "Reset wallet." : "Trying again with new wallet.");
+            Commerce.setSoftReset();
+            if (isReset) {
+                walletResetSetup();
+            } else {
+                Commerce.clearWallet();
+                var msg = { referrer: walletChoice.referrer }
+                followReferrer(msg);
+            }
+        }
+        copyFunction: Commerce.copyKeyFileFrom;
+        z: 997;
+        visible: (root.activeView === "preexisting") || (root.activeView === "conflicting");
+        activeView: root.activeView;
+        anchors.fill: parent;
+    }
 
     WalletSetup {
         id: walletSetup;
@@ -178,14 +202,7 @@ Rectangle {
         Connections {
             onSendSignalToWallet: {
                 if (msg.method === 'walletSetup_finished') {
-                    if (msg.referrer === '' || msg.referrer === 'marketplace cta') {
-                        root.activeView = "initialize";
-                        Commerce.getWalletStatus();
-                    } else if (msg.referrer === 'purchases') {
-                        sendToScript({method: 'goToPurchases'});
-                    } else {
-                        sendToScript({method: 'goToMarketplaceItemPage', itemId: msg.referrer});
-                    }
+                    followReferrer(msg);
                 } else if (msg.method === 'walletSetup_raiseKeyboard') {
                     root.keyboardRaised = true;
                     root.isPassword = msg.isPasswordField;
@@ -222,6 +239,8 @@ Rectangle {
                     } else {
                         sendToScript(msg);
                     }
+                } else {
+                    sendToScript(msg);
                 }
             }
         }
@@ -325,8 +344,14 @@ Rectangle {
         }
     }
 
-    SendMoney {
+    HifiCommon.RootHttpRequest {
+        id: http;
+    }
+
+    SendAsset {
         id: sendMoney;
+        http: http;
+        listModelName: "Send Money Connections";
         z: 997;
         visible: root.activeView === "sendMoney";
         anchors.fill: parent;
@@ -334,7 +359,7 @@ Rectangle {
         parentAppNavBarHeight: tabButtonsContainer.height;
 
         Connections {
-            onSendSignalToWallet: {
+            onSendSignalToParent: {
                 sendToScript(msg);
             }
         }
@@ -389,7 +414,7 @@ Rectangle {
     //
     Item {
         id: tabButtonsContainer;
-        visible: !needsLogIn.visible && root.activeView !== "passphraseChange" && root.activeView !== "securityImageChange" && sendMoney.currentActiveView !== "sendMoneyStep";
+        visible: !needsLogIn.visible && root.activeView !== "passphraseChange" && root.activeView !== "securityImageChange" && sendMoney.currentActiveView !== "sendAssetStep";
         property int numTabs: 5;
         // Size
         width: root.width;
@@ -738,6 +763,7 @@ Rectangle {
         switch (message.method) {
             case 'updateWalletReferrer':
                 walletSetup.referrer = message.referrer;
+                walletChoice.referrer = message.referrer;
             break;
             case 'inspectionCertificate_resetCert':
                 // NOP
@@ -748,6 +774,13 @@ Rectangle {
             case 'selectRecipient':
             case 'updateSelectedRecipientUsername':
                 sendMoney.fromScript(message);
+            break;
+            case 'http.response':
+                http.handleHttpResponse(message);
+            break;
+            case 'palIsStale':
+            case 'avatarDisconnected':
+                // Because we don't have "channels" for sending messages to a specific QML object, the messages are broadcast to all QML Items. If an Item of yours happens to be visible when some script sends a message with a method you don't expect, you'll get "Unrecognized message..." logs.
             break;
             default:
                 console.log('Unrecognized message from wallet.js:', JSON.stringify(message));
@@ -767,6 +800,28 @@ Rectangle {
             d = Math.floor(d / 16);
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
         });
+    }
+
+    function walletResetSetup() {
+        root.activeView = "walletSetup";
+        var timestamp = new Date();
+        walletSetup.startingTimestamp = timestamp;
+        walletSetup.setupAttemptID = generateUUID();
+        UserActivityLogger.commerceWalletSetupStarted(timestamp, walletSetup.setupAttemptID, walletSetup.setupFlowVersion, walletSetup.referrer ? walletSetup.referrer : "wallet app",
+            (AddressManager.placename || AddressManager.hostname || '') + (AddressManager.pathname ? AddressManager.pathname.match(/\/[^\/]+/)[0] : ''));
+    }
+
+    function followReferrer(msg) {
+        if (msg.referrer === '' || msg.referrer === 'marketplace cta') {
+            root.activeView = "initialize";
+            Commerce.getWalletStatus();
+        } else if (msg.referrer === 'purchases') {
+            sendToScript({method: 'goToPurchases'});
+        } else if (msg.referrer === 'marketplace cta' || msg.referrer === 'mainPage') {
+            sendToScript({method: 'goToMarketplaceMainPage', itemId: msg.referrer});
+        } else {
+            sendToScript({method: 'goToMarketplaceItemPage', itemId: msg.referrer});
+        }
     }
     //
     // FUNCTION DEFINITIONS END

@@ -132,6 +132,20 @@ QUrl expandScriptUrl(const QUrl& rawScriptURL) {
 
 QObject* scriptsModel();
 
+bool NativeScriptInitializers::registerNativeScriptInitializer(NativeScriptInitializer initializer) {
+    return registerScriptInitializer([=](ScriptEnginePointer engine) {
+        initializer(qobject_cast<QScriptEngine*>(engine.data()));
+    });
+}
+
+bool NativeScriptInitializers::registerScriptInitializer(ScriptInitializer initializer) {
+    if (auto scriptEngines = DependencyManager::get<ScriptEngines>().data()) {
+        scriptEngines->registerScriptInitializer(initializer);
+        return true;
+    }
+    return false;
+}
+
 void ScriptEngines::registerScriptInitializer(ScriptInitializer initializer) {
     _scriptInitializers.push_back(initializer);
 }
@@ -177,6 +191,7 @@ void ScriptEngines::shutdownScripting() {
 
             // Gracefully stop the engine's scripting thread
             scriptEngine->stop();
+            removeScriptEngine(scriptEngine);
 
             // We need to wait for the engine to be done running before we proceed, because we don't
             // want any of the scripts final "scriptEnding()" or pending "update()" methods from accessing
@@ -259,9 +274,9 @@ QVariantList ScriptEngines::getRunning() {
         } else {
             displayURLString = displayURL.toDisplayString(QUrl::FormattingOptions(QUrl::FullyEncoded));
         }
-        resultNode.insert("url", displayURLString);
         // The path contains the exact path/URL of the script, which also is used in the stopScript function.
-        resultNode.insert("path", normalizeScriptURL(runningScript).toString());
+        resultNode.insert("path", displayURLString);
+        resultNode.insert("url", normalizeScriptURL(runningScript).toString());
         resultNode.insert("local", runningScriptURL.isLocalFile());
         result.append(resultNode);
     }
@@ -333,7 +348,8 @@ void ScriptEngines::saveScripts() {
     {
         QReadLocker lock(&_scriptEnginesHashLock);
         for (auto it = _scriptEnginesHash.begin(); it != _scriptEnginesHash.end(); ++it) {
-            if (it.value() && it.value()->isUserLoaded()) {
+            // Save user-loaded scripts, only if they are set to quit when finished
+            if (it.value() && it.value()->isUserLoaded()  && !it.value()->isQuitWhenFinished()) {
                 auto normalizedUrl = normalizeScriptURL(it.key());
                 list.append(normalizedUrl.toString());
             }
@@ -379,6 +395,7 @@ void ScriptEngines::stopAllScripts(bool restart) {
         // stop all scripts
         qCDebug(scriptengine) << "stopping script..." << it.key();
         scriptEngine->stop();
+        removeScriptEngine(scriptEngine);
     }
     // wait for engines to stop (ie: providing time for .scriptEnding cleanup handlers to run) before
     // triggering reload of any Client scripts / Entity scripts
@@ -413,14 +430,20 @@ bool ScriptEngines::stopScript(const QString& rawScriptURL, bool restart) {
         if (_scriptEnginesHash.contains(scriptURL)) {
             ScriptEnginePointer scriptEngine = _scriptEnginesHash[scriptURL];
             if (restart) {
+                bool isUserLoaded = scriptEngine->isUserLoaded();
+                ScriptEngine::Type type = scriptEngine->getType();
                 auto scriptCache = DependencyManager::get<ScriptCache>();
                 scriptCache->deleteScript(scriptURL);
-                connect(scriptEngine.data(), &ScriptEngine::finished,
-                        this, [this](QString scriptName, ScriptEnginePointer engine) {
-                    reloadScript(scriptName);
-                });
+
+                if (!scriptEngine->isStopping()) {
+                    connect(scriptEngine.data(), &ScriptEngine::finished,
+                            this, [this, isUserLoaded, type](QString scriptName, ScriptEnginePointer engine) {
+                            reloadScript(scriptName, isUserLoaded)->setType(type);
+                    });
+                }
             }
             scriptEngine->stop();
+            removeScriptEngine(scriptEngine);
             stoppedScript = true;
             qCDebug(scriptengine) << "stopping script..." << scriptURL;
         }
@@ -440,7 +463,7 @@ void ScriptEngines::reloadAllScripts() {
 }
 
 ScriptEnginePointer ScriptEngines::loadScript(const QUrl& scriptFilename, bool isUserLoaded, bool loadScriptFromEditor,
-                                        bool activateMainWindow, bool reload) {
+                                              bool activateMainWindow, bool reload, bool quitWhenFinished) {
     if (thread() != QThread::currentThread()) {
         ScriptEnginePointer result { nullptr };
         BLOCKING_INVOKE_METHOD(this, "loadScript", Q_RETURN_ARG(ScriptEnginePointer, result),
@@ -472,6 +495,7 @@ ScriptEnginePointer ScriptEngines::loadScript(const QUrl& scriptFilename, bool i
     scriptEngine = ScriptEnginePointer(new ScriptEngine(_context, NO_SCRIPT, "about:" + scriptFilename.fileName()));
     addScriptEngine(scriptEngine);
     scriptEngine->setUserLoaded(isUserLoaded);
+    scriptEngine->setQuitWhenFinished(quitWhenFinished);
 
     if (scriptFilename.isEmpty() || !scriptUrl.isValid()) {
         launchScriptEngine(scriptEngine);
@@ -479,6 +503,11 @@ ScriptEnginePointer ScriptEngines::loadScript(const QUrl& scriptFilename, bool i
         // connect to the appropriate signals of this script engine
         connect(scriptEngine.data(), &ScriptEngine::scriptLoaded, this, &ScriptEngines::onScriptEngineLoaded);
         connect(scriptEngine.data(), &ScriptEngine::errorLoadingScript, this, &ScriptEngines::onScriptEngineError);
+
+        // Shutdown Interface when script finishes, if requested
+        if (quitWhenFinished) {
+            connect(scriptEngine.data(), &ScriptEngine::finished, this, &ScriptEngines::quitWhenFinished);
+        }
 
         // get the script engine object to load the script at the designated script URL
         scriptEngine->loadURL(scriptUrl, reload);
@@ -520,6 +549,19 @@ void ScriptEngines::onScriptEngineLoaded(const QString& rawScriptURL) {
     emit scriptCountChanged();
 }
 
+void ScriptEngines::quitWhenFinished() {
+    qApp->quit();
+}
+
+int ScriptEngines::runScriptInitializers(ScriptEnginePointer scriptEngine) {
+    int ii=0;
+    for (auto initializer : _scriptInitializers) {
+        ii++;
+        initializer(scriptEngine);
+    }
+    return ii;
+}
+
 void ScriptEngines::launchScriptEngine(ScriptEnginePointer scriptEngine) {
     connect(scriptEngine.data(), &ScriptEngine::finished, this, &ScriptEngines::onScriptFinished, Qt::DirectConnection);
     connect(scriptEngine.data(), &ScriptEngine::loadScript, [&](const QString& scriptName, bool userLoaded) {
@@ -530,9 +572,7 @@ void ScriptEngines::launchScriptEngine(ScriptEnginePointer scriptEngine) {
     });
 
     // register our application services and set it off on its own thread
-    for (auto initializer : _scriptInitializers) {
-        initializer(scriptEngine);
-    }
+    runScriptInitializers(scriptEngine);
 
     // FIXME disabling 'shift key' debugging for now.  If you start up the application with
     // the shift key held down, it triggers a deadlock because of script interfaces running
@@ -560,7 +600,7 @@ void ScriptEngines::onScriptFinished(const QString& rawScriptURL, ScriptEnginePo
         }
     }
 
-    if (removed) {
+    if (removed && !_isReloading) {
         // Update settings with removed script
         saveScripts();
         emit scriptCountChanged();

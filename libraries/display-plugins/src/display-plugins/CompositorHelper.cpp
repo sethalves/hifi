@@ -275,7 +275,7 @@ bool CompositorHelper::getReticleOverDesktop() const {
     // as being over the desktop.
     if (isHMD()) {
         QMutexLocker locker(&_reticleLock);
-        glm::vec2 maxOverlayPosition = _currentDisplayPlugin->getRecommendedUiSize();
+        glm::vec2 maxOverlayPosition = glm::vec2(_currentDisplayPlugin->getRecommendedUiSize());
         static const glm::vec2 minOverlayPosition;
         if (glm::any(glm::lessThan(_reticlePositionInHMD, minOverlayPosition)) ||
             glm::any(glm::greaterThan(_reticlePositionInHMD, maxOverlayPosition))) {
@@ -317,7 +317,7 @@ void CompositorHelper::sendFakeMouseEvent() {
 
 void CompositorHelper::setReticlePosition(const glm::vec2& position, bool sendFakeEvent) {
     if (isHMD()) {
-        glm::vec2 maxOverlayPosition = _currentDisplayPlugin->getRecommendedUiSize();
+        glm::vec2 maxOverlayPosition = glm::vec2(_currentDisplayPlugin->getRecommendedUiSize());
         // FIXME don't allow negative mouseExtra
         glm::vec2 mouseExtra = (MOUSE_EXTENTS_PIXELS - maxOverlayPosition) / 2.0f;
         glm::vec2 minMouse = vec2(0) - mouseExtra;
@@ -455,6 +455,21 @@ glm::mat4 CompositorHelper::getReticleTransform(const glm::mat4& eyePose, const 
         vec2 mouseSize = CURSOR_PIXEL_SIZE * Cursor::Manager::instance().getScale() / canvasSize;
         result = glm::scale(glm::translate(glm::mat4(), vec3(mousePosition, 0.0f)), vec3(mouseSize, 1.0f));
     }
+    return result;
+}
+
+glm::mat4 CompositorHelper::getPoint2DTransform(const glm::vec2& point, float sizeX, float sizeY) const {
+    glm::mat4 result;
+    const auto canvasSize = vec2(toGlm(_renderingWidget->size()));;
+    QPoint qPoint(point.x,point.y);
+    vec2 position = toGlm(_renderingWidget->mapFromGlobal(qPoint));
+    position /= canvasSize;
+    position *= 2.0;
+    position -= 1.0;
+    position.y *= -1.0f;
+
+    vec2 size = vec2(sizeX / canvasSize.x, sizeY / canvasSize.y);
+    result = glm::scale(glm::translate(glm::mat4(), vec3(position, 0.0f)), vec3(size, 1.0f));
     return result;
 }
 

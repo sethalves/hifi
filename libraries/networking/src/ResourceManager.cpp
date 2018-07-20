@@ -26,14 +26,26 @@
 #include "NetworkAccessManager.h"
 #include "NetworkLogging.h"
 
-ResourceManager::ResourceManager() {
+ResourceManager::ResourceManager(bool atpSupportEnabled) : _atpSupportEnabled(atpSupportEnabled) {
     _thread.setObjectName("Resource Manager Thread");
 
-    auto assetClient = DependencyManager::set<AssetClient>();
-    assetClient->moveToThread(&_thread);
-    QObject::connect(&_thread, &QThread::started, assetClient.data(), &AssetClient::init);
+    if (_atpSupportEnabled) {
+        auto assetClient = DependencyManager::set<AssetClient>();
+        assetClient->moveToThread(&_thread);
+        QObject::connect(&_thread, &QThread::started, assetClient.data(), &AssetClient::initCaching);
+    }
 
     _thread.start();
+}
+
+ResourceManager::~ResourceManager() {
+    if (_thread.isRunning()) {
+        _thread.quit();
+        static const auto MAX_RESOURCE_MANAGER_THREAD_QUITTING_TIME = MSECS_PER_SECOND / 2;
+        if (!_thread.wait(MAX_RESOURCE_MANAGER_THREAD_QUITTING_TIME)) {
+            _thread.terminate();
+        }
+    }
 }
 
 void ResourceManager::setUrlPrefixOverride(const QString& prefix, const QString& replacement) {
@@ -111,6 +123,10 @@ ResourceRequest* ResourceManager::createResourceRequest(QObject* parent, const Q
     } else if (scheme == URL_SCHEME_HTTP || scheme == URL_SCHEME_HTTPS || scheme == URL_SCHEME_FTP) {
         request = new HTTPResourceRequest(normalizedURL);
     } else if (scheme == URL_SCHEME_ATP) {
+        if (!_atpSupportEnabled) {
+            qCDebug(networking) << "ATP support not enabled, unable to create request for URL: " << url.url();
+            return nullptr;
+        }
         request = new AssetResourceRequest(normalizedURL);
     } else {
         qCDebug(networking) << "Unknown scheme (" << scheme << ") for URL: " << url.url();
@@ -146,7 +162,7 @@ bool ResourceManager::resourceExists(const QUrl& url) {
         reply->deleteLater();
 
         return reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200;
-    } else if (scheme == URL_SCHEME_ATP) {
+    } else if (scheme == URL_SCHEME_ATP && _atpSupportEnabled) {
         auto request = new AssetResourceRequest(url);
         ByteRange range;
         range.fromInclusive = 1;

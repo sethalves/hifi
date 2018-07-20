@@ -22,25 +22,26 @@
 <$declareStandardCameraTransform()$>
 
 <@include MaterialTextures.slh@>
-<$declareMaterialTextures(ALBEDO, ROUGHNESS, _SCRIBE_NULL, _SCRIBE_NULL, EMISSIVE, OCCLUSION)$>
+<$declareMaterialTextures(ALBEDO, ROUGHNESS, _SCRIBE_NULL, METALLIC, EMISSIVE, OCCLUSION)$>
 
 in vec2 _texCoord0;
 in vec2 _texCoord1;
-in vec4 _position;
-in vec3 _normal;
+in vec4 _positionES;
+in vec3 _normalWS;
 in vec3 _color;
 in float _alpha;
 
-out vec4 _fragColor;
+layout(location = 0) out vec4 _fragColor0;
 
 void main(void) {
     Material mat = getMaterial();
-    int matKey = getMaterialKey(mat);
-    <$fetchMaterialTexturesCoord0(matKey, _texCoord0, albedoTex, roughnessTex, _SCRIBE_NULL, _SCRIBE_NULL, emissiveTex)$>
+    BITFIELD matKey = getMaterialKey(mat);
+    <$fetchMaterialTexturesCoord0(matKey, _texCoord0, albedoTex, roughnessTex, _SCRIBE_NULL, metallicTex, emissiveTex)$>
     <$fetchMaterialTexturesCoord1(matKey, _texCoord1, occlusionTex)$>
 
     float opacity = getMaterialOpacity(mat) * _alpha;
     <$evalMaterialOpacity(albedoTex.a, opacity, matKey, opacity)$>;
+    <$discardTransparent(opacity)$>;
 
     vec3 albedo = getMaterialAlbedo(mat);
     <$evalMaterialAlbedo(albedoTex, albedo, matKey, albedo)$>;
@@ -50,23 +51,18 @@ void main(void) {
     <$evalMaterialRoughness(roughnessTex, roughness, matKey, roughness)$>;
 
     float metallic = getMaterialMetallic(mat);
-    vec3 fresnel = vec3(0.03); // Default Di-electric fresnel value
-    if (metallic <= 0.5) {
-        metallic = 0.0;
-    } else {
-        fresnel = albedo;
-        metallic = 1.0;
-    }
+    <$evalMaterialMetallic(metallicTex, metallic, matKey, metallic)$>;
+    vec3 fresnel = getFresnelF0(metallic, albedo);
 
     vec3 emissive = getMaterialEmissive(mat);
     <$evalMaterialEmissive(emissiveTex, emissive, matKey, emissive)$>;
 
-    vec3 fragPosition = _position.xyz;
-    vec3 fragNormal = normalize(_normal);
+    vec3 fragPosition = _positionES.xyz;
+    vec3 fragNormal = normalize(_normalWS);
 
     TransformCamera cam = getTransformCamera();
 
-    _fragColor =  vec4(evalGlobalLightingAlphaBlendedWithHaze(
+    _fragColor0 =  vec4(evalGlobalLightingAlphaBlendedWithHaze(
         cam._viewInverse,
         1.0,
         occlusionTex,

@@ -41,8 +41,6 @@
 
 Q_LOGGING_CATEGORY(trace_render_overlays, "trace.render.overlays")
 
-extern void initOverlay3DPipelines(render::ShapePlumber& plumber, bool depthTest = false);
-
 Overlays::Overlays() {
     auto pointerManager = DependencyManager::get<PointerManager>();
     connect(pointerManager.data(), &PointerManager::hoverBeginOverlay, this, &Overlays::hoverEnterPointerEvent);
@@ -54,6 +52,7 @@ Overlays::Overlays() {
 }
 
 void Overlays::cleanupAllOverlays() {
+    _shuttingDown = true;
     QMap<OverlayID, Overlay::Pointer> overlaysHUD;
     QMap<OverlayID, Overlay::Pointer> overlaysWorld;
     {
@@ -117,7 +116,7 @@ void Overlays::renderHUD(RenderArgs* renderArgs) {
     auto geometryCache = DependencyManager::get<GeometryCache>();
     auto textureCache = DependencyManager::get<TextureCache>();
 
-    auto size = qApp->getUiSize();
+    auto size = glm::uvec2(qApp->getUiSize());
     int width = size.x;
     int height = size.y;
     mat4 legacyProjection = glm::ortho<float>(0, width, height, 0, -1000, 1000);
@@ -147,6 +146,10 @@ void Overlays::enable() {
 // Note, can't be invoked by scripts, but can be called by the InterfaceParentFinder
 // class on packet processing threads
 Overlay::Pointer Overlays::getOverlay(OverlayID id) const {
+    if (_shuttingDown) {
+        return nullptr;
+    }
+
     QMutexLocker locker(&_mutex);
     if (_overlaysHUD.contains(id)) {
         return _overlaysHUD[id];
@@ -157,6 +160,10 @@ Overlay::Pointer Overlays::getOverlay(OverlayID id) const {
 }
 
 OverlayID Overlays::addOverlay(const QString& type, const QVariant& properties) {
+    if (_shuttingDown) {
+        return UNKNOWN_OVERLAY_ID;
+    }
+
     if (QThread::currentThread() != thread()) {
         OverlayID result;
         PROFILE_RANGE(script, __FUNCTION__);
@@ -261,6 +268,10 @@ OverlayID Overlays::addOverlay(const QString& type, const QVariant& properties) 
 }
 
 OverlayID Overlays::addOverlay(const Overlay::Pointer& overlay) {
+    if (_shuttingDown) {
+        return UNKNOWN_OVERLAY_ID;
+    }
+
     OverlayID thisID = OverlayID(QUuid::createUuid());
     overlay->setOverlayID(thisID);
     overlay->setStackOrder(_stackOrder++);
@@ -283,6 +294,10 @@ OverlayID Overlays::addOverlay(const Overlay::Pointer& overlay) {
 }
 
 OverlayID Overlays::cloneOverlay(OverlayID id) {
+    if (_shuttingDown) {
+        return UNKNOWN_OVERLAY_ID;
+    }
+
     if (QThread::currentThread() != thread()) {
         OverlayID result;
         PROFILE_RANGE(script, __FUNCTION__);
@@ -301,6 +316,10 @@ OverlayID Overlays::cloneOverlay(OverlayID id) {
 }
 
 bool Overlays::editOverlay(OverlayID id, const QVariant& properties) {
+    if (_shuttingDown) {
+        return false;
+    }
+
     auto thisOverlay = getOverlay(id);
     if (!thisOverlay) {
         return false;
@@ -320,6 +339,10 @@ bool Overlays::editOverlay(OverlayID id, const QVariant& properties) {
 }
 
 bool Overlays::editOverlays(const QVariant& propertiesById) {
+    if (_shuttingDown) {
+        return false;
+    }
+
     bool defer2DOverlays = QThread::currentThread() != thread();
 
     QVariantMap deferrred;
@@ -351,6 +374,10 @@ bool Overlays::editOverlays(const QVariant& propertiesById) {
 }
 
 void Overlays::deleteOverlay(OverlayID id) {
+    if (_shuttingDown) {
+        return;
+    }
+
     if (QThread::currentThread() != thread()) {
         QMetaObject::invokeMethod(this, "deleteOverlay", Q_ARG(OverlayID, id));
         return;
@@ -374,6 +401,9 @@ void Overlays::deleteOverlay(OverlayID id) {
 }
 
 QString Overlays::getOverlayType(OverlayID overlayId) {
+    if (_shuttingDown) {
+        return "";
+    }
     if (QThread::currentThread() != thread()) {
         QString result;
         PROFILE_RANGE(script, __FUNCTION__);
@@ -404,7 +434,7 @@ QObject* Overlays::getOverlayObject(OverlayID id) {
 }
 
 OverlayID Overlays::getOverlayAtPoint(const glm::vec2& point) {
-    if (!_enabled) {
+    if (_shuttingDown || !_enabled) {
         return UNKNOWN_OVERLAY_ID;
     }
 
@@ -522,7 +552,7 @@ RayToOverlayIntersectionResult Overlays::findRayIntersectionVector(const PickRay
             glm::vec3 thisSurfaceNormal;
             QVariantMap thisExtraInfo;
             if (thisOverlay->findRayIntersectionExtraInfo(ray.origin, ray.direction, thisDistance,
-                                                          thisFace, thisSurfaceNormal, thisExtraInfo)) {
+                                                          thisFace, thisSurfaceNormal, thisExtraInfo, precisionPicking)) {
                 bool isDrawInFront = thisOverlay->getDrawInFront();
                 if ((bestIsFront && isDrawInFront && thisDistance < bestDistance)
                     || (!bestIsFront && (isDrawInFront || thisDistance < bestDistance))) {

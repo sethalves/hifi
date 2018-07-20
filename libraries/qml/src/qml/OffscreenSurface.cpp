@@ -27,6 +27,8 @@
 #include "impl/SharedObject.h"
 #include "impl/TextureCache.h"
 
+#include "Profile.h"
+
 using namespace hifi::qml;
 using namespace hifi::qml::impl;
 
@@ -64,14 +66,10 @@ OffscreenSurface::OffscreenSurface()
 }
 
 OffscreenSurface::~OffscreenSurface() {
-    disconnect(qApp);
-    _sharedObject->destroy();
+    _sharedObject->deleteLater();
 }
 
 bool OffscreenSurface::fetchTexture(TextureAndFence& textureAndFence) {
-    if (!_sharedObject) {
-        return false;
-    }
     hifi::qml::impl::TextureAndFence typedTextureAndFence;
     bool result = _sharedObject->fetchTexture(typedTextureAndFence);
     textureAndFence = typedTextureAndFence;
@@ -154,17 +152,67 @@ bool OffscreenSurface::eventFilter(QObject* originalDestination, QEvent* event) 
             QPointF transformedPos = mapToVirtualScreen(mouseEvent->localPos());
             QMouseEvent mappedEvent(mouseEvent->type(), transformedPos, mouseEvent->screenPos(), mouseEvent->button(),
                                     mouseEvent->buttons(), mouseEvent->modifiers());
-            if (event->type() == QEvent::MouseMove) {
-                // TODO - this line necessary for the QML Tooltop to work (which is not currently being used), but it causes interface to crash on launch on a fresh install
-                // need to investigate into why this crash is happening.
-                //_qmlContext->setContextProperty("lastMousePosition", transformedPos);
-            }
             mappedEvent.ignore();
             if (QCoreApplication::sendEvent(_sharedObject->getWindow(), &mappedEvent)) {
                 return mappedEvent.isAccepted();
             }
             break;
         }
+
+#if defined(Q_OS_ANDROID)
+        case QEvent::TouchBegin:
+        case QEvent::TouchUpdate:
+        case QEvent::TouchEnd: {
+            QTouchEvent *originalEvent = static_cast<QTouchEvent *>(event);
+            QEvent::Type fakeMouseEventType = QEvent::None;
+            Qt::MouseButton fakeMouseButton = Qt::LeftButton;
+            Qt::MouseButtons fakeMouseButtons = Qt::NoButton;
+            switch (event->type()) {
+                case QEvent::TouchBegin:
+                    fakeMouseEventType = QEvent::MouseButtonPress;
+                    fakeMouseButtons = Qt::LeftButton;
+                    break;
+                case QEvent::TouchUpdate:
+                    fakeMouseEventType = QEvent::MouseMove;
+                    fakeMouseButtons = Qt::LeftButton;
+                    break;
+                case QEvent::TouchEnd:
+                    fakeMouseEventType = QEvent::MouseButtonRelease;
+                    fakeMouseButtons = Qt::NoButton;
+                    break;
+            }
+            // Same case as OffscreenUi.cpp::eventFilter: touch events are always being accepted so we now use mouse events and consider one touch, touchPoints()[0].
+            QMouseEvent fakeMouseEvent(fakeMouseEventType, originalEvent->touchPoints()[0].pos(), fakeMouseButton, fakeMouseButtons, Qt::NoModifier);
+            fakeMouseEvent.ignore();
+            if (QCoreApplication::sendEvent(_sharedObject->getWindow(), &fakeMouseEvent)) {
+                /*qInfo() << __FUNCTION__ << "sent fake touch event:" << fakeMouseEvent.type()
+                        << "_quickWindow handled it... accepted:" << fakeMouseEvent.isAccepted();*/
+                return fakeMouseEvent.isAccepted();
+            }
+            break;
+        }
+        case QEvent::InputMethod:
+        case QEvent::InputMethodQuery: {
+            auto window = getWindow();
+            if (window && window->activeFocusItem()) {
+                event->ignore();
+                if (QCoreApplication::sendEvent(window->activeFocusItem(), event)) {
+                    bool eventAccepted = event->isAccepted();
+                    if (event->type() == QEvent::InputMethodQuery) {
+                        QInputMethodQueryEvent *imqEvent = static_cast<QInputMethodQueryEvent *>(event);
+                        // this block disables the selection cursor in android which appears in
+                        // the top-left corner of the screen
+                        if (imqEvent->queries() & Qt::ImEnabled) {
+                            imqEvent->setValue(Qt::ImEnabled, QVariant(false));
+                        }
+                    }
+                    return eventAccepted;
+                }
+                return false;
+            }
+            break;
+        }
+#endif
         default:
             break;
     }
@@ -234,9 +282,17 @@ void OffscreenSurface::loadInternal(const QUrl& qmlSource,
                                     bool createNewContext,
                                     QQuickItem* parent,
                                     const QmlContextObjectCallback& callback) {
+    PROFILE_RANGE_EX(app, "OffscreenSurface::loadInternal", 0xffff00ff, 0, { std::make_pair("url", qmlSource.toDisplayString()) });
     if (QThread::currentThread() != thread()) {
         qFatal("Called load on a non-surface thread");
     }
+
+    // For desktop toolbar mode window: stop script when window is closed.
+    if (qmlSource.isEmpty()) {
+        getSurfaceContext()->engine()->quit();
+        return;
+    }
+
     // Synchronous loading may take a while; restart the deadlock timer
     QMetaObject::invokeMethod(qApp, "updateHeartbeat", Qt::DirectConnection);
 
@@ -254,7 +310,11 @@ void OffscreenSurface::loadInternal(const QUrl& qmlSource,
     }
 
     auto targetContext = contextForUrl(finalQmlSource, parent, createNewContext);
-    auto qmlComponent = new QQmlComponent(getSurfaceContext()->engine(), finalQmlSource, QQmlComponent::PreferSynchronous);
+    QQmlComponent* qmlComponent;
+    {
+        PROFILE_RANGE(app, "new QQmlComponent");
+        qmlComponent = new QQmlComponent(getSurfaceContext()->engine(), finalQmlSource, QQmlComponent::PreferSynchronous);
+     }
     if (qmlComponent->isLoading()) {
         connect(qmlComponent, &QQmlComponent::statusChanged, this,
                 [=](QQmlComponent::Status) { finishQmlLoad(qmlComponent, targetContext, parent, callback); });
@@ -268,6 +328,7 @@ void OffscreenSurface::finishQmlLoad(QQmlComponent* qmlComponent,
                                      QQmlContext* qmlContext,
                                      QQuickItem* parent,
                                      const QmlContextObjectCallback& callback) {
+    PROFILE_RANGE(app, "finishQmlLoad");
     disconnect(qmlComponent, &QQmlComponent::statusChanged, this, 0);
     if (qmlComponent->isError()) {
         for (const auto& error : qmlComponent->errors()) {
@@ -306,6 +367,11 @@ void OffscreenSurface::finishQmlLoad(QQmlComponent* qmlComponent,
         // Make sure we make items focusable (critical for
         // supporting keyboard shortcuts)
         newItem->setFlag(QQuickItem::ItemIsFocusScope, true);
+#ifdef DEBUG
+        for (auto frame : newObject->findChildren<QQuickItem *>("Frame")) {
+            frame->setProperty("qmlFile", qmlComponent->url());
+        }
+#endif
     }
 
     bool rootCreated = getRootItem() != nullptr;
@@ -327,18 +393,17 @@ void OffscreenSurface::finishQmlLoad(QQmlComponent* qmlComponent,
         _sharedObject->setRootItem(newItem);
     }
 
-    qmlComponent->completeCreate();
-    qmlComponent->deleteLater();
-
     onItemCreated(qmlContext, newItem);
-    connect(newItem, SIGNAL(sendToScript(QVariant)), this, SIGNAL(fromQml(QVariant)));
 
     if (!rootCreated) {
+        connect(newItem, SIGNAL(sendToScript(QVariant)), this, SIGNAL(fromQml(QVariant)));
         onRootCreated();
         emit rootItemCreated(newItem);
         // Call this callback after rootitem is set, otherwise VrMenu wont work
         callback(qmlContext, newItem);
     }
+    qmlComponent->completeCreate();
+    qmlComponent->deleteLater();
 }
 
 QQmlContext* OffscreenSurface::contextForUrl(const QUrl& qmlSource, QQuickItem* parent, bool forceNewContext) {

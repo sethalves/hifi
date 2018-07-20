@@ -9,12 +9,11 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "BakeWidget.h"
+
 #include <QtWidgets/QStackedWidget>
 
-#include "../Oven.h"
-#include "OvenMainWindow.h"
-
-#include "BakeWidget.h"
+#include "../OvenGUIApplication.h"
 
 BakeWidget::BakeWidget(QWidget* parent, Qt::WindowFlags flags) :
     QWidget(parent, flags)
@@ -28,7 +27,7 @@ BakeWidget::~BakeWidget() {
     auto it = _bakers.begin();
     while (it != _bakers.end()) {
         auto resultRow = it->second;
-        auto resultsWindow = qApp->getMainWindow()->showResultsWindow();
+        auto resultsWindow = OvenGUIApplication::instance()->getMainWindow()->showResultsWindow();
 
         resultsWindow->changeStatusForRow(resultRow, "Cancelled");
 
@@ -42,5 +41,5 @@ void BakeWidget::cancelButtonClicked() {
     auto stackedWidget = qobject_cast<QStackedWidget*>(parentWidget());
     stackedWidget->removeWidget(this);
 
-    this->deleteLater();
+    deleteLater();
 }

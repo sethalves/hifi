@@ -235,3 +235,30 @@ QVector<OverlayID> qVectorOverlayIDFromScriptValue(const QScriptValue& array) {
     }
     return newVector;
 }
+
+void Overlay::addMaterial(graphics::MaterialLayer material, const std::string& parentMaterialName) {
+    std::lock_guard<std::mutex> lock(_materialsLock);
+    _materials[parentMaterialName].push(material);
+}
+
+void Overlay::removeMaterial(graphics::MaterialPointer material, const std::string& parentMaterialName) {
+    std::lock_guard<std::mutex> lock(_materialsLock);
+    _materials[parentMaterialName].remove(material);
+}
+
+render::ItemKey Overlay::getKey() {
+    auto builder = render::ItemKey::Builder().withTypeShape();
+
+    builder.withViewSpace();
+    builder.withLayer(render::hifi::LAYER_2D);
+
+    if (!getVisible()) {
+        builder.withInvisible();
+    }
+
+    // always visible in primary view.  if isVisibleInSecondaryCamera, also draw in secondary view
+    render::hifi::Tag viewTagBits = getIsVisibleInSecondaryCamera() ? render::hifi::TAG_ALL_VIEWS : render::hifi::TAG_MAIN_VIEW;
+    builder.withTagBits(viewTagBits);
+
+    return builder.build();
+}

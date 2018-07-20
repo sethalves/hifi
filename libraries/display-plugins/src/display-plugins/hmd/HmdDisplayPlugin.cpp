@@ -58,6 +58,18 @@ QRect HmdDisplayPlugin::getRecommendedHUDRect() const {
     return CompositorHelper::VIRTUAL_SCREEN_RECOMMENDED_OVERLAY_RECT;
 }
 
+glm::mat4 HmdDisplayPlugin::getEyeToHeadTransform(Eye eye) const { 
+    return _eyeOffsets[eye]; 
+}
+
+glm::mat4 HmdDisplayPlugin::getEyeProjection(Eye eye, const glm::mat4& baseProjection) const { 
+    return _eyeProjections[eye]; 
+}
+
+glm::mat4 HmdDisplayPlugin::getCullingProjection(const glm::mat4& baseProjection) const { 
+    return _cullingProjection; 
+}
+
 #define DISABLE_PREVIEW_MENU_ITEM_DELAY_MS 500
 
 bool HmdDisplayPlugin::internalActivate() {
@@ -324,12 +336,14 @@ void HmdDisplayPlugin::updateFrameData() {
     }
 
     updatePresentPose();
+}
 
+glm::mat4 HmdDisplayPlugin::getViewCorrection() {
     if (_currentFrame) {
         auto batchPose = _currentFrame->pose;
-        auto currentPose = _currentPresentFrameInfo.presentPose;
-        auto correction = glm::inverse(batchPose) * currentPose;
-        getGLBackend()->setCameraCorrection(correction);
+        return glm::inverse(_currentPresentFrameInfo.presentPose) * batchPose;
+    } else {
+        return glm::mat4();
     }
 }
 
@@ -414,7 +428,7 @@ void HmdDisplayPlugin::HUDRenderer::updatePipeline() {
 std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> HmdDisplayPlugin::HUDRenderer::render(HmdDisplayPlugin& plugin) {
     updatePipeline();
     return [this](gpu::Batch& batch, const gpu::TexturePointer& hudTexture, bool mirror) {
-        if (pipeline) {
+        if (pipeline && hudTexture) {
             batch.setPipeline(pipeline);
 
             batch.setInputFormat(format);

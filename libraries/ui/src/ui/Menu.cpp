@@ -268,16 +268,6 @@ bool Menu::isOptionChecked(const QString& menuOption) const {
     return false;
 }
 
-void Menu::closeInfoView(const QString& path) {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    offscreenUi->hide(path);
-}
-
-bool Menu::isInfoViewVisible(const QString& path) {
-    auto offscreenUi = DependencyManager::get<OffscreenUi>();
-    return offscreenUi->isVisible(path);
-}
-
 void Menu::triggerOption(const QString& menuOption) {
     QAction* action = _actionHash.value(menuOption);
     if (action) {
@@ -412,8 +402,10 @@ MenuWrapper* Menu::addMenu(const QString& menuName, const QString& grouping) {
 
     // hook our show/hide for popup menus, so we can keep track of whether or not one
     // of our submenus is currently showing.
-    connect(menu->_realMenu, &QMenu::aboutToShow, []() { _isSomeSubmenuShown = true; });
-    connect(menu->_realMenu, &QMenu::aboutToHide, []() { _isSomeSubmenuShown = false; });
+    if (menu && menu->_realMenu) {
+        connect(menu->_realMenu, &QMenu::aboutToShow, []() { _isSomeSubmenuShown = true; });
+        connect(menu->_realMenu, &QMenu::aboutToHide, []() { _isSomeSubmenuShown = false; });
+    }
 
     return menu;
 }
@@ -536,24 +528,6 @@ void Menu::setGroupingIsVisible(const QString& grouping, bool isVisible) {
     }
 
     QMenuBar::repaint();
-}
-
-void Menu::addActionGroup(const QString& groupName, const QStringList& actionList, const QString& selected, QObject* receiver, const char* slot) {
-    auto menu = addMenu(groupName);
-
-    QActionGroup* actionGroup = new QActionGroup(menu);
-    actionGroup->setExclusive(true);
-
-    for (auto action : actionList) {
-        auto item = addCheckableActionToQMenuAndActionHash(menu, action, 0, action == selected, receiver, slot);
-        actionGroup->addAction(item);
-    }
-
-    QMenuBar::repaint();
-}
-
-void Menu::removeActionGroup(const QString& groupName) {
-    removeMenu(groupName);
 }
 
 MenuWrapper::MenuWrapper(ui::Menu& rootMenu, QMenu* menu) : _rootMenu(rootMenu), _realMenu(menu) {

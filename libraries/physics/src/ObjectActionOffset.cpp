@@ -9,9 +9,9 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-#include "QVariantGLM.h"
-
 #include "ObjectActionOffset.h"
+
+#include "QVariantGLM.h"
 
 #include "PhysicsLogging.h"
 
@@ -142,10 +142,22 @@ bool ObjectActionOffset::updateArguments(QVariantMap arguments) {
     return true;
 }
 
+/**jsdoc
+ * The <code>"offset"</code> {@link Entities.ActionType|ActionType} moves an entity so that it is a set distance away from a 
+ * target point.
+ * It has arguments in addition to the common {@link Entities.ActionArguments|ActionArguments}.
+ *
+ * @typedef {object} Entities.ActionArguments-Offset
+ * @property {Vec3} pointToOffsetFrom=0,0,0 - The target point to offset the entity from.
+ * @property {number} linearDistance=0 - The distance away from the target point to position the entity.
+ * @property {number} linearTimeScale=34e+38 - Controls how long it takes for the entity's position to catch up with the
+ *     target offset. The value is the time for the action to catch up to 1/e = 0.368 of the target value, where the action 
+ *     is applied using an exponential decay.
+ */
 QVariantMap ObjectActionOffset::getArguments() {
     QVariantMap arguments = ObjectDynamic::getArguments();
     withReadLock([&] {
-        arguments["pointToOffsetFrom"] = glmToQMap(_pointToOffsetFrom);
+        arguments["pointToOffsetFrom"] = vec3ToQMap(_pointToOffsetFrom);
         arguments["linearTimeScale"] = _linearTimeScale;
         arguments["linearDistance"] = _linearDistance;
     });

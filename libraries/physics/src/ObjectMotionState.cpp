@@ -9,10 +9,11 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "ObjectMotionState.h"
+
 #include <math.h>
 
 #include "BulletUtil.h"
-#include "ObjectMotionState.h"
 #include "PhysicsEngine.h"
 #include "PhysicsHelpers.h"
 #include "PhysicsLogging.h"
@@ -91,7 +92,7 @@ void ObjectMotionState::setMass(float mass) {
 }
 
 float ObjectMotionState::getMass() const {
-    if (_shape) {
+    if (_shape && _shape->getShapeType() != TRIANGLE_MESH_SHAPE_PROXYTYPE) {
         // scale the density by the current Aabb volume to get mass
         btTransform transform;
         transform.setIdentity();
@@ -346,10 +347,16 @@ void ObjectMotionState::updateLastKinematicStep() {
 }
 
 void ObjectMotionState::updateBodyMassProperties() {
-    float mass = getMass();
-    btVector3 inertia(0.0f, 0.0f, 0.0f);
-    _body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+    btScalar mass = getMass();
+    btVector3 inertia(1.0f, 1.0f, 1.0f);
+    if (mass > 0.0f) {
+        _body->getCollisionShape()->calculateLocalInertia(mass, inertia);
+    }
     _body->setMassProps(mass, inertia);
     _body->updateInertiaTensor();
+}
+
+void ObjectMotionState::saveKinematicState(btScalar timeStep) {
+    _body->saveKinematicState(timeStep);
 }
 

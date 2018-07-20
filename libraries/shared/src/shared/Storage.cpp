@@ -10,7 +10,7 @@
 
 #include <QtCore/QFileInfo>
 #include <QtCore/QDebug>
-#include <QtCore/QLoggingCategory>
+#include "StorageLogging.h"
 
 Q_LOGGING_CATEGORY(storagelogging, "hifi.core.storage")
 
@@ -85,7 +85,7 @@ FileStorage::FileStorage(const QString& filename) : _file(filename) {
             qCDebug(storagelogging) << "Failed to map file, falling back to memory storage " << filename;
             _fallback = _file.readAll();
             _mapped = (uint8_t*)_fallback.data();
-        } 
+        }
         _valid = true;
     } else {
         qCWarning(storagelogging) << "Failed to open file " << filename;

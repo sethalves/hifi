@@ -20,6 +20,7 @@ enum EntityPropertyList {
 
     // these properties are supported by the EntityItem base class
     PROP_VISIBLE,
+    PROP_CAN_CAST_SHADOW,
     PROP_POSITION,
     PROP_DIMENSIONS,
     PROP_ROTATION,
@@ -203,7 +204,19 @@ enum EntityPropertyList {
     PROP_CERTIFICATE_ID,
     PROP_STATIC_CERTIFICATE_VERSION,
 
+    PROP_CLONEABLE,
+    PROP_CLONE_LIFETIME,
+    PROP_CLONE_LIMIT,
+    PROP_CLONE_DYNAMIC,
+    PROP_CLONE_AVATAR_ENTITY,
+    PROP_CLONE_ORIGIN_ID,
+
     PROP_HAZE_MODE,
+
+    PROP_KEYLIGHT_COLOR,
+    PROP_KEYLIGHT_INTENSITY,
+    PROP_KEYLIGHT_DIRECTION,
+    PROP_KEYLIGHT_CAST_SHADOW,
 
     PROP_HAZE_RANGE,
     PROP_HAZE_COLOR,
@@ -227,6 +240,17 @@ enum EntityPropertyList {
 
     PROP_LOCAL_DIMENSIONS, // only used to convert values to and from scripts
 
+    PROP_MATERIAL_URL,
+    PROP_MATERIAL_MAPPING_MODE,
+    PROP_MATERIAL_PRIORITY,
+    PROP_PARENT_MATERIAL_NAME,
+    PROP_MATERIAL_MAPPING_POS,
+    PROP_MATERIAL_MAPPING_SCALE,
+    PROP_MATERIAL_MAPPING_ROT,
+    PROP_MATERIAL_DATA,
+
+    PROP_VISIBLE_IN_SECONDARY_CAMERA, // not sent over the wire, only used locally
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     // ATTENTION: add new properties to end of list just ABOVE this line
     PROP_AFTER_LAST_ITEM,
@@ -246,10 +270,6 @@ enum EntityPropertyList {
     // Aliases/Piggyback properties for Zones. These properties intentionally reuse the enum values for
     // other properties which will never overlap with each other. We do this so that we don't have to expand
     // the size of the properties bitflags mask
-    PROP_KEYLIGHT_COLOR = PROP_COLOR,
-    PROP_KEYLIGHT_INTENSITY = PROP_INTENSITY,
-    PROP_KEYLIGHT_DIRECTION = PROP_EXPONENT,
-
     PROP_SKYBOX_COLOR = PROP_ANIMATION_URL,
     PROP_SKYBOX_URL = PROP_ANIMATION_FPS,
 

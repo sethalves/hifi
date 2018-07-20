@@ -15,12 +15,13 @@
 #include <QtCore/QDir>
 #include <QMessageBox>
 #include <QScriptValue>
-
+#include <QtGui/QDesktopServices>
 #include <shared/QtHelpers.h>
 #include <SettingHandle.h>
 
 #include <display-plugins/CompositorHelper.h>
-
+#include <AddressManager.h>
+#include "AndroidHelper.h"
 #include "Application.h"
 #include "DomainHandler.h"
 #include "MainWindow.h"
@@ -30,20 +31,6 @@
 static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
 static const QString LAST_BROWSE_LOCATION_SETTING = "LastBrowseLocation";
 static const QString LAST_BROWSE_ASSETS_LOCATION_SETTING = "LastBrowseAssetsLocation";
-
-
-QScriptValue CustomPromptResultToScriptValue(QScriptEngine* engine, const CustomPromptResult& result) {
-    if (!result.value.isValid()) {
-        return QScriptValue::UndefinedValue;
-    }
-
-    Q_ASSERT(result.value.userType() == qMetaTypeId<QVariantMap>());
-    return engine->toScriptValue(result.value.toMap());
-}
-
-void CustomPromptResultFromScriptValue(const QScriptValue& object, CustomPromptResult& result) {
-    result.value = object.toVariant();
-}
 
 
 WindowScriptingInterface::WindowScriptingInterface() {
@@ -65,7 +52,7 @@ WindowScriptingInterface::WindowScriptingInterface() {
         }
     });
 
-    connect(qApp->getWindow(), &MainWindow::windowGeometryChanged, this, &WindowScriptingInterface::geometryChanged);
+    connect(qApp->getWindow(), &MainWindow::windowGeometryChanged, this, &WindowScriptingInterface::onWindowGeometryChanged);
 }
 
 WindowScriptingInterface::~WindowScriptingInterface() {
@@ -88,16 +75,14 @@ QScriptValue WindowScriptingInterface::hasFocus() {
 void WindowScriptingInterface::setFocus() {
     // It's forbidden to call focus() from another thread.
     qApp->postLambdaEvent([] {
-        auto window = qApp->getWindow();
-        window->activateWindow();
-        window->setFocus();
+        qApp->setFocus();
     });
 }
 
-void WindowScriptingInterface::raiseMainWindow() {
+void WindowScriptingInterface::raise() {
     // It's forbidden to call raise() from another thread.
     qApp->postLambdaEvent([] {
-        qApp->getWindow()->raise();
+        qApp->raise();
     });
 }
 
@@ -120,16 +105,19 @@ QScriptValue WindowScriptingInterface::confirm(const QString& message) {
 /// \param const QString& defaultText default text in the text box
 /// \return QScriptValue string text value in text box if the dialog was accepted, `null` otherwise.
 QScriptValue WindowScriptingInterface::prompt(const QString& message, const QString& defaultText) {
-    bool ok = false;
-    QString result = OffscreenUi::getText(nullptr, "", message, QLineEdit::Normal, defaultText, &ok);
-    return ok ? QScriptValue(result) : QScriptValue::NullValue;
+    QString result = OffscreenUi::getText(nullptr, "", message, QLineEdit::Normal, defaultText);
+    if (QScriptValue(result).equals("")) {
+        return QScriptValue::NullValue;
+    }
+    return QScriptValue(result);
 }
 
 /// Display a prompt with a text box
 /// \param const QString& message message to display
 /// \param const QString& defaultText default text in the text box
 void WindowScriptingInterface::promptAsync(const QString& message, const QString& defaultText) {
-    ModalDialogListener* dlg = OffscreenUi::getTextAsync(nullptr, "", message, QLineEdit::Normal, defaultText);
+    bool ok = false;
+    ModalDialogListener* dlg = OffscreenUi::getTextAsync(nullptr, "", message, QLineEdit::Normal, defaultText, &ok);
     connect(dlg, &ModalDialogListener::response, this, [=] (QVariant result) {
         disconnect(dlg, &ModalDialogListener::response, this, nullptr);
         emit promptTextChanged(result.toString());
@@ -137,16 +125,31 @@ void WindowScriptingInterface::promptAsync(const QString& message, const QString
 }
 
 void WindowScriptingInterface::disconnectedFromDomain() {
-    emit domainChanged("");
+    emit domainChanged(QUrl());
 }
 
-CustomPromptResult WindowScriptingInterface::customPrompt(const QVariant& config) {
-    CustomPromptResult result;
-    bool ok = false;
-    auto configMap = config.toMap();
-    result.value = OffscreenUi::getCustomInfo(OffscreenUi::ICON_NONE, "", configMap, &ok);
-    return ok ? result : CustomPromptResult();
+void WindowScriptingInterface::openUrl(const QUrl& url) {
+    if (!url.isEmpty()) {
+        if (url.scheme() == URL_SCHEME_HIFI) {
+            DependencyManager::get<AddressManager>()->handleLookupString(url.toString());
+        } else {
+#if defined(Q_OS_ANDROID)
+            QList<QString> args = { url.toString() };
+            AndroidHelper::instance().requestActivity("WebView", true, args);
+#else
+            // address manager did not handle - ask QDesktopServices to handle
+            QDesktopServices::openUrl(url);
+#endif
+        }
+    }
 }
+
+void WindowScriptingInterface::openAndroidActivity(const QString& activityName, const bool backToScene) {
+#if defined(Q_OS_ANDROID)
+    AndroidHelper::instance().requestActivity(activityName, backToScene);
+#endif
+}
+
 
 QString fixupPathForMac(const QString& directory) {
     // On OS X `directory` does not work as expected unless a file is included in the path, so we append a bogus
@@ -278,7 +281,6 @@ void WindowScriptingInterface::browseAsync(const QString& title, const QString& 
             setPreviousBrowseLocation(QFileInfo(result).absolutePath());
         }
         emit browseChanged(result);
-        emit openFileChanged(result); // Deprecated signal; to be removed in due course.
     });
 }
 
@@ -408,11 +410,22 @@ glm::vec2 WindowScriptingInterface::getDeviceSize() const {
 }
 
 int WindowScriptingInterface::getX() {
-    return qApp->getWindow()->x();
+    return qApp->getWindow()->geometry().x();
 }
 
 int WindowScriptingInterface::getY() {
-    return qApp->getWindow()->y();
+    auto menu = qApp->getPrimaryMenu();
+    int menuHeight = menu ? menu->geometry().height() : 0;
+    return qApp->getWindow()->geometry().y() + menuHeight;
+}
+
+void WindowScriptingInterface::onWindowGeometryChanged(const QRect& windowGeometry) {
+    auto geometry = windowGeometry;
+    auto menu = qApp->getPrimaryMenu();
+    if (menu) {
+        geometry.setY(geometry.y() + menu->geometry().height());
+    }
+    emit geometryChanged(geometry);
 }
 
 void WindowScriptingInterface::copyToClipboard(const QString& text) {
@@ -434,8 +447,12 @@ void WindowScriptingInterface::takeSnapshot(bool notify, bool includeAnimated, f
     qApp->takeSnapshot(notify, includeAnimated, aspectRatio, filename);
 }
 
-void WindowScriptingInterface::takeSecondaryCameraSnapshot(const QString& filename) {
-    qApp->takeSecondaryCameraSnapshot(filename);
+void WindowScriptingInterface::takeSecondaryCameraSnapshot(const bool& notify, const QString& filename) {
+    qApp->takeSecondaryCameraSnapshot(notify, filename);
+}
+
+void WindowScriptingInterface::takeSecondaryCamera360Snapshot(const glm::vec3& cameraPosition, const bool& cubemapOutputFormat, const bool& notify, const QString& filename) {
+    qApp->takeSecondaryCamera360Snapshot(cameraPosition, cubemapOutputFormat, notify, filename);
 }
 
 void WindowScriptingInterface::shareSnapshot(const QString& path, const QUrl& href) {
@@ -506,7 +523,7 @@ int WindowScriptingInterface::openMessageBox(QString title, QString text, int bu
  *     <tr> <td><strong>RestoreDefaults</strong></td> <td><code>0x8000000</code></td> <td>"Restore Defaults"</td> </tr>
  *   </tbody>
  * </table>
- * @typedef Window.MessageBoxButton
+ * @typedef {number} Window.MessageBoxButton
  */
 int WindowScriptingInterface::createMessageBox(QString title, QString text, int buttons, int defaultButton) {
     auto messageBox = DependencyManager::get<OffscreenUi>()->createMessageBox(OffscreenUi::ICON_INFORMATION, title, text,

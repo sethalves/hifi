@@ -19,51 +19,102 @@
 #include "ImageComparer.h"
 #include "ui/MismatchWindow.h"
 
+class Step {
+public:
+	QString text;
+	bool takeSnapshot;
+};
+
+using StepList = std::vector<Step*>;
+
+class ExtractedText {
+public:
+    QString title;
+    StepList stepList;
+};
+
 class Test {
 public: 
     Test();
 
-    void evaluateTests(bool interactiveMode, QProgressBar* progressBar);
-    void evaluateTestsRecursively(bool interactiveMode, QProgressBar* progressBar);
+    void startTestsEvaluation(const QString& testFolder = QString(), const QString& branchFromCommandLine = QString(), const QString& userFromCommandLine = QString());
+    void finishTestsEvaluation(bool isRunningFromCommandline, bool interactiveMode, QProgressBar* progressBar);
+
     void createRecursiveScript();
-    void createTest();
-    void deleteOldSnapshots();
+    void createAllRecursiveScripts();
+    void createRecursiveScript(const QString& topLevelDirectory, bool interactiveMode);
 
-    bool compareImageLists(QStringList expectedImages, QStringList resultImages, QString testDirectory, bool interactiveMode, QProgressBar* progressBar);
+    void createTests();
+    void createMDFile();
+    void createAllMDFiles();
+    void createMDFile(const QString& topLevelDirectory);
 
-    QStringList createListOfAllJPEGimagesInDirectory(QString pathToImageDirectory);
+    void createTestsOutline();
 
-    bool isInSnapshotFilenameFormat(QString filename);
-    bool isInExpectedImageFilenameFormat(QString filename);
+    bool compareImageLists(bool isInteractiveMode, QProgressBar* progressBar);
 
-    void importTest(QTextStream& textStream, const QString& testPathname);
+    QStringList createListOfAll_imagesInDirectory(const QString& imageFormat, const QString& pathToImageDirectory);
 
-    void appendTestResultsToFile(QString testResultsFolderPath, TestFailure testFailure, QPixmap comparisonImage);
+    bool isInSnapshotFilenameFormat(const QString& imageFormat, const QString& filename);
 
-    bool createTestResultsFolderPathIfNeeded(QString directory);
+    void includeTest(QTextStream& textStream, const QString& testPathname);
+
+    void appendTestResultsToFile(const QString& testResultsFolderPath, TestFailure testFailure, QPixmap comparisonImage);
+
+    bool createTestResultsFolderPath(const QString& directory);
     void zipAndDeleteTestResultsFolder();
 
-    bool isAValidDirectory(QString pathname);
+    bool isAValidDirectory(const QString& pathname);
+	QString extractPathFromTestsDown(const QString& fullPath);
+    QString getExpectedImageDestinationDirectory(const QString& filename);
+    QString getExpectedImagePartialSourceDirectory(const QString& filename);
 
 private:
     const QString TEST_FILENAME { "test.js" };
     const QString TEST_RESULTS_FOLDER { "TestResults" };
     const QString TEST_RESULTS_FILENAME { "TestResults.txt" };
 
-    QMessageBox messageBox;
+    const double THRESHOLD{ 0.96 };
 
     QDir imageDirectory;
-
-    QRegularExpression snapshotFilenameFormat;
-    QRegularExpression expectedImageFilenameFormat;
 
     MismatchWindow mismatchWindow;
 
     ImageComparer imageComparer;
 
-
-    QString testResultsFolderPath { "" };
+    QString testResultsFolderPath;
     int index { 1 };
+
+    // Expected images are in the format ExpectedImage_dddd.jpg (d == decimal digit)
+    const int NUM_DIGITS { 5 };
+    const QString EXPECTED_IMAGE_PREFIX { "ExpectedImage_" };
+
+    // We have two directories to work with.
+    // The first is the directory containing the test we are working with
+    // The second is the root directory of all tests
+    // The third contains the snapshots taken for test runs that need to be evaluated
+    QString testDirectory;
+    QString testsRootDirectory;
+    QString snapshotDirectory;
+
+    QStringList expectedImagesFilenames;
+    QStringList expectedImagesFullFilenames;
+    QStringList resultImagesFullFilenames;
+
+    // Used for accessing GitHub
+    const QString GIT_HUB_REPOSITORY{ "hifi_tests" };
+
+    const QString DATETIME_FORMAT{ "yyyy-MM-dd_hh-mm-ss" };
+
+	ExtractedText getTestScriptLines(QString testFileName);
+
+    // NOTE: these need to match the appropriate var's in autoTester.js
+    //    var advanceKey = "n";
+    //    var pathSeparator = ".";
+    const QString ADVANCE_KEY{ "n" };
+    const QString PATH_SEPARATOR{ "." };
+
+    bool exitWhenComplete{ false };
 };
 
 #endif // hifi_test_h

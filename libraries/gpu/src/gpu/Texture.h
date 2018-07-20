@@ -17,8 +17,10 @@
 #include <QMetaType>
 #include <QUrl>
 
+#include <functional>
 #include <shared/Storage.h>
 #include <shared/FileCache.h>
+#include <RegisteredMetaTypes.h>
 #include "Forward.h"
 #include "Resource.h"
 #include "Metric.h"
@@ -34,6 +36,10 @@ namespace ktx {
     struct KeyValue;
     using KeyValues = std::list<KeyValue>;
 }
+
+namespace khronos { namespace gl { namespace texture {
+    enum class InternalFormat: uint32_t;
+}}}
 
 namespace gpu {
 
@@ -132,6 +138,19 @@ public:
 
         Desc() {}
         Desc(const Filter filter, const WrapMode wrap = WRAP_REPEAT) : _filter(filter), _wrapModeU(wrap), _wrapModeV(wrap), _wrapModeW(wrap) {}
+
+        bool operator==(const Desc& other) const {
+            return _borderColor == other._borderColor &&
+                _maxAnisotropy == other._maxAnisotropy &&
+                _filter == other._filter &&
+                _comparisonFunc == other._comparisonFunc &&
+                _wrapModeU == other._wrapModeU &&
+                _wrapModeV == other._wrapModeV &&
+                _wrapModeW == other._wrapModeW &&
+                _mipOffset == other._mipOffset &&
+                _minMip == other._minMip &&
+                _maxMip == other._maxMip;
+        }
     };
 
     Sampler() {}
@@ -156,6 +175,13 @@ public:
     uint8 getMaxMip() const { return _desc._maxMip; }
 
     const Desc& getDesc() const { return _desc; }
+
+    bool operator==(const Sampler& other) const {
+        return _desc == other._desc;
+    }
+    bool operator!=(const Sampler& other) const {
+        return !(*this == other);
+    }
 protected:
     Desc _desc;
 };
@@ -348,9 +374,11 @@ public:
     static const uint16 SINGLE_MIP = 1;
     static TexturePointer create1D(const Element& texelFormat, uint16 width, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
     static TexturePointer create2D(const Element& texelFormat, uint16 width, uint16 height, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
+    static TexturePointer create2DArray(const Element& texelFormat, uint16 width, uint16 height, uint16 numSlices, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
     static TexturePointer create3D(const Element& texelFormat, uint16 width, uint16 height, uint16 depth, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
     static TexturePointer createCube(const Element& texelFormat, uint16 width, uint16 numMips = 1, const Sampler& sampler = Sampler());
     static TexturePointer createRenderBuffer(const Element& texelFormat, uint16 width, uint16 height, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
+    static TexturePointer createRenderBufferArray(const Element& texelFormat, uint16 width, uint16 height, uint16 numSlices, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
     static TexturePointer createStrict(const Element& texelFormat, uint16 width, uint16 height, uint16 numMips = SINGLE_MIP, const Sampler& sampler = Sampler());
     static TexturePointer createExternal(const ExternalRecycler& recycler, const Sampler& sampler = Sampler());
 
@@ -543,6 +571,7 @@ public:
 
     static bool evalKTXFormat(const Element& mipFormat, const Element& texelFormat, ktx::Header& header);
     static bool evalTextureFormat(const ktx::Header& header, Element& mipFormat, Element& texelFormat);
+    static bool getCompressedFormat(khronos::gl::texture::InternalFormat format, Element& elFormat);
 
 protected:
     const TextureUsageType _usageType;
@@ -647,13 +676,11 @@ typedef std::vector<TextureView> TextureViews;
 // It provides the mechanism to create a texture using a customizable TextureLoader
 class TextureSource {
 public:
-    TextureSource();
-    ~TextureSource();
+    TextureSource(const QUrl& url, int type = 0) : _imageUrl(url), _type(type) {}
 
     const QUrl& getUrl() const { return _imageUrl; }
     const gpu::TexturePointer getGPUTexture() const { return _gpuTexture; }
-
-    void reset(const QUrl& url);
+    int getType() const { return _type; }
 
     void resetTexture(gpu::TexturePointer texture);
 
@@ -662,10 +689,22 @@ public:
 protected:
     gpu::TexturePointer _gpuTexture;
     QUrl _imageUrl;
+    int _type { 0 };
 };
 typedef std::shared_ptr< TextureSource > TextureSourcePointer;
 
 };
+
+namespace std {
+    template<> struct hash<gpu::Sampler> {
+        size_t operator()(const gpu::Sampler& sampler) const noexcept {
+            size_t result = 0;
+            const auto& desc = sampler.getDesc();
+            hash_combine(result, desc._comparisonFunc, desc._filter, desc._maxAnisotropy, desc._maxMip, desc._minMip, desc._wrapModeU, desc._wrapModeV, desc._wrapModeW);
+            return result;
+        }
+    };
+}
 
 Q_DECLARE_METATYPE(gpu::TexturePointer)
 

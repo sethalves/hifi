@@ -44,6 +44,15 @@ void registerMetaTypes(QScriptEngine* engine);
 QScriptValue mat4toScriptValue(QScriptEngine* engine, const glm::mat4& mat4);
 void mat4FromScriptValue(const QScriptValue& object, glm::mat4& mat4);
 
+/**jsdoc
+ * A 4-dimensional vector.
+ *
+ * @typedef {object} Vec4
+ * @property {number} x - X-coordinate of the vector.
+ * @property {number} y - Y-coordinate of the vector.
+ * @property {number} z - Z-coordinate of the vector.
+ * @property {number} w - W-coordinate of the vector.
+ */
 // Vec4
 QScriptValue vec4toScriptValue(QScriptEngine* engine, const glm::vec4& vec4);
 void vec4FromScriptValue(const QScriptValue& object, glm::vec4& vec4);
@@ -59,6 +68,13 @@ QVariant vec3toVariant(const glm::vec3& vec3);
 glm::vec3 vec3FromVariant(const QVariant &object, bool& valid);
 glm::vec3 vec3FromVariant(const QVariant &object);
 
+/**jsdoc
+ * A 2-dimensional vector.
+ *
+ * @typedef {object} Vec2
+ * @property {number} x - X-coordinate of the vector.
+ * @property {number} y - Y-coordinate of the vector.
+ */
 // Vec2
 QScriptValue vec2toScriptValue(QScriptEngine* engine, const glm::vec2 &vec2);
 void vec2FromScriptValue(const QScriptValue &object, glm::vec2 &vec2);
@@ -140,7 +156,7 @@ public:
  *
  * @typedef {object} PickRay
  * @property {Vec3} origin - The starting position of the PickRay.
- * @property {Quat} direction - The direction that the PickRay travels.
+ * @property {Vec3} direction - The direction that the PickRay travels.
  */
 class PickRay : public MathPick {
 public:
@@ -256,8 +272,29 @@ namespace std {
             return result;
         }
     };
+
+    template <>
+    struct hash<QString> {
+        size_t operator()(const QString& a) const {
+            return qHash(a);
+        }
+    };
 }
 
+/**jsdoc
+ * <p>The type of a collision contact event.
+ * <table>
+ *   <thead>
+ *     <tr><th>Value</th><th>Description</th></tr>
+ *   </thead>
+ *   <tbody>
+ *     <tr><td><code>0</code></td><td>Start of the collision.</td></tr>
+ *     <tr><td><code>1</code></td><td>Continuation of the collision.</td></tr>
+ *     <tr><td><code>2</code></td><td>End of the collision.</td></tr>
+ *   </tbody>
+ * </table>
+ * @typedef {number} ContactEventType
+ */
 enum ContactEventType {
     CONTACT_EVENT_TYPE_START,
     CONTACT_EVENT_TYPE_CONTINUE,
@@ -321,14 +358,40 @@ namespace graphics {
 
 using MeshPointer = std::shared_ptr<graphics::Mesh>;
 
-
+/**jsdoc
+ * A handle for a mesh in an entity, such as returned by {@link Entities.getMeshes}.
+ * @class MeshProxy
+ *
+ * @hifi-interface
+ * @hifi-client-entity
+ * @hifi-server-entity
+ * @hifi-assignment-client
+ *
+ * @deprecated Use the {@link Graphics} API instead.
+ */
 class MeshProxy : public QObject {
     Q_OBJECT
 
 public:
     virtual MeshPointer getMeshPointer() const = 0;
+    
+    /**jsdoc
+     * Get the number of vertices in the mesh.
+     * @function MeshProxy#getNumVertices
+     * @returns {number} Integer number of vertices in the mesh.
+     * @deprecated Use the {@link Graphics} API instead.
+     */
     Q_INVOKABLE virtual int getNumVertices() const = 0;
-    Q_INVOKABLE virtual glm::vec3 getPos3(int index) const = 0;
+
+    /**jsdoc
+     * Get the position of a vertex in the mesh.
+     * @function MeshProxy#getPos
+     * @param {number} index - Integer index of the mesh vertex.
+     * @returns {Vec3} Local position of the vertex relative to the mesh.
+     * @deprecated Use the {@link Graphics} API instead.
+     */
+    Q_INVOKABLE virtual glm::vec3 getPos(int index) const = 0;
+    Q_INVOKABLE virtual glm::vec3 getPos3(int index) const { return getPos(index); } // deprecated
 };
 
 Q_DECLARE_METATYPE(MeshProxy*);

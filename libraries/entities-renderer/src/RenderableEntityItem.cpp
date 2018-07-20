@@ -25,6 +25,7 @@
 #include "RenderableTextEntityItem.h"
 #include "RenderableWebEntityItem.h"
 #include "RenderableZoneEntityItem.h"
+#include "RenderableMaterialEntityItem.h"
 
 
 using namespace render;
@@ -134,10 +135,8 @@ void EntityRenderer::makeStatusGetters(const EntityItemPointer& entity, Item::St
 
 template <typename T> 
 std::shared_ptr<T> make_renderer(const EntityItemPointer& entity) {
-    T* rawResult = new T(entity);
-
     // We want to use deleteLater so that renderer destruction gets pushed to the main thread
-    return std::shared_ptr<T>(rawResult, std::bind(&QObject::deleteLater, rawResult));
+    return std::shared_ptr<T>(new T(entity), [](T* ptr) { ptr->deleteLater(); });
 }
 
 EntityRenderer::EntityRenderer(const EntityItemPointer& entity) : _entity(entity) {
@@ -145,6 +144,7 @@ EntityRenderer::EntityRenderer(const EntityItemPointer& entity) : _entity(entity
         _needsRenderUpdate = true;
         emit requestRenderUpdate();
     });
+    _materials = entity->getMaterials();
 }
 
 EntityRenderer::~EntityRenderer() { }
@@ -157,12 +157,21 @@ Item::Bound EntityRenderer::getBound() {
     return _bound;
 }
 
+render::hifi::Tag EntityRenderer::getTagMask() const {
+    return _isVisibleInSecondaryCamera ? render::hifi::TAG_ALL_VIEWS : render::hifi::TAG_MAIN_VIEW;
+}
+
 ItemKey EntityRenderer::getKey() {
     if (isTransparent()) {
-        return ItemKey::Builder::transparentShape().withTypeMeta().withTagBits(render::ItemKey::TAG_BITS_0 | render::ItemKey::TAG_BITS_1);
+        return ItemKey::Builder::transparentShape().withTypeMeta().withTagBits(getTagMask());
     }
 
-    return ItemKey::Builder::opaqueShape().withTypeMeta().withTagBits(render::ItemKey::TAG_BITS_0 | render::ItemKey::TAG_BITS_1);
+    // This allows shapes to cast shadows
+    if (_canCastShadow) {
+        return ItemKey::Builder::opaqueShape().withTypeMeta().withTagBits(getTagMask()).withShadowCaster();
+    } else {
+        return ItemKey::Builder::opaqueShape().withTypeMeta().withTagBits(getTagMask());
+    }
 }
 
 uint32_t EntityRenderer::metaFetchMetaSubItems(ItemIDs& subItems) {
@@ -252,6 +261,10 @@ EntityRenderer::Pointer EntityRenderer::addToScene(EntityTreeRenderer& renderer,
             result = make_renderer<ZoneEntityRenderer>(entity);
             break;
 
+        case Type::Material:
+            result = make_renderer<MaterialEntityRenderer>(entity);
+            break;
+
         default:
             break;
     }
@@ -271,8 +284,8 @@ bool EntityRenderer::addToScene(const ScenePointer& scene, Transaction& transact
     makeStatusGetters(_entity, statusGetters);
     renderPayload->addStatusGetters(statusGetters);
     transaction.resetItem(_renderItemID, renderPayload);
-    updateInScene(scene, transaction);
     onAddToScene(_entity);
+    updateInScene(scene, transaction);
     return true;
 }
 
@@ -350,6 +363,20 @@ bool EntityRenderer::needsRenderUpdateFromEntity(const EntityItemPointer& entity
     return false;
 }
 
+void EntityRenderer::updateModelTransformAndBound() {
+    bool success = false;
+    auto newModelTransform = _entity->getTransformToCenter(success);
+    if (success) {
+        _modelTransform = newModelTransform;
+    }
+
+    success = false;
+    auto bound = _entity->getAABox(success);
+    if (success) {
+        _bound = bound;
+    }
+}
+
 void EntityRenderer::doRenderUpdateSynchronous(const ScenePointer& scene, Transaction& transaction, const EntityItemPointer& entity) {
     DETAILED_PROFILE_RANGE(simulation_physics, __FUNCTION__);
     withWriteLock([&] {
@@ -359,18 +386,12 @@ void EntityRenderer::doRenderUpdateSynchronous(const ScenePointer& scene, Transa
         }
         _prevIsTransparent = transparent;
 
-        bool success = false;
-        auto bound = entity->getAABox(success);
-        if (success) {
-            _bound = bound;
-        }
-        auto newModelTransform = entity->getTransformToCenter(success);
-        if (success) {
-            _modelTransform = newModelTransform;
-        }
+        updateModelTransformAndBound();
 
         _moving = entity->isMovingRelativeToParent();
         _visible = entity->getVisible();
+        setIsVisibleInSecondaryCamera(entity->isVisibleInSecondaryCamera());
+        _canCastShadow = entity->getCanCastShadow();
         _cauterized = entity->getCauterized();
         _needsRenderUpdate = false;
     });
@@ -394,4 +415,14 @@ void EntityRenderer::onAddToScene(const EntityItemPointer& entity) {
 void EntityRenderer::onRemoveFromScene(const EntityItemPointer& entity) { 
     entity->deregisterChangeHandler(_changeHandlerId);
     QObject::disconnect(this, &EntityRenderer::requestRenderUpdate, this, nullptr);
+}
+
+void EntityRenderer::addMaterial(graphics::MaterialLayer material, const std::string& parentMaterialName) {
+    std::lock_guard<std::mutex> lock(_materialsLock);
+    _materials[parentMaterialName].push(material);
+}
+
+void EntityRenderer::removeMaterial(graphics::MaterialPointer material, const std::string& parentMaterialName) {
+    std::lock_guard<std::mutex> lock(_materialsLock);
+    _materials[parentMaterialName].remove(material);
 }

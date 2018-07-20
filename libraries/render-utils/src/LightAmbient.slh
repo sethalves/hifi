@@ -12,9 +12,14 @@ uniform samplerCube skyboxMap;
 
 vec4 evalSkyboxLight(vec3 direction, float lod) {
     // textureQueryLevels is not available until #430, so we require explicit lod
+    // float mipmapLevel = lod * textureQueryLevels(skyboxMap);
+
+#if !defined(GL_ES)
     float filterLod = textureQueryLod(skyboxMap, direction).x;
     // Keep texture filtering LOD as limit to prevent aliasing on specular reflection
     lod = max(lod, filterLod);
+#endif
+
     return textureLod(skyboxMap, direction, lod);
 }
 <@endfunc@>
@@ -106,15 +111,11 @@ void evalLightingAmbient(out vec3 diffuse, out vec3 specular, LightAmbient ambie
     }
 <@endif@>
 
-    if (!(isObscuranceEnabled() > 0.0)) {
-        obscurance = 1.0;
-    }
+    obscurance = mix(1.0, obscurance, isObscuranceEnabled());
 
     float lightEnergy = obscurance * getLightAmbientIntensity(ambient);
 
-    if (isAlbedoEnabled() > 0.0) {
-        diffuse *= albedo;
-    }
+    diffuse *= mix(vec3(1), albedo, isAlbedoEnabled());
 
     lightEnergy *= isAmbientEnabled();
     diffuse *= lightEnergy * isDiffuseEnabled();

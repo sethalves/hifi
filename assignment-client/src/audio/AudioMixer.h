@@ -18,6 +18,8 @@
 #include <ThreadedAssignment.h>
 #include <UUIDHasher.h>
 
+#include <plugins/Forward.h>
+
 #include "AudioMixerStats.h"
 #include "AudioMixerSlavePool.h"
 
@@ -56,6 +58,9 @@ public:
                to.getPublicSocket() != from.getPublicSocket() &&
                to.getLocalSocket() != from.getLocalSocket();
     }
+
+    virtual void aboutToFinish() override;
+    
 public slots:
     void run() override;
     void sendStatsPacket() override;

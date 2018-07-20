@@ -41,7 +41,7 @@ protected:
 
 class DrawDeferred {
 public:
-    using Inputs = render::VaryingSet3 <render::ItemBounds, LightingModelPointer, LightClustersPointer>;
+    using Inputs = render::VaryingSet4<render::ItemBounds, LightingModelPointer, LightClustersPointer, glm::vec2>;
     using Config = DrawDeferredConfig;
     using JobModel = render::Job::ModelI<DrawDeferred, Inputs, Config>;
 
@@ -81,7 +81,7 @@ protected:
 
 class DrawStateSortDeferred {
 public:
-    using Inputs = render::VaryingSet2<render::ItemBounds, LightingModelPointer>;
+    using Inputs = render::VaryingSet3<render::ItemBounds, LightingModelPointer, glm::vec2>;
 
     using Config = DrawStateSortConfig;
     using JobModel = render::Job::ModelI<DrawStateSortDeferred, Inputs, Config>;
@@ -105,11 +105,13 @@ class RenderDeferredTaskConfig : public render::Task::Config {
     Q_OBJECT
     Q_PROPERTY(float fadeScale MEMBER fadeScale NOTIFY dirty)
     Q_PROPERTY(float fadeDuration MEMBER fadeDuration NOTIFY dirty)
+    Q_PROPERTY(float resolutionScale MEMBER resolutionScale NOTIFY dirty)
     Q_PROPERTY(bool debugFade MEMBER debugFade NOTIFY dirty)
     Q_PROPERTY(float debugFadePercent MEMBER debugFadePercent NOTIFY dirty)
 public:
     float fadeScale{ 0.5f };
     float fadeDuration{ 3.0f };
+    float resolutionScale{ 1.f };
     float debugFadePercent{ 0.f };
     bool debugFade{ false };
 
@@ -126,7 +128,7 @@ public:
     RenderDeferredTask();
 
     void configure(const Config& config);
-    void build(JobModel& task, const render::Varying& inputs, render::Varying& outputs);
+    void build(JobModel& task, const render::Varying& inputs, render::Varying& outputs, bool renderShadows);
 
 private:
     static const render::Varying addSelectItemJobs(JobModel& task,

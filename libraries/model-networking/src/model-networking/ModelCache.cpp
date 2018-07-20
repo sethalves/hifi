@@ -63,16 +63,18 @@ void GeometryMappingResource::downloadFinished(const QByteArray& data) {
     PROFILE_ASYNC_BEGIN(resource_parse_geometry, "GeometryMappingResource::downloadFinished", _url.toString(),
                          { { "url", _url.toString() } });
 
-    auto mapping = FSTReader::readMapping(data);
+    // store parsed contents of FST file
+    _mapping = FSTReader::readMapping(data);
 
-    QString filename = mapping.value("filename").toString();
+    QString filename = _mapping.value("filename").toString();
+
     if (filename.isNull()) {
         qCDebug(modelnetworking) << "Mapping file" << _url << "has no \"filename\" field";
         finishedLoading(false);
     } else {
         QUrl url = _url.resolved(filename);
 
-        QString texdir = mapping.value(TEXDIR_FIELD).toString();
+        QString texdir = _mapping.value(TEXDIR_FIELD).toString();
         if (!texdir.isNull()) {
             if (!texdir.endsWith('/')) {
                 texdir += '/';
@@ -82,7 +84,16 @@ void GeometryMappingResource::downloadFinished(const QByteArray& data) {
             _textureBaseUrl = url.resolved(QUrl("."));
         }
 
-        auto animGraphVariant = mapping.value("animGraphUrl");
+        auto scripts = FSTReader::getScripts(_url, _mapping);
+        if (scripts.size() > 0) {
+            _mapping.remove(SCRIPT_FIELD);
+            for (auto &scriptPath : scripts) {
+                _mapping.insertMulti(SCRIPT_FIELD, scriptPath);
+            }
+        }
+
+        auto animGraphVariant = _mapping.value("animGraphUrl");
+
         if (animGraphVariant.isValid()) {
             QUrl fstUrl(animGraphVariant.toString());
             if (fstUrl.isValid()) {
@@ -95,7 +106,7 @@ void GeometryMappingResource::downloadFinished(const QByteArray& data) {
         }
 
         auto modelCache = DependencyManager::get<ModelCache>();
-        GeometryExtra extra{ mapping, _textureBaseUrl, false };
+        GeometryExtra extra{ _mapping, _textureBaseUrl, false };
 
         // Get the raw GeometryResource
         _geometryResource = modelCache->getResource(url, QUrl(), &extra).staticCast<GeometryResource>();
@@ -190,11 +201,11 @@ void GeometryReader::run() {
                     throw QString("empty geometry, possibly due to an unsupported FBX version");
                 }
             } else if (_url.path().toLower().endsWith(".obj")) {
-                fbxGeometry.reset(OBJReader().readOBJ(_data, _mapping, _combineParts, _url));
+                fbxGeometry = OBJReader().readOBJ(_data, _mapping, _combineParts, _url);
             } else if (_url.path().toLower().endsWith(".obj.gz")) {
                 QByteArray uncompressedData;
-                if (gunzip(_data, uncompressedData)) {
-                    fbxGeometry.reset(OBJReader().readOBJ(uncompressedData, _mapping, _combineParts, _url));
+                if (gunzip(_data, uncompressedData)){
+                    fbxGeometry = OBJReader().readOBJ(uncompressedData, _mapping, _combineParts, _url);
                 } else {
                     throw QString("failed to decompress .obj.gz");
                 }
@@ -207,6 +218,14 @@ void GeometryReader::run() {
                 }
             } else {
                 throw QString("unsupported format");
+            }
+
+            // Add scripts to fbxgeometry
+            if (!_mapping.value(SCRIPT_FIELD).isNull()) {
+                QVariantList scripts = _mapping.values(SCRIPT_FIELD);
+                for (auto &script : scripts) {
+                    fbxGeometry->scripts.push_back(script.toString());
+                }
             }
 
             // Ensure the resource has not been deleted
@@ -362,6 +381,7 @@ Geometry::Geometry(const Geometry& geometry) {
     }
 
     _animGraphOverrideUrl = geometry._animGraphOverrideUrl;
+    _mapping = geometry._mapping;
 }
 
 void Geometry::setTextures(const QVariantMap& textureMap) {
@@ -402,7 +422,7 @@ bool Geometry::areTexturesLoaded() const {
                 }
                 // Failed texture downloads need to be considered as 'loaded' 
                 // or the object will never fade in
-                bool finished = texture->isLoaded() || texture->isFailed();
+                bool finished = texture->isFailed() || (texture->isLoaded() && texture->getGPUTexture() && texture->getGPUTexture()->isDefined());
                 if (!finished) {
                     return true;
                 }
@@ -414,8 +434,11 @@ bool Geometry::areTexturesLoaded() const {
             }
 
             // If material textures are loaded, check the material translucency
+            // FIXME: This should not be done here.  The opacity map should already be reset in Material::setTextureMap.
+            // However, currently that code can be called before the albedo map is defined, so resetOpacityMap will fail.
+            // Geometry::areTexturesLoaded() is called repeatedly until it returns true, so we do the check here for now
             const auto albedoTexture = material->_textures[NetworkMaterial::MapChannel::ALBEDO_MAP];
-            if (albedoTexture.texture && albedoTexture.texture->getGPUTexture()) {
+            if (albedoTexture.texture) {
                 material->resetOpacityMap();
             }
         }
@@ -425,7 +448,7 @@ bool Geometry::areTexturesLoaded() const {
     return true;
 }
 
-const std::shared_ptr<const NetworkMaterial> Geometry::getShapeMaterial(int partID) const {
+const std::shared_ptr<NetworkMaterial> Geometry::getShapeMaterial(int partID) const {
     if ((partID >= 0) && (partID < (int)_meshParts->size())) {
         int materialID = _meshParts->at(partID)->materialID;
         if ((materialID >= 0) && (materialID < (int)_materials.size())) {
@@ -491,6 +514,15 @@ void GeometryResourceWatcher::resourceRefreshed() {
     // _instance.reset();
 }
 
+NetworkMaterial::NetworkMaterial(const NetworkMaterial& m) :
+    Material(m),
+    _textures(m._textures),
+    _albedoTransform(m._albedoTransform),
+    _lightmapTransform(m._lightmapTransform),
+    _lightmapParams(m._lightmapParams),
+    _isOriginal(m._isOriginal)
+{}
+
 const QString NetworkMaterial::NO_TEXTURE = QString();
 
 const QString& NetworkMaterial::getTextureName(MapChannel channel) {
@@ -508,10 +540,11 @@ QUrl NetworkMaterial::getTextureUrl(const QUrl& baseUrl, const FBXTexture& textu
         // Inlined file: cache under the fbx file to avoid namespace clashes
         // NOTE: We cannot resolve the path because filename may be an absolute path
         assert(texture.filename.size() > 0);
+        auto baseUrlStripped = baseUrl.toDisplayString(QUrl::RemoveFragment | QUrl::RemoveQuery | QUrl::RemoveUserInfo);
         if (texture.filename.at(0) == '/') {
-            return baseUrl.toString() + texture.filename;
+            return baseUrlStripped + texture.filename;
         } else {
-            return baseUrl.toString() + '/' + texture.filename;
+            return baseUrlStripped + '/' + texture.filename;
         }
     }
 }
@@ -532,19 +565,85 @@ graphics::TextureMapPointer NetworkMaterial::fetchTextureMap(const QUrl& baseUrl
 }
 
 graphics::TextureMapPointer NetworkMaterial::fetchTextureMap(const QUrl& url, image::TextureUsage::Type type, MapChannel channel) {
-    const auto texture = DependencyManager::get<TextureCache>()->getTexture(url, type);
-    _textures[channel].texture = texture;
+    auto textureCache = DependencyManager::get<TextureCache>();
+    if (textureCache) {
+        auto texture = textureCache->getTexture(url, type);
+        _textures[channel].texture = texture;
 
-    auto map = std::make_shared<graphics::TextureMap>();
-    map->setTextureSource(texture->_textureSource);
+        auto map = std::make_shared<graphics::TextureMap>();
+        if (texture) {
+            map->setTextureSource(texture->_textureSource);
+        }
 
-    return map;
+        return map;
+    }
+    return nullptr;
+}
+
+void NetworkMaterial::setAlbedoMap(const QUrl& url, bool useAlphaChannel) {
+    auto map = fetchTextureMap(url, image::TextureUsage::ALBEDO_TEXTURE, MapChannel::ALBEDO_MAP);
+    if (map) {
+        map->setUseAlphaChannel(useAlphaChannel);
+        setTextureMap(MapChannel::ALBEDO_MAP, map);
+    }
+}
+
+void NetworkMaterial::setNormalMap(const QUrl& url, bool isBumpmap) {
+    auto map = fetchTextureMap(url, isBumpmap ? image::TextureUsage::BUMP_TEXTURE : image::TextureUsage::NORMAL_TEXTURE, MapChannel::NORMAL_MAP);
+    if (map) {
+        setTextureMap(MapChannel::NORMAL_MAP, map);
+    }
+}
+
+void NetworkMaterial::setRoughnessMap(const QUrl& url, bool isGloss) {
+    auto map = fetchTextureMap(url, isGloss ? image::TextureUsage::GLOSS_TEXTURE : image::TextureUsage::ROUGHNESS_TEXTURE, MapChannel::ROUGHNESS_MAP);
+    if (map) {
+        setTextureMap(MapChannel::ROUGHNESS_MAP, map);
+    }
+}
+
+void NetworkMaterial::setMetallicMap(const QUrl& url, bool isSpecular) {
+    auto map = fetchTextureMap(url, isSpecular ? image::TextureUsage::SPECULAR_TEXTURE : image::TextureUsage::METALLIC_TEXTURE, MapChannel::METALLIC_MAP);
+    if (map) {
+        setTextureMap(MapChannel::METALLIC_MAP, map);
+    }
+}
+
+void NetworkMaterial::setOcclusionMap(const QUrl& url) {
+    auto map = fetchTextureMap(url, image::TextureUsage::OCCLUSION_TEXTURE, MapChannel::OCCLUSION_MAP);
+    if (map) {
+        setTextureMap(MapChannel::OCCLUSION_MAP, map);
+    }
+}
+
+void NetworkMaterial::setEmissiveMap(const QUrl& url) {
+    auto map = fetchTextureMap(url, image::TextureUsage::EMISSIVE_TEXTURE, MapChannel::EMISSIVE_MAP);
+    if (map) {
+        setTextureMap(MapChannel::EMISSIVE_MAP, map);
+    }
+}
+
+void NetworkMaterial::setScatteringMap(const QUrl& url) {
+    auto map = fetchTextureMap(url, image::TextureUsage::SCATTERING_TEXTURE, MapChannel::SCATTERING_MAP);
+    if (map) {
+        setTextureMap(MapChannel::SCATTERING_MAP, map);
+    }
+}
+
+void NetworkMaterial::setLightmapMap(const QUrl& url) {
+    auto map = fetchTextureMap(url, image::TextureUsage::LIGHTMAP_TEXTURE, MapChannel::LIGHTMAP_MAP);
+    if (map) {
+        //map->setTextureTransform(_lightmapTransform);
+        //map->setLightmapOffsetScale(_lightmapParams.x, _lightmapParams.y);
+        setTextureMap(MapChannel::LIGHTMAP_MAP, map);
+    }
 }
 
 NetworkMaterial::NetworkMaterial(const FBXMaterial& material, const QUrl& textureBaseUrl) :
-    graphics::Material(*material._material)
+    graphics::Material(*material._material),
+    _textures(MapChannel::NUM_MAP_CHANNELS)
 {
-    _textures = Textures(MapChannel::NUM_MAP_CHANNELS);
+    _name = material.name.toStdString();
     if (!material.albedoTexture.filename.isEmpty()) {
         auto map = fetchTextureMap(textureBaseUrl, material.albedoTexture, image::TextureUsage::ALBEDO_TEXTURE, MapChannel::ALBEDO_MAP);
         _albedoTransform = material.albedoTexture.transform;
@@ -653,6 +752,7 @@ void NetworkMaterial::setTextures(const QVariantMap& textureMap) {
 
     if (!occlusionName.isEmpty()) {
         auto url = textureMap.contains(occlusionName) ? textureMap[occlusionName].toUrl() : QUrl();
+        // FIXME: we need to handle the occlusion map transform here
         auto map = fetchTextureMap(url, image::TextureUsage::OCCLUSION_TEXTURE, MapChannel::OCCLUSION_MAP);
         setTextureMap(MapChannel::OCCLUSION_MAP, map);
     }

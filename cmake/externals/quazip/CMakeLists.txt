@@ -4,7 +4,7 @@ cmake_policy(SET CMP0046 OLD)
 
 include(ExternalProject)
 
-set(QUAZIP_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DCMAKE_PREFIX_PATH=${QT_CMAKE_PREFIX_PATH} -DCMAKE_INSTALL_NAME_DIR:PATH=<INSTALL_DIR>/lib -DZLIB_ROOT=${ZLIB_ROOT} -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+set(QUAZIP_CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR> -DCMAKE_PREFIX_PATH=${QT_CMAKE_PREFIX_PATH} -DCMAKE_INSTALL_NAME_DIR:PATH=<INSTALL_DIR>/lib -DZLIB_ROOT=${ZLIB_ROOT} -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
 
 if (APPLE)
 else ()
@@ -13,7 +13,7 @@ endif ()
 
 ExternalProject_Add(
   ${EXTERNAL_NAME}
-  URL https://hifi-public.s3.amazonaws.com/dependencies/quazip-0.7.3.zip
+  URL https://public.highfidelity.com/dependencies/quazip-0.7.3.zip
   URL_MD5 ed03754d39b9da1775771819b8001d45
   BINARY_DIR ${EXTERNAL_PROJECT_PREFIX}/build
   CMAKE_ARGS ${QUAZIP_CMAKE_ARGS}
@@ -41,6 +41,9 @@ if (APPLE)
 elseif (WIN32)
   set(${EXTERNAL_NAME_UPPER}_LIBRARY_RELEASE ${INSTALL_DIR}/lib/quazip5.lib CACHE FILEPATH "Location of QuaZip release library")
   set(${EXTERNAL_NAME_UPPER}_LIBRARY_DEBUG ${INSTALL_DIR}/lib/quazip5d.lib CACHE FILEPATH "Location of QuaZip release library")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set(${EXTERNAL_NAME_UPPER}_LIBRARY_RELEASE ${INSTALL_DIR}/lib/libquazip5.so CACHE FILEPATH "Location of QuaZip release library")
+  set(${EXTERNAL_NAME_UPPER}_LIBRARY_DEBUG ${INSTALL_DIR}/lib/libquazip5d.so CACHE FILEPATH "Location of QuaZip release library")
 else ()
   set(${EXTERNAL_NAME_UPPER}_LIBRARY_RELEASE ${INSTALL_DIR}/lib/libquazip5.so CACHE FILEPATH "Location of QuaZip release library")
   set(${EXTERNAL_NAME_UPPER}_LIBRARY_DEBUG ${INSTALL_DIR}/lib/libquazip5.so CACHE FILEPATH "Location of QuaZip release library")

@@ -15,10 +15,14 @@
 
 #include <bitset>
 #include <map>
+#include <queue>
 
 #include <ColorUtils.h>
 
 #include <gpu/Resource.h>
+#include <gpu/TextureTable.h>
+
+class Transform;
 
 namespace graphics {
 
@@ -351,10 +355,23 @@ public:
     size_t getTextureSize()  const { calculateMaterialInfo(); return _textureSize; }
     bool hasTextureInfo() const { return _hasCalculatedTextureInfo; }
 
+    void setTextureTransforms(const Transform& transform);
+
+    const std::string& getName() const { return _name; }
+
+    const std::string& getModel() const { return _model; }
+    void setModel(const std::string& model) { _model = model; }
+
+    const gpu::TextureTablePointer& getTextureTable() const { return _textureTable; }
+
+protected:
+    std::string _name { "" };
+
 private:
     mutable MaterialKey _key;
     mutable UniformBufferView _schemaBuffer;
     mutable UniformBufferView _texMapArrayBuffer;
+    mutable gpu::TextureTablePointer _textureTable{ std::make_shared<gpu::TextureTable>() };
 
     TextureMaps _textureMaps;
 
@@ -364,9 +381,45 @@ private:
     mutable bool _hasCalculatedTextureInfo { false };
     bool calculateMaterialInfo() const;
 
+    std::string _model { "hifi_pbr" };
 
 };
 typedef std::shared_ptr< Material > MaterialPointer;
+
+class MaterialLayer {
+public:
+    MaterialLayer(MaterialPointer material, quint16 priority) : material(material), priority(priority) {}
+
+    MaterialPointer material { nullptr };
+    quint16 priority { 0 };
+};
+
+class MaterialLayerCompare {
+public:
+    bool operator() (MaterialLayer left, MaterialLayer right) {
+        return left.priority < right.priority;
+    }
+};
+
+class MultiMaterial : public std::priority_queue<MaterialLayer, std::vector<MaterialLayer>, MaterialLayerCompare> {
+public:
+    bool remove(const MaterialPointer& value) {
+        auto it = c.begin();
+        while (it != c.end()) {
+            if (it->material == value) {
+                break;
+            }
+            it++;
+        }
+        if (it != c.end()) {
+            c.erase(it);
+            std::make_heap(c.begin(), c.end(), comp);
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
 
 };
 

@@ -40,6 +40,7 @@ public:
     virtual void update(float deltatime) {}
     virtual void render(RenderArgs* args) = 0;
 
+    virtual render::ItemKey getKey();
     virtual AABox getBounds() const = 0;
     virtual bool supportsGetProperty() const { return true; }
 
@@ -56,6 +57,8 @@ public:
     bool isLoaded() { return _isLoaded; }
     bool getVisible() const { return _visible; }
     virtual bool isTransparent() { return getAlphaPulse() != 0.0f || getAlpha() != 1.0f; };
+    virtual bool getIsVisibleInSecondaryCamera() const { return false; }
+
     xColor getColor();
     float getAlpha();
 
@@ -91,6 +94,9 @@ public:
     unsigned int getStackOrder() const { return _stackOrder; }
     void setStackOrder(unsigned int stackOrder) { _stackOrder = stackOrder; }
 
+    virtual void addMaterial(graphics::MaterialLayer material, const std::string& parentMaterialName);
+    virtual void removeMaterial(graphics::MaterialPointer material, const std::string& parentMaterialName);
+
 protected:
     float updatePulse();
 
@@ -117,6 +123,9 @@ protected:
     static const xColor DEFAULT_OVERLAY_COLOR;
     static const float DEFAULT_ALPHA;
 
+    std::unordered_map<std::string, graphics::MultiMaterial> _materials;
+    std::mutex _materialsLock;
+
 private:
     OverlayID _overlayID; // only used for non-3d overlays
 };
@@ -124,7 +133,6 @@ private:
 namespace render {
    template <> const ItemKey payloadGetKey(const Overlay::Pointer& overlay);
    template <> const Item::Bound payloadGetBound(const Overlay::Pointer& overlay);
-   template <> int payloadGetLayer(const Overlay::Pointer& overlay);
    template <> void payloadRender(const Overlay::Pointer& overlay, RenderArgs* args);
    template <> const ShapeKey shapeGetShapeKey(const Overlay::Pointer& overlay);
    template <> uint32_t metaFetchMetaSubItems(const Overlay::Pointer& overlay, ItemIDs& subItems);

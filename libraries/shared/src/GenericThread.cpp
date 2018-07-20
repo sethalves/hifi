@@ -9,11 +9,10 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
-#include <QDebug>
-#include <QtCore/QCoreApplication>
-
 #include "GenericThread.h"
 
+#include <QDebug>
+#include <QtCore/QCoreApplication>
 
 GenericThread::GenericThread() :
     _stopThread(false),
@@ -37,7 +36,7 @@ void GenericThread::initialize(bool isThreaded, QThread::Priority priority) {
         // match the thread name to our object name
         _thread->setObjectName(objectName());
 
-        // when the worker thread is started, call our engine's run..
+        connect(_thread, &QThread::started, this, &GenericThread::started);
         connect(_thread, &QThread::started, this, &GenericThread::threadRoutine);
         connect(_thread, &QThread::finished, this, &GenericThread::finished);
 

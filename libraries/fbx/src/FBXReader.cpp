@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "FBXReader.h"
+
 #include <iostream>
 #include <QBuffer>
 #include <QDataStream>
@@ -31,7 +33,6 @@
 #include <gpu/Format.h>
 #include <LogHandler.h>
 
-#include "FBXReader.h"
 #include "ModelFormatLogging.h"
 
 // TOOL: Uncomment the following line to enable the filtering of all the unkwnon fields of a node so we can break point easily while loading a model with problems...
@@ -408,7 +409,16 @@ static void createTangents(const FBXMesh& mesh, bool generateFromTexCoords,
     }
 }
 
-static void createMeshTangents(FBXMesh& mesh, bool generateFromTexCoords) {
+static void _createBlendShapeTangents(FBXMesh& mesh, bool generateFromTexCoords, FBXBlendshape& blendShape);
+
+void FBXMesh::createBlendShapeTangents(bool generateTangents) {
+    for (auto& blendShape : blendshapes) {
+        _createBlendShapeTangents(*this, generateTangents, blendShape);
+    }
+}
+
+void FBXMesh::createMeshTangents(bool generateFromTexCoords) {
+    FBXMesh& mesh = *this;
     // This is the only workaround I've found to trick the compiler into understanding that mesh.tangents isn't
     // const in the lambda function.
     auto& tangents = mesh.tangents;
@@ -421,7 +431,7 @@ static void createMeshTangents(FBXMesh& mesh, bool generateFromTexCoords) {
     });
 }
 
-static void createBlendShapeTangents(FBXMesh& mesh, bool generateFromTexCoords, FBXBlendshape& blendShape) {
+static void _createBlendShapeTangents(FBXMesh& mesh, bool generateFromTexCoords, FBXBlendshape& blendShape) {
     // Create lookup to get index in blend shape from vertex index in mesh
     std::vector<int> reverseIndices;
     reverseIndices.resize(mesh.vertices.size());
@@ -987,14 +997,12 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                             QByteArray filename = subobject.properties.at(0).toByteArray();
                             QByteArray filepath = filename.replace('\\', '/');
                             filename = fileOnUrl(filepath, url);
-                            qDebug() << "Filename" << filepath << filename;
                             _textureFilepaths.insert(getID(object.properties), filepath);
                             _textureFilenames.insert(getID(object.properties), filename);
                         } else if (subobject.name == "TextureName" && subobject.properties.length() >= TEXTURE_NAME_MIN_SIZE) {
                             // trim the name from the timestamp
                             QString name = QString(subobject.properties.at(0).toByteArray());
                             name = name.left(name.indexOf('['));
-                            qDebug() << "Filename" << name;
                             _textureNames.insert(getID(object.properties), name);
                         } else if (subobject.name == "Texture_Alpha_Source" && subobject.properties.length() >= TEXTURE_ALPHA_SOURCE_MIN_SIZE) {
                             tex.assign<uint8_t>(tex.alphaSource, subobject.properties.at(0).value<int>());
@@ -1481,6 +1489,11 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
     }
     while (!remainingModels.isEmpty()) {
         QString first = *remainingModels.constBegin();
+        foreach (const QString& id, remainingModels) {
+            if (id < first) {
+                first = id;
+            }
+        }
         QString topID = getTopModelID(_connectionParentMap, models, first, url);
         appendModelIDs(_connectionParentMap.value(topID), _connectionChildMap, models, remainingModels, modelIDs, true);
     }
@@ -1590,7 +1603,7 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
 
     // NOTE: shapeVertices are in joint-frame
     std::vector<ShapeVertices> shapeVertices;
-    shapeVertices.resize(geometry.joints.size());
+    shapeVertices.resize(std::max(1, geometry.joints.size()) );
 
     // find our special joints
     geometry.leftEyeJointIndex = modelIDs.indexOf(jointEyeLeftID);
@@ -1713,10 +1726,8 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
             }
         }
 
-        createMeshTangents(extracted.mesh, generateTangents);
-        for (auto& blendShape : extracted.mesh.blendshapes) {
-            createBlendShapeTangents(extracted.mesh, generateTangents, blendShape);
-        }
+        extracted.mesh.createMeshTangents(generateTangents);
+        extracted.mesh.createBlendShapeTangents(generateTangents);
 
         // find the clusters with which the mesh is associated
         QVector<QString> clusterIDs;
@@ -1805,7 +1816,6 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                     }
                 }
 
-                float clusterScale = extractUniformScale(fbxCluster.inverseBindMatrix);
                 glm::mat4 meshToJoint = glm::inverse(joint.bindTransform) * modelTransform;
                 ShapeVertices& points = shapeVertices.at(jointIndex);
 
@@ -1821,7 +1831,7 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
                         if (weight >= EXPANSION_WEIGHT_THRESHOLD) {
                             // transform to joint-frame and save for later
                             const glm::mat4 vertexTransform = meshToJoint * glm::translate(extracted.mesh.vertices.at(newIndex));
-                            points.push_back(extractTranslation(vertexTransform) * clusterScale);
+                            points.push_back(extractTranslation(vertexTransform));
                         }
 
                         // look for an unused slot in the weights vector
@@ -1875,12 +1885,11 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
             FBXJoint& joint = geometry.joints[jointIndex];
 
             // transform cluster vertices to joint-frame and save for later
-            float clusterScale = extractUniformScale(firstFBXCluster.inverseBindMatrix);
             glm::mat4 meshToJoint = glm::inverse(joint.bindTransform) * modelTransform;
             ShapeVertices& points = shapeVertices.at(jointIndex);
             foreach (const glm::vec3& vertex, extracted.mesh.vertices) {
                 const glm::mat4 vertexTransform = meshToJoint * glm::translate(vertex);
-                points.push_back(extractTranslation(vertexTransform) * clusterScale);
+                points.push_back(extractTranslation(vertexTransform));
             }
 
             // Apply geometric offset, if present, by transforming the vertices directly
@@ -1896,7 +1905,8 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
         geometry.meshes.append(extracted.mesh);
         int meshIndex = geometry.meshes.size() - 1;
         if (extracted.mesh._mesh) {
-            extracted.mesh._mesh->displayName = QString("%1#/mesh/%2").arg(url).arg(meshIndex);
+            extracted.mesh._mesh->displayName = QString("%1#/mesh/%2").arg(url).arg(meshIndex).toStdString();
+            extracted.mesh._mesh->modelName = modelIDsToNames.value(modelID).toStdString();
         }
         meshIDsToMeshIndices.insert(it.key(), meshIndex);
     }
@@ -1972,7 +1982,10 @@ FBXGeometry* FBXReader::extractFBXGeometry(const QVariantHash& mapping, const QS
             auto name = geometry.getModelNameOfMesh(i++);
             if (!name.isEmpty()) {
                 if (mesh._mesh) {
-                    mesh._mesh->displayName += "#" + name;
+                    mesh._mesh->modelName = name.toStdString();
+                    if (!mesh._mesh->displayName.size()) {
+                        mesh._mesh->displayName = QString("#%1").arg(name).toStdString();
+                    }
                 } else {
                     qDebug() << "modelName but no mesh._mesh" << name;
                 }

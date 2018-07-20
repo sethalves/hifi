@@ -20,6 +20,7 @@
 
 #include "NetworkAccessManager.h"
 #include "NetworkLogging.h"
+#include "NetworkingConstants.h"
 
 #include "ResourceManager.h"
 
@@ -72,9 +73,8 @@ QByteArray loadFromCache(const QUrl& url) {
             qCDebug(asset_client) << url.toDisplayString() << "not in disk cache";
         }
 
-    } else {
-        qCWarning(asset_client) << "No disk cache to load assets from.";
     }
+
     return QByteArray();
 }
 
@@ -96,9 +96,8 @@ bool saveToCache(const QUrl& url, const QByteArray& file) {
             }
             qCWarning(asset_client) << "Could not save" << url.toDisplayString() << "to disk cache.";
         }
-    } else {
-        qCWarning(asset_client) << "No disk cache to save assets to.";
     }
+    
     return false;
 }
 

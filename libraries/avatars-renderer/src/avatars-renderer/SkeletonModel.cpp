@@ -31,6 +31,12 @@ SkeletonModel::SkeletonModel(Avatar* owningAvatar, QObject* parent) :
     _defaultEyeModelPosition(glm::vec3(0.0f, 0.0f, 0.0f)),
     _headClipDistance(DEFAULT_NEAR_CLIP)
 {
+    // SkeletonModels, and by extention Avatars, use Dual Quaternion skinning.
+    _useDualQuaternionSkinning = true;
+
+    // Avatars all cast shadow
+    setCanCastShadow(true);
+
     assert(_owningAvatar);
 }
 
@@ -51,6 +57,13 @@ void SkeletonModel::initJointStates() {
     const FBXGeometry& geometry = getFBXGeometry();
     glm::mat4 modelOffset = glm::scale(_scale) * glm::translate(_offset);
     _rig.initJointStates(geometry, modelOffset);
+
+    {
+        // initialize _jointData with proper values for default joints
+        QVector<JointData> defaultJointData;
+        _rig.copyJointsIntoJointData(defaultJointData);
+        _owningAvatar->setRawJointData(defaultJointData);
+    }
 
     // Determine the default eye position for avatar scale = 1.0
     int headJointIndex = geometry.headJointIndex;

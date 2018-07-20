@@ -177,8 +177,7 @@ Item {
             anchors.right: parent.right
             anchors.rightMargin: editGlyph.width + editGlyph.anchors.rightMargin
             // Style
-            FontLoader { id: firaSansSemiBold; source: "../../fonts/FiraSans-SemiBold.ttf"; }
-            font.family: firaSansSemiBold.name
+            font.family: "Fira Sans SemiBold"
             font.pixelSize: displayNameTextPixelSize
             selectionColor: hifi.colors.blueAccent
             selectedTextColor: "black"
@@ -320,10 +319,10 @@ Item {
         visible: thisNameCard.userName !== "";
         // Size
         width: parent.width
-        height: usernameTextPixelSize + 4
+        height: paintedHeight
         // Anchors
-        anchors.top: isMyCard ? myDisplayName.bottom : pal.activeTab == "nearbyTab" ? displayNameContainer.bottom : undefined //(parent.height - displayNameTextPixelSize/2));
-        anchors.verticalCenter: pal.activeTab == "connectionsTab" && !isMyCard ? avatarImage.verticalCenter : undefined
+        anchors.top: isMyCard ? myDisplayName.bottom : pal.activeTab == "nearbyTab" ? displayNameContainer.bottom : avatarImage.top //(parent.height - displayNameTextPixelSize/2));
+        anchors.bottom: pal.activeTab === "connectionsTab" && !isMyCard ? avatarImage.bottom : undefined
         anchors.left: avatarImage.right;
         anchors.leftMargin: avatarImage.visible ? 5 : 0;
         anchors.rightMargin: 5;

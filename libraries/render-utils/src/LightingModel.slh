@@ -18,6 +18,7 @@ struct LightingModel {
     vec4 _ScatteringDiffuseSpecularAlbedo;
     vec4 _AmbientDirectionalPointSpot;
     vec4 _ShowContourObscuranceWireframe;
+    vec4 _Haze_spareyzw;
 };
 
 uniform lightingModelBuffer{
@@ -72,6 +73,10 @@ float isShowLightContour() {
 
 float isWireframeEnabled() {
     return lightingModel._ShowContourObscuranceWireframe.z;
+}
+
+float isHazeEnabled() {
+    return lightingModel._Haze_spareyzw.x;
 }
 
 <@endfunc@>
@@ -256,9 +261,7 @@ void evalFragShading(out vec3 diffuse, out vec3 specular,
     float metallic, vec3 fresnel, SurfaceData surface, vec3 albedo) {
     vec4 shading = evalPBRShading(metallic, fresnel, surface);
     diffuse = vec3(shading.w);
-    if (isAlbedoEnabled() > 0.0) {
-        diffuse *= albedo;
-    }
+    diffuse *= mix(vec3(1.0), albedo, isAlbedoEnabled());
     specular = shading.xyz;
 }
 
@@ -310,5 +313,18 @@ void evalFragShadingGloss(out vec3 diffuse, out vec3 specular,
     diffuse *= mix(vec3(1.0), albedo, isAlbedoEnabled());
     specular = shading.xyz;
 }
+
+vec3 evalSpecularWithOpacity(vec3 specular, float opacity) {
+    return specular / opacity;
+}
+
+<@if not GETFRESNEL0@>
+<@def GETFRESNEL0@>
+vec3 getFresnelF0(float metallic, vec3 metalF0) {
+    // Enable continuous metallness value by lerping between dielectric
+    // and metal fresnel F0 value based on the "metallic" parameter
+    return mix(vec3(0.03), metalF0, metallic);
+}
+<@endif@>
 
 <@endif@>

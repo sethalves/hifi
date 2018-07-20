@@ -40,9 +40,8 @@ void PluginManager::setInputPluginSettingsPersister(const InputPluginSettingsPer
     _inputSettingsPersister = persister;
 }
 
-PluginManager* PluginManager::getInstance() {
-    static PluginManager _manager;
-    return &_manager;
+PluginManagerPointer PluginManager::getInstance() {
+    return DependencyManager::get<PluginManager>();
 }
 
 QString getPluginNameFromMetaData(QJsonObject object) {
@@ -96,7 +95,9 @@ const LoaderList& getLoadedPlugins() {
     static std::once_flag once;
     static LoaderList loadedPlugins;
     std::call_once(once, [&] {
-#ifdef Q_OS_MAC
+#if defined(Q_OS_ANDROID)
+        QString pluginPath = QCoreApplication::applicationDirPath() + "/";
+#elif defined(Q_OS_MAC)
         QString pluginPath = QCoreApplication::applicationDirPath() + "/../PlugIns/";
 #else
         QString pluginPath = QCoreApplication::applicationDirPath() + "/plugins/";
@@ -106,6 +107,10 @@ const LoaderList& getLoadedPlugins() {
         pluginDir.setFilter(QDir::Files);
         if (pluginDir.exists()) {
             qInfo() << "Loading runtime plugins from " << pluginPath;
+#if defined(Q_OS_ANDROID)
+            // Can be a better filter and those libs may have a better name to destinguish them from qt plugins
+            pluginDir.setNameFilters(QStringList() << "libplugins_lib*.so");
+#endif
             auto candidates = pluginDir.entryList();
             for (auto plugin : candidates) {
                 qCDebug(plugins) << "Attempting plugin" << qPrintable(plugin);
@@ -128,9 +133,6 @@ const LoaderList& getLoadedPlugins() {
         }
     });
     return loadedPlugins;
-}
-
-PluginManager::PluginManager() {
 }
 
 const CodecPluginList& PluginManager::getCodecPlugins() {

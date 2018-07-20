@@ -28,8 +28,10 @@
 #include <graphics/Geometry.h>
 #include <graphics/Material.h>
 
-static const QByteArray FBX_BINARY_PROLOG = "Kaydara FBX Binary  ";
+// See comment in FBXReader::parseFBX().
 static const int FBX_HEADER_BYTES_BEFORE_VERSION = 23;
+static const QByteArray FBX_BINARY_PROLOG("Kaydara FBX Binary  ");
+static const QByteArray FBX_BINARY_PROLOG2("\0\x1a\0", 3);
 static const quint32 FBX_VERSION_2015 = 7400;
 static const quint32 FBX_VERSION_2016 = 7500;
 
@@ -242,6 +244,9 @@ public:
 
     graphics::MeshPointer _mesh;
     bool wasCompressed { false };
+
+    void createMeshTangents(bool generateFromTexCoords);
+    void createBlendShapeTangents(bool generateTangents);
 };
 
 class ExtractedMesh {
@@ -253,6 +258,11 @@ public:
     QHash<QString, size_t> texcoordSetMap;
 };
 
+/**jsdoc
+ * @typedef {object} FBXAnimationFrame
+ * @property {Quat[]} rotations
+ * @property {Vec3[]} translations
+ */
 /// A single animation frame extracted from an FBX document.
 class FBXAnimationFrame {
 public:
@@ -295,6 +305,7 @@ public:
     bool hasSkeletonJoints;
 
     QVector<FBXMesh> meshes;
+    QVector<QString> scripts;
 
     QHash<QString, FBXMaterial> materials;
 

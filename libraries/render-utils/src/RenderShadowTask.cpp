@@ -140,7 +140,7 @@ void RenderShadowMap::run(const render::RenderContextPointer& renderContext, con
     args->popViewFrustum();
     args->pushViewFrustum(adjustedShadowFrustum);
 
-    gpu::doInBatch(args->_context, [&](gpu::Batch& batch) {
+    gpu::doInBatch("RenderShadowMap::run", args->_context, [&](gpu::Batch& batch) {
         args->_batch = &batch;
         batch.enableStereo(false);
 
@@ -149,9 +149,7 @@ void RenderShadowMap::run(const render::RenderContextPointer& renderContext, con
         batch.setStateScissorRect(viewport);
 
         batch.setFramebuffer(fbo);
-        batch.clearFramebuffer(
-            gpu::Framebuffer::BUFFER_COLOR0 | gpu::Framebuffer::BUFFER_DEPTH,
-            vec4(vec3(1.0, 1.0, 1.0), 0.0), 1.0, 0, true);
+        batch.clearDepthFramebuffer(1.0, false);
 
         glm::mat4 projMat;
         Transform viewMat;
@@ -163,8 +161,10 @@ void RenderShadowMap::run(const render::RenderContextPointer& renderContext, con
 
         auto shadowPipeline = _shapePlumber->pickPipeline(args, defaultKeyBuilder);
         auto shadowSkinnedPipeline = _shapePlumber->pickPipeline(args, defaultKeyBuilder.withSkinned());
+        auto shadowSkinnedDQPipeline = _shapePlumber->pickPipeline(args, defaultKeyBuilder.withSkinned().withDualQuatSkinned());
 
         std::vector<ShapeKey> skinnedShapeKeys{};
+        std::vector<ShapeKey> skinnedDQShapeKeys{};
         std::vector<ShapeKey> ownPipelineShapeKeys{};
 
         // Iterate through all inShapes and render the unskinned
@@ -172,7 +172,11 @@ void RenderShadowMap::run(const render::RenderContextPointer& renderContext, con
         batch.setPipeline(shadowPipeline->pipeline);
         for (auto items : inShapes) {
             if (items.first.isSkinned()) {
-                skinnedShapeKeys.push_back(items.first);
+                if (items.first.isDualQuatSkinned()) {
+                    skinnedDQShapeKeys.push_back(items.first);
+                } else {
+                    skinnedShapeKeys.push_back(items.first);
+                }
             } else if (!items.first.hasOwnPipeline()) {
                 renderItems(renderContext, items.second);
             } else {
@@ -184,6 +188,13 @@ void RenderShadowMap::run(const render::RenderContextPointer& renderContext, con
         args->_shapePipeline = shadowSkinnedPipeline;
         batch.setPipeline(shadowSkinnedPipeline->pipeline);
         for (const auto& key : skinnedShapeKeys) {
+            renderItems(renderContext, inShapes.at(key));
+        }
+
+        // Reiterate to render the DQ skinned
+        args->_shapePipeline = shadowSkinnedDQPipeline;
+        batch.setPipeline(shadowSkinnedDQPipeline->pipeline);
+        for (const auto& key : skinnedDQShapeKeys) {
             renderItems(renderContext, inShapes.at(key));
         }
 
@@ -216,12 +227,14 @@ void RenderShadowTask::build(JobModel& task, const render::Varying& input, rende
     }
 
     const auto setupOutput = task.addJob<RenderShadowSetup>("ShadowSetup");
-    const auto queryResolution = setupOutput.getN<RenderShadowSetup::Outputs>(2);
+    const auto queryResolution = setupOutput.getN<RenderShadowSetup::Outputs>(1);
     // Fetch and cull the items from the scene
-    static const auto shadowCasterFilter = ItemFilter::Builder::visibleWorldItems().withTypeShape().withOpaque().withoutLayered().withTagBits(tagBits, tagMask);
-    const auto fetchInput = FetchSpatialTree::Inputs(shadowCasterFilter, queryResolution).asVarying();
+
+    static const auto shadowCasterReceiverFilter = ItemFilter::Builder::visibleWorldItems().withTypeShape().withOpaque().withoutLayered().withTagBits(tagBits, tagMask);
+
+    const auto fetchInput = FetchSpatialTree::Inputs(shadowCasterReceiverFilter, queryResolution).asVarying();
     const auto shadowSelection = task.addJob<FetchSpatialTree>("FetchShadowTree", fetchInput);
-    const auto selectionInputs = FetchSpatialSelection::Inputs(shadowSelection, shadowCasterFilter).asVarying();
+    const auto selectionInputs = FetchSpatialSelection::Inputs(shadowSelection, shadowCasterReceiverFilter).asVarying();
     const auto shadowItems = task.addJob<FetchSpatialSelection>("FetchShadowSelection", selectionInputs);
 
     // Cull objects that are not visible in camera view. Hopefully the cull functor only performs LOD culling, not
@@ -235,31 +248,34 @@ void RenderShadowTask::build(JobModel& task, const render::Varying& input, rende
     const auto sortedShapes = task.addJob<DepthSortShapes>("DepthSortShadow", sortedPipelines, true);
 
     render::Varying cascadeFrustums[SHADOW_CASCADE_MAX_COUNT] = {
-        ViewFrustumPointer(),
-        ViewFrustumPointer(),
+        ViewFrustumPointer()
+#if SHADOW_CASCADE_MAX_COUNT>1
+        ,ViewFrustumPointer(),
         ViewFrustumPointer(),
         ViewFrustumPointer()
+#endif
     };
 
     for (auto i = 0; i < SHADOW_CASCADE_MAX_COUNT; i++) {
         char jobName[64];
         sprintf(jobName, "ShadowCascadeSetup%d", i);
         const auto cascadeSetupOutput = task.addJob<RenderShadowCascadeSetup>(jobName, i, _cullFunctor, tagBits, tagMask);
-        const auto shadowFilter = cascadeSetupOutput.getN<RenderShadowCascadeSetup::Outputs>(0);
+        const auto shadowRenderFilter = cascadeSetupOutput.getN<RenderShadowCascadeSetup::Outputs>(0);
+        const auto shadowBoundsFilter = cascadeSetupOutput.getN<RenderShadowCascadeSetup::Outputs>(1);
         auto antiFrustum = render::Varying(ViewFrustumPointer());
-        cascadeFrustums[i] = cascadeSetupOutput.getN<RenderShadowCascadeSetup::Outputs>(1);
+        cascadeFrustums[i] = cascadeSetupOutput.getN<RenderShadowCascadeSetup::Outputs>(2);
         if (i > 1) {
             antiFrustum = cascadeFrustums[i - 2];
         }
 
         // CPU jobs: finer grained culling
-        const auto cullInputs = CullShapeBounds::Inputs(sortedShapes, shadowFilter, antiFrustum).asVarying();
+        const auto cullInputs = CullShapeBounds::Inputs(sortedShapes, shadowRenderFilter, shadowBoundsFilter, antiFrustum).asVarying();
         const auto culledShadowItemsAndBounds = task.addJob<CullShapeBounds>("CullShadowCascade", cullInputs, shadowCullFunctor, RenderDetails::SHADOW);
 
         // GPU jobs: Render to shadow map
         sprintf(jobName, "RenderShadowMap%d", i);
         task.addJob<RenderShadowMap>(jobName, culledShadowItemsAndBounds, shapePlumber, i);
-        task.addJob<RenderShadowCascadeTeardown>("ShadowCascadeTeardown", shadowFilter);
+        task.addJob<RenderShadowCascadeTeardown>("ShadowCascadeTeardown", shadowRenderFilter);
     }
 
     task.addJob<RenderShadowTeardown>("ShadowTeardown", setupOutput);
@@ -279,13 +295,15 @@ RenderShadowSetup::RenderShadowSetup() :
 
 void RenderShadowSetup::configure(const Config& configuration) {
     setConstantBias(0, configuration.constantBias0);
-    setConstantBias(1, configuration.constantBias1);
-    setConstantBias(2, configuration.constantBias2);
-    setConstantBias(3, configuration.constantBias3);
     setSlopeBias(0, configuration.slopeBias0);
+#if SHADOW_CASCADE_MAX_COUNT>1
+    setConstantBias(1, configuration.constantBias1);
     setSlopeBias(1, configuration.slopeBias1);
+    setConstantBias(2, configuration.constantBias2);
     setSlopeBias(2, configuration.slopeBias2);
+    setConstantBias(3, configuration.constantBias3);
     setSlopeBias(3, configuration.slopeBias3);
+#endif
 }
 
 void RenderShadowSetup::setConstantBias(int cascadeIndex, float value) {
@@ -297,8 +315,14 @@ void RenderShadowSetup::setSlopeBias(int cascadeIndex, float value) {
 }
 
 void RenderShadowSetup::run(const render::RenderContextPointer& renderContext, Outputs& output) {
+    // Abort all jobs if not casting shadows
     auto lightStage = renderContext->_scene->getStage<LightStage>();
     assert(lightStage);
+    if (!lightStage->getCurrentKeyLight() || !lightStage->getCurrentKeyLight()->getCastShadows()) {
+        renderContext->taskFlow.abortTask();
+        return;
+    }
+
     // Cache old render args
     RenderArgs* args = renderContext->args;
 
@@ -378,12 +402,17 @@ void RenderShadowSetup::run(const render::RenderContextPointer& renderContext, O
 void RenderShadowCascadeSetup::run(const render::RenderContextPointer& renderContext, Outputs& output) {
     auto lightStage = renderContext->_scene->getStage<LightStage>();
     assert(lightStage);
+
     // Cache old render args
     RenderArgs* args = renderContext->args;
 
     const auto globalShadow = lightStage->getCurrentKeyShadow();
     if (globalShadow && _cascadeIndex<globalShadow->getCascadeCount()) {
-        output.edit0() = ItemFilter::Builder::visibleWorldItems().withTypeShape().withOpaque().withoutLayered().withTagBits(_tagBits, _tagMask);
+        auto baseFilter = ItemFilter::Builder::visibleWorldItems().withTypeShape().withOpaque().withoutLayered().withTagBits(_tagBits, _tagMask);
+        // Second item filter is to filter items to keep in shadow frustum computation (here we need to keep shadow receivers)
+        output.edit1() = baseFilter;
+        // First item filter is to filter items to render in shadow map (so only keep casters)
+        output.edit0() = baseFilter.withShadowCaster();
 
         // Set the keylight render args
         auto& cascade = globalShadow->getCascade(_cascadeIndex);
@@ -396,10 +425,11 @@ void RenderShadowCascadeSetup::run(const render::RenderContextPointer& renderCon
         texelSize *= minTexelCount;
         _cullFunctor._minSquareSize = texelSize * texelSize;
 
-        output.edit1() = cascadeFrustum;
+        output.edit2() = cascadeFrustum;
     } else {
         output.edit0() = ItemFilter::Builder::nothing();
-        output.edit1() = ViewFrustumPointer();
+        output.edit1() = ItemFilter::Builder::nothing();
+        output.edit2() = ViewFrustumPointer();
     }
 }
 

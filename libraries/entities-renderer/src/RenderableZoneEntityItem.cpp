@@ -251,7 +251,7 @@ void ZoneEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& scen
         updateAmbientLightFromEntity(entity);
     }
 
-    if (skyboxChanged) {
+    if (skyboxChanged || _proceduralUserData != entity->getUserData()) {
         updateKeyBackgroundFromEntity(entity);
     }
 
@@ -269,7 +269,7 @@ void ZoneEntityRenderer::doRenderUpdateAsynchronousTyped(const TypedEntityPointe
 
 
 ItemKey ZoneEntityRenderer::getKey() {
-    return ItemKey::Builder().withTypeMeta().withTagBits(render::ItemKey::TAG_BITS_0 | render::ItemKey::TAG_BITS_1).build();
+    return ItemKey::Builder().withTypeMeta().withTagBits(getTagMask()).build();
 }
 
 bool ZoneEntityRenderer::needsRenderUpdateFromTypedEntity(const TypedEntityPointer& entity) const {
@@ -292,6 +292,10 @@ bool ZoneEntityRenderer::needsRenderUpdateFromTypedEntity(const TypedEntityPoint
         return true;
     }
     if (entity->getWorldOrientation() != _lastRotation) {
+        return true;
+    }
+
+    if (entity->getUserData() != _proceduralUserData) {
         return true;
     }
 
@@ -330,6 +334,7 @@ void ZoneEntityRenderer::updateKeySunFromEntity(const TypedEntityPointer& entity
     sunLight->setColor(ColorUtils::toVec3(_keyLightProperties.getColor()));
     sunLight->setIntensity(_keyLightProperties.getIntensity());
     sunLight->setDirection(entity->getTransform().getRotation() * _keyLightProperties.getDirection());
+    sunLight->setCastShadows(_keyLightProperties.getCastShadows());
 }
 
 void ZoneEntityRenderer::updateAmbientLightFromEntity(const TypedEntityPointer& entity) {
@@ -432,7 +437,7 @@ void ZoneEntityRenderer::setAmbientURL(const QString& ambientUrl) {
         _ambientTexture = textureCache->getTexture(_ambientTextureURL, image::TextureUsage::CUBE_TEXTURE);
 
         // keep whatever is assigned on the ambient map/sphere until texture is loaded
-}
+    }
 }
 
 void ZoneEntityRenderer::updateAmbientMap() {

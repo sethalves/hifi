@@ -23,6 +23,21 @@ void registerAudioMetaTypes(QScriptEngine* engine) {
     qScriptRegisterMetaType(engine, soundSharedPointerToScriptValue, soundSharedPointerFromScriptValue);
 }
 
+
+void AudioScriptingInterface::setLocalAudioInterface(AbstractAudioInterface* audioInterface) {
+    if (_localAudioInterface) {
+        disconnect(_localAudioInterface, &AbstractAudioInterface::isStereoInputChanged,
+                   this, &AudioScriptingInterface::isStereoInputChanged);
+    }
+    
+    _localAudioInterface = audioInterface;
+
+    if (_localAudioInterface) {
+        connect(_localAudioInterface, &AbstractAudioInterface::isStereoInputChanged,
+                this, &AudioScriptingInterface::isStereoInputChanged);
+    }
+}
+
 ScriptAudioInjector* AudioScriptingInterface::playSystemSound(SharedSoundPointer sound, const QVector3D& position) {
     AudioInjectorOptions options;
     options.position = glm::vec3(position.x(), position.y(), position.z());
@@ -62,6 +77,14 @@ ScriptAudioInjector* AudioScriptingInterface::playSound(SharedSoundPointer sound
 
 void AudioScriptingInterface::setStereoInput(bool stereo) {
     if (_localAudioInterface) {
-        _localAudioInterface->setIsStereoInput(stereo);
+        QMetaObject::invokeMethod(_localAudioInterface, "setIsStereoInput", Q_ARG(bool, stereo));
     }
+}
+
+bool AudioScriptingInterface::isStereoInput() {
+    bool stereoEnabled = false;
+    if (_localAudioInterface) {
+        stereoEnabled = _localAudioInterface->isStereoInput();
+    }
+    return stereoEnabled;
 }

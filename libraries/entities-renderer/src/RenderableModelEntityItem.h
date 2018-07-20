@@ -68,7 +68,7 @@ public:
 
     virtual bool supportsDetailedRayIntersection() const override;
     virtual bool findDetailedRayIntersection(const glm::vec3& origin, const glm::vec3& direction,
-                        bool& keepSearching, OctreeElementPointer& element, float& distance,
+                        OctreeElementPointer& element, float& distance,
                         BoxFace& face, glm::vec3& surfaceNormal,
                         QVariantMap& extraInfo, bool precisionPicking) const override;
 
@@ -111,7 +111,7 @@ public:
     virtual int getJointIndex(const QString& name) const override;
     virtual QStringList getJointNames() const override;
 
-    bool getMeshes(MeshProxyList& result) override;
+    bool getMeshes(MeshProxyList& result) override; // deprecated
     const void* getCollisionMeshKey() const { return _collisionMeshKey; }
 
 signals:
@@ -138,9 +138,16 @@ namespace render { namespace entities {
 class ModelEntityRenderer : public TypedEntityRenderer<RenderableModelEntityItem> {
     using Parent = TypedEntityRenderer<RenderableModelEntityItem>;
     friend class EntityRenderer;
+    Q_OBJECT
 
 public:
     ModelEntityRenderer(const EntityItemPointer& entity);
+    virtual scriptable::ScriptableModelBase getScriptableModel() override;
+    virtual bool canReplaceModelMeshPart(int meshIndex, int partIndex) override;
+    virtual bool replaceScriptableModelMeshPart(scriptable::ScriptableModelBasePointer model, int meshIndex, int partIndex) override;
+
+    void addMaterial(graphics::MaterialLayer material, const std::string& parentMaterialName) override;
+    void removeMaterial(graphics::MaterialPointer material, const std::string& parentMaterialName) override;
 
 protected:
     virtual void removeFromScene(const ScenePointer& scene, Transaction& transaction) override;
@@ -154,13 +161,16 @@ protected:
     virtual bool needsRenderUpdate() const override;
     virtual void doRender(RenderArgs* args) override;
     virtual void doRenderUpdateSynchronousTyped(const ScenePointer& scene, Transaction& transaction, const TypedEntityPointer& entity) override;
-    void flagForCollisionGeometryUpdate();
     void setCollisionMeshKey(const void* key);
+
+    render::hifi::Tag getTagMask() const override;
+
+    void setIsVisibleInSecondaryCamera(bool value) override;
 
 private:
     void animate(const TypedEntityPointer& entity);
     void mapJoints(const TypedEntityPointer& entity, const QStringList& modelJointNames);
-    bool jointsMapped() const { return _jointMappingURL == _renderAnimationProperties.getURL() && _jointMappingCompleted; }
+    bool jointsMapped() const { return _jointMappingCompleted; }
 
     // Transparency is handled in ModelMeshPartPayload
     virtual bool isTransparent() const override { return false; }
@@ -169,31 +179,28 @@ private:
     ModelPointer _model;
     GeometryResource::Pointer _compoundShapeResource;
     QString _lastTextures;
-    QVariantMap _currentTextures;
     bool _texturesLoaded { false };
-    AnimationPropertyGroup _renderAnimationProperties;
     int _lastKnownCurrentFrame { -1 };
 #ifdef MODEL_ENTITY_USE_FADE_EFFECT
     bool _hasTransitioned{ false };
 #endif
 
-    bool _needsJointSimulation { false };
-    bool _needsCollisionGeometryUpdate { false };
     const void* _collisionMeshKey { nullptr };
 
     // used on client side
     bool _jointMappingCompleted{ false };
     QVector<int> _jointMapping; // domain is index into model-joints, range is index into animation-joints
-    QString _jointMappingURL;
     AnimationPointer _animation;
-    QString _lastModelURL;
     QUrl _parsedModelURL;
-    bool _marketplaceEntity { false };
-    bool _shouldHighlight { false };
     bool _animating { false };
     uint64_t _lastAnimated { 0 };
 
     render::ItemKey _itemKey { render::ItemKey::Builder().withTypeMeta() };
+
+    bool _didLastVisualGeometryRequestSucceed { true };
+    bool _prevModelLoaded { false };
+
+    void processMaterials();
 };
 
 } } // namespace 

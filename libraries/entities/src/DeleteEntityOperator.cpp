@@ -9,12 +9,12 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "DeleteEntityOperator.h"
+
 #include "EntityItem.h"
 #include "EntityTree.h"
 #include "EntityTreeElement.h"
-
 #include "EntitiesLogging.h"
-#include "DeleteEntityOperator.h"
 
 DeleteEntityOperator::DeleteEntityOperator(EntityTreePointer tree, const EntityItemID& searchEntityID) :
     _tree(tree),
@@ -93,9 +93,9 @@ bool DeleteEntityOperator::preRecursion(const OctreeElementPointer& element) {
             // and we can stop searching.
             if (entityTreeElement == details.containingElement) {
                 EntityItemPointer theEntity = details.entity;
-                bool entityDeleted = entityTreeElement->removeEntityItem(theEntity); // remove it from the element
+                bool entityDeleted = entityTreeElement->removeEntityItem(theEntity, true); // remove it from the element
                 assert(entityDeleted);
-                (void)entityDeleted; // quite warning
+                (void)entityDeleted; // quiet warning about unused variable
                 _tree->clearEntityMapEntry(details.entity->getEntityItemID());
                 _foundCount++;
             }

@@ -37,23 +37,31 @@
 
 #include <NumericalConstants.h>
 #include <shared/NsightHelpers.h>
-
+#include <shared/FileUtils.h>
+#include <PathUtils.h>
 #include <Finally.h>
 #include <Profile.h>
 
 #include "NetworkLogging.h"
 #include "ModelNetworkingLogging.h"
+#include "NetworkingConstants.h"
 #include <Trace.h>
 #include <StatTracker.h>
+
+#include <TextureMeta.h>
+
+#include <OwningBuffer.h>
 
 Q_LOGGING_CATEGORY(trace_resource_parse_image, "trace.resource.parse.image")
 Q_LOGGING_CATEGORY(trace_resource_parse_image_raw, "trace.resource.parse.image.raw")
 Q_LOGGING_CATEGORY(trace_resource_parse_image_ktx, "trace.resource.parse.image.ktx")
 
-#if !defined(DISABLE_KTX_CACHE)
-const std::string TextureCache::KTX_DIRNAME { "ktx_cache" };
-const std::string TextureCache::KTX_EXT { "ktx" };
+#if defined(USE_GLES)
+const std::string TextureCache::KTX_DIRNAME { "ktx_cache_gles" };
+#else
+const std::string TextureCache::KTX_DIRNAME{ "ktx_cache" };
 #endif
+const std::string TextureCache::KTX_EXT { "ktx" };
 
 static const QString RESOURCE_SCHEME = "resource";
 static const QUrl SPECTATOR_CAMERA_FRAME_URL("resource://spectatorCameraFrame");
@@ -63,8 +71,9 @@ static const float SKYBOX_LOAD_PRIORITY { 10.0f }; // Make sure skybox loads fir
 static const float HIGH_MIPS_LOAD_PRIORITY { 9.0f }; // Make sure high mips loads after skybox but before models
 
 TextureCache::TextureCache() {
-#if !defined(DISABLE_KTX_CACHE)
     _ktxCache->initialize();
+#if defined(DISABLE_KTX_CACHE)
+    _ktxCache->wipe();
 #endif
     setUnusedResourceCacheSize(0);
     setObjectName("TextureCache");
@@ -270,7 +279,7 @@ gpu::TexturePointer TextureCache::getImageTexture(const QString& path, image::Te
         return nullptr;
     }
     auto loader = image::TextureUsage::getTextureLoaderForType(type, options);
-    return gpu::TexturePointer(loader(std::move(image), path.toStdString(), false));
+    return gpu::TexturePointer(loader(std::move(image), path.toStdString(), false, false));
 }
 
 QSharedPointer<Resource> TextureCache::createResource(const QUrl& url, const QSharedPointer<Resource>& fallback,
@@ -283,32 +292,45 @@ QSharedPointer<Resource> TextureCache::createResource(const QUrl& url, const QSh
     return QSharedPointer<Resource>(texture, &Resource::deleter);
 }
 
+int networkTexturePointerMetaTypeId = qRegisterMetaType<QWeakPointer<NetworkTexture>>();
+
 NetworkTexture::NetworkTexture(const QUrl& url) :
 Resource(url),
 _type(),
-_sourceIsKTX(false),
 _maxNumPixels(100)
 {
-    _textureSource = std::make_shared<gpu::TextureSource>();
+    _textureSource = std::make_shared<gpu::TextureSource>(url);
     _lowestRequestedMipLevel = 0;
     _loaded = true;
 }
 
+static bool isLocalUrl(const QUrl& url) {
+    auto scheme = url.scheme();
+    return (scheme == URL_SCHEME_FILE || scheme == URL_SCHEME_QRC || scheme == RESOURCE_SCHEME);
+}
 
 NetworkTexture::NetworkTexture(const QUrl& url, image::TextureUsage::Type type, const QByteArray& content, int maxNumPixels) :
     Resource(url),
     _type(type),
-    _sourceIsKTX(url.path().endsWith(".ktx")),
     _maxNumPixels(maxNumPixels)
 {
-    _textureSource = std::make_shared<gpu::TextureSource>();
+    _textureSource = std::make_shared<gpu::TextureSource>(url, (int)type);
     _lowestRequestedMipLevel = 0;
 
-    _shouldFailOnRedirect = !_sourceIsKTX;
+    auto fileNameLowercase = url.fileName().toLower();
+    if (fileNameLowercase.endsWith(TEXTURE_META_EXTENSION)) {
+        _currentlyLoadingResourceType = ResourceType::META;
+    } else if (fileNameLowercase.endsWith(".ktx")) {
+        _currentlyLoadingResourceType = ResourceType::KTX;
+    } else {
+        _currentlyLoadingResourceType = ResourceType::ORIGINAL;
+    }
+
+    _shouldFailOnRedirect = _currentlyLoadingResourceType != ResourceType::KTX;
 
     if (type == image::TextureUsage::CUBE_TEXTURE) {
         setLoadPriority(this, SKYBOX_LOAD_PRIORITY);
-    } else if (_sourceIsKTX) {
+    } else if (_currentlyLoadingResourceType == ResourceType::KTX) {
         setLoadPriority(this, HIGH_MIPS_LOAD_PRIORITY);
     }
 
@@ -319,7 +341,7 @@ NetworkTexture::NetworkTexture(const QUrl& url, image::TextureUsage::Type type, 
     // if we have content, load it after we have our self pointer
     if (!content.isEmpty()) {
         _startedLoading = true;
-        QMetaObject::invokeMethod(this, "loadContent", Qt::QueuedConnection, Q_ARG(const QByteArray&, content));
+        QMetaObject::invokeMethod(this, "downloadFinished", Qt::QueuedConnection, Q_ARG(const QByteArray&, content));
     }
 }
 
@@ -382,10 +404,25 @@ NetworkTexture::~NetworkTexture() {
 
 const uint16_t NetworkTexture::NULL_MIP_LEVEL = std::numeric_limits<uint16_t>::max();
 void NetworkTexture::makeRequest() {
-    if (!_sourceIsKTX) {
+    if (_currentlyLoadingResourceType != ResourceType::KTX) {
         Resource::makeRequest();
         return;
     }
+
+    if (isLocalUrl(_activeUrl)) {
+        auto self = _self;
+        QtConcurrent::run(QThreadPool::globalInstance(), [self] {
+            auto resource = self.lock();
+            if (!resource) {
+                return;
+            }
+
+            NetworkTexture* networkTexture = static_cast<NetworkTexture*>(resource.data());
+            networkTexture->makeLocalRequest();
+        });
+        return;
+    }
+
 
     // We special-handle ktx requests to run 2 concurrent requests right off the bat
     PROFILE_ASYNC_BEGIN(resource, "Resource:" + getType(), QString::number(_requestID), { { "url", _url.toString() }, { "activeURL", _activeUrl.toString() } });
@@ -435,12 +472,88 @@ void NetworkTexture::makeRequest() {
 
 }
 
+void NetworkTexture::handleLocalRequestCompleted() {
+    TextureCache::requestCompleted(_self);
+}
+
+void NetworkTexture::makeLocalRequest() {
+    const QString scheme = _activeUrl.scheme();
+    QString path;
+    if (scheme == URL_SCHEME_FILE) {
+        path = PathUtils::expandToLocalDataAbsolutePath(_activeUrl).toLocalFile();
+    } else {
+        path = ":" + _activeUrl.path();
+    }
+
+    connect(this, &Resource::finished, this, &NetworkTexture::handleLocalRequestCompleted);
+
+    path = FileUtils::selectFile(path);
+
+    auto storage = std::make_shared<storage::FileStorage>(path);
+    std::unique_ptr<ktx::KTX> ktxFile;
+    if (storage) {
+        ktxFile = ktx::KTX::create(storage);
+    }
+    std::shared_ptr<ktx::KTXDescriptor> ktxDescriptor;
+    if (ktxFile) {
+        ktxDescriptor = std::make_shared<ktx::KTXDescriptor>(ktxFile->toDescriptor());
+    }
+
+    gpu::TexturePointer texture;
+    if (ktxDescriptor) {
+        std::string hash;
+        // Create bare ktx in memory
+        auto found = std::find_if(ktxDescriptor->keyValues.begin(), ktxDescriptor->keyValues.end(), [](const ktx::KeyValue& val) -> bool {
+            return val._key.compare(gpu::SOURCE_HASH_KEY) == 0;
+        });
+
+        if (found == ktxDescriptor->keyValues.end() || found->_value.size() != gpu::SOURCE_HASH_BYTES) {
+            hash = _activeUrl.toString().toLocal8Bit().toHex().toStdString();
+        } else {
+            // at this point the source hash is in binary 16-byte form
+            // and we need it in a hexadecimal string
+            auto binaryHash = QByteArray(reinterpret_cast<const char*>(found->_value.data()), gpu::SOURCE_HASH_BYTES);
+            hash = binaryHash.toHex().toStdString();
+        }
+
+        auto textureCache = DependencyManager::get<TextureCache>();
+        texture = textureCache->getTextureByHash(hash);
+        if (!texture) {
+            texture = gpu::Texture::build(*ktxDescriptor);
+            if (texture) {
+                texture->setKtxBacking(path.toStdString());
+                texture->setSource(path.toStdString());
+                texture = textureCache->cacheTextureByHash(hash, texture);
+            }
+        }
+    }
+
+    if (!texture) {
+        qCDebug(networking).noquote() << "Failed load local KTX from" << path;
+        QMetaObject::invokeMethod(this, "setImage",
+            Q_ARG(gpu::TexturePointer, nullptr),
+            Q_ARG(int, 0),
+            Q_ARG(int, 0));
+        return;
+    }
+
+    _ktxResourceState = PENDING_MIP_REQUEST;
+    _lowestKnownPopulatedMip = texture->minAvailableMipLevel();
+    QMetaObject::invokeMethod(this, "setImage",
+        Q_ARG(gpu::TexturePointer, texture),
+        Q_ARG(int, texture->getWidth()),
+        Q_ARG(int, texture->getHeight()));
+
+}
+
 bool NetworkTexture::handleFailedRequest(ResourceRequest::Result result) {
-    if (!_sourceIsKTX && result == ResourceRequest::Result::RedirectFail) {
+    if (_currentlyLoadingResourceType != ResourceType::KTX
+        && result == ResourceRequest::Result::RedirectFail) {
+
         auto newPath = _request->getRelativePathUrl();
         if (newPath.fileName().endsWith(".ktx")) {
             qDebug() << "Redirecting to" << newPath << "from" << _url;
-            _sourceIsKTX = true;
+            _currentlyLoadingResourceType = ResourceType::KTX;
             _activeUrl = newPath;
             _shouldFailOnRedirect = false;
             makeRequest();
@@ -542,8 +655,12 @@ void NetworkTexture::ktxInitialDataRequestFinished() {
     }
 
     if (result == ResourceRequest::Success) {
+
+// This is an expensive operation that we do not want in release.
+#ifdef DEBUG
         auto extraInfo = _url == _activeUrl ? "" : QString(", %1").arg(_activeUrl.toDisplayString());
         qCDebug(networking).noquote() << QString("Request finished for %1%2").arg(_url.toDisplayString(), extraInfo);
+#endif
 
         _ktxHeaderData = _ktxHeaderRequest->getData();
         _ktxHighMipData = _ktxMipRequest->getData();
@@ -750,7 +867,6 @@ void NetworkTexture::handleFinishedInitialLoad() {
 
         gpu::TexturePointer texture = textureCache->getTextureByHash(hash);
 
-#if !defined(DISABLE_KTX_CACHE)
         if (!texture) {
             auto ktxFile = textureCache->_ktxCache->getFile(hash);
             if (ktxFile) {
@@ -763,9 +879,8 @@ void NetworkTexture::handleFinishedInitialLoad() {
                 }
             }
         }
-#endif
-        if (!texture) {
 
+        if (!texture) {
             auto memKtx = ktx::KTX::createBare(*header, keyValues);
             if (!memKtx) {
                 qWarning() << " Ktx could not be created, bailing";
@@ -778,7 +893,6 @@ void NetworkTexture::handleFinishedInitialLoad() {
 
             // Move ktx to file
             const char* data = reinterpret_cast<const char*>(memKtx->_storage->data());
-#if !defined(DISABLE_KTX_CACHE)
             size_t length = memKtx->_storage->size();
             cache::FilePointer file;
             auto& ktxCache = textureCache->_ktxCache;
@@ -790,14 +904,11 @@ void NetworkTexture::handleFinishedInitialLoad() {
                     Q_ARG(int, 0));
                 return;
             }
-#endif
 
             auto newKtxDescriptor = memKtx->toDescriptor();
 
             texture = gpu::Texture::build(newKtxDescriptor);
-#if !defined(DISABLE_KTX_CACHE)
             texture->setKtxBacking(file);
-#endif
             texture->setSource(filename);
 
             auto& images = originalKtxDescriptor->images;
@@ -832,11 +943,89 @@ void NetworkTexture::handleFinishedInitialLoad() {
 }
 
 void NetworkTexture::downloadFinished(const QByteArray& data) {
-    loadContent(data);
+    if (_currentlyLoadingResourceType == ResourceType::META) {
+        loadMetaContent(data);
+    } else if (_currentlyLoadingResourceType == ResourceType::ORIGINAL) {
+        loadTextureContent(data);
+    } else {
+        TextureCache::requestCompleted(_self);
+        Resource::handleFailedRequest(ResourceRequest::Error);
+    }
 }
 
-void NetworkTexture::loadContent(const QByteArray& content) {
-    if (_sourceIsKTX) {
+void NetworkTexture::loadMetaContent(const QByteArray& content) {
+    if (_currentlyLoadingResourceType != ResourceType::META) {
+        qWarning() << "Trying to load meta content when current resource type is not META";
+        assert(false);
+        return;
+    }
+
+    TextureMeta meta;
+    if (!TextureMeta::deserialize(content, &meta)) {
+        qWarning() << "Failed to read texture meta from " << _url;
+        return;
+    }
+
+    auto& backend = DependencyManager::get<TextureCache>()->getGPUContext()->getBackend();
+    for (auto pair : meta.availableTextureTypes) {
+        gpu::Element elFormat;
+
+        if (gpu::Texture::getCompressedFormat(pair.first, elFormat)) {
+            if (backend->supportedTextureFormat(elFormat)) {
+                auto url = pair.second;
+                if (url.fileName().endsWith(TEXTURE_META_EXTENSION)) {
+                    qWarning() << "Found a texture meta URL inside of the texture meta file at" << _activeUrl;
+                    continue;
+                }
+
+                _currentlyLoadingResourceType = ResourceType::KTX;
+                _activeUrl = _activeUrl.resolved(url);
+                auto textureCache = DependencyManager::get<TextureCache>();
+                auto self = _self.lock();
+                if (!self) {
+                    return;
+                }
+                QMetaObject::invokeMethod(this, "attemptRequest", Qt::QueuedConnection);
+                return;
+            }
+        }
+    }
+
+#ifndef Q_OS_ANDROID
+    if (!meta.uncompressed.isEmpty()) {
+        _currentlyLoadingResourceType = ResourceType::KTX;
+        _activeUrl = _activeUrl.resolved(meta.uncompressed);
+
+        auto textureCache = DependencyManager::get<TextureCache>();
+        auto self = _self.lock();
+        if (!self) {
+            return;
+        }
+        QMetaObject::invokeMethod(this, "attemptRequest", Qt::QueuedConnection);
+        return;
+    }
+#endif
+
+    if (!meta.original.isEmpty()) {
+        _currentlyLoadingResourceType = ResourceType::ORIGINAL;
+        _activeUrl = _activeUrl.resolved(meta.original);
+
+        auto textureCache = DependencyManager::get<TextureCache>();
+        auto self = _self.lock();
+        if (!self) {
+            return;
+        }
+        QMetaObject::invokeMethod(this, "attemptRequest", Qt::QueuedConnection);
+        return;
+    }
+
+    qWarning() << "Failed to find supported texture type in " << _activeUrl;
+    Resource::handleFailedRequest(ResourceRequest::NotFound);
+}
+
+void NetworkTexture::loadTextureContent(const QByteArray& content) {
+    if (_currentlyLoadingResourceType != ResourceType::ORIGINAL) {
+        qWarning() << "Trying to load texture content when current resource type is not ORIGINAL";
         assert(false);
         return;
     }
@@ -940,7 +1129,6 @@ void ImageReader::read() {
         // If we already have a live texture with the same hash, use it
         auto texture = textureCache->getTextureByHash(hash);
 
-#if !defined(DISABLE_KTX_CACHE)
         // If there is no live texture, check if there's an existing KTX file
         if (!texture) {
             auto ktxFile = textureCache->_ktxCache->getFile(hash);
@@ -953,7 +1141,6 @@ void ImageReader::read() {
                 }
             }
         }
-#endif
 
         // If we found the texture either because it's in use or via KTX deserialization,
         // set the image and return immediately.
@@ -972,7 +1159,8 @@ void ImageReader::read() {
         PROFILE_RANGE_EX(resource_parse_image_raw, __FUNCTION__, 0xffff0000, 0);
 
         // IMPORTANT: _content is empty past this point
-        texture = image::processImage(std::move(_content), _url.toString().toStdString(), _maxNumPixels, networkTexture->getTextureType());
+        auto buffer = std::shared_ptr<QIODevice>((QIODevice*)new OwningBuffer(std::move(_content)));
+        texture = image::processImage(std::move(buffer), _url.toString().toStdString(), _maxNumPixels, networkTexture->getTextureType());
 
         if (!texture) {
             qCWarning(modelnetworking) << "Could not process:" << _url;
@@ -989,7 +1177,6 @@ void ImageReader::read() {
 
     // Save the image into a KTXFile
     if (texture && textureCache) {
-#if !defined(DISABLE_KTX_CACHE)
         auto memKtx = gpu::Texture::serialize(*texture);
 
         // Move the texture into a memory mapped file
@@ -1006,7 +1193,7 @@ void ImageReader::read() {
         } else {
             qCWarning(modelnetworking) << "Unable to serialize texture to KTX " << _url;
         }
-#endif
+
         // We replace the texture with the one stored in the cache.  This deals with the possible race condition of two different
         // images with the same hash being loaded concurrently.  Only one of them will make it into the cache by hash first and will
         // be the winner

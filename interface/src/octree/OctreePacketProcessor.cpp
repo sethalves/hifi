@@ -9,14 +9,17 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "OctreePacketProcessor.h"
+
 #include <PerfStat.h>
 
 #include "Application.h"
 #include "Menu.h"
-#include "OctreePacketProcessor.h"
 #include "SceneScriptingInterface.h"
 
 OctreePacketProcessor::OctreePacketProcessor() {
+    setObjectName("Octree Packet Processor");
+
     auto& packetReceiver = DependencyManager::get<NodeList>()->getPacketReceiver();
     
     packetReceiver.registerDirectListenerForTypes({ PacketType::OctreeStats, PacketType::EntityData, PacketType::EntityErase },
@@ -69,7 +72,7 @@ void OctreePacketProcessor::processPacket(QSharedPointer<ReceivedMessage> messag
     if (message->getVersion() != versionForPacketType(message->getType())) {
         static QMultiMap<QUuid, PacketType> versionDebugSuppressMap;
 
-        const QUuid& senderUUID = message->getSourceID();
+        const QUuid& senderUUID = sendingNode->getUUID();
         if (!versionDebugSuppressMap.contains(senderUUID, packetType)) {
             
             qDebug() << "Was stats packet? " << wasStatsPacket;

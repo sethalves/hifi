@@ -76,7 +76,9 @@ void KtxTests::testKtxEvalFunctions() {
 void KtxTests::testKtxSerialization() {
     const QString TEST_IMAGE = getRootPath() + "/scripts/developer/tests/cube_texture.png";
     QImage image(TEST_IMAGE);
-    gpu::TexturePointer testTexture = image::TextureUsage::process2DTextureColorFromImage(image, TEST_IMAGE.toStdString(), true);
+    std::atomic<bool> abortSignal;
+    gpu::TexturePointer testTexture =
+        image::TextureUsage::process2DTextureColorFromImage(std::move(image), TEST_IMAGE.toStdString(), true, abortSignal);
     auto ktxMemory = gpu::Texture::serialize(*testTexture);
     QVERIFY(ktxMemory.get());
 
@@ -149,7 +151,8 @@ static const QString TEST_FOLDER { "H:/ktx_cacheold" };
 static const QString EXTENSIONS { "*.ktx" };
 
 int mainTemp(int, char**) {
-    qInstallMessageHandler(messageHandler);
+    setupHifiApplication("KTX Tests");
+
     auto fileInfoList = QDir { TEST_FOLDER }.entryInfoList(QStringList  { EXTENSIONS });
     for (auto fileInfo : fileInfoList) {
         qDebug() << fileInfo.filePath();

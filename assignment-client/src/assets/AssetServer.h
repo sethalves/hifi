@@ -21,15 +21,51 @@
 #include "AssetUtils.h"
 #include "ReceivedMessage.h"
 
-namespace std {
-    template <>
-    struct hash<QString> {
-        size_t operator()(const QString& v) const { return qHash(v); }
-    };
-}
+#include "RegisteredMetaTypes.h"
+
+using BakeVersion = int;
+static const BakeVersion INITIAL_BAKE_VERSION = 0;
+static const BakeVersion NEEDS_BAKING_BAKE_VERSION = -1;
+
+enum class BakedAssetType : int {
+    Model = 0,
+    Texture,
+    Script,
+
+    NUM_ASSET_TYPES,
+    Undefined
+};
+
+// ATTENTION! Do not remove baking versions, and do not reorder them. If you add
+// a new value, it will immediately become the "current" version.
+enum class ModelBakeVersion : BakeVersion {
+    Initial = INITIAL_BAKE_VERSION,
+    MetaTextureJson,
+
+    COUNT
+};
+
+// ATTENTION! See above.
+enum class TextureBakeVersion : BakeVersion {
+    Initial = INITIAL_BAKE_VERSION,
+    MetaTextureJson,
+
+    COUNT
+};
+
+// ATTENTION! See above.
+enum class ScriptBakeVersion : BakeVersion {
+    Initial = INITIAL_BAKE_VERSION,
+    FixEmptyScripts,
+
+    COUNT
+};
 
 struct AssetMeta {
-    int bakeVersion { 0 };
+    AssetMeta() {
+    }
+
+    BakeVersion bakeVersion { INITIAL_BAKE_VERSION };
     bool failedLastBake { false };
     QString lastBakeErrors;
 };
@@ -49,6 +85,7 @@ public slots:
 private slots:
     void completeSetup();
 
+    void queueRequests(QSharedPointer<ReceivedMessage> packet, SharedNodePointer senderNode);
     void handleAssetGetInfo(QSharedPointer<ReceivedMessage> packet, SharedNodePointer senderNode);
     void handleAssetGet(QSharedPointer<ReceivedMessage> packet, SharedNodePointer senderNode);
     void handleAssetUpload(QSharedPointer<ReceivedMessage> packetList, SharedNodePointer senderNode);
@@ -57,6 +94,8 @@ private slots:
     void sendStatsPacket() override;
 
 private:
+    void replayRequests();
+
     void handleGetMappingOperation(ReceivedMessage& message, NLPacketList& replyPacket);
     void handleGetAllMappingOperation(NLPacketList& replyPacket);
     void handleSetMappingOperation(ReceivedMessage& message, bool hasWriteAccess, NLPacketList& replyPacket);
@@ -84,6 +123,9 @@ private:
 
     /// Delete any unmapped files from the local asset directory
     void cleanupUnmappedFiles();
+
+    /// Delete any baked files for assets removed from the local asset directory
+    void cleanupBakedFilesForDeletedAssets();
 
     QString getPathToAssetHash(const AssetUtils::AssetHash& assetHash);
 
@@ -120,10 +162,10 @@ private:
     QHash<AssetUtils::AssetHash, std::shared_ptr<BakeAssetTask>> _pendingBakes;
     QThreadPool _bakingTaskPool;
 
-    bool _wasColorTextureCompressionEnabled { false };
-    bool _wasGrayscaleTextureCompressionEnabled { false  };
-    bool _wasNormalTextureCompressionEnabled { false };
-    bool _wasCubeTextureCompressionEnabled { false };
+    QMutex _queuedRequestsMutex;
+    bool _isQueueingRequests { true };
+    using RequestQueue = QVector<QPair<QSharedPointer<ReceivedMessage>, SharedNodePointer>>;
+    RequestQueue _queuedRequests;
 
     uint64_t _filesizeLimit;
 };

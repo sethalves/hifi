@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include "SkyboxBakeWidget.h"
+
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QLabel>
@@ -21,10 +23,9 @@
 #include <QtCore/QDebug>
 #include <QtCore/QThread>
 
-#include "../Oven.h"
-#include "OvenMainWindow.h"
+#include <TextureBaker.h>
 
-#include "SkyboxBakeWidget.h"
+#include "../OvenGUIApplication.h"
 
 static const auto EXPORT_DIR_SETTING_KEY = "skybox_export_directory";
 static const auto SELECTION_START_DIR_SETTING_KEY = "skybox_search_directory";
@@ -184,7 +185,7 @@ void SkyboxBakeWidget::bakeButtonClicked() {
         };
 
         // move the baker to a worker thread
-        baker->moveToThread(qApp->getNextWorkerThread());
+        baker->moveToThread(Oven::instance().getNextWorkerThread());
 
         // invoke the bake method on the baker thread
         QMetaObject::invokeMethod(baker.get(), "bake");
@@ -193,7 +194,7 @@ void SkyboxBakeWidget::bakeButtonClicked() {
         connect(baker.get(), &TextureBaker::finished, this, &SkyboxBakeWidget::handleFinishedBaker);
 
         // add a pending row to the results window to show that this bake is in process
-        auto resultsWindow = qApp->getMainWindow()->showResultsWindow();
+        auto resultsWindow = OvenGUIApplication::instance()->getMainWindow()->showResultsWindow();
         auto resultsRow = resultsWindow->addPendingResultRow(skyboxToBakeURL.fileName(), outputDirectory);
 
         // keep a unique_ptr to this baker
@@ -211,7 +212,7 @@ void SkyboxBakeWidget::handleFinishedBaker() {
 
         if (it != _bakers.end()) {
             auto resultRow = it->second;
-            auto resultsWindow = qApp->getMainWindow()->showResultsWindow();
+            auto resultsWindow = OvenGUIApplication::instance()->getMainWindow()->showResultsWindow();
 
             if (baker->hasErrors()) {
                 resultsWindow->changeStatusForRow(resultRow, baker->getErrors().join("\n"));
