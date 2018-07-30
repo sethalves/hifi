@@ -1634,6 +1634,7 @@ void MyAvatar::removeAvatarEntities(const std::function<bool(const QUuid& entity
     }
 }
 
+
 QVariantList MyAvatar::getAvatarEntitiesVariant() {
     QVariantList avatarEntitiesData;
     QScriptEngine scriptEngine;
@@ -1690,6 +1691,23 @@ void MyAvatar::useFullAvatarURL(const QUrl& fullAvatarURL, const QString& modelN
 
     markIdentityDataChanged();
 }
+
+
+void MyAvatar::removeNonDescendentAvatarEntities() {
+    auto treeRenderer = DependencyManager::get<EntityTreeRenderer>();
+    EntityTreePointer entityTree = treeRenderer ? treeRenderer->getTree() : nullptr;
+    if (entityTree) {
+        removeAvatarEntities([&](const QUuid& entityID) {
+            EntityItemPointer entity = entityTree->findEntityByID(entityID);
+            if (entity && entity->getParentID().isNull()) {
+                clearAvatarEntity(entityID);
+                return true;
+            }
+            return false;
+        });
+    }
+}
+
 
 void MyAvatar::setAttachmentData(const QVector<AttachmentData>& attachmentData) {
     if (QThread::currentThread() != thread()) {

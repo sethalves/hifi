@@ -865,6 +865,8 @@ public:
 
     void resetFullAvatarURL();
 
+    void removeNonDescendentAvatarEntities();
+
     virtual void setAttachmentData(const QVector<AttachmentData>& attachmentData) override;
 
     MyCharacterController* getCharacterController() { return &_characterController; }

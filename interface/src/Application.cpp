@@ -6308,6 +6308,7 @@ void Application::clearDomainAvatars() {
 
 void Application::domainURLChanged(QUrl domainURL) {
     // disable physics until we have enough information about our new location to not cause craziness.
+    getMyAvatar()->removeNonDescendentAvatarEntities();
     resetPhysicsReadyInformation();
     setIsServerlessMode(domainURL.scheme() != URL_SCHEME_HIFI);
     if (isServerlessMode()) {
