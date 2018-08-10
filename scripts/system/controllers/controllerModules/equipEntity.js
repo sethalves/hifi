@@ -182,17 +182,12 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
     var UNEQUIP_KEY = "u";
 
     function getWearableData(props) {
-        var wearable = {};
-        try {
-            if (!props.userDataParsed) {
-                props.userDataParsed = JSON.parse(props.userData);
+        return {
+            joints: {
+                LeftHand: [ props.equippableLeftPosition, props.equippableLeftRotation ],
+                RightHand: [ props.equippableRightPosition, props.equippableRightRotation ]
             }
-
-            wearable = props.userDataParsed.wearable ? props.userDataParsed.wearable : {};
-        } catch (err) {
-            // don't want to spam the logs
-        }
-        return wearable;
+        };
     }
     function getEquipHotspotsData(props) {
         var equipHotspots = [];
