@@ -900,9 +900,10 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_CLONE_ORIGIN_ID, QUuid, setCloneOriginID);
 
 
-    bytesRead += _grabProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
-                                                                  propertyFlags, overwriteLocalData, somethingChanged);
-
+    int bytesFromGrab = _grabProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
+                                                                         propertyFlags, overwriteLocalData, somethingChanged);
+    bytesRead += bytesFromGrab;
+    dataAt += bytesFromGrab;
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
