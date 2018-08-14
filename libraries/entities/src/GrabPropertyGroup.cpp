@@ -98,11 +98,11 @@ void GrabPropertyGroup::listChangedProperties(QList<QString>& out) {
 }
 
 bool GrabPropertyGroup::appendToEditPacket(OctreePacketData* packetData,
-                                    EntityPropertyFlags& requestedProperties,
-                                    EntityPropertyFlags& propertyFlags,
-                                    EntityPropertyFlags& propertiesDidntFit,
-                                    int& propertyCount,
-                                    OctreeElement::AppendState& appendState) const {
+                                           EntityPropertyFlags& requestedProperties,
+                                           EntityPropertyFlags& propertyFlags,
+                                           EntityPropertyFlags& propertiesDidntFit,
+                                           int& propertyCount,
+                                           OctreeElement::AppendState& appendState) const {
 
     bool successPropertyFits = true;
 
@@ -228,12 +228,12 @@ EntityPropertyFlags GrabPropertyGroup::getEntityProperties(EncodeBitstreamParams
 }
 
 void GrabPropertyGroup::appendSubclassData(OctreePacketData* packetData, EncodeBitstreamParams& params,
-                                EntityTreeElementExtraEncodeDataPointer entityTreeElementExtraEncodeData,
-                                EntityPropertyFlags& requestedProperties,
-                                EntityPropertyFlags& propertyFlags,
-                                EntityPropertyFlags& propertiesDidntFit,
-                                int& propertyCount,
-                                OctreeElement::AppendState& appendState) const {
+                                           EntityTreeElementExtraEncodeDataPointer entityTreeElementExtraEncodeData,
+                                           EntityPropertyFlags& requestedProperties,
+                                           EntityPropertyFlags& propertyFlags,
+                                           EntityPropertyFlags& propertiesDidntFit,
+                                           int& propertyCount,
+                                           OctreeElement::AppendState& appendState) const {
 
     bool successPropertyFits = true;
 
@@ -249,9 +249,9 @@ void GrabPropertyGroup::appendSubclassData(OctreePacketData* packetData, EncodeB
 }
 
 int GrabPropertyGroup::readEntitySubclassDataFromBuffer(const unsigned char* data, int bytesLeftToRead,
-                                            ReadBitstreamToTreeParams& args,
-                                            EntityPropertyFlags& propertyFlags, bool overwriteLocalData,
-                                            bool& somethingChanged) {
+                                                        ReadBitstreamToTreeParams& args,
+                                                        EntityPropertyFlags& propertyFlags, bool overwriteLocalData,
+                                                        bool& somethingChanged) {
 
     int bytesRead = 0;
     const unsigned char* dataAt = data;

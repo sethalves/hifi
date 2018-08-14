@@ -1247,9 +1247,9 @@ function loaded() {
                         elCollideMyAvatar.checked = properties.collidesWith.indexOf("myAvatar") > -1;
                         elCollideOtherAvatar.checked = properties.collidesWith.indexOf("otherAvatar") > -1;
 
-                        elGrabbable.checked = properties.grabbable;
-                        elTriggerable.checked = properties.triggerable;
-                        elGrabFollowsController.checked = properties.grabFollowsController;
+                        elGrabbable.checked = properties.grab.grabbable;
+                        elTriggerable.checked = properties.grab.triggerable;
+                        elGrabFollowsController.checked = properties.grab.grabFollowsController;
 
                         elCloneable.checked = properties.cloneable;
                         elCloneableDynamic.checked = properties.cloneDynamic;
