@@ -529,6 +529,8 @@ public:
     const QVector<QUuid> getCloneIDs() const;
     void setCloneIDs(const QVector<QUuid>& cloneIDs);
 
+    const GrabPropertyGroup& getGrabProperties() const { return _grabProperties; }
+
 signals:
     void requestRenderUpdate();
     void spaceUpdate(std::pair<int32_t, glm::vec4> data);
@@ -703,6 +705,8 @@ protected:
     bool _cloneAvatarEntity { ENTITY_ITEM_DEFAULT_CLONE_AVATAR_ENTITY };
     QUuid _cloneOriginID;
     QVector<QUuid> _cloneIDs;
+
+    GrabPropertyGroup _grabProperties;
 
 private:
     std::unordered_map<std::string, graphics::MultiMaterial> _materials;
