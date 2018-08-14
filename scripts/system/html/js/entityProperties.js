@@ -1625,9 +1625,11 @@ function loaded() {
             updateCheckedSubProperty("collidesWith", properties.collidesWith, elCollideOtherAvatar, 'otherAvatar');
         });
 
-        elGrabbable.addEventListener('change', createEmitCheckedPropertyUpdateFunction('grabbable'));
-        elTriggerable.addEventListener('change', createEmitCheckedPropertyUpdateFunction('triggerable'));
-        elGrabFollowsController.addEventListener('change', createEmitCheckedPropertyUpdateFunction('grabFollowsController'));
+
+        elGrabbable.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('grab', 'grabbable'));
+        elTriggerable.addEventListener('change', createEmitGroupCheckedPropertyUpdateFunction('grab', 'triggerable'));
+        elGrabFollowsController.addEventListener('change',
+                                                 createEmitGroupCheckedPropertyUpdateFunction('grab', 'grabFollowsController'));
 
         elCloneable.addEventListener('change', createEmitCheckedPropertyUpdateFunction('cloneable'));
         elCloneableDynamic.addEventListener('change', createEmitCheckedPropertyUpdateFunction('cloneDynamic'));
