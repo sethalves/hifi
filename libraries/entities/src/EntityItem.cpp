@@ -131,7 +131,9 @@ EntityPropertyFlags EntityItem::getEntityProperties(EncodeBitstreamParams& param
     requestedProperties += PROP_CLONE_AVATAR_ENTITY;
     requestedProperties += PROP_CLONE_ORIGIN_ID;
 
-    requestedProperties += _grabProperties.getEntityProperties(params);
+    withReadLock([&] {
+        requestedProperties += _grabProperties.getEntityProperties(params);
+    });
 
     return requestedProperties;
 }
@@ -304,8 +306,10 @@ OctreeElement::AppendState EntityItem::appendEntityData(OctreePacketData* packet
         APPEND_ENTITY_PROPERTY(PROP_CLONE_AVATAR_ENTITY, getCloneAvatarEntity());
         APPEND_ENTITY_PROPERTY(PROP_CLONE_ORIGIN_ID, getCloneOriginID());
 
-        _grabProperties.appendSubclassData(packetData, params, entityTreeElementExtraEncodeData, requestedProperties,
-                                           propertyFlags, propertiesDidntFit, propertyCount, appendState);
+        withReadLock([&] {
+            _grabProperties.appendSubclassData(packetData, params, entityTreeElementExtraEncodeData, requestedProperties,
+                                               propertyFlags, propertiesDidntFit, propertyCount, appendState);
+        });
 
         appendSubclassData(packetData, params, entityTreeElementExtraEncodeData,
                                 requestedProperties,
@@ -899,11 +903,13 @@ int EntityItem::readEntityDataFromBuffer(const unsigned char* data, int bytesLef
     READ_ENTITY_PROPERTY(PROP_CLONE_AVATAR_ENTITY, bool, setCloneAvatarEntity);
     READ_ENTITY_PROPERTY(PROP_CLONE_ORIGIN_ID, QUuid, setCloneOriginID);
 
-
-    int bytesFromGrab = _grabProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
-                                                                         propertyFlags, overwriteLocalData, somethingChanged);
-    bytesRead += bytesFromGrab;
-    dataAt += bytesFromGrab;
+    withWriteLock([&] {
+        int bytesFromGrab = _grabProperties.readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
+                                                                             propertyFlags, overwriteLocalData,
+                                                                             somethingChanged);
+        bytesRead += bytesFromGrab;
+        dataAt += bytesFromGrab;
+    });
 
     bytesRead += readEntitySubclassDataFromBuffer(dataAt, (bytesLeftToRead - bytesRead), args,
                                                   propertyFlags, overwriteLocalData, somethingChanged);
@@ -1339,7 +1345,9 @@ EntityItemProperties EntityItem::getProperties(EntityPropertyFlags desiredProper
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(cloneAvatarEntity, getCloneAvatarEntity);
     COPY_ENTITY_PROPERTY_TO_PROPERTIES(cloneOriginID, getCloneOriginID);
 
-    _grabProperties.getProperties(properties);
+    withReadLock([&] {
+        _grabProperties.getProperties(properties);
+    });
 
     properties._defaultSettings = false;
 
@@ -1477,9 +1485,10 @@ bool EntityItem::setProperties(const EntityItemProperties& properties) {
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(cloneAvatarEntity, setCloneAvatarEntity);
     SET_ENTITY_PROPERTY_FROM_PROPERTIES(cloneOriginID, setCloneOriginID);
 
-    bool grabPropertiesChanged = _grabProperties.setProperties(properties);
-
-    somethingChanged |= grabPropertiesChanged;
+    withWriteLock([&] {
+        bool grabPropertiesChanged = _grabProperties.setProperties(properties);
+        somethingChanged |= grabPropertiesChanged;
+    });
 
     if (updateQueryAACube()) {
         somethingChanged = true;
