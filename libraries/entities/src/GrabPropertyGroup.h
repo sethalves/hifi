@@ -91,14 +91,14 @@ public:
                     INITIAL_FOLLOWS_CONTROLLER);
     DEFINE_PROPERTY(PROP_GRAB_TRIGGERABLE, Triggerable, triggerable, bool, INITIAL_TRIGGERABLE);
     DEFINE_PROPERTY(PROP_GRAB_EQUIPPABLE, Equippable, equippable, bool, INITIAL_EQUIPPABLE);
-    DEFINE_PROPERTY(PROP_GRAB_LEFT_EQUIPPABLE_POSITION_OFFSET, EquippableLeftPosition, equippableLeftPosition,
-                    glm::vec3, INITIAL_LEFT_EQUIPPABLE_POSITION);
-    DEFINE_PROPERTY(PROP_GRAB_LEFT_EQUIPPABLE_ROTATION_OFFSET, EquippableLeftRotation, equippableLeftRotation,
-                    glm::quat, INITIAL_LEFT_EQUIPPABLE_ROTATION);
-    DEFINE_PROPERTY(PROP_GRAB_RIGHT_EQUIPPABLE_POSITION_OFFSET, EquippableRightPosition, equippableRightPosition,
-                    glm::vec3, INITIAL_RIGHT_EQUIPPABLE_POSITION);
-    DEFINE_PROPERTY(PROP_GRAB_RIGHT_EQUIPPABLE_ROTATION_OFFSET, EquippableRightRotation, equippableRightRotation,
-                    glm::quat, INITIAL_RIGHT_EQUIPPABLE_ROTATION);
+    DEFINE_PROPERTY_REF(PROP_GRAB_LEFT_EQUIPPABLE_POSITION_OFFSET, EquippableLeftPosition, equippableLeftPosition,
+                        glm::vec3, INITIAL_LEFT_EQUIPPABLE_POSITION);
+    DEFINE_PROPERTY_REF(PROP_GRAB_LEFT_EQUIPPABLE_ROTATION_OFFSET, EquippableLeftRotation, equippableLeftRotation,
+                        glm::quat, INITIAL_LEFT_EQUIPPABLE_ROTATION);
+    DEFINE_PROPERTY_REF(PROP_GRAB_RIGHT_EQUIPPABLE_POSITION_OFFSET, EquippableRightPosition, equippableRightPosition,
+                        glm::vec3, INITIAL_RIGHT_EQUIPPABLE_POSITION);
+    DEFINE_PROPERTY_REF(PROP_GRAB_RIGHT_EQUIPPABLE_ROTATION_OFFSET, EquippableRightRotation, equippableRightRotation,
+                        glm::quat, INITIAL_RIGHT_EQUIPPABLE_ROTATION);
 };
 
 #endif // hifi_GrabPropertyGroup_h
