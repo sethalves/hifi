@@ -196,19 +196,23 @@ const unsigned char* OctreePacketData::getFinalizedData() {
     return &_compressed[0]; 
 }
 
-int OctreePacketData::getFinalizedSize() {
+bool OctreePacketData::getFinalizedSize(int& finalizedSize) {
     if (!_enableCompression) {
-        return _bytesInUse; 
+        finalizedSize = _bytesInUse;
+        return true;
     }
 
     if (_dirty) {
         if (_debug) {
             qCDebug(octree, "getFinalizedSize() _compressedBytes=%d _bytesInUse=%d",_compressedBytes, _bytesInUse);
         }
-        compressContent(); 
+        bool success = compressContent();
+        finalizedSize = _compressedBytes;
+        return success;
     }
 
-    return _compressedBytes; 
+    finalizedSize = _compressedBytes;
+    return true;
 }
 
 
@@ -597,13 +601,16 @@ bool OctreePacketData::compressContent() {
     const uchar* uncompressedData = &_uncompressed[0];
     int uncompressedSize = _bytesInUse;
 
-    QByteArray compressedData = qCompress(uncompressedData, uncompressedSize, MAX_COMPRESSION);
+    if (uncompressedSize < (int)MAX_OCTREE_PACKET_DATA_SIZE) { // this must be true so that the reciever can unpack it
+        QByteArray compressedData = qCompress(uncompressedData, uncompressedSize, MAX_COMPRESSION);
 
-    if (compressedData.size() < (int)MAX_OCTREE_PACKET_DATA_SIZE) {
-        _compressedBytes = compressedData.size();
-        memcpy(_compressed, compressedData.constData(), _compressedBytes);
-        _dirty = false;
-        success = true;
+        if (compressedData.size() < (int)MAX_OCTREE_PACKET_DATA_SIZE) {
+            _compressedBytes = compressedData.size();
+            memcpy(_compressed, compressedData.constData(), _compressedBytes);
+            _dirty = false;
+            success = true;
+        }
+
     }
     return success;
 }

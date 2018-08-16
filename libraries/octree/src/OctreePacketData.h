@@ -214,7 +214,7 @@ public:
     /// get access to the finalized data (it may be compressed or rewritten into optimal form)
     const unsigned char* getFinalizedData();
     /// get size of the finalized data (it may be compressed or rewritten into optimal form)
-    int getFinalizedSize();
+    bool getFinalizedSize(int& finalizedSize);
 
     /// get pointer to the uncompressed stream buffer at the byteOffset
     const unsigned char* getUncompressedData(int byteOffset = 0) { return &_uncompressed[byteOffset]; }

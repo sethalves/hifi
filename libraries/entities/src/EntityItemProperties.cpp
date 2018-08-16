@@ -2537,9 +2537,10 @@ OctreeElement::AppendState EntityItemProperties::encodeEntityEditPacket(PacketTy
         packetData->endSubTree();
 
         const char* finalizedData = reinterpret_cast<const char*>(packetData->getFinalizedData());
-        int finalizedSize = packetData->getFinalizedSize();
+        int finalizedSize;
+        bool success = packetData->getFinalizedSize(finalizedSize);
 
-        if (finalizedSize <= buffer.size()) {
+        if (success && finalizedSize <= buffer.size()) {
             buffer.replace(0, finalizedSize, finalizedData, finalizedSize);
             buffer.resize(finalizedSize);
         } else {
