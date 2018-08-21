@@ -601,7 +601,8 @@ bool OctreePacketData::compressContent() {
     const uchar* uncompressedData = &_uncompressed[0];
     int uncompressedSize = _bytesInUse;
 
-    if (uncompressedSize < (int)MAX_OCTREE_PACKET_DATA_SIZE) { // this must be true so that the reciever can unpack it
+    // XXX
+    // if (uncompressedSize < (int)MAX_OCTREE_PACKET_DATA_SIZE) { // this must be true so that the reciever can unpack it
         QByteArray compressedData = qCompress(uncompressedData, uncompressedSize, MAX_COMPRESSION);
 
         if (compressedData.size() < (int)MAX_OCTREE_PACKET_DATA_SIZE) {
@@ -611,7 +612,7 @@ bool OctreePacketData::compressContent() {
             success = true;
         }
 
-    }
+    // }
     return success;
 }
 
