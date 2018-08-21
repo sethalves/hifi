@@ -229,7 +229,7 @@ public:
     bool hasContent() const { return (_bytesInUse > 0); }
 
     /// load finalized content to allow access to decoded content for parsing
-    void loadFinalizedContent(const unsigned char* data, int length);
+    QByteArray loadFinalizedContent(const unsigned char* data, int length);
     
     /// returns whether or not zlib compression enabled on finalization
     bool isCompressed() const { return _enableCompression; }

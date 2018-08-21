@@ -124,8 +124,10 @@ void OctreeProcessor::processDatagram(ReceivedMessage& message, SharedNodePointe
                     startUncompress = usecTimestampNow();
 
                     OctreePacketData packetData(packetIsCompressed);
-                    packetData.loadFinalizedContent(reinterpret_cast<const unsigned char*>(message.getRawMessage() + message.getPosition()),
-                        sectionLength);
+                    QByteArray uncompressedData =
+                        packetData.loadFinalizedContent(
+                            reinterpret_cast<const unsigned char*>(message.getRawMessage() + message.getPosition()),
+                            sectionLength);
                     if (extraDebugging) {
                         qCDebug(octree) << "OctreeProcessor::processDatagram() ... "
                             "Got Packet Section color:" << packetIsColored <<
@@ -143,7 +145,8 @@ void OctreeProcessor::processDatagram(ReceivedMessage& message, SharedNodePointe
                         qCDebug(octree) << "OctreeProcessor::processDatagram() ******* START _tree->readBitstreamToTree()...";
                     }
                     startReadBitsteam = usecTimestampNow();
-                    _tree->readBitstreamToTree(packetData.getUncompressedData(), packetData.getUncompressedSize(), args);
+                    const unsigned char *uncompressedCharArray = (const unsigned char *)uncompressedData.data();
+                    _tree->readBitstreamToTree(uncompressedCharArray, uncompressedData.size(), args);
                     endReadBitsteam = usecTimestampNow();
                     if (extraDebugging) {
                         qCDebug(octree) << "OctreeProcessor::processDatagram() ******* END _tree->readBitstreamToTree()...";

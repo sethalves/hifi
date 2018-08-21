@@ -616,7 +616,7 @@ bool OctreePacketData::compressContent() {
 }
 
 
-void OctreePacketData::loadFinalizedContent(const unsigned char* data, int length) {
+QByteArray OctreePacketData::loadFinalizedContent(const unsigned char* data, int length) {
     reset();
 
     if (data && length > 0) {
@@ -630,20 +630,21 @@ void OctreePacketData::loadFinalizedContent(const unsigned char* data, int lengt
             memcpy(compressedData.data(), data, _compressedBytes);
 
             QByteArray uncompressedData = qUncompress(compressedData);
-            if (uncompressedData.size() <= _bytesAvailable) {
-                _bytesInUse = uncompressedData.size();
-                _bytesAvailable -= uncompressedData.size();
-                memcpy(_uncompressed, uncompressedData.constData(), _bytesInUse);
+
+            if (uncompressedData.size() > _bytesAvailable) {
+                qCDebug(octree) << "WARNING -- uncompressed data is larger than _bytesAvailable: "
+                    << uncompressedData.size() << " > " <<  _bytesAvailable;
             }
+
+            return uncompressedData;
         } else {
-            memcpy(_uncompressed, data, length);
-            memcpy(_compressed, data, length);
-            _bytesInUse = _compressedBytes = length;
+            return _uncompressedByteArray;
         }
     } else {
         if (_debug) {
             qCDebug(octree, "OctreePacketData::loadCompressedContent()... length = 0, nothing to do...");
         }
+        return QByteArray();
     }
 }
 
