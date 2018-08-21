@@ -317,4 +317,7 @@ extern EntityPropertyList PROP_LAST_ITEM;
 QString EntityPropertyFlagsToString(EntityPropertyFlags propertiesFlags);
 
 
+QDebug& operator<<(QDebug& dbg, const EntityPropertyFlags& f);
+
+
 #endif // hifi_EntityPropertyFlags_h
