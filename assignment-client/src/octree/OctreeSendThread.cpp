@@ -470,20 +470,15 @@ bool OctreeSendThread::traverseTreeAndSendContents(SharedNodePointer node, Octre
             if (_packetData.hasContent()) {
                 // yes, more data to send
                 quint64 compressAndWriteStart = usecTimestampNow();
-
-                int finalizedSize;
-                bool success;
-                success = _packetData.getFinalizedSize(finalizedSize);
-                unsigned int additionalSize = finalizedSize + sizeof(OCTREE_PACKET_INTERNAL_SECTION_SIZE);
-
-                if (!success || additionalSize > nodeData->getAvailable()) {
+                unsigned int additionalSize = _packetData.getFinalizedSize() + sizeof(OCTREE_PACKET_INTERNAL_SECTION_SIZE);
+                if (additionalSize > nodeData->getAvailable()) {
                     // no room --> flush what we've got
                     _packetsSentThisInterval += handlePacketSend(node, nodeData);
                 }
 
                 // either there is room, or we've flushed and reset nodeData's data buffer
                 // so we can transfer whatever is in _packetData to nodeData
-                nodeData->writeToPacket(_packetData.getFinalizedData(), finalizedSize);
+                nodeData->writeToPacket(_packetData.getFinalizedData(), _packetData.getFinalizedSize());
                 compressAndWriteElapsedUsec = (float)(usecTimestampNow()- compressAndWriteStart);
             }
 

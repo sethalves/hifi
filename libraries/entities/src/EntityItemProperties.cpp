@@ -1678,6 +1678,7 @@ void EntityItemProperties::copyFromScriptValue(const QScriptValue& object, bool 
     COPY_PROPERTY_FROM_QSCRIPTVALUE(strokeWidths,qVectorFloat, setStrokeWidths);
     COPY_PROPERTY_FROM_QSCRIPTVALUE(isUVModeStretch, bool, setIsUVModeStretch);
 
+
     if (!honorReadOnly) {
         // this is used by the json reader to set things that we don't want javascript to able to affect.
         COPY_PROPERTY_FROM_QSCRIPTVALUE_GETTER(created, QDateTime, setCreated, [this]() {
@@ -2537,10 +2538,9 @@ OctreeElement::AppendState EntityItemProperties::encodeEntityEditPacket(PacketTy
         packetData->endSubTree();
 
         const char* finalizedData = reinterpret_cast<const char*>(packetData->getFinalizedData());
-        int finalizedSize;
-        bool success = packetData->getFinalizedSize(finalizedSize);
+        int finalizedSize = packetData->getFinalizedSize();
 
-        if (success && finalizedSize <= buffer.size()) {
+        if (finalizedSize <= buffer.size()) {
             buffer.replace(0, finalizedSize, finalizedData, finalizedSize);
             buffer.resize(finalizedSize);
         } else {

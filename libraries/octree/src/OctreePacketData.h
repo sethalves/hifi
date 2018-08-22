@@ -214,7 +214,7 @@ public:
     /// get access to the finalized data (it may be compressed or rewritten into optimal form)
     const unsigned char* getFinalizedData();
     /// get size of the finalized data (it may be compressed or rewritten into optimal form)
-    bool getFinalizedSize(int& finalizedSize);
+    int getFinalizedSize();
 
     /// get pointer to the uncompressed stream buffer at the byteOffset
     const unsigned char* getUncompressedData(int byteOffset = 0) { return &_uncompressed[byteOffset]; }
@@ -229,7 +229,7 @@ public:
     bool hasContent() const { return (_bytesInUse > 0); }
 
     /// load finalized content to allow access to decoded content for parsing
-    QByteArray loadFinalizedContent(const unsigned char* data, int length);
+    void loadFinalizedContent(const unsigned char* data, int length);
     
     /// returns whether or not zlib compression enabled on finalization
     bool isCompressed() const { return _enableCompression; }
