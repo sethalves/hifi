@@ -126,13 +126,21 @@ DISPATCHER_PROPERTIES = [
     "parentJointIndex",
     "density",
     "dimensions",
-    "userData",
     "type",
     "href",
     "cloneable",
     "cloneDynamic",
     "localPosition",
-    "localRotation"
+    "localRotation",
+    "grab.grabbable",
+    "grab.grabKinematic",
+    "grab.grabFollowsController",
+    "grab.triggerable",
+    "grab.equippable",
+    "grab.equippableLeftPosition",
+    "grab.equippableLeftRotation",
+    "grab.equippableRightPosition",
+    "grab.equippableRightRotation"
 ];
 
 // priority -- a lower priority means the module will be asked sooner than one with a higher priority in a given update step

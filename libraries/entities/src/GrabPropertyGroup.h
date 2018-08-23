@@ -30,7 +30,7 @@ static const bool INITIAL_GRABBABLE { true };
 static const bool INITIAL_KINEMATIC { true };
 static const bool INITIAL_FOLLOWS_CONTROLLER { true };
 static const bool INITIAL_TRIGGERABLE { false };
-static const bool INITIAL_EQUIPPABLE { true };
+static const bool INITIAL_EQUIPPABLE { false };
 static const glm::vec3 INITIAL_LEFT_EQUIPPABLE_POSITION { glm::vec3(0.0f) };
 static const glm::quat INITIAL_LEFT_EQUIPPABLE_ROTATION { glm::quat() };
 static const glm::vec3 INITIAL_RIGHT_EQUIPPABLE_POSITION { glm::vec3(0.0f) };
