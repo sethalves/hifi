@@ -193,19 +193,6 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             return null;
         }
     }
-    function getEquipHotspotsData(props) {
-        var equipHotspots = [];
-        try {
-            if (!props.userDataParsed) {
-                props.userDataParsed = JSON.parse(props.userData);
-            }
-
-            equipHotspots = props.userDataParsed.equipHotspots ? props.userDataParsed.equipHotspots : [];
-        } catch (err) {
-            // don't want to spam the logs
-        }
-        return equipHotspots;
-    }
 
     function getAttachPointSettings() {
         try {
@@ -305,44 +292,24 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var entityID = props.id;
             var entityXform = new Xform(props.rotation, props.position);
 
-            var equipHotspotsProps = getEquipHotspotsData(props);
-            if (equipHotspotsProps && equipHotspotsProps.length > 0) {
-                var i, length = equipHotspotsProps.length;
-                for (i = 0; i < length; i++) {
-                    var hotspot = equipHotspotsProps[i];
-                    if (hotspot.position && hotspot.radius && hotspot.joints) {
-                        result.push({
-                            key: entityID.toString() + i.toString(),
-                            entityID: entityID,
-                            localPosition: hotspot.position,
-                            worldPosition: entityXform.xformPoint(hotspot.position),
-                            radius: hotspot.radius,
-                            joints: hotspot.joints,
-                            modelURL: hotspot.modelURL,
-                            modelScale: hotspot.modelScale
-                        });
-                    }
-                }
-            } else {
-                var wearableProps = getWearableData(props);
-                var sensorToScaleFactor = MyAvatar.sensorToWorldScale;
-                if (wearableProps && wearableProps.joints) {
+            var wearableProps = getWearableData(props);
+            var sensorToScaleFactor = MyAvatar.sensorToWorldScale;
+            if (wearableProps && wearableProps.joints) {
 
-                    result.push({
-                        key: entityID.toString() + "0",
-                        entityID: entityID,
-                        localPosition: {
-                            x: 0,
-                            y: 0,
-                            z: 0
-                        },
-                        worldPosition: entityXform.pos,
-                        radius: EQUIP_RADIUS * sensorToScaleFactor,
-                        joints: wearableProps.joints,
-                        modelURL: null,
-                        modelScale: null
-                    });
-                }
+                result.push({
+                    key: entityID.toString() + "0",
+                    entityID: entityID,
+                    localPosition: {
+                        x: 0,
+                        y: 0,
+                        z: 0
+                    },
+                    worldPosition: entityXform.pos,
+                    radius: EQUIP_RADIUS * sensorToScaleFactor,
+                    joints: wearableProps.joints,
+                    modelURL: null,
+                    modelScale: null
+                });
             }
             return result;
         };
@@ -795,7 +762,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         if (intersection.intersects) {
             var entityID = intersection.entityID;
             var entityProperties = Entities.getEntityProperties(entityID, DISPATCHER_PROPERTIES);
-            var hasEquipData = getWearableData(entityProperties).joints || getEquipHotspotsData(entityProperties).length > 0;
+            var hasEquipData = getWearableData(entityProperties).joints;
             if (hasEquipData && entityProperties.parentID === EMPTY_PARENT_ID && !entityIsFarGrabbedByOther(entityID)) {
                 entityProperties.id = entityID;
                 var rightHandPosition = MyAvatar.getJointPosition("RightHand");
