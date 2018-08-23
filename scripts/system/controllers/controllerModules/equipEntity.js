@@ -176,18 +176,22 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
     var TRIGGER_OFF_VALUE = 0.1;
     var TRIGGER_ON_VALUE = TRIGGER_OFF_VALUE + 0.05; //  Squeezed just enough to activate search or near grab
     var BUMPER_ON_VALUE = 0.5;
-    
+
     var EMPTY_PARENT_ID = "{00000000-0000-0000-0000-000000000000}";
-    
+
     var UNEQUIP_KEY = "u";
 
     function getWearableData(props) {
-        return {
-            joints: {
-                LeftHand: [ props.equippableLeftPosition, props.equippableLeftRotation ],
-                RightHand: [ props.equippableRightPosition, props.equippableRightRotation ]
-            }
-        };
+        if (props.grab.equippable) {
+            return {
+                joints: {
+                    LeftHand: [ props.grab.equippableLeftPosition, props.grab.equippableLeftRotation ],
+                    RightHand: [ props.grab.equippableRightPosition, props.grab.equippableRightRotation ]
+                }
+            };
+        } else {
+            return null;
+        }
     }
     function getEquipHotspotsData(props) {
         var equipHotspots = [];
@@ -799,7 +803,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 var distanceToRightHand = Vec3.distance(entityProperties.position, rightHandPosition);
                 var distanceToLeftHand = Vec3.distance(entityProperties.position, leftHandPosition);
                 var leftHandAvailable = leftEquipEntity.targetEntityID === null;
-                var rightHandAvailable = rightEquipEntity.targetEntityID === null;          
+                var rightHandAvailable = rightEquipEntity.targetEntityID === null;
                 if (rightHandAvailable && (distanceToRightHand < distanceToLeftHand || !leftHandAvailable)) {
                     // clear any existing grab actions on the entity now (their later removal could affect bootstrapping flags)
                     clearGrabActions(entityID);
