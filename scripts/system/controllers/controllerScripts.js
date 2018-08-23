@@ -19,8 +19,8 @@ var CONTOLLER_SCRIPTS = [
     "controllerModules/nearParentGrabEntity.js",
     "controllerModules/nearParentGrabOverlay.js",
     "controllerModules/nearActionGrabEntity.js",
-    // "controllerModules/farActionGrabEntity.js",
-    // "controllerModules/farParentGrabEntity.js",
+    "controllerModules/farActionGrabEntity.js",
+    "controllerModules/farParentGrabEntity.js",
     "controllerModules/stylusInput.js",
     "controllerModules/equipEntity.js",
     "controllerModules/nearTrigger.js",
@@ -37,13 +37,6 @@ var CONTOLLER_SCRIPTS = [
     "controllerModules/nearGrabHyperLinkEntity.js",
     "controllerModules/mouseHighlightEntities.js"
 ];
-
-if (Settings.getValue("useFarGrabJoints", false)) {
-    CONTOLLER_SCRIPTS.push("controllerModules/farActionGrabEntityDynOnly.js");
-    CONTOLLER_SCRIPTS.push("controllerModules/farParentGrabEntity.js");
-} else {
-    CONTOLLER_SCRIPTS.push("controllerModules/farActionGrabEntity.js");
-}
 
 var DEBUG_MENU_ITEM = "Debug defaultScripts.js";
 
