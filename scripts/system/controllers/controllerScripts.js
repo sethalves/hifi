@@ -9,6 +9,8 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+/* global Script, Menu */
+
 var CONTOLLER_SCRIPTS = [
     "squeezeHands.js",
     "controllerDisplayManager.js",
@@ -43,13 +45,17 @@ var DEBUG_MENU_ITEM = "Debug defaultScripts.js";
 
 function runDefaultsTogether() {
     for (var j in CONTOLLER_SCRIPTS) {
-        Script.include(CONTOLLER_SCRIPTS[j]);
+        if (CONTOLLER_SCRIPTS.hasOwnProperty(j)) {
+            Script.include(CONTOLLER_SCRIPTS[j]);
+        }
     }
 }
 
 function runDefaultsSeparately() {
     for (var i in CONTOLLER_SCRIPTS) {
-        Script.load(CONTOLLER_SCRIPTS[i]);
+        if (CONTOLLER_SCRIPTS.hasOwnProperty(i)) {
+            Script.load(CONTOLLER_SCRIPTS[i]);
+        }
     }
 }
 

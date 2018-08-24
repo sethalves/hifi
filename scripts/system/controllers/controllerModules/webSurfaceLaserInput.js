@@ -5,11 +5,9 @@
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 
-/* global Script, Entities, Controller, RIGHT_HAND, LEFT_HAND, enableDispatcherModule, disableDispatcherModule,
-   makeRunningValues, Messages, Quat, Vec3, makeDispatcherModuleParameters, Overlays, ZERO_VEC, HMD,
-   INCHES_TO_METERS, DEFAULT_REGISTRATION_POINT, getGrabPointSphereOffset, COLORS_GRAB_SEARCHING_HALF_SQUEEZE,
-   COLORS_GRAB_SEARCHING_FULL_SQUEEZE, COLORS_GRAB_DISTANCE_HOLD, DEFAULT_SEARCH_SPHERE_DISTANCE, TRIGGER_ON_VALUE,
-   TRIGGER_OFF_VALUE, getEnabledModuleByName, PICK_MAX_DISTANCE, ContextOverlay, Picks, makeLaserParams
+/* global Script, Entities, enableDispatcherModule, disableDispatcherModule, makeRunningValues,
+   makeDispatcherModuleParameters, Overlays, HMD, TRIGGER_ON_VALUE, TRIGGER_OFF_VALUE, getEnabledModuleByName,
+   ContextOverlay, Picks, makeLaserParams, Settings, MyAvatar, RIGHT_HAND, LEFT_HAND, DISPATCHER_PROPERTIES
 */
 
 Script.include("/~/system/libraries/controllerDispatcherUtils.js");
@@ -57,7 +55,7 @@ Script.include("/~/system/libraries/controllers.js");
             if (intersection.type === Picks.INTERSECTED_OVERLAY) {
                 var objectID = intersection.objectID;
                 if ((HMD.tabletID && objectID === HMD.tabletID) ||
-                    (HMD.tabletScreenID && objectID === HMD.tabletScreenID) || 
+                    (HMD.tabletScreenID && objectID === HMD.tabletScreenID) ||
                     (HMD.homeButtonID && objectID === HMD.homeButtonID)) {
                     return true;
                 } else {
@@ -65,7 +63,7 @@ Script.include("/~/system/libraries/controllers.js");
                     return overlayType === "web3d" || triggerPressed;
                 }
             } else if (intersection.type === Picks.INTERSECTED_ENTITY) {
-                var entityProperty = Entities.getEntityProperties(intersection.objectID);
+                var entityProperty = Entities.getEntityProperties(intersection.objectID, DISPATCHER_PROPERTIES);
                 var entityType = entityProperty.type;
                 var isLocked = entityProperty.locked;
                 return entityType === "Web" && (!isLocked || triggerPressed);
@@ -74,8 +72,9 @@ Script.include("/~/system/libraries/controllers.js");
         };
 
         this.deleteContextOverlay = function() {
-            var farGrabModule = getEnabledModuleByName(this.hand === RIGHT_HAND
-                ? "RightFarActionGrabEntity" : "LeftFarActionGrabEntity");
+            var farGrabModule = getEnabledModuleByName(this.hand === RIGHT_HAND ?
+                                                       "RightFarActionGrabEntity" :
+                                                       "LeftFarActionGrabEntity");
             if (farGrabModule) {
                 var entityWithContextOverlay = farGrabModule.entityWithContextOverlay;
 

@@ -11,7 +11,8 @@
    Entities, enableDispatcherModule, disableDispatcherModule, entityIsGrabbable, makeDispatcherModuleParameters, MSECS_PER_SEC,
    HAPTIC_PULSE_STRENGTH, HAPTIC_PULSE_DURATION, TRIGGER_OFF_VALUE, TRIGGER_ON_VALUE, ZERO_VEC, getControllerWorldLocation,
    projectOntoEntityXYPlane, ContextOverlay, HMD, Picks, makeLaserLockInfo, Xform, makeLaserParams, AddressManager,
-   getEntityParents, Selection, DISPATCHER_HOVERING_LIST, unhighlightTargetEntity, Messages, Uuid, findGroupParent
+   getEntityParents, Selection, DISPATCHER_HOVERING_LIST, unhighlightTargetEntity, Messages, Uuid, findGroupParent,
+   DISPATCHER_PROPERTIES
 */
 
 Script.include("/~/system/libraries/controllerDispatcherUtils.js");
@@ -19,24 +20,6 @@ Script.include("/~/system/libraries/controllers.js");
 Script.include("/~/system/libraries/Xform.js");
 
 (function() {
-    var GRABBABLE_PROPERTIES = [
-        "position",
-        "registrationPoint",
-        "rotation",
-        "gravity",
-        "collidesWith",
-        "dynamic",
-        "collisionless",
-        "locked",
-        "name",
-        "shapeType",
-        "parentID",
-        "parentJointIndex",
-        "density",
-        "dimensions",
-        "userData"
-    ];
-
     var MARGIN = 25;
 
     function TargetObject(entityID, entityProps) {
@@ -213,7 +196,7 @@ Script.include("/~/system/libraries/Xform.js");
             var worldToSensorMat = Mat4.inverse(MyAvatar.getSensorToWorldMatrix());
             var roomControllerPosition = Mat4.transformPoint(worldToSensorMat, worldControllerPosition);
 
-            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID, GRABBABLE_PROPERTIES);
+            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID, DISPATCHER_PROPERTIES);
             var now = Date.now();
             var deltaObjectTime = (now - this.currentObjectTime) / MSECS_PER_SEC; // convert to seconds
             this.currentObjectTime = now;
@@ -274,7 +257,7 @@ Script.include("/~/system/libraries/Xform.js");
         this.endFarParentGrab = function (controllerData) {
             this.hapticTargetID = null;
             // var endProps = controllerData.nearbyEntityPropertiesByID[this.targetEntityID];
-            var endProps = Entities.getEntityProperties(this.targetEntityID, GRABBABLE_PROPERTIES);
+            var endProps = Entities.getEntityProperties(this.targetEntityID, DISPATCHER_PROPERTIES);
             if (this.thisFarGrabJointIsParent(endProps)) {
                 Entities.editEntity(this.targetEntityID, {
                     parentID: this.previousParentID[this.targetEntityID],
@@ -312,7 +295,7 @@ Script.include("/~/system/libraries/Xform.js");
 
         this.notPointingAtEntity = function(controllerData) {
             var intersection = controllerData.rayPicks[this.hand];
-            var entityProperty = Entities.getEntityProperties(intersection.objectID);
+            var entityProperty = Entities.getEntityProperties(intersection.objectID, DISPATCHER_PROPERTIES);
             var entityType = entityProperty.type;
             var hudRayPick = controllerData.hudRayPicks[this.hand];
             var point2d = this.calculateNewReticlePosition(hudRayPick.intersection);
@@ -347,7 +330,7 @@ Script.include("/~/system/libraries/Xform.js");
             var worldControllerPosition = controllerLocation.position;
             var worldControllerRotation = controllerLocation.orientation;
 
-            var grabbedProperties = Entities.getEntityProperties(intersection.objectID, GRABBABLE_PROPERTIES);
+            var grabbedProperties = Entities.getEntityProperties(intersection.objectID, DISPATCHER_PROPERTIES);
             this.currentObjectPosition = grabbedProperties.position;
             this.grabRadius = intersection.distance;
 
@@ -369,7 +352,7 @@ Script.include("/~/system/libraries/Xform.js");
         };
 
         this.targetIsNull = function() {
-            var properties = Entities.getEntityProperties(this.targetEntityID, GRABBABLE_PROPERTIES);
+            var properties = Entities.getEntityProperties(this.targetEntityID, DISPATCHER_PROPERTIES);
             if (Object.keys(properties).length === 0 && this.distanceHolding) {
                 return true;
             }
@@ -379,7 +362,7 @@ Script.include("/~/system/libraries/Xform.js");
         this.getTargetProps = function (controllerData) {
             var targetEntity = controllerData.rayPicks[this.hand].objectID;
             if (targetEntity) {
-                var gtProps = Entities.getEntityProperties(targetEntity, GRABBABLE_PROPERTIES);
+                var gtProps = Entities.getEntityProperties(targetEntity, DISPATCHER_PROPERTIES);
                 if (entityIsGrabbable(gtProps)) {
                     // give haptic feedback
                     if (gtProps.id !== this.hapticTargetID) {
@@ -479,11 +462,7 @@ Script.include("/~/system/libraries/Xform.js");
                         var entityID = rayPickInfo.objectID;
                         Selection.removeFromSelectedItemsList(DISPATCHER_HOVERING_LIST, "entity", this.highlightedEntity);
                         this.highlightedEntity = null;
-                        var targetProps = Entities.getEntityProperties(entityID, [
-                            "dynamic", "shapeType", "position",
-                            "rotation", "dimensions", "density",
-                            "userData", "locked", "type", "href"
-                        ]);
+                        var targetProps = Entities.getEntityProperties(entityID, DISPATCHER_PROPERTIES);
                         if (targetProps.href !== "") {
                             AddressManager.handleLookupString(targetProps.href);
                             return makeRunningValues(false, [], []);
@@ -532,11 +511,7 @@ Script.include("/~/system/libraries/Xform.js");
                         var targetEntityID = rayPickInfo.objectID;
                         if (this.highlightedEntity !== targetEntityID) {
                             Selection.removeFromSelectedItemsList(DISPATCHER_HOVERING_LIST, "entity", this.highlightedEntity);
-                            var selectionTargetProps = Entities.getEntityProperties(targetEntityID, [
-                                "dynamic", "shapeType", "position",
-                                "rotation", "dimensions", "density",
-                                "userData", "locked", "type", "href"
-                            ]);
+                            var selectionTargetProps = Entities.getEntityProperties(targetEntityID, DISPATCHER_PROPERTIES);
 
                             var selectionTargetObject = new TargetObject(targetEntityID, selectionTargetProps);
                             selectionTargetObject.parentProps = getEntityParents(selectionTargetProps);
@@ -566,7 +541,8 @@ Script.include("/~/system/libraries/Xform.js");
                                     if (!_this.entityWithContextOverlay &&
                                         _this.contextOverlayTimer &&
                                         _this.potentialEntityWithContextOverlay === rayPickInfo.objectID) {
-                                        var cotProps = Entities.getEntityProperties(rayPickInfo.objectID);
+                                        var cotProps = Entities.getEntityProperties(rayPickInfo.objectID,
+                                                                                    DISPATCHER_PROPERTIES);
                                         var pointerEvent = {
                                             type: "Move",
                                             id: _this.hand + 1, // 0 is reserved for hardware mouse
@@ -615,10 +591,7 @@ Script.include("/~/system/libraries/Xform.js");
 
         this.calculateOffset = function(controllerData) {
             if (this.distanceHolding || this.distanceRotating) {
-                var targetProps = Entities.getEntityProperties(this.targetObject.entityID, [
-                    "position",
-                    "rotation"
-                ]);
+                var targetProps = Entities.getEntityProperties(this.targetObject.entityID, [ "position", "rotation" ]);
                 var zeroVector = { x: 0, y: 0, z:0, w: 0 };
                 var intersection = controllerData.rayPicks[this.hand].intersection;
                 var intersectionMat = new Xform(zeroVector, intersection);

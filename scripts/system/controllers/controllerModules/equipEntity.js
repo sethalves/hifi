@@ -10,7 +10,7 @@
    getControllerJointIndex, enableDispatcherModule, disableDispatcherModule, entityIsFarGrabbedByOther,
    Messages, makeDispatcherModuleParameters, makeRunningValues, Settings, entityHasActions,
    Vec3, Overlays, flatten, Xform, getControllerWorldLocation, ensureDynamic, entityIsCloneable,
-   cloneEntity, DISPATCHER_PROPERTIES, Uuid, unhighlightTargetEntity, isInEditMode
+   cloneEntity, DISPATCHER_PROPERTIES, Uuid, unhighlightTargetEntity, isInEditMode, getGrabbableData
 */
 
 Script.include("/~/system/libraries/Xform.js");
@@ -458,7 +458,8 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             };
 
             Messages.sendLocalMessage('Hifi-unhighlight-entity', JSON.stringify(message));
-            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID);
+            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID, DISPATCHER_PROPERTIES);
+            var grabData = getGrabbableData(grabbedProperties);
 
             // if an object is "equipped" and has a predefined offset, use it.
             if (this.grabbedHotspot) {
@@ -476,7 +477,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
 
             var handJointIndex;
-            if (this.ignoreIK) {
+            if (grabData.grabFollowsController) {
                 handJointIndex = this.controllerJointIndex;
             } else {
                 handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
@@ -783,7 +784,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
         }
     };
-    
+
     var onKeyPress = function(event) {
         if (event.text.toLowerCase() === UNEQUIP_KEY) {
             if (rightEquipEntity.targetEntityID) {
@@ -794,7 +795,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
         }
     };
-    
+
     var deleteEntity = function(entityID) {
         if (rightEquipEntity.targetEntityID === entityID) {
             rightEquipEntity.endEquipEntity();
@@ -803,7 +804,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             leftEquipEntity.endEquipEntity();
         }
     };
-    
+
     var clearEntities = function() {
         if (rightEquipEntity.targetEntityID) {
             rightEquipEntity.endEquipEntity();
@@ -812,7 +813,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             leftEquipEntity.endEquipEntity();
         }
     };
-    
+
     Messages.subscribe('Hifi-Hand-Grab');
     Messages.subscribe('Hifi-Hand-Drop');
     Messages.messageReceived.connect(handleMessage);
