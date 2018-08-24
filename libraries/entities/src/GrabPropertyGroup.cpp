@@ -49,6 +49,7 @@ void GrabPropertyGroup::copyFromScriptValue(const QScriptValue& object, bool& _d
 void GrabPropertyGroup::merge(const GrabPropertyGroup& other) {
     COPY_PROPERTY_IF_CHANGED(grabbable);
     COPY_PROPERTY_IF_CHANGED(grabKinematic);
+    COPY_PROPERTY_IF_CHANGED(grabFollowsController);
     COPY_PROPERTY_IF_CHANGED(triggerable);
     COPY_PROPERTY_IF_CHANGED(equippable);
     COPY_PROPERTY_IF_CHANGED(equippableLeftPosition);
@@ -77,6 +78,9 @@ void GrabPropertyGroup::listChangedProperties(QList<QString>& out) {
     }
     if (grabKinematicChanged()) {
         out << "grab-grabKinematic";
+    }
+    if (grabFollowsControllerChanged()) {
+        out << "grab-followsController";
     }
     if (triggerableChanged()) {
         out << "grab-triggerable";
