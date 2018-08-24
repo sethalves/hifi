@@ -12,8 +12,7 @@
    findGroupParent, Vec3, cloneEntity, entityIsCloneable, propsAreCloneDynamic, HAPTIC_PULSE_STRENGTH,
    HAPTIC_PULSE_DURATION, BUMPER_ON_VALUE, findHandChildEntities, TEAR_AWAY_DISTANCE, MSECS_PER_SEC, TEAR_AWAY_CHECK_TIME,
    TEAR_AWAY_COUNT, distanceBetweenPointAndEntityBoundingBox, print, Uuid, highlightTargetEntity, unhighlightTargetEntity,
-   distanceBetweenEntityLocalPositionAndBoundingBox, GRAB_POINT_SPHERE_OFFSET, getGrabbableData,
-   DISPATCHER_PROPERTIES
+   distanceBetweenEntityLocalPositionAndBoundingBox, getGrabbableData, getGrabPointSphereOffset, DISPATCHER_PROPERTIES
 */
 
 Script.include("/~/system/libraries/controllerDispatcherUtils.js");
@@ -26,16 +25,8 @@ Script.include("/~/system/libraries/controllers.js");
     // XXX this.kinematicGrab = (grabbableData.kinematic !== undefined) ? grabbableData.kinematic : NEAR_GRABBING_KINEMATIC;
 
     function getGrabOffset(handController) {
-        var offset = GRAB_POINT_SPHERE_OFFSET;
-        if (handController === Controller.Standard.LeftHand) {
-            offset = {
-                x: -GRAB_POINT_SPHERE_OFFSET.x,
-                y: GRAB_POINT_SPHERE_OFFSET.y,
-                z: GRAB_POINT_SPHERE_OFFSET.z
-            };
-        }
-
-        offset.y = -GRAB_POINT_SPHERE_OFFSET.y;
+        var offset = getGrabPointSphereOffset(handController, true);
+        offset.y = -offset.y;
         return Vec3.multiply(MyAvatar.sensorToWorldScale, offset);
     }
 

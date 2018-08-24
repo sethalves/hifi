@@ -15,9 +15,9 @@ Script.include("/~/system/libraries/controllerDispatcherUtils.js");
 Script.include("/~/system/libraries/controllers.js");
 
 (function() {
-    function entityWantsNearTrigger(props) {
+    function entityWantsFarTrigger(props) {
         var grabbableData = getGrabbableData(props);
-        return grabbableData.triggerable || grabbableData.wantsTrigger;
+        return grabbableData.triggerable;
     }
 
     function FarTriggerEntity(hand) {
@@ -36,11 +36,10 @@ Script.include("/~/system/libraries/controllers.js");
             makeLaserParams(this.hand, false));
 
         this.getTargetProps = function (controllerData) {
-            // nearbyEntityProperties is already sorted by length from controller
             var targetEntity = controllerData.rayPicks[this.hand].objectID;
             if (targetEntity) {
                 var targetProperties = Entities.getEntityProperties(targetEntity, DISPATCHER_PROPERTIES);
-                if (entityWantsNearTrigger(targetProperties)) {
+                if (entityWantsFarTrigger(targetProperties)) {
                     return targetProperties;
                 }
             }

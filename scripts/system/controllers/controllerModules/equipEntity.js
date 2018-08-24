@@ -763,7 +763,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         if (intersection.intersects) {
             var entityID = intersection.entityID;
             var entityProperties = Entities.getEntityProperties(entityID, DISPATCHER_PROPERTIES);
-            var hasEquipData = getWearableData(entityProperties).joints;
+            var hasEquipData = getWearableData(entityProperties);
             if (hasEquipData && entityProperties.parentID === EMPTY_PARENT_ID && !entityIsFarGrabbedByOther(entityID)) {
                 entityProperties.id = entityID;
                 var rightHandPosition = MyAvatar.getJointPosition("RightHand");

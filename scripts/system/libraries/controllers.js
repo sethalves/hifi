@@ -5,15 +5,21 @@
 //
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
-/* global MyAvatar, Vec3, Controller, Quat */
+/* global MyAvatar, Vec3, HMD, Controller, Camera, Quat, Settings,
+   GRAB_POINT_SPHERE_OFFSET:true,
+   getGrabPointSphereOffset:true,
+   setGrabCommunications:true,
+   getGrabCommunications:true,
+   getControllerWorldLocation:true
+ */
 
 var GRAB_COMMUNICATIONS_SETTING = "io.highfidelity.isFarGrabbing";
 setGrabCommunications = function setFarGrabCommunications(on) {
     Settings.setValue(GRAB_COMMUNICATIONS_SETTING, on ? "on" : "");
-}
+};
 getGrabCommunications = function getFarGrabCommunications() {
     return !!Settings.getValue(GRAB_COMMUNICATIONS_SETTING, "");
-}
+};
 
 // this offset needs to match the one in libraries/display-plugins/src/display-plugins/hmd/HmdDisplayPlugin.cpp:378
 var GRAB_POINT_SPHERE_OFFSET = { x: 0.04, y: 0.13, z: 0.039 };  // x = upward, y = forward, z = lateral
@@ -39,7 +45,7 @@ getControllerWorldLocation = function (handController, doOffset) {
     var orientation;
     var position;
     var valid = false;
-    
+
     if (handController >= 0) {
         var pose = Controller.getPoseValue(handController);
         valid = pose.valid;
