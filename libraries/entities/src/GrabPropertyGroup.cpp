@@ -39,6 +39,7 @@ void GrabPropertyGroup::copyFromScriptValue(const QScriptValue& object, bool& _d
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, grabKinematic, bool, setGrabKinematic);
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, grabFollowsController, bool, setGrabFollowsController);
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, triggerable, bool, setTriggerable);
+    COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, equippable, bool, setEquippable);
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, equippableLeftPosition, vec3, setEquippableLeftPosition);
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, equippableLeftRotation, quat, setEquippableLeftRotation);
     COPY_GROUP_PROPERTY_FROM_QSCRIPTVALUE(grab, equippableRightPosition, vec3, setEquippableRightPosition);
