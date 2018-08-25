@@ -6,7 +6,6 @@
 //  Distributed under the Apache License, Version 2.0.
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 /* global MyAvatar, Vec3, HMD, Controller, Camera, Quat, Settings,
-   GRAB_POINT_SPHERE_OFFSET:true,
    getGrabPointSphereOffset:true,
    setGrabCommunications:true,
    getGrabCommunications:true,
@@ -22,9 +21,9 @@ getGrabCommunications = function getFarGrabCommunications() {
 };
 
 // this offset needs to match the one in libraries/display-plugins/src/display-plugins/hmd/HmdDisplayPlugin.cpp:378
-var GRAB_POINT_SPHERE_OFFSET = { x: 0.04, y: 0.13, z: 0.039 };  // x = upward, y = forward, z = lateral
 
 getGrabPointSphereOffset = function(handController, ignoreSensorToWorldScale) {
+    var GRAB_POINT_SPHERE_OFFSET = { x: 0.04, y: 0.13, z: 0.039 };  // x = upward, y = forward, z = lateral
     var offset = GRAB_POINT_SPHERE_OFFSET;
     if (handController === Controller.Standard.LeftHand) {
         offset = {
