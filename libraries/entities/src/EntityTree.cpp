@@ -667,7 +667,7 @@ void EntityTree::unhookChildAvatar(const EntityItemID entityID) {
 void EntityTree::cleanupCloneIDs(const EntityItemID& entityID) {
     EntityItemPointer entity = findEntityByEntityItemID(entityID);
     if (entity) {
-        // remove clone ID from it's clone origin's clone ID list if clone origin exists
+        // remove clone ID from its clone origin's clone ID list if clone origin exists
         const QUuid& cloneOriginID = entity->getCloneOriginID();
         if (!cloneOriginID.isNull()) {
             EntityItemPointer cloneOrigin = findEntityByID(cloneOriginID);
