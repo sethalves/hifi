@@ -242,7 +242,8 @@ enum class EntityVersion : PacketVersion {
     YieldSimulationOwnership,
     ParticleEntityFix,
     ParticleSpin,
-    BloomEffect
+    BloomEffect,
+    GrabProperties
 };
 
 enum class EntityScriptCallMethodVersion : PacketVersion {

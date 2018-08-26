@@ -35,6 +35,7 @@
 #include "SimulationOwner.h"
 #include "SimulationFlags.h"
 #include "EntityDynamicInterface.h"
+#include "GrabPropertyGroup.h"
 
 #include "graphics/Material.h"
 
