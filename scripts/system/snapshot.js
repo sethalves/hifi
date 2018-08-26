@@ -325,9 +325,7 @@ function printToPolaroid(image_url) {
         "dynamic": true, 
         "collisionsWillMove": true,
 
-        "userData": {
-            "grabbableKey": { "grabbable" : true }
-        }
+        "grab": { "grabbable": true }
     };
     
     var polaroid = Entities.addEntity(properties);

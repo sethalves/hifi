@@ -59,11 +59,7 @@ var ballID = Entities.addEntity({
     restitution: BALL_RESTITUTION,
     dynamic: true,
     collidesWith: "static,dynamic,otherAvatar,",
-    userData: JSON.stringify({
-        grabbableKey: {
-            grabbable: false
-        }
-    })
+    grab: { grabbable: false }
 });
 
 var lineID = Entities.addEntity({

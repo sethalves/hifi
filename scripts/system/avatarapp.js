@@ -329,16 +329,9 @@ function isGrabbable(entityID) {
         return false;
     }
 
-    var properties = Entities.getEntityProperties(entityID, ['clientOnly', 'userData']);
+    var properties = Entities.getEntityProperties(entityID, ['clientOnly', 'grab.grabbable']);
     if (properties.clientOnly) {
-        var userData;
-        try {
-            userData = JSON.parse(properties.userData);
-        } catch (e) {
-            userData = {};
-        }
-
-        return userData.grabbableKey && userData.grabbableKey.grabbable;
+        return properties.grab.grabbable;
     }
 
     return false;
@@ -347,18 +340,7 @@ function isGrabbable(entityID) {
 function setGrabbable(entityID, grabbable) {
     var properties = Entities.getEntityProperties(entityID, ['clientOnly', 'userData']);
     if (properties.clientOnly) {
-        var userData;
-        try {
-            userData = JSON.parse(properties.userData);
-        } catch (e) {
-            userData = {};
-        }
-
-        if (userData.grabbableKey === undefined) {
-            userData.grabbableKey = {};
-        }
-        userData.grabbableKey.grabbable = grabbable;
-        Entities.editEntity(entityID, {userData: JSON.stringify(userData)});
+        Entities.editEntity(entityID, { grab: { grabbable: grabbable }});
     }
 }
 

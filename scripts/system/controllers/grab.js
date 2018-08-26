@@ -39,7 +39,6 @@ var IDENTITY_QUAT = {
     z: 0,
     w: 0
 };
-var GRABBABLE_DATA_KEY = "grabbableKey"; // shared with handControllerGrab.js
 
 var DEFAULT_GRABBABLE_DATA = {
     grabbable: true,
@@ -348,8 +347,7 @@ Grabber.prototype.pressEvent = function(event) {
         return;
     }
 
-    var grabbableData = getEntityCustomData(GRABBABLE_DATA_KEY, pickResults.objectID, DEFAULT_GRABBABLE_DATA);
-    if (grabbableData.grabbable === false) {
+    if (!props.grab.grabbable) {
         return;
     }
 
