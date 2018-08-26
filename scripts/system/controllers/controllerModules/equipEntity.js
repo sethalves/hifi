@@ -10,7 +10,7 @@
    getControllerJointIndex, enableDispatcherModule, disableDispatcherModule, entityIsFarGrabbedByOther,
    Messages, makeDispatcherModuleParameters, makeRunningValues, Settings, entityHasActions,
    Vec3, Overlays, flatten, Xform, getControllerWorldLocation, ensureDynamic, entityIsCloneable,
-   cloneEntity, DISPATCHER_PROPERTIES, Uuid, unhighlightTargetEntity, isInEditMode
+   cloneEntity, DISPATCHER_PROPERTIES, Uuid, unhighlightTargetEntity, isInEditMode, getGrabbableData
 */
 
 Script.include("/~/system/libraries/Xform.js");
@@ -176,36 +176,62 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
     var TRIGGER_OFF_VALUE = 0.1;
     var TRIGGER_ON_VALUE = TRIGGER_OFF_VALUE + 0.05; //  Squeezed just enough to activate search or near grab
     var BUMPER_ON_VALUE = 0.5;
-    
+
     var EMPTY_PARENT_ID = "{00000000-0000-0000-0000-000000000000}";
-    
+
     var UNEQUIP_KEY = "u";
 
     function getWearableData(props) {
-        var wearable = {};
-        try {
-            if (!props.userDataParsed) {
-                props.userDataParsed = JSON.parse(props.userData);
-            }
+        if (props.grab.equippable) {
+            return {
+                joints: {
+                    LeftHand: [ props.grab.equippableLeftPosition, props.grab.equippableLeftRotation ],
+                    RightHand: [ props.grab.equippableRightPosition, props.grab.equippableRightRotation ]
+                }
+            };
+        } else {
+            // check for old userData equippability
+            try {
+                if (!props.userDataParsed) {
+                    props.userDataParsed = JSON.parse(props.userData);
+                }
+                var userDataParsed = props.userDataParsed;
 
-            wearable = props.userDataParsed.wearable ? props.userDataParsed.wearable : {};
-        } catch (err) {
-            // don't want to spam the logs
-        }
-        return wearable;
-    }
-    function getEquipHotspotsData(props) {
-        var equipHotspots = [];
-        try {
-            if (!props.userDataParsed) {
-                props.userDataParsed = JSON.parse(props.userData);
-            }
+                // userData: { wearable: { joints: { LeftHand: {...}, RightHand: {...} } } }
+                if (userDataParsed.wearable && userDataParsed.wearable.joints) {
+                    return userDataParsed.wearable.joints;
+                }
 
-            equipHotspots = props.userDataParsed.equipHotspots ? props.userDataParsed.equipHotspots : [];
-        } catch (err) {
-            // don't want to spam the logs
+                // userData: { grabbableKey: { equipHotspots: { joints: { LeftHand: {...}, RightHand: {...} } } } }
+                if (userDataParsed.grabbableKey &&
+                    userDataParsed.grabbableKey.equipHotspots &&
+                    userDataParsed.grabbableKey.equipHotspots.joints) {
+                    return userDataParsed.grabbableKey.equipHotspots.joints;
+                }
+
+                // userData:{grabbableKey:{spatialKey:{leftRelativePosition:{...},rightRelativePosition:{...}}}}
+                if (userDataParsed.grabbableKey &&
+                    userDataParsed.grabbableKey.spatialKey) {
+                    var joints = {};
+                    joints.LeftHand = [ { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0, w: 1 } ];
+                    joints.RightHand = [ { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0, w: 1 } ];
+                    // TODO -- one of these rotations needs to be flipped?
+                    if (userDataParsed.grabbableKey.spatialKey.leftRelativePosition) {
+                        joints.LeftHand = [userDataParsed.grabbableKey.spatialKey.leftRelativePosition,
+                                           userDataParsed.grabbableKey.spatialKey.relativeRotation];
+                    }
+                    if (userDataParsed.grabbableKey.spatialKey.rightRelativePosition) {
+                        joints.RightHand = [userDataParsed.grabbableKey.spatialKey.rightRelativePosition,
+                                            userDataParsed.grabbableKey.spatialKey.relativeRotation];
+                    }
+                    return joints;
+                }
+
+            } catch (err) {
+                // don't spam logs
+            }
+            return null;
         }
-        return equipHotspots;
     }
 
     function getAttachPointSettings() {
@@ -306,44 +332,24 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             var entityID = props.id;
             var entityXform = new Xform(props.rotation, props.position);
 
-            var equipHotspotsProps = getEquipHotspotsData(props);
-            if (equipHotspotsProps && equipHotspotsProps.length > 0) {
-                var i, length = equipHotspotsProps.length;
-                for (i = 0; i < length; i++) {
-                    var hotspot = equipHotspotsProps[i];
-                    if (hotspot.position && hotspot.radius && hotspot.joints) {
-                        result.push({
-                            key: entityID.toString() + i.toString(),
-                            entityID: entityID,
-                            localPosition: hotspot.position,
-                            worldPosition: entityXform.xformPoint(hotspot.position),
-                            radius: hotspot.radius,
-                            joints: hotspot.joints,
-                            modelURL: hotspot.modelURL,
-                            modelScale: hotspot.modelScale
-                        });
-                    }
-                }
-            } else {
-                var wearableProps = getWearableData(props);
-                var sensorToScaleFactor = MyAvatar.sensorToWorldScale;
-                if (wearableProps && wearableProps.joints) {
+            var wearableProps = getWearableData(props);
+            var sensorToScaleFactor = MyAvatar.sensorToWorldScale;
+            if (wearableProps && wearableProps.joints) {
 
-                    result.push({
-                        key: entityID.toString() + "0",
-                        entityID: entityID,
-                        localPosition: {
-                            x: 0,
-                            y: 0,
-                            z: 0
-                        },
-                        worldPosition: entityXform.pos,
-                        radius: EQUIP_RADIUS * sensorToScaleFactor,
-                        joints: wearableProps.joints,
-                        modelURL: null,
-                        modelScale: null
-                    });
-                }
+                result.push({
+                    key: entityID.toString() + "0",
+                    entityID: entityID,
+                    localPosition: {
+                        x: 0,
+                        y: 0,
+                        z: 0
+                    },
+                    worldPosition: entityXform.pos,
+                    radius: EQUIP_RADIUS * sensorToScaleFactor,
+                    joints: wearableProps.joints,
+                    modelURL: null,
+                    modelScale: null
+                });
             }
             return result;
         };
@@ -492,7 +498,8 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             };
 
             Messages.sendLocalMessage('Hifi-unhighlight-entity', JSON.stringify(message));
-            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID);
+            var grabbedProperties = Entities.getEntityProperties(this.targetEntityID, DISPATCHER_PROPERTIES);
+            var grabData = getGrabbableData(grabbedProperties);
 
             // if an object is "equipped" and has a predefined offset, use it.
             if (this.grabbedHotspot) {
@@ -510,7 +517,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
 
             var handJointIndex;
-            if (this.ignoreIK) {
+            if (grabData.grabFollowsController) {
                 handJointIndex = this.controllerJointIndex;
             } else {
                 handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
@@ -796,7 +803,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
         if (intersection.intersects) {
             var entityID = intersection.entityID;
             var entityProperties = Entities.getEntityProperties(entityID, DISPATCHER_PROPERTIES);
-            var hasEquipData = getWearableData(entityProperties).joints || getEquipHotspotsData(entityProperties).length > 0;
+            var hasEquipData = getWearableData(entityProperties);
             if (hasEquipData && entityProperties.parentID === EMPTY_PARENT_ID && !entityIsFarGrabbedByOther(entityID)) {
                 entityProperties.id = entityID;
                 var rightHandPosition = MyAvatar.getJointPosition("RightHand");
@@ -804,7 +811,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
                 var distanceToRightHand = Vec3.distance(entityProperties.position, rightHandPosition);
                 var distanceToLeftHand = Vec3.distance(entityProperties.position, leftHandPosition);
                 var leftHandAvailable = leftEquipEntity.targetEntityID === null;
-                var rightHandAvailable = rightEquipEntity.targetEntityID === null;          
+                var rightHandAvailable = rightEquipEntity.targetEntityID === null;
                 if (rightHandAvailable && (distanceToRightHand < distanceToLeftHand || !leftHandAvailable)) {
                     // clear any existing grab actions on the entity now (their later removal could affect bootstrapping flags)
                     clearGrabActions(entityID);
@@ -817,7 +824,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
         }
     };
-    
+
     var onKeyPress = function(event) {
         if (event.text.toLowerCase() === UNEQUIP_KEY) {
             if (rightEquipEntity.targetEntityID) {
@@ -828,7 +835,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             }
         }
     };
-    
+
     var deleteEntity = function(entityID) {
         if (rightEquipEntity.targetEntityID === entityID) {
             rightEquipEntity.endEquipEntity();
@@ -837,7 +844,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             leftEquipEntity.endEquipEntity();
         }
     };
-    
+
     var clearEntities = function() {
         if (rightEquipEntity.targetEntityID) {
             rightEquipEntity.endEquipEntity();
@@ -846,7 +853,7 @@ EquipHotspotBuddy.prototype.update = function(deltaTime, timestamp, controllerDa
             leftEquipEntity.endEquipEntity();
         }
     };
-    
+
     Messages.subscribe('Hifi-Hand-Grab');
     Messages.subscribe('Hifi-Hand-Drop');
     Messages.messageReceived.connect(handleMessage);

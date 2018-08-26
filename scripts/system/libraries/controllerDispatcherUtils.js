@@ -126,13 +126,22 @@ DISPATCHER_PROPERTIES = [
     "parentJointIndex",
     "density",
     "dimensions",
-    "userData",
     "type",
     "href",
     "cloneable",
     "cloneDynamic",
     "localPosition",
-    "localRotation"
+    "localRotation",
+    "grab.grabbable",
+    "grab.grabKinematic",
+    "grab.grabFollowsController",
+    "grab.triggerable",
+    "grab.equippable",
+    "grab.equippableLeftPosition",
+    "grab.equippableLeftRotation",
+    "grab.equippableRightPosition",
+    "grab.equippableRightRotation",
+    "userData"
 ];
 
 // priority -- a lower priority means the module will be asked sooner than one with a higher priority in a given update step
@@ -214,25 +223,56 @@ getGrabbableData = function (ggdProps) {
     } catch (err) {
         userDataParsed = {};
     }
+
     if (userDataParsed.grabbableKey) {
         grabbableData = userDataParsed.grabbableKey;
+    } else {
+        grabbableData = ggdProps.grab;
     }
+
+    // extract grab-related properties, provide defaults if any are missing
     if (!grabbableData.hasOwnProperty("grabbable")) {
         grabbableData.grabbable = true;
     }
-    if (!grabbableData.hasOwnProperty("ignoreIK")) {
-        grabbableData.ignoreIK = true;
+    // kinematic has been renamed to grabKinematic
+    if (!grabbableData.hasOwnProperty("grabKinematic") &&
+        !grabbableData.hasOwnProperty("kinematic")) {
+        grabbableData.grabKinematic = true;
     }
-    if (!grabbableData.hasOwnProperty("kinematic")) {
-        grabbableData.kinematic = true;
+    if (!grabbableData.hasOwnProperty("grabKinematic")) {
+        grabbableData.grabKinematic = grabbableData.kinematic;
     }
-    if (!grabbableData.hasOwnProperty("wantsTrigger")) {
-        grabbableData.wantsTrigger = false;
+    // ignoreIK has been renamed to grabFollowsController
+    if (!grabbableData.hasOwnProperty("grabFollowsController") &&
+        !grabbableData.hasOwnProperty("ignoreIK")) {
+        grabbableData.grabFollowsController = true;
     }
-    if (!grabbableData.hasOwnProperty("triggerable")) {
+    if (!grabbableData.hasOwnProperty("grabFollowsController")) {
+        grabbableData.grabFollowsController = grabbableData.ignoreIK;
+    }
+    // wantsTrigger has been renamed to triggerable
+    if (!grabbableData.hasOwnProperty("triggerable") &&
+        !grabbableData.hasOwnProperty("wantsTrigger")) {
         grabbableData.triggerable = false;
     }
-
+    if (!grabbableData.hasOwnProperty("triggerable")) {
+        grabbableData.triggerable = grabbableData.wantsTrigger;
+    }
+    if (!grabbableData.hasOwnProperty("equippable")) {
+        grabbableData.equippable = false;
+    }
+    if (!grabbableData.hasOwnProperty("equippableLeftPosition")) {
+        grabbableData.equippableLeftPosition = { x: 0, y: 0, z: 0 };
+    }
+    if (!grabbableData.hasOwnProperty("equippableLeftRotation")) {
+        grabbableData.equippableLeftPosition = { x: 0, y: 0, z: 0, w: 1 };
+    }
+    if (!grabbableData.hasOwnProperty("equippableRightPosition")) {
+        grabbableData.equippableRightPosition = { x: 0, y: 0, z: 0 };
+    }
+    if (!grabbableData.hasOwnProperty("equippableRightRotation")) {
+        grabbableData.equippableRightPosition = { x: 0, y: 0, z: 0, w: 1 };
+    }
     return grabbableData;
 };
 

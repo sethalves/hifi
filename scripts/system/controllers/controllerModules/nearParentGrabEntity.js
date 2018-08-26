@@ -12,7 +12,7 @@
    findGroupParent, Vec3, cloneEntity, entityIsCloneable, propsAreCloneDynamic, HAPTIC_PULSE_STRENGTH,
    HAPTIC_PULSE_DURATION, BUMPER_ON_VALUE, findHandChildEntities, TEAR_AWAY_DISTANCE, MSECS_PER_SEC, TEAR_AWAY_CHECK_TIME,
    TEAR_AWAY_COUNT, distanceBetweenPointAndEntityBoundingBox, print, Uuid, highlightTargetEntity, unhighlightTargetEntity,
-   distanceBetweenEntityLocalPositionAndBoundingBox, GRAB_POINT_SPHERE_OFFSET
+   distanceBetweenEntityLocalPositionAndBoundingBox, getGrabbableData, getGrabPointSphereOffset, DISPATCHER_PROPERTIES
 */
 
 Script.include("/~/system/libraries/controllerDispatcherUtils.js");
@@ -25,16 +25,8 @@ Script.include("/~/system/libraries/controllers.js");
     // XXX this.kinematicGrab = (grabbableData.kinematic !== undefined) ? grabbableData.kinematic : NEAR_GRABBING_KINEMATIC;
 
     function getGrabOffset(handController) {
-        var offset = GRAB_POINT_SPHERE_OFFSET;
-        if (handController === Controller.Standard.LeftHand) {
-            offset = {
-                x: -GRAB_POINT_SPHERE_OFFSET.x,
-                y: GRAB_POINT_SPHERE_OFFSET.y,
-                z: GRAB_POINT_SPHERE_OFFSET.z
-            };
-        }
-
-        offset.y = -GRAB_POINT_SPHERE_OFFSET.y;
+        var offset = getGrabPointSphereOffset(handController, true);
+        offset.y = -offset.y;
         return Vec3.multiply(MyAvatar.sensorToWorldScale, offset);
     }
 
@@ -98,6 +90,7 @@ Script.include("/~/system/libraries/controllers.js");
         };
 
         this.startNearParentingGrabEntity = function (controllerData, targetProps) {
+            var grabData = getGrabbableData(targetProps);
             Controller.triggerHapticPulse(HAPTIC_PULSE_STRENGTH, HAPTIC_PULSE_DURATION, this.hand);
             unhighlightTargetEntity(this.targetEntityID);
             this.highlightedEntity = null;
@@ -108,12 +101,11 @@ Script.include("/~/system/libraries/controllers.js");
 
             Messages.sendLocalMessage('Hifi-unhighlight-entity', JSON.stringify(message));
             var handJointIndex;
-            // if (this.ignoreIK) {
-            //     handJointIndex = this.controllerJointIndex;
-            // } else {
-            //     handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
-            // }
-            handJointIndex = getControllerJointIndex(this.hand);
+            if (grabData.grabFollowsController) {
+                handJointIndex = getControllerJointIndex(this.hand);
+            } else {
+                handJointIndex = MyAvatar.getJointIndex(this.hand === RIGHT_HAND ? "RightHand" : "LeftHand");
+            }
 
             var args = [this.hand === RIGHT_HAND ? "right" : "left", MyAvatar.sessionUUID];
             Entities.callEntityMethod(targetProps.id, "startNearGrab", args);
@@ -365,7 +357,7 @@ Script.include("/~/system/libraries/controllers.js");
                         if (this.cloneAllowed) {
                             var cloneID = cloneEntity(targetProps);
                             if (cloneID !== null) {
-                                var cloneProps = Entities.getEntityProperties(cloneID);
+                                var cloneProps = Entities.getEntityProperties(cloneID, DISPATCHER_PROPERTIES);
                                 this.grabbing = true;
                                 this.targetEntityID = cloneID;
                                 this.startNearParentingGrabEntity(controllerData, cloneProps);
