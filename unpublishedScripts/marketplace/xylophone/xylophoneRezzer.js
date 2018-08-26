@@ -93,23 +93,13 @@ function rezMallets() {
         angularDamping: 1,
         shapeType: "compound",
         script: MALLET_SCRIPT_URL,
-        userData: JSON.stringify({
-            grabbableKey: {
-                invertSolidWhileHeld: true
-            },
-            wearable: {
-                joints: {
-                    LeftHand: [
-                        { x: 0, y: 0.2, z: 0.04 },
-                        Quat.fromVec3Degrees({ x: 0, y: 90, z: 90 })
-                    ],
-                    RightHand: [
-                        { x: 0, y: 0.2, z: 0.04 },
-                        Quat.fromVec3Degrees({ x: 0, y: 90, z: 90 })
-                    ]
-                }
-            }
-        }),
+        grab: {
+            equippable: true,
+            equippableLeftPosition: { x: 0, y: 0.2, z: 0.04 },
+            equippableLeftRotation: Quat.fromVec3Degrees({ x: 0, y: 90, z: 90 }),
+            equippableRightPosition: { x: 0, y: 0.2, z: 0.04 },
+            equippableRightRotation: Quat.fromVec3Degrees({ x: 0, y: 90, z: 90 })
+        },
         dimensions: { "x": 0.057845603674650192, "y": 0.057845607399940491, "z": 0.30429631471633911 } // not being set from fbx for some reason.
     };
 

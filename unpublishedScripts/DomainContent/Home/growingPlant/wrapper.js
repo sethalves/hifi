@@ -102,33 +102,34 @@ Plant = function(spawnPosition, spawnRotation) {
       z: 0
     },
     rotation: waterCanRotation,
+    grab: {
+      equippable: true,
+      equippableLeftPosition: {
+        x: -0.0348,
+        y: 0.201,
+        z: 0.166
+      },
+      equippableLeftRotation: {
+        x: 0.4095,
+        y: -0.625,
+        z: 0.616,
+        w: -0.247
+      },
+      equippableRightPosition: {
+        x: 0.024,
+        y: 0.173,
+        z: 0.152
+      },
+      equippableRightRotation: {
+        x: 0.374,
+        y: 0.636,
+        z: -0.638,
+        w: -0.215
+      }
+    },
     userData: JSON.stringify({
       'hifiHomeKey': {
         'reset': true
-      },
-      wearable: {
-        joints: {
-          RightHand: [{
-            x: 0.024,
-            y: 0.173,
-            z: 0.152
-          }, {
-            x: 0.374,
-            y: 0.636,
-            z: -0.638,
-            w: -0.215
-          }],
-          LeftHand: [{
-            x: -0.0348,
-            y: 0.201,
-            z: 0.166
-          }, {
-            x: 0.4095,
-            y: -0.625,
-            z: 0.616,
-            w: -0.247
-          }]
-        }
       }
     })
   });

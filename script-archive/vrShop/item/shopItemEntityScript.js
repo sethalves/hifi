@@ -235,15 +235,13 @@
                         ignoreForCollisions: false,
                         visible: false,
                         script: inspectEntityScript,
+                        grab: { grabbable: false },
                         userData: JSON.stringify({
                             ownerKey: {
                                 ownerID: MyAvatar.sessionUUID
                             },
                             itemKey: {
                                 itemID: _this.entityID
-                            },
-                            grabbableKey: {
-                                grabbable: false
                             }
                         })
                     });

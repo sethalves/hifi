@@ -558,10 +558,8 @@
                     y: 460.5366,
                     z: -65.2142
                 },
+                grab: { grabbable: true },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: true
-                    },
                     hifiHomeKey: {
                         reset: true
                     }
@@ -607,10 +605,8 @@
                     y: -0.1,
                     z: 0
                 },
+                grab: { grabbable: true },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: true
-                    },
                     hifiHomeKey: {
                         reset: true
                     }

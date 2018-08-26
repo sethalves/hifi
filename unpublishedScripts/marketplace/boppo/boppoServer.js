@@ -235,6 +235,7 @@
                     script: Script.resolvePath('boppoClownEntity.js'),
                     shapeType: 'compound',
                     type: 'Model',
+                    grab: { grabbable: false },
                     userData: JSON.stringify({
                         lookAt: {
                             targetID: _boppoEntities['lookAtThis'],
@@ -247,9 +248,6 @@
                         Boppo: {
                             type: 'boppo',
                             gameParentID: _entityID
-                        },
-                        grabbableKey: {
-                            grabbable: false
                         }
                     })
                 });

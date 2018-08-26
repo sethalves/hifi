@@ -152,15 +152,12 @@ TiltMaze = function(spawnPosition, spawnRotation) {
             density: BALL_DENSITY,
             color: BALL_COLOR,
             dimensions: BALL_DIMENSIONS,
+            grab: { grabbable: false },
             userData: JSON.stringify({
                 'hifiHomeKey': {
                     'reset': true
-                },
-                grabbableKey: {
-                    grabbable: false
                 }
             })
-
         };
 
         ball = Entities.addEntity(properties);

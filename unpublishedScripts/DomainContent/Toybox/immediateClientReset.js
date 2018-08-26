@@ -32,11 +32,7 @@ function createHiddenMasterSwitch() {
         },
         rotation: Quat.fromPitchYawRollDegrees(0, 33, 0),
         visible: false,
-        userData: JSON.stringify({
-            grabbableKey: {
-                wantsTrigger: true
-            }
-        })
+        grab: { triggerable: true }
     });
 }
 

@@ -187,10 +187,8 @@ var scenes = [{
         },
         radius: 300,
         number: 7,
+        grab: { grabbable: false },
         userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            },
             target: locations.ribosome[1],
             location: locations.ribosome[0],
             baseURL: baseLocation
@@ -212,11 +210,7 @@ var scenes = [{
         },
         radius: 1000,
         number: 22,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, { //golgi vesicles
@@ -234,11 +228,7 @@ var scenes = [{
         },
         radius: 140,
         number: 10,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, { //golgi vesicles
@@ -256,11 +246,7 @@ var scenes = [{
         },
         radius: 115,
         number: 7,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, {
@@ -278,11 +264,7 @@ var scenes = [{
         },
         radius: 600,
         number: 15,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, { //outer vesicles
@@ -300,11 +282,7 @@ var scenes = [{
         },
         radius: 1600,
         number: 22,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, { //outer vesicles
@@ -322,11 +300,7 @@ var scenes = [{
         },
         radius: 1400,
         number: 22,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, { //outer vesicles
@@ -344,11 +318,7 @@ var scenes = [{
         },
         radius: 1800,
         number: 22,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }, {
@@ -366,14 +336,7 @@ var scenes = [{
         },
         radius: 80,
         number: 7,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            },
-            target: locations.hexokinase[1],
-            location: locations.hexokinase[0],
-            baseURL: baseLocation
-        }),
+        grab: { grabbable: false },
         script: "zoom.js?" + version,
         visible: true
     }, {
@@ -391,13 +354,7 @@ var scenes = [{
         },
         radius: 60,
         number: 7,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            },
-            target: locations.hexokinase[1],
-            location: locations.hexokinase[0],
-        }),
+        grab: { grabbable: false },
         script: "zoom.js?" + version,
         visible: true
     }, {
@@ -415,13 +372,7 @@ var scenes = [{
         },
         radius: 70,
         number: 7,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            },
-            target: locations.hexokinase[1],
-            location: locations.hexokinase[0],
-        }),
+        grab: { grabbable: false },
         script: "zoom.js?" + version,
         visible: true
     }],
@@ -466,11 +417,7 @@ var scenes = [{
         },
         radius: 1,
         number: 1,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }],
@@ -515,11 +462,7 @@ var scenes = [{
         },
         radius: 1,
         number: 1,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         script: null,
         visible: true
     }],
@@ -631,15 +574,7 @@ function CreateNavigationButton(scene, name) {
             z: 16000
         },
         visible: false,
-        userData: JSON.stringify({
-            name: scene.name,
-            entryPoint: scene.entryPoint,
-            target: scene.location,
-            baseURL: baseLocation,
-            grabbableKey: {
-                grabbable: false
-            }
-        }),
+        grab: { grabbable: false },
         position: {
             x: 0,
             y: 0,

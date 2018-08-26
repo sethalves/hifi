@@ -44,19 +44,11 @@
             },
             shapeType: "simple-hull",
             type: "Model",
-            userData: JSON.stringify({
-                grabbableKey: {
-                    invertSolidWhileHeld: true
-                },
-                wearable: {
-                    joints: {
-                        LeftHand: [
-                            {x: 0, y: 0.0, z: 0.02 },
-                            Quat.fromVec3Degrees({x: 0, y: 0, z: 0})
-                        ]
-                    }
-                }
-            })
+            grab: {
+                equippable: true,
+                equippableLeftPosition: {x: 0, y: 0.0, z: 0.02 },
+                equippableLeftRotation: Quat.fromVec3Degrees({x: 0, y: 0, z: 0})
+            }
         });
         Messages.sendLocalMessage('Hifi-Hand-Grab', JSON.stringify({hand: 'left', entityID: leftBoxingGlove}));
         // Allows teleporting while glove is wielded
@@ -85,19 +77,11 @@
             },
             shapeType: "simple-hull",
             type: "Model",
-            userData: JSON.stringify({
-                grabbableKey: {
-                    invertSolidWhileHeld: true
-                },
-                wearable: {
-                    joints: {
-                        RightHand: [
-                            {x: 0, y: 0.0, z: 0.02 },
-                            Quat.fromVec3Degrees({x: 0, y: 0, z: 0})
-                        ]
-                    }
-                }
-            })
+            grab: {
+                equippable: true,
+                equippableRightPosition: {x: 0, y: 0.0, z: 0.02 },
+                equippableRightRotation: Quat.fromVec3Degrees({x: 0, y: 0, z: 0})
+            }
         });
         Messages.sendLocalMessage('Hifi-Hand-Grab', JSON.stringify({hand: 'right', entityID: rightBoxingGlove}));
         // Allows teleporting while glove is wielded

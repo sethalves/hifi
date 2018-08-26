@@ -16,24 +16,6 @@ var leftHandRotation = Quat.fromPitchYawRollDegrees(90, -90, 0);
 var rightHandPosition = Vec3.multiplyVbyV(leftHandPosition, { x: -1, y: 0, z: 0 });
 var rightHandRotation = Quat.fromPitchYawRollDegrees(90, 90, 0);
 
-var userData = {
-    "grabbableKey": {
-        "grabbable": true
-    },
-    "wearable": {
-        "joints": {
-            "LeftHand": [
-                leftHandPosition,
-                leftHandRotation
-            ],
-            "RightHand": [
-                rightHandPosition,
-                rightHandRotation
-            ]
-        }
-    }
-};
-
 var id = Entities.addEntity({
     "position": MyAvatar.position,
     "collisionsWillMove": 1,
@@ -61,7 +43,31 @@ var id = Entities.addEntity({
     "script": Script.resolvePath("bow.js"),
     "shapeType": "compound",
     "type": "Model",
-    "userData": "{\"grabbableKey\":{\"grabbable\":true},\"wearable\":{\"joints\":{\"RightHand\":[{\"x\":0.0813,\"y\":0.0452,\"z\":0.0095},{\"x\":-0.3946,\"y\":-0.6604,\"z\":0.4748,\"w\":-0.4275}],\"LeftHand\":[{\"x\":-0.0881,\"y\":0.0259,\"z\":0.0159},{\"x\":0.4427,\"y\":-0.6519,\"z\":0.4592,\"w\":0.4099}]}}}",
+    "grab": {
+        "equippable": true,
+        "equippableLeftPosition": {
+            "x": -0.0881,
+            "y": 0.0259,
+            "z": 0.0159
+        },
+        "equippableLeftRotation": {
+            "x": 0.4427,
+            "y": -0.6519,
+            "z": 0.4592,
+            "w": 0.4099
+        },
+        "equippableRightPosition": {
+            "x": 0.0813,
+            "y": 0.0452,
+            "z": 0.0095
+        },
+        "equippableRightRotation": {
+            "x": -0.3946,
+            "y": -0.6604,
+            "z": 0.4748,
+            "w": -0.4275
+        }
+    },
     "lifetime": 600
 });
 print("Created bow:", id);

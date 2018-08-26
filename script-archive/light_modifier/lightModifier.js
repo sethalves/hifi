@@ -642,11 +642,7 @@ function createCloseButton(axisStart) {
         dynamic: false,
         collisionless: true,
         script: CLOSE_BUTTON_SCRIPT_URL,
-        userData: JSON.stringify({
-            grabbableKey: {
-                wantsTrigger: true
-            }
-        })
+        grab: { grabbable: true }
     }
 
     var button = Entities.addEntity(buttonProperties);

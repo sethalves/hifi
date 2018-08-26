@@ -261,11 +261,7 @@ function MyController(hand) {
             lifetime: 0.1,
             collisionsWillMove: false,
             ignoreForCollisions: true,
-            userData: JSON.stringify({
-                grabbableKey: {
-                    grabbable: false
-                }
-            })
+            grab: { grabbable: false }
         });
     }
 

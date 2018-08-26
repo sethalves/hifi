@@ -23,10 +23,8 @@ HoverGame = function(spawnPosition, spawnRotation) {
     compoundShapeURL: 'atp:/hoverGame/hoverHull.obj',
     rotation: spawnRotation,
     script: scriptURL,
+    grab: { grabbable: false },
     userData: JSON.stringify({
-      "grabbableKey": {
-        "grabbable":false
-      },
       'hifiHomeKey': {
         'reset': true
       }

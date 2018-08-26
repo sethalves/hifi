@@ -98,12 +98,7 @@ var modelRatProperties = {
         z: 0
     },
     lifetime: 30,
-    userData: JSON.stringify({
-        grabbableKey: {
-            grabbable: false
-        }
-    })
-
+    grab: { grabbable: true }
 };
 
 var targetProperties = {

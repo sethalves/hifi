@@ -229,9 +229,7 @@ function getControllerLocation(controllerHand) {
                 collidesWith: "",
             });
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = false;
-            setEntityCustomData('grabbableKey', this.entityID, data);
+            Entities.editEntity(this.entityID, { grab: { grabbable: false } });
 
             this.initString();
 
@@ -249,9 +247,8 @@ function getControllerLocation(controllerHand) {
 
             Messages.sendLocalMessage('Hifi-Hand-Disabler', "none");
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = true;
-            setEntityCustomData('grabbableKey', this.entityID, data);
+            Entities.editEntity(this.entityID, { grab: { grabbable: true } });
+
             Entities.deleteEntity(this.arrow);
             this.resetStringToIdlePosition();
             this.destroyArrow();
@@ -353,10 +350,8 @@ function getControllerLocation(controllerHand) {
                 collisionless: true,
                 collisionSoundURL: ARROW_HIT_SOUND_URL,
                 damping: 0.01,
+                grab: { grabbable: false },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    },
                     creatorSessionUUID: MyAvatar.sessionUUID
                 })
             });
@@ -414,11 +409,7 @@ function getControllerLocation(controllerHand) {
                     localPosition: { "x": 0, "y": 0.6, "z": 0.1 },
                     localRotation: { "w": 1, "x": 0, "y": 0, "z": 0 },
                     type: 'Line',
-                    userData: JSON.stringify({
-                        grabbableKey: {
-                            grabbable: false
-                        }
-                    })
+                    grab: { grabbable: false }
                 });
             }
 

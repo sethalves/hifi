@@ -99,11 +99,7 @@ function createTable() {
         },
         script: TABLE_SCRIPT_URL,
         position: TABLE_START_POSITION,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: true
-            }
-        })
+        grab: { grabbable: true }
     });
 }
 
@@ -155,11 +151,7 @@ function createMat() {
         }),
         parentID: table,
         position: getOffsetFromTable(matOffset.forward, matOffset.vertical, matOffset.right),
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        })
+        grab: { grabbable: false }
     });
 }
 
@@ -189,11 +181,7 @@ function createNextGameButton() {
         script: NEXT_GAME_BUTTON_SCRIPT_URL,
         position: getOffsetFromTable(nextGameButtonOffset.forward, nextGameButtonOffset.vertical,
                                      nextGameButtonOffset.right),
-        userData: JSON.stringify({
-            grabbableKey: {
-                wantsTrigger: true
-            }
-        })
+        grab: { triggerable: true }
     });
 }
 
@@ -223,11 +211,7 @@ function createResetGameButton() {
         script: RESET_BUTTON_SCRIPT_URL,
         position: getOffsetFromTable(resetGameButtonOffset.forward, resetGameButtonOffset.vertical,
                                      resetGameButtonOffset.right),
-        userData: JSON.stringify({
-            grabbableKey: {
-                wantsTrigger: true
-            }
-        })
+        grab: { triggerable: true }
     });
 }
 

@@ -38,13 +38,10 @@ var dart = {
     },
     dynamic: true,
     owningAvatarID: MyAvatar.sessionUUID,
-    userData: JSON.stringify({
-        grabbableKey: {
-            grabbable: true,
-            invertSolidWhileHeld: true,
-            ignoreIK: false
-        }
-    })
+    grab: {
+        grabbable: true,
+        grabFollowsController: false
+    }
 };
 
 var avatarUp = Quat.getUp(MyAvatar.orientation);
@@ -67,13 +64,10 @@ var platform = {
         blue: 11
     },
     owningAvatarID: MyAvatar.sessionUUID,
-    userData: JSON.stringify({
-        grabbableKey: {
-            grabbable: true,
-            invertSolidWhileHeld: true,
-            ignoreIK: false
-        }
-    })
+    grab: {
+        grabbable: true,
+        grabFollowsController: false
+    }
 };
 
 

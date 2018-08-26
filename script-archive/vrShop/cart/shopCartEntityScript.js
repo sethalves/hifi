@@ -122,18 +122,14 @@
                 for (var i=0; i < itemsID.length; i++) {
                     Entities.deleteEntity(itemsID[i]);
                 }
-                
+
                 // Clear the userData field for the cart
-                Entities.editEntity(this.entityID, { userData: ""});
-                
+                Entities.editEntity(this.entityID, { grab: { grabbable: false }, userData: ""});
+
                 setEntityCustomData('ownerKey', this.entityID, {
                     ownerID: MyAvatar.sessionUUID
                 });
-                
-                setEntityCustomData('grabbableKey', this.entityID, {
-                    grabbable: false
-                });
-                
+
                 itemsID = [];
             }
         },

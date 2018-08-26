@@ -134,9 +134,6 @@ var TARGET_BLOCKS_POSITION = {
                         z: 0
                     },
                     userData: JSON.stringify({
-                        grabbableKey: {
-                            grabbable: true
-                        },
                         hifiHomeKey: {
                             reset: true
                         }
@@ -227,9 +224,6 @@ var TARGET_BLOCKS_POSITION = {
                     dynamic: false,
                     collisionless: true,
                     userData: JSON.stringify({
-                        grabbableKey: {
-                            grabbable: true
-                        },
                         hifiHomeKey: {
                             reset: true
                         }

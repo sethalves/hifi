@@ -176,10 +176,8 @@
                 modelURL: smallProps.modelURL,
                 position: _this.putTransformerOnRotatorBlock(rotatorProps.position),
                 rotation: rotatorProps.rotation,
+                grab: { grabbable: false },
                 userData: JSON.stringify({
-                    'grabbableKey': {
-                        'grabbable': false
-                    },
                     'hifiHomeKey': {
                         'reset': true
                     }

@@ -166,10 +166,8 @@ function makeAll() {
                         startAutomatically: true
                     }),
                     visible: true,
+                    grab: { grabbable: false },
                     userData: JSON.stringify({
-                        grabbableKey: {
-                            grabbable: false
-                        },
                         isDynein: isDynein,
                         baseURL: baseLocation
                     }),

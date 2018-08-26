@@ -78,9 +78,6 @@ function createColorBusterWand() {
 				currentColor: startingColor[0],
 				originalColorName: startingColor[0],
 				colorLocked: false
-			},
-			grabbableKey: {
-				invertSolidWhileHeld: false
 			}
 		})
 	};

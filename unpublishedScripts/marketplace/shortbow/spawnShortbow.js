@@ -126,11 +126,7 @@ function createLocalGame() {
     buttonID = spawnTemplate("SB.StartButton", {
         parentID: scoreboardID,
         script: Script.resolvePath("startGameButtonClientEntity.js"),
-        userData: JSON.stringify({
-            grabbableKey: {
-                wantsTrigger: true
-            }
-        })
+        grab: { triggerable: true }
     });
     entityIDs.push(buttonID);
 

@@ -94,12 +94,15 @@ HomeMusicBox = function(spawnPosition, spawnRotation) {
             dynamic: true,
             script: LID_SCRIPT_URL,
             collidesWith: 'myAvatar,otherAvatar',
+            grab: {
+                grabbable: true,
+                triggerable: true
+            },
             userData: JSON.stringify({
                 'hifiHomeKey': {
                     'reset': true
                 },
                 grabbableKey: {
-                    wantsTrigger: true,
                     disableReleaseVelocity: true
                 }
             })

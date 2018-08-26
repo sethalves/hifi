@@ -99,15 +99,13 @@
                         position: position,
                         rotation: rotation,
                         script: targetsScriptURL,
+                        grab: { grabbable: false },
                         userData: JSON.stringify({
                             originalPositionKey: {
                                 originalPosition: position
                             },
                             resetMe: {
                                 resetMe: true
-                            },
-                            grabbableKey: {
-                                grabbable: false
                             }
                         })
                     };

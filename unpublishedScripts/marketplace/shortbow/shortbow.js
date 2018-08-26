@@ -138,7 +138,7 @@ SHORTBOW_ENTITIES =
             "script": "file:///c:/Users/ryanh/dev/hifi/unpublishedScripts/marketplace/shortbow/startGameButtonClientEntity.js",
             "shapeType": "static-mesh",
             "type": "Model",
-            "userData": "{\"grabbableKey\":{\"wantsTrigger\":true}}"
+            "grab": { "triggerable": true }
         },
         {
             "backgroundColor": {

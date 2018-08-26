@@ -146,9 +146,7 @@
                 collidesWith: "",
             });
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = false;
-            setEntityCustomData('grabbableKey', this.entityID, data);
+            Entities.editEntity(this.entityID, { grab: { grabbable: false } });
 
             this.initString();
         },
@@ -172,9 +170,8 @@
 
             this.stringDrawn = false;
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = true;
-            setEntityCustomData('grabbableKey', this.entityID, data);
+            Entities.editEntity(this.entityID, { grab: { grabbable: true } });
+
             Entities.deleteEntity(this.arrow);
             this.resetStringToIdlePosition();
             this.destroyArrow();
@@ -211,10 +208,8 @@
                 collisionless: true,
                 collisionSoundURL: ARROW_HIT_SOUND_URL,
                 damping: 0.01,
+                grab: { grabbable: false },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    },
                     creatorSessionUUID: MyAvatar.sessionUUID
                 })
             });
@@ -259,7 +254,7 @@
                 }
             });
 
-            // If thie string wasn't found, create it
+            // If the string wasn't found, create it
             if (this.stringID === null) {
                 this.stringID = Entities.addEntity({
                     collisionless: true,
@@ -271,11 +266,7 @@
                     localPosition: { "x": 0, "y": 0.6, "z": 0.1 },
                     localRotation: { "w": 1, "x": 0, "y": 0, "z": 0 },
                     type: 'Line',
-                    userData: JSON.stringify({
-                        grabbableKey: {
-                            grabbable: false
-                        }
-                    })
+                    grab: { grabbable: false }
                 });
             }
 

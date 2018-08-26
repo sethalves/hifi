@@ -145,13 +145,10 @@
             var handToDisable = this.hand === 'right' ? 'left' : 'right';
             Messages.sendMessage('Hifi-Hand-Disabler', handToDisable);
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = false;
-            setEntityCustomData('grabbableKey', this.entityID, data);
             Entities.editEntity(_this.entityID, {
+                grab: { grabbable: false },
                 collidesWith: ""
-            })
-
+            });
         },
         continueEquip: function(entityID, args) {
             this.deltaTime = checkInterval();
@@ -188,15 +185,13 @@
             this.stringDrawn = false;
             this.deleteStrings();
 
-            var data = getEntityCustomData('grabbableKey', this.entityID, {});
-            data.grabbable = true;
-            setEntityCustomData('grabbableKey', this.entityID, data);
             Entities.deleteEntity(this.arrow);
             this.aiming = false;
             this.hasArrowNotched = false;
             Entities.editEntity(_this.entityID, {
+                grab: { grabbable: true },
                 collidesWith: "static,dynamic,kinematic,otherAvatar,myAvatar"
-            })
+            });
         },
 
         createArrow: function() {
@@ -214,10 +209,8 @@
                 collisionless: true,
                 collisionSoundURL: ARROW_HIT_SOUND_URL,
                 damping: 0.01,
+                grab: { grabbable: false },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    },
                     creatorSessionUUID: MyAvatar.sessionUUID
                 })
             });
@@ -263,11 +256,7 @@
                 dimensions: LINE_DIMENSIONS,
                 dynamic: false,
                 collisionless: true,
-                userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    }
-                })
+                grab: { grabbable: false }
             };
 
             this.topString = Entities.addEntity(stringProperties);
@@ -281,11 +270,7 @@
                 dimensions: LINE_DIMENSIONS,
                 dynamic: false,
                 collisionless: true,
-                userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    }
-                })
+                grab: { grabbable: false }
             };
 
             this.bottomString = Entities.addEntity(stringProperties);

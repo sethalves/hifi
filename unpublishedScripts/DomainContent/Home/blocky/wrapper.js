@@ -25,10 +25,8 @@ BlockyGame = function(spawnPosition, spawnRotation) {
     },
     rotation:Quat.fromPitchYawRollDegrees(-9.5165,-147.3687,16.6577),
     script: scriptURL,
+    grab: { triggerable: true },
     userData: JSON.stringify({
-      "grabbableKey": {
-        "wantsTrigger": true
-      },
       'hifiHomeKey': {
         'reset': true
       }

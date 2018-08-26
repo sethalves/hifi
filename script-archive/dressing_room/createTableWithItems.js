@@ -55,11 +55,7 @@ function createTable() {
         rotation: rotation,
         collisionsWillMove: false,
         ignoreForCollisions: false,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        })
+        grab: { grabbable: false }
     }
     print('TABLE PROPS', JSON.stringify(tableProperties))
     table = Entities.addEntity(tableProperties);

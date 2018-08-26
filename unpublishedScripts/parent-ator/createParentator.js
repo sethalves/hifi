@@ -36,27 +36,13 @@ var parentator = Entities.addEntity({
     },
     position: START_POSITION,
     rotation: START_ROTATION,
-
-
-    userData: JSON.stringify({
-        "grabbableKey": {"grabbable": true},
-        "equipHotspots": [
-            {
-                "position": {"x": 0.0, "y": 0.0, "z": -0.170 },
-                "radius": 0.15,
-                "joints":{
-                    "RightHand":[
-                        {"x":0.05, "y":0.25, "z":0.03},
-                        {"x":-0.5, "y":-0.5, "z":-0.5, "w":0.5}
-                    ],
-                    "LeftHand":[
-                        {"x":-0.05, "y":0.25, "z":0.03},
-                        {"x":-0.5, "y":0.5, "z":0.5, "w":0.5}
-                    ]
-                }
-            }
-        ]
-    })
+    grab: {
+        equippable: true,
+        equippableLeftPosition: {"x":-0.05, "y":0.25, "z":0.03},
+        equippableLeftRotation: {"x":-0.5, "y":0.5, "z":0.5, "w":0.5},
+        equippableRightPosition: {"x":0.05, "y":0.25, "z":0.03},
+        equippableRightRotation: {"x":-0.5, "y":-0.5, "z":-0.5, "w":0.5}
+    }
 });
 
 

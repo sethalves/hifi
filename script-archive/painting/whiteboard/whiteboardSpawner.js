@@ -77,15 +77,12 @@ var drawingSurface = Entities.addEntity({
     position: surfaceCenter,
     script: scriptURL,
     rotation: rotation,
+    grab: { triggerable: true },
     userData: JSON.stringify({
         color: {
             currentColor: colors[0]
-        },
-        grabbableKey: {
-            wantsTrigger: true
         }
     })
-
 });
 
 var lightPosition = Vec3.sum(center, Vec3.multiply(-3, Quat.getFront(rotation)));

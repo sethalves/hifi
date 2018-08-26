@@ -52,13 +52,9 @@ function createEarth() {
         },
         rotation: Quat.fromPitchYawRollDegrees(0, 90, 0),
         // dynamic: true,
+        // grab: { grabbable: false }
         //if you have a shapetype it blocks the smaller markers
         // shapeType:'sphere'
-        // userData: JSON.stringify({
-        //     grabbableKey: {
-        //         grabbable: false
-        //     }
-        // })
     }
 
     return Entities.addEntity(earthProperties)

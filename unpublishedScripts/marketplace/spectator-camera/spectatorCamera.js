@@ -84,7 +84,7 @@
             "position": cameraPosition,
             "shapeType": "simple-compound",
             "type": "Model",
-            "userData": "{\"grabbableKey\":{\"grabbable\":true}}",
+            "grab": { "grabbable": true },
             "isVisibleInSecondaryCamera": false
         }, true);
         spectatorCameraConfig.attachedEntityId = camera;

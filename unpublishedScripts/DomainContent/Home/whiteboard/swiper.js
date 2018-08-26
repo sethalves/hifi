@@ -19,12 +19,10 @@
         preload: function(entityID) {
             this.entityID = entityID;
             Entities.editEntity(entityID, {
-                userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false,
-                        wantsTrigger: true
-                    }
-                })
+                grab: {
+                    grabbable: false,
+                    triggerable: true
+                }
             });
             Script.update.connect(this.update);
         },

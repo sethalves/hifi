@@ -30,12 +30,10 @@ function Doppelganger(avatar) {
         collisionsWillMove: false,
         ignoreForCollisions: false,
         script: FREEZE_TOGGLER_SCRIPT_URL,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false,
-                wantsTrigger: true
-            }
-        })
+        grab: {
+            grabbable: false,
+            triggerable: true
+        }
     };
 
     this.id = createDoppelgangerEntity(this);

@@ -37,11 +37,7 @@ function createBasePlatform() {
         position: basePosition,
         collisionsWillMove: false,
         ignoreForCollisions: false,
-        userData: JSON.stringify({
-            grabbableKey: {
-                grabbable: false
-            }
-        })
+        grab: { grabbable: false }
     }
     basePlatform = Entities.addEntity(properties);
 }

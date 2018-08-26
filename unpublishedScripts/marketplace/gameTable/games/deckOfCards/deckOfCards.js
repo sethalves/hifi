@@ -438,10 +438,8 @@
                     file1: PLAYING_CARD_BACK_IMAGE_URL,
                     file2: PLAYING_CARD_BACK_IMAGE_URL
                 }),
+                grab: { grabbable: true },
                 userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: true
-                    },
                     playingCards: {
                         card: card
                     }

@@ -66,12 +66,10 @@
                     shapeType: entityProperties.shapeType,
                     originalTextures: entityProperties.originalTextures,
                     script: CART_SCRIPT_URL,
+                    grab: { grabbable: false },
                     userData: JSON.stringify({
                         ownerKey: {
                             ownerID: MyAvatar.sessionUUID
-                        },
-                        grabbableKey: {
-                            grabbable: false
                         }
                     })
                 });

@@ -10,7 +10,7 @@
         _entityID = entityID;
 
         Entities.editEntity(_entityID, {
-            userData: '{"grabbableKey": {"grabbable": true}'
+            grab: { grabbable: true }
         });
     };
 

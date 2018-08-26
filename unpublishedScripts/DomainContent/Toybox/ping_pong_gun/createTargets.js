@@ -128,11 +128,7 @@ function testTargetDistanceFromStart() {
                 position: originalPositions[index],
                 rotation: rotation,
                 script: scriptURL,
-                userData: JSON.stringify({
-                    grabbableKey: {
-                        grabbable: false
-                    }
-                })
+                grab: { grabbable: false }
             };
 
             targets[index] = Entities.addEntity(targetProperties);

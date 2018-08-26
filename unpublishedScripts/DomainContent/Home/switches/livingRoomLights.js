@@ -187,9 +187,7 @@
 
         preload: function(entityID) {
             this.entityID = entityID;
-            setEntityCustomData('grabbableKey', this.entityID, {
-                wantsTrigger: true
-            });
+            Entities.editEntity(this.entityID, { grab: { triggerable: true } });
 
             var properties = Entities.getEntityProperties(this.entityID);
 

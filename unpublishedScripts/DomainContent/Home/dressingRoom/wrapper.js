@@ -34,10 +34,8 @@ TransformerDoll = function(modelURL, spawnPosition, spawnRotation, dimensions) {
         restitution: 0.1,
         damping: 0.9,
         angularDamping: 0.9,
+        grab: { grabbable: true },
         userData: JSON.stringify({
-            'grabbableKey': {
-                'grabbable': true
-            },
             'hifiHomeTransformerKey': {
                 'basePosition': spawnPosition,
                 'baseRotation': Quat.fromPitchYawRollDegrees(spawnRotation.x, spawnRotation.y, spawnRotation.z),

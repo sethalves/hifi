@@ -49,11 +49,7 @@ var rack = Entities.addEntity({
     collisionless: false,
     collisionSoundURL: collisionSoundURL,
     compoundShapeURL: rackCollisionHullURL,
-    userData: JSON.stringify({
-        grabbableKey: {
-            grabbable: false
-        }
-    })
+    grab: { grabbable: false }
 });
 
 var balls = [];
@@ -89,12 +85,7 @@ function createBalls() {
             },
             dynamic: true,
             collisionless: false,
-            modelURL: basketballURL,
-            userData: JSON.stringify({
-                grabbableKey: {
-                    invertSolidWhileHeld: true
-                }
-            })
+            modelURL: basketballURL
         });
 
         balls.push(ball);

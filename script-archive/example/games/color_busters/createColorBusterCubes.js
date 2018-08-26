@@ -85,12 +85,10 @@ function createColorBusterCube(row, column, vertical) {
         collisionless: false,
         color: startingColor[1],
         position: position,
+        grab: { grabbable: false },
         userData: JSON.stringify({
             hifiColorBusterCubeKey: {
                 originalColorName: startingColor[0]
-            },
-            grabbableKey: {
-                grabbable: false
             }
         })
     };

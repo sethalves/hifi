@@ -64,9 +64,7 @@
                 resetMe: true
             });
 
-            setEntityCustomData('grabbableKey', this.entityID, {
-                wantsTrigger: true
-            });
+            Entities.editEntity(this.entityID, { grab: { triggerable: true } });
         },
 
         flipSwitch: function() {

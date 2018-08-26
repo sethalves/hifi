@@ -114,33 +114,34 @@ var eraser = Entities.addEntity({
         y: -0.1,
         z: 0
     },
+    grab: {
+        equippable: true,
+        equippableLeftPosition: {
+            x: -0.005,
+            y: 0.1101,
+            z: 0.053
+        },
+        equippableLeftRotation: {
+            x: 0.723,
+            y: 0.289,
+            z: 0.142,
+            w: 0.610
+        },
+        equippableRightPosition: {
+            x: 0.020,
+            y: 0.120,
+            z: 0.049
+        },
+        equippableRightRotation: {
+            x: 0.1004,
+            y: 0.6424,
+            z: 0.717,
+            w: 0.250
+        }
+    },
     userData: JSON.stringify({
         originalPosition: eraserPosition,
-        originalRotation: eraserRotation,
-        wearable: {
-            joints: {
-                RightHand: [{
-                    x: 0.020,
-                    y: 0.120,
-                    z: 0.049
-                }, {
-                    x: 0.1004,
-                    y: 0.6424,
-                    z: 0.717,
-                    w: 0.250
-                }],
-                LeftHand: [{
-                    x: -0.005,
-                    y: 0.1101,
-                    z: 0.053
-                }, {
-                    x: 0.723,
-                    y: 0.289,
-                    z: 0.142,
-                    w: 0.610
-                }]
-            }
-        }
+        originalRotation: eraserRotation
     })
 });
 
@@ -202,36 +203,36 @@ function createMarker(modelURL, markerPosition, markerColor) {
             y: 0.027,
             z: 0.164
         },
-        name: "marker",
         script: MARKER_SCRIPT_URL,
+        grab: {
+            equippable: true,
+            equippableLeftPosition: {
+                x: 0.007,
+                y: 0.151,
+                z: 0.061
+            },
+            equippableLeftRotation: {
+                x: -0.417,
+                y: 0.631,
+                z: -0.389,
+                w: -0.525
+            },
+            equippableRightPosition: {
+                x: 0.001,
+                y: 0.139,
+                z: 0.050
+            },
+            equippableRightRotation: {
+                x: -0.73,
+                y: -0.043,
+                z: -0.108,
+                w: -0.666
+            }
+        },
         userData: JSON.stringify({
             originalPosition: markerPosition,
             originalRotation: markerRotation,
-            markerColor: markerColor,
-            wearable: {
-                joints: {
-                    RightHand: [{
-                        x: 0.001,
-                        y: 0.139,
-                        z: 0.050
-                    }, {
-                        x: -0.73,
-                        y: -0.043,
-                        z: -0.108,
-                        w: -0.666
-                    }],
-                    LeftHand: [{
-                        x: 0.007,
-                        y: 0.151,
-                        z: 0.061
-                    }, {
-                        x: -0.417,
-                        y: 0.631,
-                        z: -0.389,
-                        w: -0.525
-                    }]
-                }
-            }
+            markerColor: markerColor
         })
     });
 
