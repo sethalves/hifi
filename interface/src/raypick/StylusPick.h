@@ -31,6 +31,8 @@ public:
         surfaceNormal = stylusPickResult.surfaceNormal;
     }
 
+    virtual PickResultPointer copy() const override { return std::make_shared<StylusPickResult>(*this); }
+
     IntersectionType type { NONE };
     bool intersects { false };
     QUuid objectID;

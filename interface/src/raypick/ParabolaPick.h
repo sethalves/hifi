@@ -34,6 +34,8 @@ public:
         extraInfo = parabolaPickResult.extraInfo;
     }
 
+    virtual PickResultPointer copy() const override { return std::make_shared<ParabolaPickResult>(*this); }
+
     QVariantMap extraInfo;
     QUuid objectID;
     glm::vec3 intersection { NAN };

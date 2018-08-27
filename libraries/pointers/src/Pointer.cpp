@@ -67,7 +67,7 @@ bool Pointer::isMouse() const {
 void Pointer::update(unsigned int pointerID) {
     // This only needs to be a read lock because update won't change any of the properties that can be modified from scripts
     withReadLock([&] {
-        auto pickResult = getPrevPickResult();
+        auto pickResult = getPrevPickResult()->copy();
         auto visualPickResult = getVisualPickResult(pickResult);
         updateVisuals(visualPickResult);
         generatePointerEvents(pointerID, visualPickResult);
