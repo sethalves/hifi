@@ -34,11 +34,7 @@ public:
         extraInfo = parabolaPickResult.extraInfo;
     }
 
-    virtual PickResultPointer copy() const override {
-        ParabolaPickResult* copy = new ParabolaPickResult();
-        *copy = *this;
-        return std::make_shared<PickResult>(copy);
-    }
+    virtual PickResultPointer copy() const override { return std::make_shared<ParabolaPickResult>(*this); }
 
     QVariantMap extraInfo;
     QUuid objectID;

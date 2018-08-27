@@ -39,6 +39,8 @@ public:
         loadState = collisionPickResult.loadState;
     }
 
+    virtual PickResultPointer copy() const override { return std::make_shared<CollisionPickResult>(*this); }
+
     LoadState loadState { LOAD_STATE_UNKNOWN };
     bool intersects { false };
     std::vector<ContactTestResult> entityIntersections;

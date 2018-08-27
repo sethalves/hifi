@@ -32,11 +32,7 @@ public:
         extraInfo = rayPickResult.extraInfo;
     }
 
-    virtual PickResultPointer copy() const override {
-        RayPickResult* copy = new RayPickResult();
-        *copy = *this;
-        return std::make_shared<PickResult>(copy);
-    }
+    virtual PickResultPointer copy() const override { return std::make_shared<RayPickResult>(*this); }
 
     QVariantMap extraInfo;
     QUuid objectID;
