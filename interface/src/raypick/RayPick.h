@@ -32,6 +32,12 @@ public:
         extraInfo = rayPickResult.extraInfo;
     }
 
+    virtual PickResultPointer copy() const override {
+        RayPickResult* copy = new RayPickResult();
+        *copy = *this;
+        return std::make_shared<PickResult>(copy);
+    }
+
     QVariantMap extraInfo;
     QUuid objectID;
     glm::vec3 intersection { NAN };

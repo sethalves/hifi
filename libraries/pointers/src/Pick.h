@@ -104,10 +104,15 @@ public:
     static const PickFilter NOTHING;
 };
 
+class PickResult;
+using PickResultPointer = std::shared_ptr<PickResult>;
+
 class PickResult {
 public:
     PickResult() {}
     PickResult(const QVariantMap& pickVariant) : pickVariant(pickVariant) {}
+
+    virtual PickResultPointer copy() const = 0;
 
     virtual QVariantMap toVariantMap() const {
         return pickVariant;
@@ -126,8 +131,6 @@ public:
 
     QVariantMap pickVariant;
 };
-
-using PickResultPointer = std::shared_ptr<PickResult>;
 
 class PickQuery : protected ReadWriteLockable {
     Q_GADGET

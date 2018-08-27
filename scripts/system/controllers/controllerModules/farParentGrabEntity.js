@@ -591,12 +591,19 @@ Script.include("/~/system/libraries/Xform.js");
 
         this.calculateOffset = function(controllerData) {
             if (this.distanceHolding || this.distanceRotating) {
-                var targetProps = Entities.getEntityProperties(this.targetObject.entityID, [ "position", "rotation" ]);
-                var zeroVector = { x: 0, y: 0, z:0, w: 0 };
+                var targetProps = Entities.getEntityProperties(this.targetObject.entityID,
+                                                               [ "position", "rotation", "registrationPoint", "dimensions" ]);
+
                 var intersection = controllerData.rayPicks[this.hand].intersection;
-                var intersectionMat = new Xform(zeroVector, intersection);
-                var modelMat = new Xform(targetProps.rotation, targetProps.position);
+                var intersectionMat = new Xform({ x: 0, y: 0, z:0, w: 1 }, intersection);
+
+                var DEFAULT_REGISTRATION_POINT = { x: 0.5, y: 0.5, z: 0.5 };
+                var regRatio = Vec3.subtract(DEFAULT_REGISTRATION_POINT, targetProps.registrationPoint);
+                var regOffset = Vec3.multiplyVbyV(regRatio, targetProps.dimensions);
+                var regOffsetRot = Vec3.multiplyQbyV(targetProps.rotation, regOffset);
+                var modelMat = new Xform(targetProps.rotation, Vec3.sum(targetProps.position, regOffsetRot));
                 var modelMatInv = modelMat.inv();
+
                 var xformMat = Xform.mul(modelMatInv, intersectionMat);
                 var offsetMat = Mat4.createFromRotAndTrans(xformMat.rot, xformMat.pos);
                 return offsetMat;
