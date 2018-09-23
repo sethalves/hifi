@@ -116,7 +116,7 @@ const float MARCHING_CUBE_COLLISION_HULL_OFFSET = 0.5;
   previously mentioned gaps along the edges.
 
   Non-edged polyvox entities can be told about their neighbors in all 6 cardinal directions.  On the positive
-  edges of the polyvox, the values are set from the (negative edge of) relevant neighbor so that their meshes
+  edges of the polyvox, the values are set from the (negative edge of the) relevant neighbor so that their meshes
   knit together.  This is handled by bonkNeighbors and copyUpperEdgesFromNeighbors.  In these functions, variable
   names have XP for x-positive, XN x-negative, etc.
 
@@ -136,21 +136,26 @@ void loop3(const T& start, const T& end, F f) {
 }
 
 EntityItemPointer RenderablePolyVoxEntityItem::factory(const EntityItemID& entityID, const EntityItemProperties& properties) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::factory";
     std::shared_ptr<RenderablePolyVoxEntityItem> entity(new RenderablePolyVoxEntityItem(entityID), [](EntityItem* ptr) { ptr->deleteLater(); });
     entity->setProperties(properties);
     entity->initializePolyVox();
     return entity;
 }
 
-RenderablePolyVoxEntityItem::RenderablePolyVoxEntityItem(const EntityItemID& entityItemID) : PolyVoxEntityItem(entityItemID) { }
+RenderablePolyVoxEntityItem::RenderablePolyVoxEntityItem(const EntityItemID& entityItemID) : PolyVoxEntityItem(entityItemID) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::RenderablePolyVoxEntityItem";
+}
 
 RenderablePolyVoxEntityItem::~RenderablePolyVoxEntityItem() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::~RenderablePolyVoxEntityItem";
     withWriteLock([&] {
         _volData.reset();
     });
 }
 
 void RenderablePolyVoxEntityItem::initializePolyVox() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::initializePolyVox";
     setVoxelVolumeSize(_voxelVolumeSize);
 }
 
@@ -167,16 +172,19 @@ bool isEdged(PolyVoxEntityItem::PolyVoxSurfaceStyle surfaceStyle) {
 }
 
 void RenderablePolyVoxEntityItem::setVoxelData(const QByteArray& voxelData) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setVoxelData";
     // compressed voxel information from the entity-server
     withWriteLock([&] {
         if (_voxelData != voxelData) {
             _voxelData = voxelData;
             _voxelDataDirty = true;
+            startUpdates();
         }
     });
 }
 
 void RenderablePolyVoxEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxelSurfaceStyle) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setVoxelSurfaceStyle";
     // this controls whether the polyvox surface extractor does marching-cubes or makes a cubic mesh.  It
     // also determines if the extra "edged" layer is used.
     bool volSizeChanged = false;
@@ -200,6 +208,7 @@ void RenderablePolyVoxEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxel
             _volDataDirty = true;
             _voxelSurfaceStyle = voxelSurfaceStyle;
         }
+        startUpdates();
     });
 
     if (volSizeChanged) {
@@ -264,9 +273,6 @@ bool RenderablePolyVoxEntityItem::setVoxel(const ivec3& v, uint8_t toValue) {
     withWriteLock([&] {
         result = setVoxelInternal(v, toValue);
     });
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
 
     return result;
 }
@@ -282,6 +288,7 @@ void RenderablePolyVoxEntityItem::forEachVoxelValue(const ivec3& voxelSize, std:
 }
 
 QByteArray RenderablePolyVoxEntityItem::volDataToArray(quint16 voxelXSize, quint16 voxelYSize, quint16 voxelZSize) const {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::volDataToArray";
     int totalSize = voxelXSize * voxelYSize * voxelZSize;
     ivec3 voxelSize{ voxelXSize, voxelYSize, voxelZSize };
     ivec3 low{ 0 };
@@ -303,6 +310,7 @@ QByteArray RenderablePolyVoxEntityItem::volDataToArray(quint16 voxelXSize, quint
 }
 
 bool RenderablePolyVoxEntityItem::setAll(uint8_t toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setAll";
     bool result = false;
     if (_locked) {
         return result;
@@ -313,14 +321,12 @@ bool RenderablePolyVoxEntityItem::setAll(uint8_t toValue) {
             result |= setVoxelInternal(v, toValue);
         });
     });
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
     return result;
 }
 
 
 bool RenderablePolyVoxEntityItem::setCuboid(const glm::vec3& lowPosition, const glm::vec3& cuboidSize, int toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setCuboid";
     bool result = false;
     if (_locked) {
         return result;
@@ -338,15 +344,13 @@ bool RenderablePolyVoxEntityItem::setCuboid(const glm::vec3& lowPosition, const 
             result |= setVoxelInternal(v, toValue);
         });
     });
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
     return result;
 }
 
 
 
 bool RenderablePolyVoxEntityItem::setVoxelInVolume(const vec3& position, uint8_t toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setVoxelInVolume";
     if (_locked) {
         return false;
     }
@@ -356,6 +360,7 @@ bool RenderablePolyVoxEntityItem::setVoxelInVolume(const vec3& position, uint8_t
 }
 
 bool RenderablePolyVoxEntityItem::setSphereInVolume(const vec3& center, float radius, uint8_t toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setSphereInVolume";
     bool result = false;
     if (_locked) {
         return result;
@@ -376,13 +381,11 @@ bool RenderablePolyVoxEntityItem::setSphereInVolume(const vec3& center, float ra
         });
     });
 
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
     return result;
 }
 
 bool RenderablePolyVoxEntityItem::setSphere(const vec3& centerWorldCoords, float radiusWorldCoords, uint8_t toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setSphere";
     bool result = false;
     if (_locked) {
         return result;
@@ -436,14 +439,12 @@ bool RenderablePolyVoxEntityItem::setSphere(const vec3& centerWorldCoords, float
         });
     });
 
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
     return result;
 }
 
 bool RenderablePolyVoxEntityItem::setCapsule(const vec3& startWorldCoords, const vec3& endWorldCoords,
                                              float radiusWorldCoords, uint8_t toValue) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setCapsule";
     bool result = false;
     if (_locked) {
         return result;
@@ -484,9 +485,6 @@ bool RenderablePolyVoxEntityItem::setCapsule(const vec3& startWorldCoords, const
         });
     });
 
-    if (result) {
-        compressVolumeDataAndSendEditPacket();
-    }
     return result;
 }
 
@@ -711,13 +709,18 @@ ShapeType RenderablePolyVoxEntityItem::getShapeType() const {
 }
 
 void RenderablePolyVoxEntityItem::setRegistrationPoint(const glm::vec3& value) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setRegistrationPoint";
+
     if (value != _registrationPoint) {
         _meshDirty = true;
         EntityItem::setRegistrationPoint(value);
+        startUpdates();
     }
 }
 
 bool RenderablePolyVoxEntityItem::isReadyToComputeShape() const {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::isReadyToComputeShape";
+
     ShapeType shapeType = getShapeType();
     if (shapeType == SHAPE_TYPE_NONE) {
         return true;
@@ -736,6 +739,9 @@ bool RenderablePolyVoxEntityItem::isReadyToComputeShape() const {
 
 void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
     ShapeType shapeType = getShapeType();
+
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::computeShapeInfo" << shapeType;
+
     if (shapeType == SHAPE_TYPE_NONE) {
         info.setParams(getShapeType(), 0.5f * getScaledDimensions());
         return;
@@ -748,29 +754,138 @@ void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
 }
 
 bool RenderablePolyVoxEntityItem::updateDependents() {
-    bool voxelDataDirty;
-    bool volDataDirty;
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::updateDependents";
+
+    // bool voxelDataDirty;
+    // bool volDataDirty;
+    // withWriteLock([&] {
+    //     voxelDataDirty = _voxelDataDirty;
+    //     volDataDirty = _volDataDirty;
+    //     if (_voxelDataDirty) {
+    //         _voxelDataDirty = false;
+    //     } else if (_volDataDirty) {
+    //         _volDataDirty = false;
+    //     } else {
+    //         _meshReady = true;
+    //     }
+    // });
+    // if (voxelDataDirty) {
+    //     decompressVolumeData();
+    // } else if (volDataDirty) {
+    //     recomputeMesh();
+    // }
+
+    // return !volDataDirty;
+
+    bool result;
+    bool doRecomputeMesh { false };
+    bool doDecompress { false };
+    bool doCompress { false };
+
     withWriteLock([&] {
-        voxelDataDirty = _voxelDataDirty;
-        volDataDirty = _volDataDirty;
-        if (_voxelDataDirty) {
-            _voxelDataDirty = false;
-        } else if (_volDataDirty) {
-            _volDataDirty = false;
-        } else {
-            _meshReady = true;
+        qDebug() << "QQQQ state = " << _state;
+        switch (_state) {
+            case 0: {
+                if (_volDataDirty) {
+                    _volDataDirty = false;
+                    _state = 2;
+                    _recomputeMeshRunning = true;
+                } else if (_voxelDataDirty) {
+                    _voxelDataDirty = false;
+                    _state = 1;
+                    _decompressRunning = true;
+                }
+                break;
+            }
+            case 1: {
+                if (_decompressRunning) {
+                    // wait.
+                } else if (_voxelDataDirty) {
+                    _voxelDataDirty = false;
+                    // _voxelData changes while we were decompressing the previous version.
+                    _decompressRunning = true;
+                } else if (_volDataDirty) {
+                    _volDataDirty = false;
+                    // a local edit happened while we were decompressing.
+                    // XXX what should happen here?
+                    _state = 3;
+                    _recomputeMeshRunning = true;
+                } else {
+                    _state = 3;
+                    _recomputeMeshRunning = true;
+                }
+                break;
+            }
+            case 2: {
+                if (_recomputeMeshRunning) {
+                    // wait.
+                } else if (_voxelDataDirty) {
+                    _voxelDataDirty = false;
+                    // we received a change from the wire while baking the mesh.
+                    _state = 1;
+                    _decompressRunning = true;
+                } else if (_volDataDirty) {
+                    _volDataDirty = false;
+                    // a local edit happened while we were baking the mesh.  rebake...
+                    _recomputeMeshRunning = true;
+                } else {
+                    _state = 4;
+                    _compressRunning = true;
+                }
+                break;
+            }
+            case 3: {
+                if (_recomputeMeshRunning) {
+                    // wait
+                } else {
+                    _state = 0;
+                    _updateNeeded = false;
+                }
+                break;
+            }
+            case 4: {
+                if (_compressRunning) {
+                    // wait
+                } else {
+                    _state = 0;
+                    _updateNeeded = false;
+                }
+            }
         }
+
+        doRecomputeMesh = _recomputeMeshRunning;
+        doDecompress = _decompressRunning;
+        doCompress = _compressRunning;
+        result = _updateNeeded;
     });
-    if (voxelDataDirty) {
-        decompressVolumeData();
-    } else if (volDataDirty) {
+
+    if (doRecomputeMesh) {
         recomputeMesh();
     }
+    if (doDecompress) {
+        decompressVolumeData();
+    }
+    if (doCompress) {
+        compressVolumeDataAndSendEditPacket();
+    }
 
-    return !volDataDirty;
+    return result;
+}
+
+void RenderablePolyVoxEntityItem::startUpdates() {
+    if (!_updateNeeded) {
+        _updateNeeded = true;
+        _flags |= Simulation::DIRTY_UPDATEABLE;
+    }
+}
+
+void RenderablePolyVoxEntityItem::update(const quint64& now) {
+    updateDependents();
 }
 
 void RenderablePolyVoxEntityItem::setVoxelVolumeSize(const glm::vec3& voxelVolumeSize) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setVoxelVolumeSize";
+
     // This controls how many individual voxels are in the entity.  This is unrelated to
     // the dimentions of the entity -- it defines the sizes of the arrays that hold voxel values.
     // In addition to setting the number of voxels, this is used in a few places for its
@@ -784,6 +899,7 @@ void RenderablePolyVoxEntityItem::setVoxelVolumeSize(const glm::vec3& voxelVolum
         _voxelVolumeSize = voxelVolumeSize;
         _volData.reset();
         _onCount = 0;
+        startUpdates();
 
         static const PolyVox::Vector3DInt32 lowCorner(0, 0, 0);
         PolyVox::Vector3DInt32 highCorner;
@@ -905,6 +1021,8 @@ bool RenderablePolyVoxEntityItem::updateOnCount(const ivec3& v, uint8_t toValue)
 }
 
 void RenderablePolyVoxEntityItem::decompressVolumeData() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::decompressVolumeData";
+
     // take compressed data and expand it into _volData.
     QByteArray voxelData;
     auto entity = std::static_pointer_cast<RenderablePolyVoxEntityItem>(getThisPointer());
@@ -925,7 +1043,6 @@ void RenderablePolyVoxEntityItem::decompressVolumeData() {
             voxelZSize == 0 || voxelZSize > PolyVoxEntityItem::MAX_VOXEL_DIMENSION) {
             qCDebug(entitiesrenderer) << "voxelSize is not reasonable, skipping decompressions."
                      << voxelXSize << voxelYSize << voxelZSize << getName() << getID();
-            entity->setVoxelDataDirty(false);
             return;
         }
         int rawSize = voxelXSize * voxelYSize * voxelZSize;
@@ -939,7 +1056,6 @@ void RenderablePolyVoxEntityItem::decompressVolumeData() {
             qCDebug(entitiesrenderer) << "PolyVox decompress -- size is (" << voxelXSize << voxelYSize << voxelZSize << ")"
                      << "so expected uncompressed length of" << rawSize << "but length is" << uncompressedData.size()
                      << getName() << getID();
-            entity->setVoxelDataDirty(false);
             return;
         }
 
@@ -949,17 +1065,21 @@ void RenderablePolyVoxEntityItem::decompressVolumeData() {
 
 void RenderablePolyVoxEntityItem::setVoxelsFromData(QByteArray uncompressedData,
                                                     quint16 voxelXSize, quint16 voxelYSize, quint16 voxelZSize) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setVoxelsFromData";
+
     // this accepts the payload from decompressVolumeData
     withWriteLock([&] {
         loop3(ivec3(0), ivec3(voxelXSize, voxelYSize, voxelZSize), [&](const ivec3& v) {
             int uncompressedIndex = (v.z * voxelYSize * voxelXSize) + (v.y * voxelZSize) + v.x;
             setVoxelInternal(v, uncompressedData[uncompressedIndex]);
         });
-        _volDataDirty = true;
+        _decompressRunning = false;
     });
 }
 
 void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket";
+
     // compress the data in _volData and save the results.  The compressed form is used during
     // saves to disk and for transmission over the wire to the entity-server
 
@@ -1015,6 +1135,8 @@ void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
                 packetSender->queueEditEntityMessage(PacketType::EntityEdit, tree, entity->getID(), properties);
             }
         });
+
+        std::static_pointer_cast<RenderablePolyVoxEntityItem>(entity)->compressFinished();
     });
 }
 
@@ -1061,6 +1183,8 @@ void RenderablePolyVoxEntityItem::cacheNeighbors() {
 }
 
 void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors";
+
     // fill in our upper edges with a copy of our neighbors lower edges so that the meshes knit together
     if (_voxelSurfaceStyle != PolyVoxEntityItem::SURFACE_MARCHING_CUBES) {
         return;
@@ -1117,6 +1241,8 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
 }
 
 void RenderablePolyVoxEntityItem::recomputeMesh() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::recomputeMesh";
+
     // use _volData to make a renderable mesh
     PolyVoxSurfaceStyle voxelSurfaceStyle;
     withReadLock([&] {
@@ -1203,6 +1329,8 @@ void RenderablePolyVoxEntityItem::recomputeMesh() {
 }
 
 void RenderablePolyVoxEntityItem::setMesh(graphics::MeshPointer mesh) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setMesh";
+
     // this catches the payload from recomputeMesh
     bool neighborsNeedUpdate;
     withWriteLock([&] {
@@ -1214,6 +1342,8 @@ void RenderablePolyVoxEntityItem::setMesh(graphics::MeshPointer mesh) {
         _meshReady = true;
         neighborsNeedUpdate = _neighborsNeedUpdate;
         _neighborsNeedUpdate = false;
+        _recomputeMeshRunning = false;
+        startUpdates();
     });
     if (neighborsNeedUpdate) {
         bonkNeighbors();
@@ -1223,6 +1353,8 @@ void RenderablePolyVoxEntityItem::setMesh(graphics::MeshPointer mesh) {
 }
 
 void RenderablePolyVoxEntityItem::computeShapeInfoWorker() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::computeShapeInfoWorker";
+
     // this creates a collision-shape for the physics engine.  The shape comes from
     // _volData for cubic extractors and from _mesh for marching-cube extractors
     if (!_meshReady) {
@@ -1359,6 +1491,8 @@ void RenderablePolyVoxEntityItem::computeShapeInfoWorker() {
 }
 
 void RenderablePolyVoxEntityItem::setCollisionPoints(ShapeInfo::PointCollection pointCollection, AABox box) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::setCollisionPoints";
+
     // this catches the payload from computeShapeInfoWorker
     if (pointCollection.isEmpty()) {
         EntityItem::computeShapeInfo(_shapeInfo);
@@ -1419,6 +1553,7 @@ void RenderablePolyVoxEntityItem::setXPNeighborID(const EntityItemID& xPNeighbor
     if (xPNeighborID != _xPNeighborID) {
         PolyVoxEntityItem::setXPNeighborID(xPNeighborID);
         _volDataDirty = true;
+        startUpdates();
     }
 }
 
@@ -1429,6 +1564,7 @@ void RenderablePolyVoxEntityItem::setYPNeighborID(const EntityItemID& yPNeighbor
     if (yPNeighborID != _yPNeighborID) {
         PolyVoxEntityItem::setYPNeighborID(yPNeighborID);
         _volDataDirty = true;
+        startUpdates();
     }
 }
 
@@ -1439,6 +1575,7 @@ void RenderablePolyVoxEntityItem::setZPNeighborID(const EntityItemID& zPNeighbor
     if (zPNeighborID != _zPNeighborID) {
         PolyVoxEntityItem::setZPNeighborID(zPNeighborID);
         _volDataDirty = true;
+        startUpdates();
     }
 }
 
@@ -1467,6 +1604,8 @@ std::shared_ptr<RenderablePolyVoxEntityItem> RenderablePolyVoxEntityItem::getZPN
 }
 
 void RenderablePolyVoxEntityItem::bonkNeighbors() {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::bonkNeighbors";
+
     // flag neighbors to the negative of this entity as needing to rebake their meshes.
     cacheNeighbors();
 
@@ -1487,9 +1626,11 @@ void RenderablePolyVoxEntityItem::bonkNeighbors() {
 
 // deprecated
 bool RenderablePolyVoxEntityItem::getMeshes(MeshProxyList& result) {
-    if (!updateDependents()) {
-        return false;
-    }
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::getMeshes";
+
+    // if (!updateDependents()) {
+    //     return false;
+    // }
 
     bool success = false;
     if (_mesh) {
@@ -1519,7 +1660,9 @@ bool RenderablePolyVoxEntityItem::getMeshes(MeshProxyList& result) {
 }
 
 scriptable::ScriptableModelBase RenderablePolyVoxEntityItem::getScriptableModel() {
-    if (!updateDependents() || !_mesh) {
+    qDebug() << "QQQQ RenderablePolyVoxEntityItem::getScriptableModel";
+
+    if (/* !updateDependents() || */ !_mesh) {
         return scriptable::ScriptableModelBase();
     }
 
@@ -1559,6 +1702,8 @@ static gpu::Stream::FormatPointer _vertexFormat;
 
 ShapePipelinePointer shapePipelineFactory(const ShapePlumber& plumber, const ShapeKey& key, gpu::Batch& batch) {
     if (!_pipelines[0]) {
+        qDebug() << "QQQQ RenderablePolyVoxEntityItem -- shapePipelineFactory";
+
         using namespace shader::entities_renderer::program;
         int programsIds[2] = { polyvox, polyvox_fade };
 
@@ -1604,6 +1749,8 @@ ShapePipelinePointer shapePipelineFactory(const ShapePlumber& plumber, const Sha
 PolyVoxEntityRenderer::PolyVoxEntityRenderer(const EntityItemPointer& entity) : Parent(entity) {
     static std::once_flag once;
     std::call_once(once, [&] {
+        qDebug() << "QQQQ RenderablePolyVoxEntityItem -- PolyVoxEntityRenderer";
+
         CUSTOM_PIPELINE_NUMBER = render::ShapePipeline::registerCustomShapePipelineFactory(shapePipelineFactory);
         _vertexFormat = std::make_shared<gpu::Stream::Format>();
         _vertexFormat->setAttribute(gpu::Stream::POSITION, 0, gpu::Element(gpu::VEC3, gpu::FLOAT, gpu::XYZ), 0);
@@ -1647,9 +1794,7 @@ bool PolyVoxEntityRenderer::needsRenderUpdateFromTypedEntity(const TypedEntityPo
 }
 
 void PolyVoxEntityRenderer::doRenderUpdateSynchronousTyped(const ScenePointer& scene, Transaction& transaction, const TypedEntityPointer& entity) {
-    if (entity->_voxelDataDirty || entity->_volDataDirty) {
-        entity->updateDependents();
-    }
+    // entity->updateDependents();
 
 #ifdef POLYVOX_ENTITY_USE_FADE_EFFECT
     if (!_hasTransitioned) {
