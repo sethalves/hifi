@@ -259,6 +259,7 @@ void OffscreenSurface::setMaxFps(uint8_t maxFps) {
 
 void OffscreenSurface::load(const QUrl& qmlSource, QQuickItem* parent, const QJSValue& callback) {
     loadInternal(qmlSource, false, parent, [callback](QQmlContext* context, QQuickItem* newItem) {
+        assert(QThread::currentThread() == QJSValue(callback).engine()->thread());
         QJSValue(callback).call(QJSValueList() << context->engine()->newQObject(newItem));
     });
 }

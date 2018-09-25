@@ -129,6 +129,7 @@ void XMLHttpRequestClass::setReadyState(ReadyState readyState) {
     if (readyState != _readyState) {
         _readyState = readyState;
         if (_onReadyStateChange.isFunction()) {
+            assert(QThread::currentThread() == _onReadyStateChange.engine()->thread());
             _onReadyStateChange.call(QScriptValue::NullValue);
         }
     }
@@ -201,6 +202,7 @@ void XMLHttpRequestClass::doSend() {
 
 void XMLHttpRequestClass::requestTimeout() {
     if (_onTimeout.isFunction()) {
+        assert(QThread::currentThread() == _onTimeout.engine()->thread());
         _onTimeout.call(QScriptValue::NullValue);
     }
     abortRequest();

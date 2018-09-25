@@ -1301,6 +1301,7 @@ void ScriptEngine::callAnimationStateHandler(QScriptValue callback, AnimVariantM
     QScriptValueList callingArguments;
     callingArguments << javascriptParameters;
     assert(currentEntityIdentifier.isInvalidID()); // No animation state handlers from entity scripts.
+    assert(QThread::currentThread() == callback.engine()->thread());
     QScriptValue result = callback.call(QScriptValue(), callingArguments);
 
     // validate result from callback function.
@@ -2596,6 +2597,7 @@ void ScriptEngine::doWithEnvironment(const EntityItemID& entityID, const QUrl& s
 
 void ScriptEngine::callWithEnvironment(const EntityItemID& entityID, const QUrl& sandboxURL, QScriptValue function, QScriptValue thisObject, QScriptValueList args) {
     auto operation = [&]() {
+        assert(QThread::currentThread() == function.engine()->thread());
         function.call(thisObject, args);
     };
     doWithEnvironment(entityID, sandboxURL, operation);

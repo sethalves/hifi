@@ -15,6 +15,7 @@
 #include <QScriptValue>
 #include <QScriptValueList>
 #include <QScriptEngine>
+#include <assert.h>
 
 UndoStackScriptingInterface::UndoStackScriptingInterface(QUndoStack* undoStack) : _undoStack(undoStack) {
 }
@@ -56,11 +57,13 @@ void ScriptUndoCommand::redo() {
 void ScriptUndoCommand::doUndo() {
     QScriptValueList args;
     args << _undoData;
+    assert(QThread::currentThread() == _undoFunction.engine()->thread());
     _undoFunction.call(QScriptValue(), args);
 }
 
 void ScriptUndoCommand::doRedo() {
     QScriptValueList args;
     args << _redoData;
+    assert(QThread::currentThread() == _redoFunction.engine()->thread());
     _redoFunction.call(QScriptValue(), args);
 }

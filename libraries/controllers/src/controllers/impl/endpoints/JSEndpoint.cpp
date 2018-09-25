@@ -6,6 +6,9 @@
 //  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 //
 
+#include <QThread>
+#include <QJSEngine>
+
 #include "JSEndpoint.h"
 #include "../../Logging.h"
 
@@ -31,6 +34,7 @@ QString formatException(const QJSValue& exception) {
 }
 
 float JSEndpoint::peek() const {
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QJSValue result = _callable.call();
     if (result.isError()) {
         qCDebug(controllers).noquote() << formatException(result);
@@ -41,6 +45,7 @@ float JSEndpoint::peek() const {
 }
 
 void JSEndpoint::apply(float newValue, const Pointer& source) {
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QJSValue result = _callable.call(QJSValueList({ QJSValue(newValue) }));
     if (result.isError()) {
         qCDebug(controllers).noquote() << formatException(result);

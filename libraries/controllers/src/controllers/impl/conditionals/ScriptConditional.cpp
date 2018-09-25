@@ -9,6 +9,8 @@
 #include "ScriptConditional.h"
 
 #include <QtCore/QThread>
+#include <QScriptEngine>
+#include <assert.h>
 
 using namespace controller;
 
@@ -23,5 +25,6 @@ void ScriptConditional::updateValue() {
         return;
     }
 
+    assert(QThread::currentThread() == _callable.engine()->thread());
     _lastValue = _callable.call().toBool();
 }

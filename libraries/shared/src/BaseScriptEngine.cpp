@@ -18,6 +18,7 @@
 #include <QtScript/QScriptValue>
 #include <QtScript/QScriptValueIterator>
 #include <QtScript/QScriptContextInfo>
+#include <assert.h>
 
 #include "Profile.h"
 
@@ -340,6 +341,7 @@ QScriptValue makeScopedHandlerObject(QScriptValue scopeOrCallback, QScriptValue 
 }
 
 QScriptValue callScopedHandlerObject(QScriptValue handler, QScriptValue err, QScriptValue result) {
+    assert(QThread::currentThread() == handler.property("callback").engine()->thread());
     return handler.property("callback").call(handler.property("scope"), QScriptValueList({ err, result }));
 }
 

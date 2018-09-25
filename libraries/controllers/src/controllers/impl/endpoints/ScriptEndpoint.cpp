@@ -9,6 +9,7 @@
 #include "ScriptEndpoint.h"
 #include "../../Logging.h"
 
+#include <QScriptEngine>
 #include <QtCore/QThread>
 
 #include <StreamUtils.h>
@@ -45,12 +46,14 @@ void ScriptEndpoint::updateValue() {
         return;
     }
 
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QScriptValue result = _callable.call();
     if (result.isError()) {
         // print JavaScript exception
         qCDebug(controllers).noquote() << formatException(result);
         _lastValueRead = 0.0f;
     } else if (result.isNumber()) {
+        assert(QThread::currentThread() == _callable.engine()->thread());
         _lastValueRead = (float)_callable.call().toNumber();
     } else {
         Pose::fromScriptValue(result, _lastPoseRead);
@@ -73,6 +76,7 @@ void ScriptEndpoint::internalApply(float value, int sourceID) {
             Q_ARG(int, sourceID));
         return;
     }
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QScriptValue result = _callable.call(QScriptValue(),
         QScriptValueList({ QScriptValue(value), QScriptValue(sourceID) }));
     if (result.isError()) {
@@ -91,6 +95,7 @@ void ScriptEndpoint::updatePose() {
         QMetaObject::invokeMethod(this, "updatePose", Qt::QueuedConnection);
         return;
     }
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QScriptValue result = _callable.call();
     if (result.isError()) {
         // print JavaScript exception
@@ -114,6 +119,7 @@ void ScriptEndpoint::internalApply(const Pose& newPose, int sourceID) {
             Q_ARG(int, sourceID));
         return;
     }
+    assert(QThread::currentThread() == _callable.engine()->thread());
     QScriptValue result = _callable.call(QScriptValue(),
         QScriptValueList({ Pose::toScriptValue(_callable.engine(), newPose), QScriptValue(sourceID) }));
     if (result.isError()) {

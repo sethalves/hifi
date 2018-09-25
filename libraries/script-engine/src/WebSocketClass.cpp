@@ -77,12 +77,14 @@ void WebSocketClass::handleOnClose() {
         arg.setProperty("reason", _webSocket->closeReason());
         arg.setProperty("wasClean", !hasError);
         args << arg;
+        assert(QThread::currentThread() == _onCloseEvent.engine()->thread());
         _onCloseEvent.call(QScriptValue(), args);
     }
 }
 
 void WebSocketClass::handleOnError(QAbstractSocket::SocketError error) {
     if (_onErrorEvent.isFunction()) {
+        assert(QThread::currentThread() == _onErrorEvent.engine()->thread());
         _onErrorEvent.call();
     }
 }
@@ -93,12 +95,14 @@ void WebSocketClass::handleOnMessage(const QString& message) {
         QScriptValue arg = _engine->newObject();
         arg.setProperty("data", message);
         args << arg;
+        assert(QThread::currentThread() == _onMessageEvent.engine()->thread());
         _onMessageEvent.call(QScriptValue(), args);
     }
 }
 
 void WebSocketClass::handleOnOpen() {
     if (_onOpenEvent.isFunction()) {
+        assert(QThread::currentThread() == _onOpenEvent.engine()->thread());
         _onOpenEvent.call();
     }
 }

@@ -128,6 +128,7 @@ bool EntityEditFilters::filter(glm::vec3& position, EntityItemProperties& proper
                 }
             }
 
+            assert(QThread::currentThread() == filterData.filterFn.engine()->thread());
             QScriptValue result = filterData.filterFn.call(_nullObjectForFilter, args);
 
             if (filterData.uncaughtExceptions()) {

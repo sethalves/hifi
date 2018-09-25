@@ -1024,6 +1024,7 @@ bool EntityScriptingInterface::getServerScriptStatus(QUuid entityID, QScriptValu
     connect(request, &GetScriptStatusRequest::finished, callback.engine(), [callback](GetScriptStatusRequest* request) mutable {
         QString statusString = EntityScriptStatus_::valueToKey(request->getStatus());;
         QScriptValueList args { request->getResponseReceived(), request->getIsRunning(), statusString.toLower(), request->getErrorInfo() };
+        assert(QThread::currentThread() == callback.engine()->thread());
         callback.call(QScriptValue(), args);
         request->deleteLater();
     });
@@ -1821,6 +1822,7 @@ void EntityScriptingInterface::getMeshes(QUuid entityID, QScriptValue callback) 
     if (!entity) {
         qCDebug(entities) << "EntityScriptingInterface::getMeshes no entity with ID" << entityID;
         QScriptValueList args { callback.engine()->undefinedValue(), false };
+        assert(QThread::currentThread() == callback.engine()->thread());
         callback.call(QScriptValue(), args);
         return;
     }
@@ -1831,9 +1833,11 @@ void EntityScriptingInterface::getMeshes(QUuid entityID, QScriptValue callback) 
     if (success) {
         QScriptValue resultAsScriptValue = meshesToScriptValue(callback.engine(), result);
         QScriptValueList args { resultAsScriptValue, true };
+        assert(QThread::currentThread() == callback.engine()->thread());
         callback.call(QScriptValue(), args);
     } else {
         QScriptValueList args { callback.engine()->undefinedValue(), false };
+        assert(QThread::currentThread() == callback.engine()->thread());
         callback.call(QScriptValue(), args);
     }
 }

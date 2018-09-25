@@ -59,6 +59,7 @@ void RecordingScriptingInterface::playClip(NetworkClipLoaderPointer clipLoader, 
 
     if (callback.isFunction()) {
         QScriptValueList args { true, url };
+        assert(QThread::currentThread() == callback.engine()->thread());
         callback.call(QScriptValue(), args);
     }
 }
@@ -97,6 +98,7 @@ void RecordingScriptingInterface::loadRecording(const QString& url, QScriptValue
 
         if (callback.isFunction()) {
             QScriptValueList args { false, url };
+            assert(QThread::currentThread() == callback.engine()->thread());
             callback.call(QScriptValue(), args);
         }
 
@@ -257,6 +259,7 @@ bool RecordingScriptingInterface::saveRecordingToAsset(QScriptValue getClipAtpUr
 
             QScriptValueList args;
             args << clip_atp_url;
+            assert(QThread::currentThread() == getClipAtpUrl.engine()->thread());
             getClipAtpUrl.call(QScriptValue(), args);
         });
         upload->start();

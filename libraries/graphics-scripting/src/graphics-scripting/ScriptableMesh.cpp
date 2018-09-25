@@ -264,6 +264,7 @@ glm::uint32 scriptable::ScriptableMesh::forEachVertex(QScriptValue _callback) {
     auto meshPart = js ? js->toScriptValue(getSelf()) : QScriptValue::NullValue;
     int numProcessed = 0;
     buffer_helpers::mesh::forEachVertex(mesh, [&](glm::uint32 index, const QVariantMap& values) {
+        assert(QThread::currentThread() == callback.engine()->thread());
         auto result = callback.call(scope, { js->toScriptValue(values), index, meshPart });
         if (js->hasUncaughtException()) {
             js->currentContext()->throwValue(js->uncaughtException());
@@ -295,6 +296,7 @@ glm::uint32 scriptable::ScriptableMesh::updateVertexAttributes(QScriptValue _cal
     auto attributeViews = buffer_helpers::mesh::getAllBufferViews(mesh);
     buffer_helpers::mesh::forEachVertex(mesh, [&](glm::uint32 index, const QVariantMap& values) {
         auto obj = js->toScriptValue(values);
+        assert(QThread::currentThread() == callback.engine()->thread());
         auto result = callback.call(scope, { obj, index, meshPart });
         if (js->hasUncaughtException()) {
             js->currentContext()->throwValue(js->uncaughtException());
