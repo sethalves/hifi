@@ -15,6 +15,7 @@
 #include <QScriptValue>
 #include <QScriptValueList>
 #include <QScriptEngine>
+#include <QThread>
 #include <assert.h>
 
 UndoStackScriptingInterface::UndoStackScriptingInterface(QUndoStack* undoStack) : _undoStack(undoStack) {
