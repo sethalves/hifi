@@ -586,23 +586,45 @@ const char* SETTINGS_AVATAR_ROTATION_KEY = "avatarPosition";
 void SixenseManager::saveSettings() const {
     Settings settings;
     QString idString = getID();
-    settings.beginGroup(idString);
-    {
-        settings.setValue(QString(SETTINGS_ENABLED_KEY), _isEnabled);
-        settings.setVec3Value(QString(SETTINGS_AVATAR_POSITION_KEY), _inputDevice->_avatarPosition);
-        settings.setQuatValue(QString(SETTINGS_AVATAR_ROTATION_KEY), _inputDevice->_avatarRotation);
-    }
-    settings.endGroup();
+
+    Setting::Handle<bool> enabledHandle(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY, DEFAULT_ENABLED);
+    Setting::Handle<float> avatarPositionHandleX(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "x", 0.0f);
+    Setting::Handle<float> avatarPositionHandleY(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "y", 0.0f);
+    Setting::Handle<float> avatarPositionHandleZ(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "z", 0.0f);
+    Setting::Handle<float> avatarRotationHandleW(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "w", 1.0f);
+    Setting::Handle<float> avatarRotationHandleX(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "x", 0.0f);
+    Setting::Handle<float> avatarRotationHandleY(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "y", 0.0f);
+    Setting::Handle<float> avatarRotationHandleZ(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "z", 0.0f);
+
+    enabledHandle.set(_isEnabled);
+    avatarPositionHandleX.set(_inputDevice->_avatarPosition.x);
+    avatarPositionHandleY.set(_inputDevice->_avatarPosition.y);
+    avatarPositionHandleZ.set(_inputDevice->_avatarPosition.z);
+    avatarRotationHandleW.set(_inputDevice->_avatarRotation.w);
+    avatarRotationHandleX.set(_inputDevice->_avatarRotation.x);
+    avatarRotationHandleY.set(_inputDevice->_avatarRotation.y);
+    avatarRotationHandleZ.set(_inputDevice->_avatarRotation.z);
 }
 
 void SixenseManager::loadSettings() {
     Settings settings;
     QString idString = getID();
-    settings.beginGroup(idString);
-    {
-        _isEnabled = settings.value(SETTINGS_ENABLED_KEY, QVariant(DEFAULT_ENABLED)).toBool();
-        settings.getVec3ValueIfValid(QString(SETTINGS_AVATAR_POSITION_KEY), _inputDevice->_avatarPosition);
-        settings.getQuatValueIfValid(QString(SETTINGS_AVATAR_ROTATION_KEY), _inputDevice->_avatarRotation);
-    }
-    settings.endGroup();
+
+    Setting::Handle<bool> enabledHandle(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY, DEFAULT_ENABLED);
+    Setting::Handle<float> avatarPositionHandleX(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "x", 0.0f);
+    Setting::Handle<float> avatarPositionHandleY(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "y", 0.0f);
+    Setting::Handle<float> avatarPositionHandleZ(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "z", 0.0f);
+    Setting::Handle<float> avatarRotationHandleW(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "w", 1.0f);
+    Setting::Handle<float> avatarRotationHandleX(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "x", 0.0f);
+    Setting::Handle<float> avatarRotationHandleY(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "y", 0.0f);
+    Setting::Handle<float> avatarRotationHandleZ(QStringList() << SIXENSE_ID_STRING << SETTINGS_ENABLED_KEY << "z", 0.0f);
+
+    _isEnabled = enabledHandle.get();
+    _inputDevice->_avatarPosition = glm::vec3(avatarPositionHandleX.get(),
+                                              avatarPositionHandleY.get(),
+                                              avatarPositionHandleZ.get());
+    _inputDevice->_avatarRotation = glm::quat(avatarRotationHandleW.get(),
+                                              avatarRotationHandleX.get(),
+                                              avatarRotationHandleY.get(),
+                                              avatarRotationHandleZ.get());
 }
