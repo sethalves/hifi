@@ -109,7 +109,7 @@ class PickResult {
 public:
     PickResult() {}
     PickResult(const QVariantMap& pickVariant) : pickVariant(pickVariant) {}
-    virtual ~PickResult() {}
+    virtual ~PickResult() = default;
 
     virtual QVariantMap toVariantMap() const {
         return pickVariant;
@@ -135,6 +135,7 @@ class PickQuery : protected ReadWriteLockable {
     Q_GADGET
 public:
     PickQuery(const PickFilter& filter, const float maxDistance, const bool enabled);
+    virtual ~PickQuery() = default;
 
     /**jsdoc
      * Enum for different types of Picks and Pointers.
@@ -234,7 +235,6 @@ template<typename T>
 class Pick : public PickQuery {
 public:
     Pick(const PickFilter& filter, const float maxDistance, const bool enabled) : PickQuery(filter, maxDistance, enabled) {}
-    virtual ~Pick() {}
 
     virtual T getMathematicalPick() const = 0;
     virtual PickResultPointer getDefaultResult(const QVariantMap& pickVariant) const = 0;
