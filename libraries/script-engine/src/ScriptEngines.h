@@ -56,6 +56,9 @@ public:
     using ScriptInitializer = ScriptInitializerMixin::ScriptInitializer;
 
     ScriptEngines(ScriptEngine::Context context);
+    virtual ~ScriptEngines() {
+        qDebug() << "QQQQ XXXXXXX ~ScriptEngines";
+    }
     void registerScriptInitializer(ScriptInitializer initializer);
     int runScriptInitializers(ScriptEnginePointer engine);
     void loadScripts();

@@ -55,6 +55,7 @@ static const int DEFAULT_MAX_ENTITY_PPS = 9000;
 static const int DEFAULT_ENTITY_PPS_PER_SCRIPT = 900;
 
 class ScriptEngines;
+using ScriptEnginesPointer = QSharedPointer<ScriptEngines>;
 
 Q_DECLARE_METATYPE(ScriptEnginePointer)
 
@@ -155,7 +156,7 @@ public:
     Q_INVOKABLE void stop(bool marshal = false);
 
     // Stop any evaluating scripts and wait for the scripting thread to finish.
-    void waitTillDoneRunning();
+    void waitTillDoneRunning(bool deleteWhenDone = false);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // NOTE - these are NOT intended to be public interfaces available to scripts, the are only Q_INVOKABLE so we can
@@ -563,6 +564,8 @@ public:
     bool getEntityScriptDetails(const EntityItemID& entityID, EntityScriptDetails &details) const;
     bool hasEntityScriptDetails(const EntityItemID& entityID) const;
 
+    void setScriptEngines(ScriptEnginesPointer scriptEngines) { _scriptEngines = scriptEngines; }
+
 public slots:
 
     /**jsdoc
@@ -817,6 +820,10 @@ protected:
     static const QString _SETTINGS_ENABLE_EXTENDED_EXCEPTIONS;
 
     Setting::Handle<bool> _enableExtendedJSExceptions { _SETTINGS_ENABLE_EXTENDED_EXCEPTIONS, true };
+
+    ScriptEnginesPointer _scriptEngines; // to keep ScriptEngines alive until all these are dead
+
+    bool _deleteWhenDone { false };
 };
 
 ScriptEnginePointer scriptEngineFactory(ScriptEngine::Context context,

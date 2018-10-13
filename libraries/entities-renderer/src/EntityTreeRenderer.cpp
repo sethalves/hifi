@@ -122,6 +122,11 @@ EntityTreeRenderer::EntityTreeRenderer(bool wantScripts, AbstractViewStateInterf
 EntityTreeRenderer::~EntityTreeRenderer() {
     // NOTE: We don't need to delete _entitiesScriptEngine because
     //       it is registered with ScriptEngines, which will call deleteLater for us.
+
+    auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
+    if (entityScriptingInterface) {
+        entityScriptingInterface->setEntitiesScriptEngine(nullptr);
+    }
 }
 
 EntityRendererPointer EntityTreeRenderer::renderableForEntityId(const EntityItemID& id) const {

@@ -284,8 +284,8 @@ void AudioClient::customDeleter() {
 #if defined(Q_OS_ANDROID)
     _shouldRestartInputSetup = false;
 #endif
-    stop();
-    deleteLater();
+
+    QMetaObject::invokeMethod(this, "stop");
 }
 
 void AudioClient::handleMismatchAudioFormat(SharedNodePointer node, const QString& currentCodec, const QString& recievedCodec) {
@@ -681,6 +681,8 @@ void AudioClient::stop() {
     _checkInputTimer.stop();
     disconnect(&_checkInputTimer, &QTimer::timeout, 0, 0);
 #endif
+
+    deleteLater();
 }
 
 void AudioClient::handleAudioEnvironmentDataPacket(QSharedPointer<ReceivedMessage> message) {

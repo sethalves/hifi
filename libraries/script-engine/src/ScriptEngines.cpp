@@ -111,7 +111,7 @@ QUrl expandScriptUrl(const QUrl& rawScriptURL) {
             url = QUrl::fromLocalFile(fileInfo.canonicalFilePath());
 
             QUrl defaultScriptsLoc = PathUtils::defaultScriptsLocation();
-            if (!defaultScriptsLoc.isParentOf(url)) {
+            if (defaultScriptsLoc != url && !defaultScriptsLoc.isParentOf(url)) {
                 qCWarning(scriptengine) << "Script.include() ignoring file path" << rawScriptURL
                                         << "-- outside of standard libraries: "
                                         << url.path()
@@ -196,13 +196,15 @@ void ScriptEngines::shutdownScripting() {
             // We need to wait for the engine to be done running before we proceed, because we don't
             // want any of the scripts final "scriptEnding()" or pending "update()" methods from accessing
             // any application state after we leave this stopAllScripts() method
-            qCDebug(scriptengine) << "waiting on script:" << scriptName;
-            scriptEngine->waitTillDoneRunning();
-            qCDebug(scriptengine) << "done waiting on script:" << scriptName;
+            // qCDebug(scriptengine) << "waiting on script:" << scriptName;
+            // scriptEngine->waitTillDoneRunning();
+            // qCDebug(scriptengine) << "done waiting on script:" << scriptName;
         }
         // Once the script is stopped, we can remove it from our set
         i.remove();
     }
+    _scriptEnginesHash.clear();
+    _allKnownScriptEngines.clear();
     qCDebug(scriptengine) << "DONE Stopping all scripts....";
 }
 
@@ -401,12 +403,12 @@ void ScriptEngines::stopAllScripts(bool restart) {
     // triggering reload of any Client scripts / Entity scripts
     QTimer::singleShot(1000, this, [=]() {
         for(const auto &scriptName : toReload) {
-            auto scriptEngine = getScriptEngine(scriptName);
-            if (scriptEngine && !scriptEngine->isFinished()) {
-                qCDebug(scriptengine) << "waiting on script:" << scriptName;
-                scriptEngine->waitTillDoneRunning();
-                qCDebug(scriptengine) << "done waiting on script:" << scriptName;
-            }
+            // auto scriptEngine = getScriptEngine(scriptName);
+            // if (scriptEngine && !scriptEngine->isFinished()) {
+            //     qCDebug(scriptengine) << "waiting on script:" << scriptName;
+            //     scriptEngine->waitTillDoneRunning();
+            //     qCDebug(scriptengine) << "done waiting on script:" << scriptName;
+            // }
             qCDebug(scriptengine) << "reloading script..." << scriptName;
             reloadScript(scriptName);
         }
