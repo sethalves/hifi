@@ -159,11 +159,19 @@ QString ScriptEngine::logException(const QScriptValue& exception) {
     return message;
 }
 
+static void gracefulShutdownBeforeDelete(ScriptEngine* engine)
+{
+    QtConcurrent::run([engine] {
+        engine->waitTillDoneRunning();
+        engine->deleteLater();
+    });
+}
+
 ScriptEnginePointer scriptEngineFactory(ScriptEngine::Context context,
                                                  const QString& scriptContents,
                                                  const QString& fileNameString) {
     ScriptEngine* engine = new ScriptEngine(context, scriptContents, fileNameString);
-    ScriptEnginePointer engineSP = ScriptEnginePointer(engine);
+    ScriptEnginePointer engineSP = ScriptEnginePointer(engine, gracefulShutdownBeforeDelete);
     DependencyManager::get<ScriptEngines>()->addScriptEngine(qSharedPointerCast<ScriptEngine>(engineSP));
     return engineSP;
 }
