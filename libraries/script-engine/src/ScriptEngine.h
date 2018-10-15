@@ -55,6 +55,7 @@ static const int DEFAULT_MAX_ENTITY_PPS = 9000;
 static const int DEFAULT_ENTITY_PPS_PER_SCRIPT = 900;
 
 class ScriptEngines;
+using ScriptEnginesPointer = QSharedPointer<ScriptEngines>;
 
 Q_DECLARE_METATYPE(ScriptEnginePointer)
 
@@ -563,6 +564,8 @@ public:
     bool getEntityScriptDetails(const EntityItemID& entityID, EntityScriptDetails &details) const;
     bool hasEntityScriptDetails(const EntityItemID& entityID) const;
 
+    void setScriptEngines(ScriptEnginesPointer scriptEngines) { _scriptEngines = scriptEngines; }
+
 public slots:
 
     /**jsdoc
@@ -817,6 +820,8 @@ protected:
     static const QString _SETTINGS_ENABLE_EXTENDED_EXCEPTIONS;
 
     Setting::Handle<bool> _enableExtendedJSExceptions { _SETTINGS_ENABLE_EXTENDED_EXCEPTIONS, true };
+
+    ScriptEnginesPointer _scriptEngines; // to keep ScriptEngines alive until all these are dead
 };
 
 ScriptEnginePointer scriptEngineFactory(ScriptEngine::Context context,
