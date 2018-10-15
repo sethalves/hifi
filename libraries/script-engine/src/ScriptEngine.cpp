@@ -164,11 +164,11 @@ static void gracefulShutdownBeforeDelete(ScriptEngine* engine)
     if (QThreadPool::globalInstance()) {
         QtConcurrent::run([engine] {
             engine->waitTillDoneRunning();
-            delete engine;
+            engine->deleteLater();
         });
     } else {
         // we are exiting
-        delete engine;
+        engine->deleteLater();
     }
 }
 
