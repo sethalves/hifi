@@ -159,8 +159,7 @@ QString ScriptEngine::logException(const QScriptValue& exception) {
     return message;
 }
 
-static void gracefulShutdownBeforeDelete(ScriptEngine* engine)
-{
+static void gracefulShutdownBeforeDelete(ScriptEngine* engine) {
     if (QThreadPool::globalInstance()) {
         QtConcurrent::run([engine] {
             engine->waitTillDoneRunning();
@@ -1336,7 +1335,7 @@ void ScriptEngine::updateMemoryCost(const qint64& deltaSize) {
 
 void ScriptEngine::timerFired() {
     {
-        if (!_scriptEngines || _scriptEngines->isStopped()) {
+        if (_scriptEngines->isStopped()) {
             scriptWarningMessage("Script.timerFired() while shutting down is ignored... parent script:" + getFilename());
             return; // bail early
         }
