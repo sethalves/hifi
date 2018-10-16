@@ -203,6 +203,8 @@ void ScriptEngines::shutdownScripting() {
         // Once the script is stopped, we can remove it from our set
         i.remove();
     }
+    _scriptEnginesHash.clear();
+    _allKnownScriptEngines.clear();
     qCDebug(scriptengine) << "DONE Stopping all scripts....";
 }
 

@@ -113,7 +113,7 @@ void ScriptCache::getScriptContents(const QString& scriptOrURL, contentAvailable
                 nullptr, url, true, -1, "ScriptCache::getScriptContents");
             Q_ASSERT(request);
             request->setCacheEnabled(!forceDownload);
-            connect(request, &ResourceRequest::finished, this, [=]{ scriptContentAvailable(maxRetries); });
+            connect(request, &ResourceRequest::finished, this, [this, maxRetries]{ scriptContentAvailable(maxRetries); });
             request->send();
         }
     }

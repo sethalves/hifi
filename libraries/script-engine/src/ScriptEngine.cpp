@@ -163,11 +163,11 @@ static void gracefulShutdownBeforeDelete(ScriptEngine* engine) {
     if (QThreadPool::globalInstance()) {
         QtConcurrent::run([engine] {
             engine->waitTillDoneRunning();
-            engine->deleteLater();
+            delete engine;
         });
     } else {
         // we are exiting
-        engine->deleteLater();
+        delete engine;
     }
 }
 
@@ -1664,6 +1664,7 @@ QVariantMap ScriptEngine::fetchModuleSource(const QString& modulePath, const boo
     }
     BatchLoader* loader = new BatchLoader(QList<QUrl>({ modulePath }));
     connect(loader, &BatchLoader::finished, this, onload);
+    connect(this, &QObject::destroyed, loader, &QObject::deleteLater);
     // fail faster? (since require() blocks the engine thread while resolving dependencies)
     const int MAX_RETRIES = 1;
 
@@ -1908,6 +1909,9 @@ void ScriptEngine::include(const QStringList& includeFiles, QScriptValue callbac
     };
 
     connect(loader, &BatchLoader::finished, this, evaluateScripts);
+
+    // If we are destroyed before the loader completes, make sure to clean it up
+    connect(this, &QObject::destroyed, loader, &QObject::deleteLater);
 
     loader->start(processLevelMaxRetries);
 
