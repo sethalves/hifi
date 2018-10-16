@@ -2562,6 +2562,7 @@ void Application::cleanupBeforeQuit() {
         tree->setSimulation(nullptr);
         DependencyManager::destroy<EntityTreeRenderer>();
     }
+    DependencyManager::destroy<ScriptEngines>();
 
     bool autoLogout = Setting::Handle<bool>(AUTO_LOGOUT_SETTING_NAME, false).get();
     if (autoLogout) {
