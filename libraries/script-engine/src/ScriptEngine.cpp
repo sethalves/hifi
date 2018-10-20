@@ -83,6 +83,8 @@
 #include "../../midi/src/Midi.h"        // FIXME why won't a simpler include work?
 #include "MIDIEvent.h"
 
+#define THREAD_DEBUGGING 1
+
 const QString ScriptEngine::_SETTINGS_ENABLE_EXTENDED_EXCEPTIONS {
     "com.highfidelity.experimental.enableExtendedJSExceptions"
 };
@@ -1262,7 +1264,7 @@ void ScriptEngine::run() {
         QTimer timer;
         timer.setSingleShot(true);
         connect(&timer, SIGNAL(timeout()), &loop, SLOT(quit()));
-        const std::chrono::microseconds lastSleepBeforeDelete(1 * USECS_PER_SECOND);
+        const std::chrono::microseconds lastSleepBeforeDelete(MSECS_PER_SECOND);
         timer.start(lastSleepBeforeDelete.count());
         loop.exec();
         delete this;
@@ -1317,7 +1319,7 @@ void ScriptEngine::stop(bool marshal) {
 void ScriptEngine::callAnimationStateHandler(QScriptValue callback, AnimVariantMap parameters, QStringList names, bool useNames, AnimVariantResultHandler resultHandler) {
     if (QThread::currentThread() != thread()) {
 #ifdef THREAD_DEBUGGING
-        qCDebug(scriptengine) << "*** WARNING *** ScriptEngine::callAnimationStateHandler() called on wrong thread [" << QThread::currentThread() << "], invoking on correct thread [" << thread() << "]  name:" << name;
+        qCDebug(scriptengine) << "*** WARNING *** ScriptEngine::callAnimationStateHandler() called on wrong thread [" << QThread::currentThread() << "], invoking on correct thread [" << thread() << "]";
 #endif
         QMetaObject::invokeMethod(this, "callAnimationStateHandler",
                                   Q_ARG(QScriptValue, callback),

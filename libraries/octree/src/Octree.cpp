@@ -71,7 +71,9 @@ Octree::~Octree() {
 // Recurses voxel tree calling the RecurseOctreeOperation function for each element.
 // stops recursion if operation function returns false.
 void Octree::recurseTreeWithOperation(const RecurseOctreeOperation& operation, void* extraData) {
-    recurseElementWithOperation(_rootElement, operation, extraData);
+    if (_rootElement) {
+        recurseElementWithOperation(_rootElement, operation, extraData);
+    }
 }
 
 // Recurses voxel element with an operation function

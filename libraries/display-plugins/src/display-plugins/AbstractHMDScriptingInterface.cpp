@@ -47,5 +47,10 @@ void AbstractHMDScriptingInterface::setIPDScale(float IPDScale) {
 }
 
 bool AbstractHMDScriptingInterface::isHMDMode() const {
-    return PluginContainer::getInstance().getActiveDisplayPlugin()->isHmd();
+    auto activeDisplayPlugin = PluginContainer::getInstance().getActiveDisplayPlugin();
+    if (activeDisplayPlugin) {
+        return activeDisplayPlugin->isHmd();
+    } else {
+        return false;
+    }
 }

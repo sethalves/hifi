@@ -37,8 +37,13 @@ OctreeEditPacketSender::~OctreeEditPacketSender() {
 
 
 bool OctreeEditPacketSender::serversExist() const {
-    auto node = DependencyManager::get<NodeList>()->soloNodeOfType(getMyNodeType());
-    return node && node->getActiveSocket();
+    auto nodeList = DependencyManager::get<NodeList>();
+    if (nodeList) {
+        auto node = nodeList->soloNodeOfType(getMyNodeType());
+        return node && node->getActiveSocket();
+    } else {
+        return false;
+    }
 }
 
 // This method is called when the edit packet layer has determined that it has a fully formed packet destined for
