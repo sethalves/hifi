@@ -382,6 +382,8 @@ public:
 
     TabletButtonListModel* getButtons() { return &_buttons; }
 
+    glm::vec3 getWorldPosition() const;
+
 signals:
     /**jsdoc
      * Signaled when this tablet receives an event from the html/js embedded in the tablet.

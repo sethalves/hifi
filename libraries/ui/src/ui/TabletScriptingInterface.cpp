@@ -10,6 +10,7 @@
 
 #include <QtCore/QThread>
 #include <QtQml/QQmlProperty>
+#include <QtQml/QQmlContext>
 
 #include <shared/QtHelpers.h>
 #include <PathUtils.h>
@@ -209,8 +210,9 @@ void TabletScriptingInterface::playSound(TabletAudioEvents aEvent) {
         AudioInjectorOptions options;
         options.stereo = sound->isStereo();
         options.ambisonic = sound->isAmbisonic();
+        TabletProxy* tablet = qobject_cast<TabletProxy*>(getTablet(SYSTEM_TABLET));
+        options.position = tablet ? tablet->getWorldPosition() : glm::vec3(0.0f);
         options.localOnly = true;
-
         AudioInjectorPointer injector = AudioInjector::playSoundAndDelete(sound, options);
     }
 }
@@ -932,6 +934,24 @@ QQuickItem* TabletProxy::getQmlMenu() const {
     }
     return menuList;
 }
+
+glm::vec3 TabletProxy::getWorldPosition() const {
+    if (QThread::currentThread() != thread()) {
+        glm::vec3 result;
+        BLOCKING_INVOKE_METHOD(const_cast<TabletProxy*>(this), "getWorldPosition", Q_RETURN_ARG(glm::vec3, result));
+        return result;
+    }
+
+    if (!_qmlOffscreenSurface) {
+        return glm::vec3(0.0f);
+    }
+    auto context = _qmlOffscreenSurface->getSurfaceContext();
+    if (!context) {
+        return glm::vec3(0.0f);
+    }
+    return vec3FromVariant(context->contextProperty("globalPosition"));
+}
+
 
 //
 // TabletButtonProxy
