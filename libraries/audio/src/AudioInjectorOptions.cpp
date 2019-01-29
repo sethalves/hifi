@@ -27,14 +27,17 @@ AudioInjectorOptions::AudioInjectorOptions() :
     ignorePenumbra(false),
     localOnly(false),
     secondOffset(0.0f),
-    pitch(1.0f)
+    pitch(1.0f),
+    _positionSet(false)
 {
 
 }
 
 QScriptValue injectorOptionsToScriptValue(QScriptEngine* engine, const AudioInjectorOptions& injectorOptions) {
     QScriptValue obj = engine->newObject();
-    obj.setProperty("position", vec3ToScriptValue(engine, injectorOptions.position));
+    if (injectorOptions.getPositionSet()) {
+        obj.setProperty("position", vec3ToScriptValue(engine, injectorOptions.position));
+    }
     obj.setProperty("volume", injectorOptions.volume);
     obj.setProperty("loop", injectorOptions.loop);
     obj.setProperty("orientation", quatToScriptValue(engine, injectorOptions.orientation));
@@ -74,6 +77,7 @@ void injectorOptionsFromScriptValue(const QScriptValue& object, AudioInjectorOpt
 
         if (it.name() == "position") {
             vec3FromScriptValue(object.property("position"), injectorOptions.position);
+            injectorOptions.setPositionSet(true);
         } else if (it.name() == "orientation") {
             quatFromScriptValue(object.property("orientation"), injectorOptions.orientation);
         } else if (it.name() == "volume") {

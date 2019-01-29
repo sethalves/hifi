@@ -30,6 +30,12 @@ public:
     bool localOnly;
     float secondOffset;
     float pitch;    // multiplier, where 2.0f shifts up one octave
+
+    void setPositionSet(bool value) { _positionSet = value; }
+    bool getPositionSet() const { return _positionSet; }
+
+private:
+    bool _positionSet;
 };
 
 Q_DECLARE_METATYPE(AudioInjectorOptions);
