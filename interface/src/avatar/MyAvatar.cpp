@@ -4938,6 +4938,10 @@ bool MyAvatar::hasDriveInput() const {
     return fabsf(getDriveKey(TRANSLATE_X)) > 0.0f || fabsf(getDriveKey(TRANSLATE_Y)) > 0.0f || fabsf(getDriveKey(TRANSLATE_Z)) > 0.0f;
 }
 
+bool MyAvatar::hasRotateInput() const {
+    return fabsf(getDriveKey(YAW)) > 0.0f;
+}
+
 void MyAvatar::setAway(bool value) {
     _isAway = value;
     if (_isAway) {
