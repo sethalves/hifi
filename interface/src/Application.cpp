@@ -6518,6 +6518,16 @@ void Application::updateRenderArgs(float deltaTime) {
                 RenderArgs::MONO, RenderArgs::RENDER_DEBUG_NONE);
             appRenderArgs._renderArgs._scene = getMain3DScene();
 
+            // Squeeze edges of vision while moving to avoid sickness
+            {
+                const float MAX_VISION_SQUEEZE = 0.2f; // 0.0 -- unobstructed, 0.5 -- fully blocked
+                float visionSqueeze = 0.0f;
+                if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
+                    visionSqueeze = MAX_VISION_SQUEEZE;
+                }
+                appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
+            }
+
             {
                 QMutexLocker viewLocker(&_viewMutex);
                 appRenderArgs._renderArgs.setViewFrustum(_viewFrustum);
