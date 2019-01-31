@@ -47,9 +47,24 @@ void ToneMappingEffect::setToneCurve(ToneCurve curve) {
     }
 }
 
+void ToneMappingEffect::setVisionSqueeze(float visionSqueeze) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueeze != visionSqueeze) {
+        _parametersBuffer.edit<Parameters>()._visionSqueeze = visionSqueeze;
+    }
+}
+
+
 void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& lightingBuffer, const gpu::FramebufferPointer& requestedDestinationFramebuffer) {
+
     if (!_blitLightBuffer) {
         init(args);
+    }
+
+    if (args->isStereo()) {
+        setVisionSqueeze(args->_visionSqueeze);
+    } else {
+        setVisionSqueeze(0.0f);
     }
 
     auto destinationFramebuffer = requestedDestinationFramebuffer;

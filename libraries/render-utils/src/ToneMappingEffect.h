@@ -41,6 +41,8 @@ public:
     void setToneCurve(ToneCurve curve);
     ToneCurve getToneCurve() const { return (ToneCurve)_parametersBuffer.get<Parameters>()._toneCurve; }
 
+    void setVisionSqueeze(float visionSqueeze);
+
 private:
 
     gpu::PipelinePointer _blitLightBuffer;
@@ -50,7 +52,8 @@ private:
     public:
         float _exposure = 0.0f;
         float _twoPowExposure = 1.0f;
-        glm::vec2 spareA;
+        float _visionSqueeze = 0.0f;
+        float spareA = 0.0f;
         int _toneCurve = Gamma22;
         glm::vec3 spareB;
 
