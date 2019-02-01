@@ -6520,7 +6520,7 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving to avoid sickness
             {
-                const float MAX_VISION_SQUEEZE = 0.2f; // 0.0 -- unobstructed, 0.5 -- fully blocked
+                const float MAX_VISION_SQUEEZE = 0.5f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 float visionSqueeze = 0.0f;
                 if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
                     visionSqueeze = MAX_VISION_SQUEEZE;

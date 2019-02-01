@@ -62,12 +62,14 @@ void main(void) {
         tonedColor = pow(srcColor, vec3(INV_GAMMA_22));
     } // else None toned = src
 
+    // darken the edges of the view to avoid sickness
     float visionSqueeze = getVisionSqueeze();
-    float frac = float(varTexCoord0.x < visionSqueeze ||
-                       varTexCoord0.x > (1.0 - visionSqueeze) ||
-                       varTexCoord0.y < visionSqueeze ||
-                       varTexCoord0.y > (1.0 - visionSqueeze));
-    tonedColor = mix(tonedColor, vec3(0.0, 0.0, 0.0), frac);
+    float dst = distance(varTexCoord0, vec2(0.5, 0.5)) * 2.0;
+    float transitionRatio = 0.15;
+    float lightEdge = sqrt(2.0) * (1.0 - visionSqueeze);
+    float darkEdge = lightEdge + transitionRatio;
+    float frac = clamp((dst - lightEdge) / (darkEdge - lightEdge), 0.0, 1.0);
 
+    tonedColor = mix(tonedColor, vec3(0.0, 0.0, 0.0), frac);
     outFragColor = vec4(tonedColor, 1.0);
 }
