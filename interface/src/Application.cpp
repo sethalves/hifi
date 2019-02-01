@@ -336,6 +336,8 @@ static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStanda
 
 Setting::Handle<int> maxOctreePacketsPerSecond{"maxOctreePPS", DEFAULT_MAX_OCTREE_PPS};
 
+Setting::Handle<float> visionSqueezeRatio{"visionSqueezeRatio", DEFAULT_VISION_SQUEEZE};
+
 Setting::Handle<bool> loginDialogPoppedUp{"loginDialogPoppedUp", false};
 
 static const QString STANDARD_TO_ACTION_MAPPING_NAME = "Standard to Action";
@@ -999,6 +1001,7 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _lastSendDownstreamAudioStats(usecTimestampNow()),
     _notifiedPacketVersionMismatchThisDomain(false),
     _maxOctreePPS(maxOctreePacketsPerSecond.get()),
+    _visionSqueezeRatio(visionSqueezeRatio.get()),
     _lastFaceTrackerUpdate(0),
     _snapshotSound(nullptr),
     _sampleSound(nullptr)
@@ -6520,10 +6523,9 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving to avoid sickness
             {
-                const float MAX_VISION_SQUEEZE = 0.5f; // 0.0 -- unobstructed, 1.0 -- fully blocked
-                float visionSqueeze = 0.0f;
+                float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
-                    visionSqueeze = MAX_VISION_SQUEEZE;
+                    visionSqueeze = getVisionSqueezeRatio();
                 }
                 appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
             }
@@ -8530,6 +8532,17 @@ void Application::raise() {
         }
     }
     qApp->getWindow()->raise();
+}
+
+float Application::getVisionSqueezeRatio() const {
+    return _visionSqueezeRatio;
+}
+
+void Application::setVisionSqueezeRatio(float value) {
+    if (value != _visionSqueezeRatio) {
+        _visionSqueezeRatio = value;
+        visionSqueezeRatio.set(_visionSqueezeRatio);
+    }
 }
 
 void Application::setMaxOctreePacketsPerSecond(int maxOctreePPS) {
