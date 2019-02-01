@@ -100,7 +100,7 @@ static const QString RUNNING_MARKER_FILENAME = "Interface.running";
 static const QString SCRIPTS_SWITCH = "scripts";
 static const QString HIFI_NO_LOGIN_COMMAND_LINE_KEY = "no-login-suggestion";
 
-static const float DEFAULT_VISION_SQUEEZE = 0.5f;
+static const float DEFAULT_VISION_SQUEEZE = 0.75f;
 
 class Application;
 #if defined(qApp)
