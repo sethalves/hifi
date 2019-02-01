@@ -288,7 +288,7 @@ void setupPreferences() {
         auto preference = new SpinnerSliderPreference(VR_MOVEMENT, "Vision Squeeze", getter, setter);
         preference->setMin(0.0f);
         preference->setMax(1.0f);
-        preference->setStep(0.05);
+        preference->setStep(0.05f);
         preference->setDecimals(2);
         preferences->addPreference(preference);
     }
