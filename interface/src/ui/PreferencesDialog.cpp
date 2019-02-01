@@ -283,6 +283,16 @@ void setupPreferences() {
         preferences->addPreference(preference);
     }
     {
+        auto getter = []()->float { return qApp->getVisionSqueezeRatio(); };
+        auto setter = [](float value) { qApp->setVisionSqueezeRatio(value); };
+        auto preference = new SpinnerSliderPreference(VR_MOVEMENT, "Vision Squeeze", getter, setter);
+        preference->setMin(0.0f);
+        preference->setMax(1.0f);
+        preference->setStep(0.05);
+        preference->setDecimals(2);
+        preferences->addPreference(preference);
+    }
+    {
         auto getter = [myAvatar]()->bool { return myAvatar->getShowPlayArea(); };
         auto setter = [myAvatar](bool value) { myAvatar->setShowPlayArea(value); };
         auto preference = new CheckPreference(VR_MOVEMENT, "Show room boundaries while teleporting", getter, setter);
