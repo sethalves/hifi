@@ -336,7 +336,8 @@ Script.include("/~/system/libraries/controllers.js");
         };
 
         this.run = function (controllerData) {
-            if (controllerData.triggerValues[this.hand] < TRIGGER_OFF_VALUE || this.targetIsNull()) {
+            if (controllerData.triggerValues[this.hand] < TRIGGER_OFF_VALUE ||
+                (!this.grabbing && this.notPointingAtEntity(controllerData)) || this.targetIsNull()) {
                 this.endFarGrabEntity(controllerData);
                 return makeRunningValues(false, [], []);
             }
