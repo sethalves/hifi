@@ -6608,10 +6608,31 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving to avoid sickness
             {
-                float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
+                const float VISION_UNSQUEEZE_DELAY = 0.2 * USECS_PER_SECOND;
+                const float VISION_UNSQUEEZE_SPEED_FACTOR = 1.2f;
+                const float VISION_SQUEEZE_PRACTICAL_MIN = 0.2f;
+                const float VISION_SQUEEZE_PRACTICAL_MAX = 0.65f;
+                static quint64 lastSqueezeTime = 0;
+                quint64 now = usecTimestampNow();
+                static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
-                    visionSqueeze = getVisionSqueezeRatio();
+                    float ratio = getVisionSqueezeRatio();
+                    if (ratio > 0.0f) {
+                        visionSqueeze = ratio * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
+                            VISION_SQUEEZE_PRACTICAL_MIN;
+                    } else {
+                        visionSqueeze = 0.0f;
+                    }
+                    lastSqueezeTime = now;
                 }
+
+                if (now - lastSqueezeTime > VISION_UNSQUEEZE_DELAY) {
+                    visionSqueeze -= deltaTime * VISION_UNSQUEEZE_SPEED_FACTOR;
+                    if (visionSqueeze < 0.0f) {
+                        visionSqueeze = 0.0f;
+                    }
+                }
+
                 appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
             }
 
