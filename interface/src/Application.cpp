@@ -336,8 +336,6 @@ static const QString DESKTOP_LOCATION = QStandardPaths::writableLocation(QStanda
 
 Setting::Handle<int> maxOctreePacketsPerSecond{"maxOctreePPS", DEFAULT_MAX_OCTREE_PPS};
 
-Setting::Handle<float> visionSqueezeRatio{"visionSqueezeRatio", DEFAULT_VISION_SQUEEZE};
-
 Setting::Handle<bool> loginDialogPoppedUp{"loginDialogPoppedUp", false};
 
 static const QString STANDARD_TO_ACTION_MAPPING_NAME = "Standard to Action";
@@ -1001,7 +999,6 @@ Application::Application(int& argc, char** argv, QElapsedTimer& startupTimer, bo
     _lastSendDownstreamAudioStats(usecTimestampNow()),
     _notifiedPacketVersionMismatchThisDomain(false),
     _maxOctreePPS(maxOctreePacketsPerSecond.get()),
-    _visionSqueezeRatio(visionSqueezeRatio.get()),
     _lastFaceTrackerUpdate(0),
     _snapshotSound(nullptr),
     _sampleSound(nullptr)
@@ -6523,15 +6520,16 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving, to avoid sickness
             {
-                const float VISION_UNSQUEEZE_DELAY = 0.2 * USECS_PER_SECOND;
                 const float VISION_UNSQUEEZE_SPEED_FACTOR = 1.2f;
-                const float VISION_SQUEEZE_PRACTICAL_MIN = 0.2f;
-                const float VISION_SQUEEZE_PRACTICAL_MAX = 0.65f;
+                // const float VISION_SQUEEZE_PRACTICAL_MIN = 0.3f;
+                // const float VISION_SQUEEZE_PRACTICAL_MAX = 0.65f;
+                const float VISION_SQUEEZE_PRACTICAL_MIN = 0.0f;
+                const float VISION_SQUEEZE_PRACTICAL_MAX = 1.0f;
                 static quint64 lastSqueezeTime = 0;
                 quint64 now = usecTimestampNow();
                 static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
-                    float ratio = getVisionSqueezeRatio();
+                    float ratio = myAvatar->getVisionSqueezeRatio();
                     if (ratio > 0.0f) {
                         visionSqueeze = ratio * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
                             VISION_SQUEEZE_PRACTICAL_MIN;
@@ -6541,8 +6539,8 @@ void Application::updateRenderArgs(float deltaTime) {
                     lastSqueezeTime = now;
                 }
 
-                if (now - lastSqueezeTime > VISION_UNSQUEEZE_DELAY) {
-                    visionSqueeze -= deltaTime * VISION_UNSQUEEZE_SPEED_FACTOR;
+                if (now - lastSqueezeTime > myAvatar->getVisionSqueezeUnSqueezeDelay() * USECS_PER_SECOND) {
+                    visionSqueeze -= deltaTime * myAvatar->getVisionSqueezeUnSqueezeSpeed();
                     if (visionSqueeze < 0.0f) {
                         visionSqueeze = 0.0f;
                     }
@@ -6550,6 +6548,12 @@ void Application::updateRenderArgs(float deltaTime) {
 
                 appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
                 appRenderArgs._renderArgs._sensorToCameraTransform = myAvatar->getHMDSensorMatrix();
+
+                appRenderArgs._renderArgs._visionSqueezeTransition = myAvatar->getVisionSqueezeTransition();
+                appRenderArgs._renderArgs._visionSqueezePerEye = myAvatar->getVisionSqueezePerEye();
+                appRenderArgs._renderArgs._visionSqueezeSensorSpaceEyeOffset = myAvatar->getVisionSqueezeSensorSpaceEyeOffset();
+                appRenderArgs._renderArgs._visionSqueezeGroundPlaneY = myAvatar->getVisionSqueezeGroundPlaneY();
+                appRenderArgs._renderArgs._visionSqueezeSpotlightSize = myAvatar->getVisionSqueezeSpotlightSize();
             }
 
             {
@@ -8554,17 +8558,6 @@ void Application::raise() {
         }
     }
     qApp->getWindow()->raise();
-}
-
-float Application::getVisionSqueezeRatio() const {
-    return _visionSqueezeRatio;
-}
-
-void Application::setVisionSqueezeRatio(float value) {
-    if (value != _visionSqueezeRatio) {
-        _visionSqueezeRatio = value;
-        visionSqueezeRatio.set(_visionSqueezeRatio);
-    }
 }
 
 void Application::setMaxOctreePacketsPerSecond(int maxOctreePPS) {

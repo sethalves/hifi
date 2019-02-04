@@ -170,7 +170,8 @@ MyAvatar::MyAvatar(QThread* thread) :
     _userHeightSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "userHeight", DEFAULT_AVATAR_HEIGHT),
     _flyingHMDSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "flyingHMD", _flyingPrefHMD),
     _avatarEntityCountSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "avatarEntityData" << "size", 0),
-    _userRecenterModelSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "userRecenterModel", USER_RECENTER_MODEL_AUTO)
+    _userRecenterModelSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "userRecenterModel", USER_RECENTER_MODEL_AUTO),
+    _visionSqueezeRatio(_visionSqueezeRatioSetting.get())
 {
     _clientTraitsHandler.reset(new ClientTraitsHandler(this));
 
@@ -5329,3 +5330,13 @@ void MyAvatar::sendPacket(const QUuid& entityID, const EntityItemProperties& pro
     }
 }
 
+float MyAvatar::getVisionSqueezeRatio() const {
+    return _visionSqueezeRatio;
+}
+
+void MyAvatar::setVisionSqueezeRatio(float value) {
+    if (value != _visionSqueezeRatio) {
+        _visionSqueezeRatio = value;
+        _visionSqueezeRatioSetting.set(_visionSqueezeRatio);
+    }
+}
