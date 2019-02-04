@@ -100,8 +100,6 @@ static const QString RUNNING_MARKER_FILENAME = "Interface.running";
 static const QString SCRIPTS_SWITCH = "scripts";
 static const QString HIFI_NO_LOGIN_COMMAND_LINE_KEY = "no-login-suggestion";
 
-static const float DEFAULT_VISION_SQUEEZE = 0.75f;
-
 class Application;
 #if defined(qApp)
 #undef qApp
@@ -339,9 +337,6 @@ public:
     void enterBackground();
     void enterForeground();
 #endif
-
-    float getVisionSqueezeRatio() const;
-    void setVisionSqueezeRatio(float value);
 
 signals:
     void svoImportRequested(const QString& url);
@@ -705,8 +700,6 @@ private:
 
     int _maxOctreePPS = DEFAULT_MAX_OCTREE_PPS;
     bool _interstitialModeEnabled{ false };
-
-    float _visionSqueezeRatio = DEFAULT_VISION_SQUEEZE;
 
     bool _loginDialogPoppedUp = false;
     bool _developerMenuVisible{ false };

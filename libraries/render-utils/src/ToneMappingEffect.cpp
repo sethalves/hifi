@@ -61,6 +61,41 @@ void ToneMappingEffect::setSensorToCameraTransform(glm::mat4 sensorToCameraTrans
     }
 }
 
+void ToneMappingEffect::setVisionSqueezeTransition(float value) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezeTransition != value) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeTransition = value;
+    }
+}
+
+void ToneMappingEffect::setVisionSqueezePerEye(float value) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezePerEye != value) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezePerEye = value;
+    }
+}
+
+void ToneMappingEffect::setVisionSqueezeSensorSpaceEyeOffset(float value) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezeSensorSpaceEyeOffset != value) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeSensorSpaceEyeOffset = value;
+    }
+}
+
+void ToneMappingEffect::setVisionSqueezeGroundPlaneY(float value) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezeGroundPlaneY != value) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeGroundPlaneY = value;
+    }
+}
+
+void ToneMappingEffect::setVisionSqueezeSpotlightSize(float value) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezeSpotlightSize != value) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeSpotlightSize = value;
+    }
+}
+
 
 void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& lightingBuffer, const gpu::FramebufferPointer& requestedDestinationFramebuffer) {
     if (!_blitLightBuffer) {
@@ -74,6 +109,14 @@ void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& ligh
     } else {
         setVisionSqueeze(0.0f);
     }
+
+    // TODO -- remove these after tuning / debugging
+    setVisionSqueezeTransition(args->_visionSqueezeTransition);
+    setVisionSqueezePerEye(args->_visionSqueezePerEye);
+    setVisionSqueezeSensorSpaceEyeOffset(args->_visionSqueezeSensorSpaceEyeOffset);
+    setVisionSqueezeGroundPlaneY(args->_visionSqueezeGroundPlaneY);
+    setVisionSqueezeSpotlightSize(args->_visionSqueezeSpotlightSize);
+
 
     auto destinationFramebuffer = requestedDestinationFramebuffer;
     if (!destinationFramebuffer) {

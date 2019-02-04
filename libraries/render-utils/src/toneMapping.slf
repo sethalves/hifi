@@ -25,6 +25,13 @@ struct ToneMappingParams {
     vec4 _exp_2powExp_s0_s1;
     ivec4 _toneCurve_s0_s1_s2;
     mat4 _sensorToCameraTransform;
+
+    // TODO -- remove these after tuning / debugging
+    float _visionSqueezeTransition;
+    int _visionSqueezePerEye;
+    float _visionSqueezeSensorSpaceEyeOffset;
+    float _visionSqueezeGroundPlaneY;
+    float _visionSqueezeSpotlightSize;
 };
 
 const float INV_GAMMA_22 = 1.0 / 2.2;
@@ -48,9 +55,41 @@ float getVisionSqueeze() {
 mat4 getHMDSensorMatrix() {
     return params._sensorToCameraTransform;
 }
+float getVisionSqueezeTransitionRatio() {
+    return params._visionSqueezeTransition;
+}
+int getVisionSqueezePerEye() {
+    return params._visionSqueezePerEye;
+}
+float getVisionSqueezeSensorSpaceEyeOffset() {
+    return params._visionSqueezeSensorSpaceEyeOffset;
+}
+float getVisionSqueezeGroundPlaneY() {
+    return params._visionSqueezeGroundPlaneY;
+}
+float getVisionSqueezeSpotlightSize() {
+    return params._visionSqueezeSpotlightSize;
+}
 
 float checkerboard(vec2 R, float scale) {
 	return float((int(floor(R.x / scale)) + int(floor(R.y / scale))) % 2);
+}
+
+// float sigmoid(float v) {
+//     return v / (1.0 + abs(v));
+// }
+
+// float sigmoid(float v) {
+//     return 1.0 / (1.0 + exp(-2.0 * v));
+// }
+
+// float sigmoid(float v) {
+//     if (v < 0.5) return 0;
+//     return 1;
+// }
+
+float sigmoid(float v) {
+    return v;
 }
 
 
@@ -79,17 +118,26 @@ void main(void) {
 
     // darken the edges of the view to avoid sickness
     float visionSqueeze = getVisionSqueeze(); // 0 = nothing darkened.  1 = all darkened
-    float dst = distance(varTexCoord0, vec2(0.5, 0.5)) * 2.0; // fragment distance from screen center
-    float transitionRatio = 0.15; // how quickly to switch from unobstructed to black
-    float lightEdge = sqrt(2.0) * (1.0 - visionSqueeze); // sqrt(2) for corner of screen
+
+    float dst;
+    if (getVisionSqueezePerEye() > 0) {
+        // tubes in front of each eye
+        dst = min(distance(varTexCoord0, vec2(0.25, 0.5)),
+                  distance(varTexCoord0, vec2(0.75, 0.5)));
+    } else {
+        // one tube in front of face
+        dst = distance(varTexCoord0, vec2(0.5, 0.5)); // fragment distance from screen center
+    }
+
+    float transitionRatio = getVisionSqueezeTransitionRatio();
+
+    float lightEdge = sqrt(0.5*0.5 + 0.5*0.5) * (1.0 - visionSqueeze); // screencorner * (1.0 - visionSqueeze)
     float darkEdge = lightEdge + transitionRatio;
-    float frac = clamp((dst - lightEdge) / (darkEdge - lightEdge), 0.0, 1.0);
+    float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
 
     // put a grid on the floor
-    float halfIPD = 0.3; // XXX I have no idea where to get this number
-    if (varTexCoord0.x < 0.5) {
-        halfIPD = -halfIPD;
-    }
+    float vssseo = getVisionSqueezeSensorSpaceEyeOffset();
+    float halfIPD = vssseo - 2.0 * vssseo * float(varTexCoord0.x < 0.5); // if x < 0.5, halfIPD = -vssseo
     TransformCamera cam = getTransformCamera();
     mat4 hmdSensorMatrix = getHMDSensorMatrix();
     vec4 ndc;
@@ -104,16 +152,16 @@ void main(void) {
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
 
     // intersect a line from near to far with the plane y = 0
-    float t = -near.y / (far.y - near.y);
+    float t = -(near.y - getVisionSqueezeGroundPlaneY()) / (far.y - near.y);
     vec3 R = near + t * (far - near);
     // use (x, z) from that intersection to determine grid color for this fragment
     float c =
-        checkerboard(R.xz, 1) * 0.3 +
-        checkerboard(R.xz, 10) * 0.2 +
-        checkerboard(R.xz, 100) * 0.1 +
+        checkerboard(R.xz, 1.0) * 0.3 +
+        checkerboard(R.xz, 10.0) * 0.2 +
+        checkerboard(R.xz, 100.0) * 0.1 +
         0.1;
     c = c * float(t > 0);
-    float spotlight = min(1.0, 1.5 - 0.02 * length(R.xz));
+    float spotlight = min(1.0, 1.5 - getVisionSqueezeSpotlightSize() * length(R.xz));
     vec3 gridColor = vec3(c * spotlight);
 
     tonedColor = mix(tonedColor, gridColor, frac);

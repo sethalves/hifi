@@ -44,6 +44,13 @@ public:
     void setVisionSqueeze(float visionSqueeze);
     void setSensorToCameraTransform(glm::mat4 sensorToCameraTransform);
 
+    // TODO -- remove these after tuning / debugging
+    void setVisionSqueezeTransition(float value);
+    void setVisionSqueezePerEye(float value);
+    void setVisionSqueezeSensorSpaceEyeOffset(float value);
+    void setVisionSqueezeGroundPlaneY(float value);
+    void setVisionSqueezeSpotlightSize(float value);
+
 private:
 
     gpu::PipelinePointer _blitLightBuffer;
@@ -58,6 +65,13 @@ private:
         int _toneCurve = Gamma22;
         glm::vec3 spareB;
         glm::mat4 _sensorToCameraTransform;
+
+        // TODO -- remove these after tuning / debugging
+        float _visionSqueezeTransition = 0.15f;
+        int _visionSqueezePerEye = 0;
+        float _visionSqueezeSensorSpaceEyeOffset = 0.3f;
+        float _visionSqueezeGroundPlaneY = 0.0f;
+        float _visionSqueezeSpotlightSize = 0.0f;
 
         Parameters() {}
     };
