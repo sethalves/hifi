@@ -53,6 +53,8 @@ enum AudioListenerMode {
 
 Q_DECLARE_METATYPE(AudioListenerMode);
 
+static const float DEFAULT_VISION_SQUEEZE = 0.75f;
+
 class MyAvatar : public Avatar {
     Q_OBJECT
     friend class AnimStats;
@@ -250,6 +252,17 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(MyAvatar::SitStandModelType userRecenterModel READ getUserRecenterModel WRITE setUserRecenterModel);
     Q_PROPERTY(bool isSitStandStateLocked READ getIsSitStandStateLocked WRITE setIsSitStandStateLocked);
     Q_PROPERTY(bool allowTeleporting READ getAllowTeleporting)
+
+    Q_PROPERTY(float visionSqueezeRatio READ getVisionSqueezeRatio WRITE setVisionSqueezeRatio);
+    Q_PROPERTY(float visionSqueezeUnSqueezeDelay READ getVisionSqueezeUnSqueezeDelay WRITE setVisionSqueezeUnSqueezeDelay);
+    Q_PROPERTY(float visionSqueezeUnSqueezeSpeed READ getVisionSqueezeUnSqueezeSpeed WRITE setVisionSqueezeUnSqueezeSpeed);
+
+    Q_PROPERTY(float visionSqueezeTransition READ getVisionSqueezeTransition WRITE setVisionSqueezeTransition);
+    Q_PROPERTY(int visionSqueezePerEye READ getVisionSqueezePerEye WRITE setVisionSqueezePerEye);
+    Q_PROPERTY(float visionSqueezeSensorSpaceEyeOffset READ getVisionSqueezeSensorSpaceEyeOffset WRITE setVisionSqueezeSensorSpaceEyeOffset);
+    Q_PROPERTY(float visionSqueezeGroundPlaneY READ getVisionSqueezeGroundPlaneY WRITE setVisionSqueezeGroundPlaneY);
+    Q_PROPERTY(float visionSqueezeSpotlightSize READ getVisionSqueezeSpotlightSize WRITE setVisionSqueezeSpotlightSize);
+
 
     const QString DOMINANT_LEFT_HAND = "left";
     const QString DOMINANT_RIGHT_HAND = "right";
@@ -1184,6 +1197,27 @@ public:
     void avatarEntityDataToJson(QJsonObject& root) const override;
     int sendAvatarDataPacket(bool sendAll = false) override;
 
+    float getVisionSqueezeRatio() const;
+    void setVisionSqueezeRatio(float value);
+
+    float getVisionSqueezeUnSqueezeDelay() const { return _visionSqueezeUnSqueezeDelay; }
+    void setVisionSqueezeUnSqueezeDelay(float value) { _visionSqueezeUnSqueezeDelay = value; }
+    float getVisionSqueezeUnSqueezeSpeed() const { return _visionSqueezeUnSqueezeSpeed; }
+    void setVisionSqueezeUnSqueezeSpeed(float value) { _visionSqueezeUnSqueezeSpeed = value; }
+
+    // TODO -- remove these after tuning / debugging
+    float getVisionSqueezeTransition() const { return _visionSqueezeTransition; }
+    void setVisionSqueezeTransition(float value) { _visionSqueezeTransition = value; }
+    int getVisionSqueezePerEye() const { return _visionSqueezePerEye; }
+    void setVisionSqueezePerEye(int value) { _visionSqueezePerEye = value; }
+    float getVisionSqueezeSensorSpaceEyeOffset() const { return _visionSqueezeSensorSpaceEyeOffset; }
+    void setVisionSqueezeSensorSpaceEyeOffset(float value) { _visionSqueezeSensorSpaceEyeOffset = value; }
+    float getVisionSqueezeGroundPlaneY() const { return _visionSqueezeGroundPlaneY; }
+    void setVisionSqueezeGroundPlaneY(float value) { _visionSqueezeGroundPlaneY = value; }
+    float getVisionSqueezeSpotlightSize() const { return _visionSqueezeSpotlightSize; }
+    void setVisionSqueezeSpotlightSize(float value) { _visionSqueezeSpotlightSize = value; }
+
+
 public slots:
 
     /**jsdoc
@@ -1937,6 +1971,8 @@ private:
     std::vector<Setting::Handle<QByteArray>> _avatarEntityDataSettings;
     Setting::Handle<QString> _userRecenterModelSetting;
 
+    Setting::Handle<float> _visionSqueezeRatioSetting{"visionSqueezeRatio", DEFAULT_VISION_SQUEEZE};
+
     // AvatarEntities stuff:
     // We cache the "map of unfortunately-formatted-binary-blobs" because they are expensive to compute
     // Do not confuse these with AvatarData::_packedAvatarEntityData which are in wire-format.
@@ -1968,6 +2004,16 @@ private:
     // keep a ScriptEngine around so we don't have to instantiate on the fly (these are very slow to create/delete)
     QScriptEngine* _myScriptEngine { nullptr };
     bool _needToSaveAvatarEntitySettings { false };
+
+    float _visionSqueezeRatio = DEFAULT_VISION_SQUEEZE;
+    float _visionSqueezeUnSqueezeDelay { 0.2f }; // seconds
+    float _visionSqueezeUnSqueezeSpeed { 1.2f };
+    // TODO -- remove these after tuning / debugging
+    float _visionSqueezeTransition { 0.15f };
+    int _visionSqueezePerEye { 0 };
+    float _visionSqueezeSensorSpaceEyeOffset { 0.3f };
+    float _visionSqueezeGroundPlaneY { -5.0f };
+    float _visionSqueezeSpotlightSize { 0.04f };
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);
