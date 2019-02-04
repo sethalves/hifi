@@ -53,7 +53,7 @@ enum AudioListenerMode {
 
 Q_DECLARE_METATYPE(AudioListenerMode);
 
-static const float DEFAULT_VISION_SQUEEZE = 0.75f;
+static const float DEFAULT_VISION_SQUEEZE = 0.55f;
 
 class MyAvatar : public Avatar {
     Q_OBJECT
@@ -2010,11 +2010,11 @@ private:
     float _visionSqueezeUnSqueezeDelay { 0.2f }; // seconds
     float _visionSqueezeUnSqueezeSpeed { 1.2f };
     // TODO -- remove these after tuning / debugging
-    float _visionSqueezeTransition { 0.15f };
+    float _visionSqueezeTransition { 0.05f };
     int _visionSqueezePerEye { 0 };
     float _visionSqueezeSensorSpaceEyeOffset { 0.3f };
     float _visionSqueezeGroundPlaneY { -5.0f };
-    float _visionSqueezeSpotlightSize { 0.04f };
+    float _visionSqueezeSpotlightSize { 0.02f };
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);
