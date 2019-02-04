@@ -6520,11 +6520,11 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving, to avoid sickness
             {
-                const float VISION_UNSQUEEZE_SPEED_FACTOR = 1.2f;
                 // const float VISION_SQUEEZE_PRACTICAL_MIN = 0.3f;
                 // const float VISION_SQUEEZE_PRACTICAL_MAX = 0.65f;
                 const float VISION_SQUEEZE_PRACTICAL_MIN = 0.0f;
                 const float VISION_SQUEEZE_PRACTICAL_MAX = 1.0f;
+
                 static quint64 lastSqueezeTime = 0;
                 quint64 now = usecTimestampNow();
                 static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
