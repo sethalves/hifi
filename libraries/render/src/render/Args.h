@@ -135,6 +135,7 @@ namespace render {
         gpu::TexturePointer _hudTexture;
 
         float _visionSqueeze { 0.0f };
+        glm::mat4 _sensorToCameraTransform;
     };
 
 }
