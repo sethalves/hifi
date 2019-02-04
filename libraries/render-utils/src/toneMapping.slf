@@ -14,10 +14,17 @@
 //
 
 <@include render-utils/ShaderConstants.h@>
+<@include gpu/Transform.slh@>
+<@include DeferredTransform.slh@>
+<$declareStandardCameraTransform()$>
+
+<@include gpu/ShaderConstants.h@>
+<@include gpu/Paint.slh@>
 
 struct ToneMappingParams {
     vec4 _exp_2powExp_s0_s1;
     ivec4 _toneCurve_s0_s1_s2;
+    mat4 _sensorToCameraTransform;
 };
 
 const float INV_GAMMA_22 = 1.0 / 2.2;
@@ -38,6 +45,14 @@ int getToneCurve() {
 float getVisionSqueeze() {
     return params._exp_2powExp_s0_s1.z;
 }
+mat4 getHMDSensorMatrix() {
+    return params._sensorToCameraTransform;
+}
+
+float checkerboard(vec2 R, float scale) {
+	return float((int(floor(R.x / scale)) + int(floor(R.y / scale))) % 2);
+}
+
 
 LAYOUT(binding=RENDER_UTILS_TEXTURE_TM_COLOR) uniform sampler2D colorMap;
 
@@ -63,13 +78,44 @@ void main(void) {
     } // else None toned = src
 
     // darken the edges of the view to avoid sickness
-    float visionSqueeze = getVisionSqueeze();
-    float dst = distance(varTexCoord0, vec2(0.5, 0.5)) * 2.0;
-    float transitionRatio = 0.15;
-    float lightEdge = sqrt(2.0) * (1.0 - visionSqueeze);
+    float visionSqueeze = getVisionSqueeze(); // 0 = nothing darkened.  1 = all darkened
+    float dst = distance(varTexCoord0, vec2(0.5, 0.5)) * 2.0; // fragment distance from screen center
+    float transitionRatio = 0.15; // how quickly to switch from unobstructed to black
+    float lightEdge = sqrt(2.0) * (1.0 - visionSqueeze); // sqrt(2) for corner of screen
     float darkEdge = lightEdge + transitionRatio;
     float frac = clamp((dst - lightEdge) / (darkEdge - lightEdge), 0.0, 1.0);
 
-    tonedColor = mix(tonedColor, vec3(0.0, 0.0, 0.0), frac);
+    // put a grid on the floor
+    float halfIPD = 0.3; // XXX I have no idea where to get this number
+    if (varTexCoord0.x < 0.5) {
+        halfIPD = -halfIPD;
+    }
+    TransformCamera cam = getTransformCamera();
+    mat4 hmdSensorMatrix = getHMDSensorMatrix();
+    vec4 ndc;
+    if (varTexCoord0.x < 0.5) {
+        ndc = vec4(varTexCoord0.x * 4.0 - 1.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    } else {
+        ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    }
+    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(halfIPD, 0.0, 0.0, 0.0));
+    vec4 near4 = hmdSensorMatrix * vec4(halfIPD / 2.0, 0.0, 0.0, 1.0);
+    vec3 near = (near4 / near4.w).xyz;
+    vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
+
+    // intersect a line from near to far with the plane y = 0
+    float t = -near.y / (far.y - near.y);
+    vec3 R = near + t * (far - near);
+    // use (x, z) from that intersection to determine grid color for this fragment
+    float c =
+        checkerboard(R.xz, 1) * 0.3 +
+        checkerboard(R.xz, 10) * 0.2 +
+        checkerboard(R.xz, 100) * 0.1 +
+        0.1;
+    c = c * float(t > 0);
+    float spotlight = min(1.0, 1.5 - 0.02 * length(R.xz));
+    vec3 gridColor = vec3(c * spotlight);
+
+    tonedColor = mix(tonedColor, gridColor, frac);
     outFragColor = vec4(tonedColor, 1.0);
 }

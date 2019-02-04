@@ -42,6 +42,7 @@ public:
     ToneCurve getToneCurve() const { return (ToneCurve)_parametersBuffer.get<Parameters>()._toneCurve; }
 
     void setVisionSqueeze(float visionSqueeze);
+    void setSensorToCameraTransform(glm::mat4 sensorToCameraTransform);
 
 private:
 
@@ -56,6 +57,7 @@ private:
         float spareA = 0.0f;
         int _toneCurve = Gamma22;
         glm::vec3 spareB;
+        glm::mat4 _sensorToCameraTransform;
 
         Parameters() {}
     };
