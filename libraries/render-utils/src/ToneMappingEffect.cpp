@@ -54,12 +54,20 @@ void ToneMappingEffect::setVisionSqueeze(float visionSqueeze) {
     }
 }
 
+void ToneMappingEffect::setSensorToCameraTransform(glm::mat4 sensorToCameraTransform) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._sensorToCameraTransform != sensorToCameraTransform) {
+        _parametersBuffer.edit<Parameters>()._sensorToCameraTransform = sensorToCameraTransform;
+    }
+}
+
 
 void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& lightingBuffer, const gpu::FramebufferPointer& requestedDestinationFramebuffer) {
-
     if (!_blitLightBuffer) {
         init(args);
     }
+
+    setSensorToCameraTransform(args->_sensorToCameraTransform);
 
     if (args->isStereo()) {
         setVisionSqueeze(args->_visionSqueeze);

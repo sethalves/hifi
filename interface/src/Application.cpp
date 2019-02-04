@@ -6521,7 +6521,7 @@ void Application::updateRenderArgs(float deltaTime) {
                 RenderArgs::MONO, RenderArgs::RENDER_DEBUG_NONE);
             appRenderArgs._renderArgs._scene = getMain3DScene();
 
-            // Squeeze edges of vision while moving to avoid sickness
+            // Squeeze edges of vision while moving, to avoid sickness
             {
                 const float VISION_UNSQUEEZE_DELAY = 0.2 * USECS_PER_SECOND;
                 const float VISION_UNSQUEEZE_SPEED_FACTOR = 1.2f;
@@ -6549,6 +6549,7 @@ void Application::updateRenderArgs(float deltaTime) {
                 }
 
                 appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
+                appRenderArgs._renderArgs._sensorToCameraTransform = myAvatar->getHMDSensorMatrix();
             }
 
             {
