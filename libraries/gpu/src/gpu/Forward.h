@@ -105,7 +105,7 @@ namespace gpu {
         bool _skybox{ false };
         // 0 for left eye, 1 for right eye
         uint8 _pass{ 0 };
-        Mat4 _eyeViews[2];
+        Mat4 _eyeViews[2]; // eye to head transforms
         Mat4 _eyeProjections[2];
     };
 

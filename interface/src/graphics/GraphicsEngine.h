@@ -29,7 +29,7 @@ struct AppRenderArgs {
     glm::mat4 _view;
     glm::mat4 _eyeOffsets[2];
     glm::mat4 _eyeProjections[2];
-    glm::mat4 _headPose;
+    glm::mat4 _headPose; // HMDSensorPose
     glm::mat4 _sensorToWorld;
     float _sensorToWorldScale{ 1.0f };
     bool _isStereo{ false };
