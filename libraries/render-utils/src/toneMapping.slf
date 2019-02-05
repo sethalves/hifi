@@ -29,7 +29,9 @@ struct ToneMappingParams {
     // TODO -- remove these after tuning / debugging
     float _visionSqueezeTransition;
     int _visionSqueezePerEye;
-    float _visionSqueezeSensorSpaceEyeOffset;
+    // float _visionSqueezeSensorSpaceEyeOffset;
+    mat4 _leftEyeOffset;
+    mat4 _rightEyeOffset;
     float _visionSqueezeGroundPlaneY;
     float _visionSqueezeSpotlightSize;
 };
@@ -61,8 +63,12 @@ float getVisionSqueezeTransitionRatio() {
 int getVisionSqueezePerEye() {
     return params._visionSqueezePerEye;
 }
-float getVisionSqueezeSensorSpaceEyeOffset() {
-    return params._visionSqueezeSensorSpaceEyeOffset;
+mat4 getVisionSqueezeSensorSpaceEyeOffset(int eye) {
+    if (eye == 0) {
+        return params._leftEyeOffset;
+    } else {
+        return params._rightEyeOffset;
+    }
 }
 float getVisionSqueezeGroundPlaneY() {
     return params._visionSqueezeGroundPlaneY;
@@ -136,8 +142,7 @@ void main(void) {
     float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
 
     // put a grid on the floor
-    float vssseo = getVisionSqueezeSensorSpaceEyeOffset();
-    float halfIPD = vssseo - 2.0 * vssseo * float(varTexCoord0.x < 0.5); // if x < 0.5, halfIPD = -vssseo
+    mat4 eyeOffset = getVisionSqueezeSensorSpaceEyeOffset(int(varTexCoord0.x > 0.5));
     TransformCamera cam = getTransformCamera();
     mat4 hmdSensorMatrix = getHMDSensorMatrix();
     vec4 ndc;
@@ -146,8 +151,8 @@ void main(void) {
     } else {
         ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
     }
-    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(halfIPD, 0.0, 0.0, 0.0));
-    vec4 near4 = hmdSensorMatrix * vec4(halfIPD / 2.0, 0.0, 0.0, 1.0);
+    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * eyeOffset * ndc);
+    vec4 near4 = hmdSensorMatrix * eyeOffset * vec4(0.0, 0.0, 0.0, 1.0);
     vec3 near = (near4 / near4.w).xyz;
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
 

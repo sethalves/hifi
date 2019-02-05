@@ -47,7 +47,8 @@ public:
     // TODO -- remove these after tuning / debugging
     void setVisionSqueezeTransition(float value);
     void setVisionSqueezePerEye(float value);
-    void setVisionSqueezeSensorSpaceEyeOffset(float value);
+    // void setVisionSqueezeSensorSpaceEyeOffset(float value);
+    void setVisionSqueezeEyeOffsets(glm::mat4 value[2]);
     void setVisionSqueezeGroundPlaneY(float value);
     void setVisionSqueezeSpotlightSize(float value);
 
@@ -69,7 +70,9 @@ private:
         // TODO -- remove these after tuning / debugging
         float _visionSqueezeTransition = 0.15f;
         int _visionSqueezePerEye = 0;
-        float _visionSqueezeSensorSpaceEyeOffset = 0.3f;
+        // float _visionSqueezeSensorSpaceEyeOffset = 0.3f;
+        glm::mat4 _leftEyeOffset;
+        glm::mat4 _rightEyeOffset;
         float _visionSqueezeGroundPlaneY = 0.0f;
         float _visionSqueezeSpotlightSize = 0.0f;
 

@@ -215,6 +215,8 @@ public:
     void getStereoProjections(mat4* eyeProjections) const;
     void getStereoViews(mat4* eyeViews) const;
 
+    mat4 getHeadPose() { return _currentFrame->pose; }
+
     // Downloading the Framebuffer is a synchronous action that is not efficient.
     // It s here for convenience to easily capture a snapshot
     void downloadFramebuffer(const FramebufferPointer& srcFramebuffer, const Vec4i& region, QImage& destImage);
