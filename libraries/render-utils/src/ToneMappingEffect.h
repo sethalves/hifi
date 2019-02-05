@@ -67,11 +67,10 @@ private:
         glm::vec3 spareB;
         glm::mat4 _sensorToCameraTransform;
 
-        // TODO -- remove these after tuning / debugging
-        float _visionSqueezeTransition = 0.15f;
-        int _visionSqueezePerEye = 0;
         glm::mat4 _leftEyeOffset;
         glm::mat4 _rightEyeOffset;
+        float _visionSqueezeTransition = 0.15f;
+        int _visionSqueezePerEye = 0;
         float _visionSqueezeGroundPlaneY = 0.0f;
         float _visionSqueezeSpotlightSize = 0.0f;
 

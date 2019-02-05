@@ -103,27 +103,18 @@ void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& ligh
         init(args);
     }
 
-    // setSensorToCameraTransform(args->_sensorToCameraTransform);
-    // setSensorToCameraTransform(args->_context->_currentFrame->pose);
-
     setSensorToCameraTransform(args->_context->getHeadPose());
-
     if (args->isStereo()) {
         setVisionSqueeze(args->_visionSqueeze);
     } else {
         setVisionSqueeze(0.0f);
     }
-
-    // TODO -- remove these after tuning / debugging
     setVisionSqueezeTransition(args->_visionSqueezeTransition);
     setVisionSqueezePerEye(args->_visionSqueezePerEye);
-
     mat4 eyeOffsets[2];
     eyeOffsets[0] = args->_context->getEyeOffset(0);
     eyeOffsets[1] = args->_context->getEyeOffset(1);
-
     setVisionSqueezeEyeOffsets(eyeOffsets);
-
     setVisionSqueezeGroundPlaneY(args->_visionSqueezeGroundPlaneY);
     setVisionSqueezeSpotlightSize(args->_visionSqueezeSpotlightSize);
 
