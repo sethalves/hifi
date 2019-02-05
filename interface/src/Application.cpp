@@ -6610,11 +6610,8 @@ void Application::updateRenderArgs(float deltaTime) {
                 }
 
                 appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
-                appRenderArgs._renderArgs._sensorToCameraTransform = myAvatar->getHMDSensorMatrix();
-
                 appRenderArgs._renderArgs._visionSqueezeTransition = myAvatar->getVisionSqueezeTransition();
                 appRenderArgs._renderArgs._visionSqueezePerEye = myAvatar->getVisionSqueezePerEye();
-                appRenderArgs._renderArgs._visionSqueezeSensorSpaceEyeOffset = myAvatar->getVisionSqueezeSensorSpaceEyeOffset();
                 appRenderArgs._renderArgs._visionSqueezeGroundPlaneY = myAvatar->getVisionSqueezeGroundPlaneY();
                 appRenderArgs._renderArgs._visionSqueezeSpotlightSize = myAvatar->getVisionSqueezeSpotlightSize();
             }

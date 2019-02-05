@@ -25,11 +25,8 @@ struct ToneMappingParams {
     vec4 _exp_2powExp_s0_s1;
     ivec4 _toneCurve_s0_s1_s2;
     mat4 _sensorToCameraTransform;
-
-    // TODO -- remove these after tuning / debugging
     float _visionSqueezeTransition;
     int _visionSqueezePerEye;
-    // float _visionSqueezeSensorSpaceEyeOffset;
     mat4 _leftEyeOffset;
     mat4 _rightEyeOffset;
     float _visionSqueezeGroundPlaneY;

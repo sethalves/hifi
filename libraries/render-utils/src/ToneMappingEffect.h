@@ -70,7 +70,6 @@ private:
         // TODO -- remove these after tuning / debugging
         float _visionSqueezeTransition = 0.15f;
         int _visionSqueezePerEye = 0;
-        // float _visionSqueezeSensorSpaceEyeOffset = 0.3f;
         glm::mat4 _leftEyeOffset;
         glm::mat4 _rightEyeOffset;
         float _visionSqueezeGroundPlaneY = 0.0f;
