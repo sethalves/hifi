@@ -142,7 +142,8 @@ void main(void) {
     float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
 
     // put a grid on the floor
-    mat4 eyeOffset = getVisionSqueezeSensorSpaceEyeOffset(int(varTexCoord0.x > 0.5));
+    int side = int(varTexCoord0.x > 0.5);
+    mat4 eyeOffset = getVisionSqueezeSensorSpaceEyeOffset(side);
     TransformCamera cam = getTransformCamera();
     mat4 hmdSensorMatrix = getHMDSensorMatrix();
     vec4 ndc;
@@ -152,8 +153,19 @@ void main(void) {
         ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
     }
 
-    vec4 fragmentEyeCoords = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * cam._projectionInverse * ndc;
-    vec4 near4 = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * vec4(0.0, 0.0, 0.0, 1.0);
+    // vec4 fragmentEyeCoords = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * cam._projectionInverse * ndc;
+    // vec4 near4 = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * vec4(0.0, 0.0, 0.0, 1.0);
+
+    // float ipd = (side == 0) ? -0.3 : 0.3;
+    // vec4 fragmentEyeCoords = /*getCorrectionInverse() * */ hmdSensorMatrix *
+    //     (cam._projectionInverse * ndc + vec4(ipd, 0.0, 0.0, 1.0));
+    // vec4 near4 = /*getCorrectionInverse() * */ hmdSensorMatrix * vec4(ipd / 2.0, 0.0, 0.0, 1.0);
+
+    float vssseo = 0.3; // getVisionSqueezeSensorSpaceEyeOffset();
+    float halfIPD = vssseo - 2.0 * vssseo * float(varTexCoord0.x < 0.5); // if x < 0.5, halfIPD = -vssseo
+    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(halfIPD, 0.0, 0.0, 0.0));
+    vec4 near4 = hmdSensorMatrix * vec4(halfIPD / 2.0, 0.0, 0.0, 1.0);
+
 
     vec3 near = (near4 / near4.w).xyz;
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;

@@ -114,6 +114,8 @@ void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& ligh
     mat4 eyeOffsets[2];
     eyeOffsets[0] = args->_context->getEyeOffset(0);
     eyeOffsets[1] = args->_context->getEyeOffset(1);
+    eyeOffsets[0][3][0] = 0.3; // XXX
+    eyeOffsets[1][3][0] = -0.3; // XXX
     setVisionSqueezeEyeOffsets(eyeOffsets);
     setVisionSqueezeGroundPlaneY(args->_visionSqueezeGroundPlaneY);
     setVisionSqueezeSpotlightSize(args->_visionSqueezeSpotlightSize);
