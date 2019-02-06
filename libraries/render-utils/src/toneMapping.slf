@@ -15,7 +15,10 @@
 
 <@include render-utils/ShaderConstants.h@>
 <@include gpu/Transform.slh@>
+
 <@include DeferredTransform.slh@>
+<$declareDeferredFrameTransform()$>
+
 <$declareStandardCameraTransform()$>
 
 <@include gpu/ShaderConstants.h@>
@@ -149,16 +152,8 @@ void main(void) {
         ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
     }
 
-    // -    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(halfIPD, 0.0, 0.0, 0.0));
-    // -    vec4 near4 = hmdSensorMatrix * vec4(halfIPD / 2.0, 0.0, 0.0, 1.0);
-
-    // vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(eyeOffset[3][0], 0.0, 0.0, 0.0));
-    // vec4 near4 = hmdSensorMatrix * vec4(eyeOffset[3][0], 0.0, 0.0, 1.0);
-
-    vec4 fragmentEyeCoords = hmdSensorMatrix * (cam._projectionInverse * ndc + vec4(-eyeOffset[3][0], 0.0, 0.0, 0.0));
-    vec4 near4 = hmdSensorMatrix * vec4(-eyeOffset[3][0], 0.0, 0.0, 1.0);
-
-
+    vec4 fragmentEyeCoords = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * cam._projectionInverse * ndc;
+    vec4 near4 = getCorrectionInverse() * hmdSensorMatrix * eyeOffset * vec4(0.0, 0.0, 0.0, 1.0);
 
     vec3 near = (near4 / near4.w).xyz;
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
