@@ -51,8 +51,11 @@ float getTwoPowExposure() {
 int getToneCurve() {
     return params._toneCurve_s0_s1_s2.x;
 }
-float getVisionSqueeze() {
+float getVisionSqueezeX() {
     return params._exp_2powExp_s0_s1.z;
+}
+float getVisionSqueezeY() {
+    return params._exp_2powExp_s0_s1.w;
 }
 mat4 getHMDSensorMatrix() {
     return params._sensorToCameraTransform;
@@ -123,7 +126,8 @@ void main(void) {
     } // else None toned = src
 
     // darken the edges of the view to avoid sickness
-    float visionSqueeze = getVisionSqueeze(); // 0 = nothing darkened.  1 = all darkened
+    float visionSqueezeX = 1.0 - getVisionSqueezeX();
+    float visionSqueezeY = 1.0 - getVisionSqueezeY();
 
     float dst;
     if (getVisionSqueezePerEye() > 0) {
@@ -132,16 +136,22 @@ void main(void) {
                   distance(varTexCoord0, vec2(0.75, 0.5)));
     } else {
         // one tube in front of face
-        dst = distance(varTexCoord0, vec2(0.5, 0.5)); // fragment distance from screen center
+        // dst = distance(varTexCoord0, vec2(0.5, 0.5)); // fragment distance from screen center
+        dst = pow(varTexCoord0.x - 0.5, 2.0) / visionSqueezeX + pow(varTexCoord0.y - 0.5, 2.0) / visionSqueezeY;
     }
 
     float transitionRatio = getVisionSqueezeTransitionRatio();
 
-    float lightEdge = sqrt(0.5*0.5 + 0.5*0.5) * (1.0 - visionSqueeze); // screencorner * (1.0 - visionSqueeze)
-    float darkEdge = lightEdge + transitionRatio;
-    float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
+    // float lightEdge = sqrt(0.5*0.5 + 0.5*0.5) * (1.0 - visionSqueezeX); // screencorner * (1.0 - visionSqueezeX)
+    // float darkEdge = lightEdge + transitionRatio;
+    // float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
+    float frac = clamp(dst, 0.0, 1.0);
+
+
+
 
     // put a grid on the floor
+
     int side = int(varTexCoord0.x > 0.5);
     mat4 eyeOffset = getVisionSqueezeSensorSpaceEyeOffset(side);
     TransformCamera cam = getTransformCamera();

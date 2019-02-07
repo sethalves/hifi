@@ -253,7 +253,8 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(bool isSitStandStateLocked READ getIsSitStandStateLocked WRITE setIsSitStandStateLocked);
     Q_PROPERTY(bool allowTeleporting READ getAllowTeleporting)
 
-    Q_PROPERTY(float visionSqueezeRatio READ getVisionSqueezeRatio WRITE setVisionSqueezeRatio);
+    Q_PROPERTY(float visionSqueezeRatioX READ getVisionSqueezeRatioX WRITE setVisionSqueezeRatioX);
+    Q_PROPERTY(float visionSqueezeRatioY READ getVisionSqueezeRatioY WRITE setVisionSqueezeRatioY);
     Q_PROPERTY(float visionSqueezeUnSqueezeDelay READ getVisionSqueezeUnSqueezeDelay WRITE setVisionSqueezeUnSqueezeDelay);
     Q_PROPERTY(float visionSqueezeUnSqueezeSpeed READ getVisionSqueezeUnSqueezeSpeed WRITE setVisionSqueezeUnSqueezeSpeed);
 
@@ -1197,7 +1198,8 @@ public:
     void avatarEntityDataToJson(QJsonObject& root) const override;
     int sendAvatarDataPacket(bool sendAll = false) override;
 
-    float getVisionSqueezeRatio() const;
+    float getVisionSqueezeRatioX() const;
+    float getVisionSqueezeRatioY() const;
     void setVisionSqueezeRatio(float value);
 
     float getVisionSqueezeUnSqueezeDelay() const { return _visionSqueezeUnSqueezeDelay; }

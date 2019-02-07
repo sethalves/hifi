@@ -5321,8 +5321,12 @@ void MyAvatar::releaseGrab(const QUuid& grabID) {
     }
 }
 
-float MyAvatar::getVisionSqueezeRatio() const {
-    return _visionSqueezeRatio;
+float MyAvatar::getVisionSqueezeRatioX() const {
+    return _visionSqueezeRatioX;
+}
+
+float MyAvatar::getVisionSqueezeRatioY() const {
+    return _visionSqueezeRatioY;
 }
 
 void MyAvatar::setVisionSqueezeRatio(float value) {

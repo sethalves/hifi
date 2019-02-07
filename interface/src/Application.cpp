@@ -6578,7 +6578,7 @@ void Application::update(float deltaTime) {
         const float SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT = 0.5f;
         const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
         const float SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN = 0.99f;
-        const float VISION_SQUEEZE_TP_LOCKOUT = 0.1; // seconds
+        const float VISION_SQUEEZE_TP_LOCKOUT = 0.1f; // seconds
 
         static float visionSqueezeLockout { 0.0 };
         static glm::vec3 prevTranslation;
@@ -6662,9 +6662,12 @@ void Application::updateRenderArgs(float deltaTime) {
                 quint64 now = usecTimestampNow();
                 static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 if (_squeezeVision) {
-                    float ratio = myAvatar->getVisionSqueezeRatio();
-                    if (ratio > 0.0f) {
-                        visionSqueeze = ratio * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
+                    float ratioX = myAvatar->getVisionSqueezeRatioX();
+                    float ratioY = myAvatar->getVisionSqueezeRatioY();
+                    if (ratioX > 0.0f && ratioY > 0.0f) {
+                        visionSqueezeX = ratioX * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
+                            VISION_SQUEEZE_PRACTICAL_MIN;
+                        visionSqueezeY = ratioY * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
                             VISION_SQUEEZE_PRACTICAL_MIN;
                     } else {
                         visionSqueeze = 0.0f;
@@ -6679,7 +6682,8 @@ void Application::updateRenderArgs(float deltaTime) {
                     }
                 }
 
-                appRenderArgs._renderArgs._visionSqueeze = visionSqueeze;
+                appRenderArgs._renderArgs._visionSqueezeX = visionSqueezeX;
+                appRenderArgs._renderArgs._visionSqueezeY = visionSqueezeY;
                 appRenderArgs._renderArgs._visionSqueezeTransition = myAvatar->getVisionSqueezeTransition();
                 appRenderArgs._renderArgs._visionSqueezePerEye = myAvatar->getVisionSqueezePerEye();
                 appRenderArgs._renderArgs._visionSqueezeGroundPlaneY = myAvatar->getVisionSqueezeGroundPlaneY();

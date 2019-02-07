@@ -47,10 +47,12 @@ void ToneMappingEffect::setToneCurve(ToneCurve curve) {
     }
 }
 
-void ToneMappingEffect::setVisionSqueeze(float visionSqueeze) {
+void ToneMappingEffect::setVisionSqueeze(float visionSqueezeX, float visionSqueezeY) {
     auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueeze != visionSqueeze) {
-        _parametersBuffer.edit<Parameters>()._visionSqueeze = visionSqueeze;
+    if (params._visionSqueezeX != visionSqueezeX ||
+        params._visionSqueezeY != visionSqueezeY) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeX = visionSqueezeX;
+        _parametersBuffer.edit<Parameters>()._visionSqueezeY = visionSqueezeY;
     }
 }
 
@@ -105,9 +107,9 @@ void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& ligh
 
     setSensorToCameraTransform(args->_context->getHeadPose());
     if (args->isStereo()) {
-        setVisionSqueeze(args->_visionSqueeze);
+        setVisionSqueeze(args->_visionSqueezeX, args->_visionSqueezeY);
     } else {
-        setVisionSqueeze(0.0f);
+        setVisionSqueeze(0.0f, 0.0f);
     }
     setVisionSqueezeTransition(args->_visionSqueezeTransition);
     setVisionSqueezePerEye(args->_visionSqueezePerEye);
