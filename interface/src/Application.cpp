@@ -19,6 +19,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/vector_angle.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtc/epsilon.hpp>
 
 #include <gl/Config.h>
 
@@ -6566,6 +6568,43 @@ void Application::update(float deltaTime) {
     if (!getActiveDisplayPlugin()->isActive()) {
         getMain3DScene()->processTransactionQueue();
     }
+
+    _squeezeVision = false;
+
+    {
+        static glm::mat4 previousSensorToWorldMatrix;
+        glm::mat4 sensorToWorldMatrix = myAvatar->getSensorToWorldMatrix();
+        // glm::mat4 sensorToWorldMatrix = myAvatar->getHMDSensorMatrix();
+
+        glm::vec3 scale;
+        glm::quat rotation;
+        glm::vec3 translation;
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(sensorToWorldMatrix, scale, rotation, translation, skew, perspective);
+
+        glm::vec3 prevScale;
+        glm::quat prevRotation;
+        glm::vec3 prevTranslation;
+        glm::vec3 prevSkew;
+        glm::vec4 prevPerspective;
+        glm::decompose(previousSensorToWorldMatrix, prevScale, prevRotation, prevTranslation, prevSkew, prevPerspective);
+
+        // if the sensor-to-world matrix changed noticably between this frame and the previous one,
+        // squeeze down the vision in an attempt to avoid sickness.
+        const float SENSOR_TO_WORLD_TRANS_EPSILON = 0.001f;
+        const float SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT = 0.5f;
+        const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
+        const float SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN = 0.9f; // XXX figure out the right value here
+        float rotDot = fabsf(glm::dot(rotation, prevRotation));
+        if ((glm::any(glm::epsilonNotEqual(translation, prevTranslation, SENSOR_TO_WORLD_TRANS_EPSILON)) &&
+             glm::length(translation - prevTranslation) < SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT) ||
+            (rotDot < 1.0f - SENSOR_TO_WORLD_ROT_EPSILON &&
+             rotDot > SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN)) {
+            _squeezeVision = true;
+        }
+        previousSensorToWorldMatrix = sensorToWorldMatrix;
+    }
 }
 
 void Application::updateRenderArgs(float deltaTime) {
@@ -6613,7 +6652,7 @@ void Application::updateRenderArgs(float deltaTime) {
                 static quint64 lastSqueezeTime = 0;
                 quint64 now = usecTimestampNow();
                 static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
-                if (myAvatar->hasDriveInput() || myAvatar->hasRotateInput()) {
+                if (_squeezeVision) {
                     float ratio = myAvatar->getVisionSqueezeRatio();
                     if (ratio > 0.0f) {
                         visionSqueeze = ratio * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +

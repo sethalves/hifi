@@ -799,5 +799,7 @@ private:
 
     bool _showTrackedObjects { false };
     bool _prevShowTrackedObjects { false };
+
+    bool _squeezeVision { false };
 };
 #endif // hifi_Application_h
