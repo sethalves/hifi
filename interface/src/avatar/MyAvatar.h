@@ -53,7 +53,15 @@ enum AudioListenerMode {
 
 Q_DECLARE_METATYPE(AudioListenerMode);
 
-static const float DEFAULT_VISION_SQUEEZE = 0.55f;
+static const float DEFAULT_VISION_SQUEEZE_X = 0.8f;
+static const float DEFAULT_VISION_SQUEEZE_Y = 0.7f;
+static const float DEFAULT_VISION_SQUEEZE_UNSQUEEZE_DELAY = 0.2f; // seconds
+static const float DEFAULT_VISION_SQUEEZE_UNSQUEEZE_SPEED =  1.2f;
+static const float DEFAULT_VISION_SQUEEZE_TRANSITION =  0.25f;
+static const int DEFAULT_VISION_SQUEEZE_PER_EYE = 0;
+static const float DEFAULT_VISION_SQUEEZE_GROUND_PLANE_Y =  -5.0f;
+static const float DEFAULT_VISION_SQUEEZE_SPOTLIGHT_SIZE =  0.02f;
+
 
 class MyAvatar : public Avatar {
     Q_OBJECT
@@ -254,13 +262,13 @@ class MyAvatar : public Avatar {
     Q_PROPERTY(bool isSitStandStateLocked READ getIsSitStandStateLocked WRITE setIsSitStandStateLocked);
     Q_PROPERTY(bool allowTeleporting READ getAllowTeleporting)
 
-    Q_PROPERTY(float visionSqueezeRatio READ getVisionSqueezeRatio WRITE setVisionSqueezeRatio);
+    Q_PROPERTY(float visionSqueezeRatioX READ getVisionSqueezeRatioX WRITE setVisionSqueezeRatioX);
+    Q_PROPERTY(float visionSqueezeRatioY READ getVisionSqueezeRatioY WRITE setVisionSqueezeRatioY);
     Q_PROPERTY(float visionSqueezeUnSqueezeDelay READ getVisionSqueezeUnSqueezeDelay WRITE setVisionSqueezeUnSqueezeDelay);
     Q_PROPERTY(float visionSqueezeUnSqueezeSpeed READ getVisionSqueezeUnSqueezeSpeed WRITE setVisionSqueezeUnSqueezeSpeed);
 
     Q_PROPERTY(float visionSqueezeTransition READ getVisionSqueezeTransition WRITE setVisionSqueezeTransition);
     Q_PROPERTY(int visionSqueezePerEye READ getVisionSqueezePerEye WRITE setVisionSqueezePerEye);
-    Q_PROPERTY(float visionSqueezeSensorSpaceEyeOffset READ getVisionSqueezeSensorSpaceEyeOffset WRITE setVisionSqueezeSensorSpaceEyeOffset);
     Q_PROPERTY(float visionSqueezeGroundPlaneY READ getVisionSqueezeGroundPlaneY WRITE setVisionSqueezeGroundPlaneY);
     Q_PROPERTY(float visionSqueezeSpotlightSize READ getVisionSqueezeSpotlightSize WRITE setVisionSqueezeSpotlightSize);
 
@@ -1198,25 +1206,22 @@ public:
     void avatarEntityDataToJson(QJsonObject& root) const override;
     int sendAvatarDataPacket(bool sendAll = false) override;
 
-    float getVisionSqueezeRatio() const;
-    void setVisionSqueezeRatio(float value);
-
+    float getVisionSqueezeRatioX() const;
+    float getVisionSqueezeRatioY() const;
+    void setVisionSqueezeRatioX(float value);
+    void setVisionSqueezeRatioY(float value);
     float getVisionSqueezeUnSqueezeDelay() const { return _visionSqueezeUnSqueezeDelay; }
-    void setVisionSqueezeUnSqueezeDelay(float value) { _visionSqueezeUnSqueezeDelay = value; }
+    void setVisionSqueezeUnSqueezeDelay(float value);
     float getVisionSqueezeUnSqueezeSpeed() const { return _visionSqueezeUnSqueezeSpeed; }
-    void setVisionSqueezeUnSqueezeSpeed(float value) { _visionSqueezeUnSqueezeSpeed = value; }
-
-    // TODO -- remove these after tuning / debugging
+    void setVisionSqueezeUnSqueezeSpeed(float value);
     float getVisionSqueezeTransition() const { return _visionSqueezeTransition; }
-    void setVisionSqueezeTransition(float value) { _visionSqueezeTransition = value; }
+    void setVisionSqueezeTransition(float value);
     int getVisionSqueezePerEye() const { return _visionSqueezePerEye; }
-    void setVisionSqueezePerEye(int value) { _visionSqueezePerEye = value; }
-    float getVisionSqueezeSensorSpaceEyeOffset() const { return _visionSqueezeSensorSpaceEyeOffset; }
-    void setVisionSqueezeSensorSpaceEyeOffset(float value) { _visionSqueezeSensorSpaceEyeOffset = value; }
+    void setVisionSqueezePerEye(int value);
     float getVisionSqueezeGroundPlaneY() const { return _visionSqueezeGroundPlaneY; }
-    void setVisionSqueezeGroundPlaneY(float value) { _visionSqueezeGroundPlaneY = value; }
+    void setVisionSqueezeGroundPlaneY(float value);
     float getVisionSqueezeSpotlightSize() const { return _visionSqueezeSpotlightSize; }
-    void setVisionSqueezeSpotlightSize(float value) { _visionSqueezeSpotlightSize = value; }
+    void setVisionSqueezeSpotlightSize(float value);
 
 
 public slots:
@@ -1974,7 +1979,19 @@ private:
     std::vector<Setting::Handle<QByteArray>> _avatarEntityDataSettings;
     Setting::Handle<QString> _userRecenterModelSetting;
 
-    Setting::Handle<float> _visionSqueezeRatioSetting{"visionSqueezeRatio", DEFAULT_VISION_SQUEEZE};
+    Setting::Handle<float> _visionSqueezeRatioXSetting{"visionSqueezeRatioX", DEFAULT_VISION_SQUEEZE_X};
+    Setting::Handle<float> _visionSqueezeRatioYSetting{"visionSqueezeRatioY", DEFAULT_VISION_SQUEEZE_Y};
+    Setting::Handle<float> _visionSqueezeUnSqueezeDelaySetting{"visionSqueezeUnSqueezeDelay",
+            DEFAULT_VISION_SQUEEZE_UNSQUEEZE_DELAY};
+    Setting::Handle<float> _visionSqueezeUnSqueezeSpeedSetting{"visionSqueezeUnSqueezeSpeed",
+            DEFAULT_VISION_SQUEEZE_UNSQUEEZE_SPEED};
+    Setting::Handle<float> _visionSqueezeTransitionSetting{"visionSqueezeTransition", DEFAULT_VISION_SQUEEZE_TRANSITION};
+    Setting::Handle<float> _visionSqueezePerEyeSetting{"visionSqueezePerEye", DEFAULT_VISION_SQUEEZE_PER_EYE};
+    Setting::Handle<float> _visionSqueezeGroundPlaneYSetting{"visionSqueezeGroundPlaneY",
+            DEFAULT_VISION_SQUEEZE_GROUND_PLANE_Y};
+    Setting::Handle<float> _visionSqueezeSpotlightSizeSetting{"visionSqueezeSpotlightSize",
+            DEFAULT_VISION_SQUEEZE_SPOTLIGHT_SIZE};
+
 
     // AvatarEntities stuff:
     // We cache the "map of unfortunately-formatted-binary-blobs" because they are expensive to compute
@@ -2008,15 +2025,14 @@ private:
     QScriptEngine* _myScriptEngine { nullptr };
     bool _needToSaveAvatarEntitySettings { false };
 
-    float _visionSqueezeRatio = DEFAULT_VISION_SQUEEZE;
-    float _visionSqueezeUnSqueezeDelay { 0.2f }; // seconds
-    float _visionSqueezeUnSqueezeSpeed { 1.2f };
-    // TODO -- remove these after tuning / debugging
-    float _visionSqueezeTransition { 0.05f };
-    int _visionSqueezePerEye { 0 };
-    float _visionSqueezeSensorSpaceEyeOffset { 0.3f };
-    float _visionSqueezeGroundPlaneY { -5.0f };
-    float _visionSqueezeSpotlightSize { 0.02f };
+    float _visionSqueezeRatioX = DEFAULT_VISION_SQUEEZE_X;
+    float _visionSqueezeRatioY = DEFAULT_VISION_SQUEEZE_Y;
+    float _visionSqueezeUnSqueezeDelay { DEFAULT_VISION_SQUEEZE_UNSQUEEZE_DELAY }; // seconds
+    float _visionSqueezeUnSqueezeSpeed { DEFAULT_VISION_SQUEEZE_UNSQUEEZE_SPEED };
+    float _visionSqueezeTransition { DEFAULT_VISION_SQUEEZE_TRANSITION };
+    int _visionSqueezePerEye { DEFAULT_VISION_SQUEEZE_PER_EYE };
+    float _visionSqueezeGroundPlaneY { DEFAULT_VISION_SQUEEZE_GROUND_PLANE_Y };
+    float _visionSqueezeSpotlightSize { DEFAULT_VISION_SQUEEZE_SPOTLIGHT_SIZE };
 };
 
 QScriptValue audioListenModeToScriptValue(QScriptEngine* engine, const AudioListenerMode& audioListenerMode);

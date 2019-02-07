@@ -171,7 +171,14 @@ MyAvatar::MyAvatar(QThread* thread) :
     _flyingHMDSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "flyingHMD", _flyingPrefHMD),
     _avatarEntityCountSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "avatarEntityData" << "size", 0),
     _userRecenterModelSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "userRecenterModel", USER_RECENTER_MODEL_AUTO),
-    _visionSqueezeRatio(_visionSqueezeRatioSetting.get())
+    _visionSqueezeRatioX(_visionSqueezeRatioXSetting.get()),
+    _visionSqueezeRatioY(_visionSqueezeRatioYSetting.get()),
+    _visionSqueezeUnSqueezeDelay(_visionSqueezeUnSqueezeDelaySetting.get()),
+    _visionSqueezeUnSqueezeSpeed(_visionSqueezeUnSqueezeSpeedSetting.get()),
+    _visionSqueezeTransition(_visionSqueezeTransitionSetting.get()),
+    _visionSqueezePerEye(_visionSqueezePerEyeSetting.get()),
+    _visionSqueezeGroundPlaneY(_visionSqueezeGroundPlaneYSetting.get()),
+    _visionSqueezeSpotlightSize(_visionSqueezeSpotlightSizeSetting.get())
 {
     _clientTraitsHandler.reset(new ClientTraitsHandler(this));
 
@@ -5330,13 +5337,66 @@ void MyAvatar::sendPacket(const QUuid& entityID, const EntityItemProperties& pro
     }
 }
 
-float MyAvatar::getVisionSqueezeRatio() const {
-    return _visionSqueezeRatio;
+float MyAvatar::getVisionSqueezeRatioX() const {
+    return _visionSqueezeRatioX;
 }
 
-void MyAvatar::setVisionSqueezeRatio(float value) {
-    if (value != _visionSqueezeRatio) {
-        _visionSqueezeRatio = value;
-        _visionSqueezeRatioSetting.set(_visionSqueezeRatio);
+float MyAvatar::getVisionSqueezeRatioY() const {
+    return _visionSqueezeRatioY;
+}
+
+void MyAvatar::setVisionSqueezeRatioX(float value) {
+    if (value != _visionSqueezeRatioX) {
+        _visionSqueezeRatioX = value;
+        _visionSqueezeRatioXSetting.set(_visionSqueezeRatioX);
+    }
+}
+
+void MyAvatar::setVisionSqueezeRatioY(float value) {
+    if (value != _visionSqueezeRatioY) {
+        _visionSqueezeRatioY = value;
+        _visionSqueezeRatioYSetting.set(_visionSqueezeRatioY);
+    }
+}
+
+void MyAvatar::setVisionSqueezeUnSqueezeDelay(float value) {
+    if (value != _visionSqueezeUnSqueezeDelay) {
+        _visionSqueezeUnSqueezeDelay = value;
+        _visionSqueezeUnSqueezeDelaySetting.set(_visionSqueezeUnSqueezeDelay);
+    }
+}
+
+void MyAvatar::setVisionSqueezeUnSqueezeSpeed(float value) {
+    if (value != _visionSqueezeUnSqueezeSpeed) {
+        _visionSqueezeUnSqueezeSpeed = value;
+        _visionSqueezeUnSqueezeSpeedSetting.set(_visionSqueezeUnSqueezeSpeed);
+    }
+}
+
+void MyAvatar::setVisionSqueezeTransition(float value) {
+    if (value != _visionSqueezeTransition) {
+        _visionSqueezeTransition = value;
+        _visionSqueezeTransitionSetting.set(_visionSqueezeTransition);
+    }
+}
+
+void MyAvatar::setVisionSqueezePerEye(int value) {
+    if (value != _visionSqueezePerEye) {
+        _visionSqueezePerEye = value;
+        _visionSqueezePerEyeSetting.set(_visionSqueezePerEye);
+    }
+}
+
+void MyAvatar::setVisionSqueezeGroundPlaneY(float value) {
+    if (value != _visionSqueezeGroundPlaneY) {
+        _visionSqueezeGroundPlaneY = value;
+        _visionSqueezeGroundPlaneYSetting.set(_visionSqueezeGroundPlaneY);
+    }
+}
+
+void MyAvatar::setVisionSqueezeSpotlightSize(float value) {
+    if (value != _visionSqueezeSpotlightSize) {
+        _visionSqueezeSpotlightSize = value;
+        _visionSqueezeSpotlightSizeSetting.set(_visionSqueezeSpotlightSize);
     }
 }

@@ -51,8 +51,11 @@ float getTwoPowExposure() {
 int getToneCurve() {
     return params._toneCurve_s0_s1_s2.x;
 }
-float getVisionSqueeze() {
+float getVisionSqueezeX() {
     return params._exp_2powExp_s0_s1.z;
+}
+float getVisionSqueezeY() {
+    return params._exp_2powExp_s0_s1.w;
 }
 mat4 getHMDSensorMatrix() {
     return params._sensorToCameraTransform;
@@ -85,18 +88,24 @@ float checkerboard(vec2 R, float scale) {
 //     return v / (1.0 + abs(v));
 // }
 
-// float sigmoid(float v) {
-//     return 1.0 / (1.0 + exp(-2.0 * v));
-// }
+float sigmoid(float v) {
+    return 1.0 / (1.0 + exp(-2.0 * v));
+}
 
 // float sigmoid(float v) {
 //     if (v < 0.5) return 0;
 //     return 1;
 // }
 
-float sigmoid(float v) {
-    return v;
+// float sigmoid(float v) {
+//     return v;
+// }
+
+
+float ellipse(vec2 coord, vec2 center, vec2 semiAxis) {
+    return pow(coord.x - center.x, 2.0) / semiAxis.x + pow(coord.y - center.y, 2.0) / semiAxis.y;
 }
+
 
 
 LAYOUT(binding=RENDER_UTILS_TEXTURE_TM_COLOR) uniform sampler2D colorMap;
@@ -123,23 +132,24 @@ void main(void) {
     } // else None toned = src
 
     // darken the edges of the view to avoid sickness
-    float visionSqueeze = getVisionSqueeze(); // 0 = nothing darkened.  1 = all darkened
-
-    float dst;
-    if (getVisionSqueezePerEye() > 0) {
+    bool perEye = getVisionSqueezePerEye() > 0;
+    vec2 center;
+    float visionSqueezeX;
+    float visionSqueezeY;
+    if (perEye) {
         // tubes in front of each eye
-        dst = min(distance(varTexCoord0, vec2(0.25, 0.5)),
-                  distance(varTexCoord0, vec2(0.75, 0.5)));
+        center = varTexCoord0.x < 0.5 ? vec2(0.25, 0.5) : vec2(0.75, 0.5);
+        visionSqueezeX = 0.25 - getVisionSqueezeX() * 0.25;
+        visionSqueezeY = 0.25 - getVisionSqueezeY() * 0.25;
     } else {
         // one tube in front of face
-        dst = distance(varTexCoord0, vec2(0.5, 0.5)); // fragment distance from screen center
+        center = vec2(0.5, 0.5);
+        visionSqueezeX = 0.5 - getVisionSqueezeX() * 0.5;
+        visionSqueezeY = 0.5 - getVisionSqueezeY() * 0.5;
     }
-
+    float ellipseValue = ellipse(varTexCoord0, center, vec2(visionSqueezeX, visionSqueezeY));
     float transitionRatio = getVisionSqueezeTransitionRatio();
-
-    float lightEdge = sqrt(0.5*0.5 + 0.5*0.5) * (1.0 - visionSqueeze); // screencorner * (1.0 - visionSqueeze)
-    float darkEdge = lightEdge + transitionRatio;
-    float frac = clamp(sigmoid((dst - lightEdge) / (darkEdge - lightEdge)), 0.0, 1.0);
+    float frac = clamp((ellipseValue - 1.0) / clamp(transitionRatio, 0.01, 0.7), 0.0, 1.0);
 
     // put a grid on the floor
     int side = int(varTexCoord0.x > 0.5);
@@ -164,7 +174,7 @@ void main(void) {
     vec3 near = (near4 / near4.w).xyz;
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
 
-    // intersect a line from near to far with the plane y = 0
+    // intersect a line from near to far with the plane y = groundPlaneY
     float t = -(near.y - getVisionSqueezeGroundPlaneY()) / (far.y - near.y);
     vec3 R = near + t * (far - near);
     // use (x, z) from that intersection to determine grid color for this fragment
