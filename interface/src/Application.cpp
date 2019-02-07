@@ -6569,12 +6569,21 @@ void Application::update(float deltaTime) {
         getMain3DScene()->processTransactionQueue();
     }
 
-    _squeezeVision = false;
-
+    // decide if the sensorToWorldMatrix is changing in a way that warrents squeezing the edges of the view down
     {
-        static glm::mat4 previousSensorToWorldMatrix;
+        PerformanceTimer perfTimer("squeezeVision");
+
+        const float SENSOR_TO_WORLD_TRANS_EPSILON = 0.0001f;
+        const float SENSOR_TO_WORLD_TRANS_Y_EPSILON = 0.03f;
+        const float SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT = 0.5f;
+        const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
+        const float SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN = 0.99f;
+        const float VISION_SQUEEZE_TP_LOCKOUT = 0.1; // seconds
+
+        static float visionSqueezeLockout { 0.0 };
+        static glm::vec3 prevTranslation;
+        static glm::quat prevRotation;
         glm::mat4 sensorToWorldMatrix = myAvatar->getSensorToWorldMatrix();
-        // glm::mat4 sensorToWorldMatrix = myAvatar->getHMDSensorMatrix();
 
         glm::vec3 scale;
         glm::quat rotation;
@@ -6583,27 +6592,27 @@ void Application::update(float deltaTime) {
         glm::vec4 perspective;
         glm::decompose(sensorToWorldMatrix, scale, rotation, translation, skew, perspective);
 
-        glm::vec3 prevScale;
-        glm::quat prevRotation;
-        glm::vec3 prevTranslation;
-        glm::vec3 prevSkew;
-        glm::vec4 prevPerspective;
-        glm::decompose(previousSensorToWorldMatrix, prevScale, prevRotation, prevTranslation, prevSkew, prevPerspective);
+        if (visionSqueezeLockout > 0.0f) {
+            visionSqueezeLockout -= deltaTime;
+        } else {
+            _squeezeVision = false;
+            glm::vec3 absTransDelta = glm::abs(translation - prevTranslation);
+            float rotDot = fabsf(glm::dot(rotation, prevRotation));
 
-        // if the sensor-to-world matrix changed noticably between this frame and the previous one,
-        // squeeze down the vision in an attempt to avoid sickness.
-        const float SENSOR_TO_WORLD_TRANS_EPSILON = 0.001f;
-        const float SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT = 0.5f;
-        const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
-        const float SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN = 0.9f; // XXX figure out the right value here
-        float rotDot = fabsf(glm::dot(rotation, prevRotation));
-        if ((glm::any(glm::epsilonNotEqual(translation, prevTranslation, SENSOR_TO_WORLD_TRANS_EPSILON)) &&
-             glm::length(translation - prevTranslation) < SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT) ||
-            (rotDot < 1.0f - SENSOR_TO_WORLD_ROT_EPSILON &&
-             rotDot > SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN)) {
-            _squeezeVision = true;
+            // if the avatar has just teleported or snap-turned, disable triggering of vision-squeeze, briefly
+            if (glm::length(translation - prevTranslation) > SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT ||
+                rotDot < SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN) {
+                visionSqueezeLockout = VISION_SQUEEZE_TP_LOCKOUT;
+            } else if (absTransDelta.x > SENSOR_TO_WORLD_TRANS_EPSILON ||
+                absTransDelta.y > SENSOR_TO_WORLD_TRANS_Y_EPSILON ||
+                absTransDelta.z > SENSOR_TO_WORLD_TRANS_EPSILON /* ||
+                rotDot < 1.0f - SENSOR_TO_WORLD_ROT_EPSILON */) {
+                _squeezeVision = true;
+            }
         }
-        previousSensorToWorldMatrix = sensorToWorldMatrix;
+
+        prevTranslation = translation;
+        prevRotation = rotation;
     }
 }
 
