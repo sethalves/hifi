@@ -129,6 +129,8 @@ void main(void) {
     float visionSqueezeX = 0.5 - getVisionSqueezeX();
     float visionSqueezeY = 0.5 - getVisionSqueezeY();
 
+    float transitionRatio = getVisionSqueezeTransitionRatio();
+
     float dst;
     if (getVisionSqueezePerEye() > 0) {
         // tubes in front of each eye
@@ -140,12 +142,12 @@ void main(void) {
         dst = pow(varTexCoord0.x - 0.5, 2.0) / visionSqueezeX + pow(varTexCoord0.y - 0.5, 2.0) / visionSqueezeY;
         if (dst < 1.0) {
             dst = 0.0;
+        } else if (dst < 1.0 + transitionRatio) {
+            dst = (dst - 1.0) / transitionRatio;
         } else {
             dst = 1.0;
         }
     }
-
-    float transitionRatio = getVisionSqueezeTransitionRatio();
 
     // float lightEdge = sqrt(0.5*0.5 + 0.5*0.5) * (1.0 - visionSqueezeX); // screencorner * (1.0 - visionSqueezeX)
     // float darkEdge = lightEdge + transitionRatio;
@@ -179,7 +181,7 @@ void main(void) {
     vec3 near = (near4 / near4.w).xyz;
     vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
 
-    // intersect a line from near to far with the plane y = 0
+    // intersect a line from near to far with the plane y = groundPlaneY
     float t = -(near.y - getVisionSqueezeGroundPlaneY()) / (far.y - near.y);
     vec3 R = near + t * (far - near);
     // use (x, z) from that intersection to determine grid color for this fragment
