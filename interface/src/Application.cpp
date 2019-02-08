@@ -6660,7 +6660,8 @@ void Application::updateRenderArgs(float deltaTime) {
 
                 static quint64 lastSqueezeTime = 0;
                 quint64 now = usecTimestampNow();
-                static float visionSqueeze = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
+                static float visionSqueezeX = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
+                static float visionSqueezeY = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 if (_squeezeVision) {
                     float ratioX = myAvatar->getVisionSqueezeRatioX();
                     float ratioY = myAvatar->getVisionSqueezeRatioY();
@@ -6670,15 +6671,20 @@ void Application::updateRenderArgs(float deltaTime) {
                         visionSqueezeY = ratioY * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
                             VISION_SQUEEZE_PRACTICAL_MIN;
                     } else {
-                        visionSqueeze = 0.0f;
+                        visionSqueezeX = 0.0f;
+                        visionSqueezeY = 0.0f;
                     }
                     lastSqueezeTime = now;
                 }
 
                 if (now - lastSqueezeTime > myAvatar->getVisionSqueezeUnSqueezeDelay() * USECS_PER_SECOND) {
-                    visionSqueeze -= deltaTime * myAvatar->getVisionSqueezeUnSqueezeSpeed();
-                    if (visionSqueeze < 0.0f) {
-                        visionSqueeze = 0.0f;
+                    visionSqueezeX -= deltaTime * myAvatar->getVisionSqueezeUnSqueezeSpeed();
+                    if (visionSqueezeX < 0.0f) {
+                        visionSqueezeX = 0.0f;
+                    }
+                    visionSqueezeY -= deltaTime * myAvatar->getVisionSqueezeUnSqueezeSpeed();
+                    if (visionSqueezeY < 0.0f) {
+                        visionSqueezeY = 0.0f;
                     }
                 }
 

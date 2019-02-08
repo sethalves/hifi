@@ -53,7 +53,8 @@ enum AudioListenerMode {
 
 Q_DECLARE_METATYPE(AudioListenerMode);
 
-static const float DEFAULT_VISION_SQUEEZE = 0.55f;
+static const float DEFAULT_VISION_SQUEEZE_X = 0.55f;
+static const float DEFAULT_VISION_SQUEEZE_Y = 0.65f;
 
 class MyAvatar : public Avatar {
     Q_OBJECT
@@ -1200,7 +1201,8 @@ public:
 
     float getVisionSqueezeRatioX() const;
     float getVisionSqueezeRatioY() const;
-    void setVisionSqueezeRatio(float value);
+    void setVisionSqueezeRatioX(float value);
+    void setVisionSqueezeRatioY(float value);
 
     float getVisionSqueezeUnSqueezeDelay() const { return _visionSqueezeUnSqueezeDelay; }
     void setVisionSqueezeUnSqueezeDelay(float value) { _visionSqueezeUnSqueezeDelay = value; }
@@ -1974,7 +1976,8 @@ private:
     std::vector<Setting::Handle<QByteArray>> _avatarEntityDataSettings;
     Setting::Handle<QString> _userRecenterModelSetting;
 
-    Setting::Handle<float> _visionSqueezeRatioSetting{"visionSqueezeRatio", DEFAULT_VISION_SQUEEZE};
+    Setting::Handle<float> _visionSqueezeRatioXSetting{"visionSqueezeRatioX", DEFAULT_VISION_SQUEEZE_X};
+    Setting::Handle<float> _visionSqueezeRatioYSetting{"visionSqueezeRatioY", DEFAULT_VISION_SQUEEZE_Y};
 
     // AvatarEntities stuff:
     // We cache the "map of unfortunately-formatted-binary-blobs" because they are expensive to compute
@@ -2008,7 +2011,8 @@ private:
     QScriptEngine* _myScriptEngine { nullptr };
     bool _needToSaveAvatarEntitySettings { false };
 
-    float _visionSqueezeRatio = DEFAULT_VISION_SQUEEZE;
+    float _visionSqueezeRatioX = DEFAULT_VISION_SQUEEZE_X;
+    float _visionSqueezeRatioY = DEFAULT_VISION_SQUEEZE_Y;
     float _visionSqueezeUnSqueezeDelay { 0.2f }; // seconds
     float _visionSqueezeUnSqueezeSpeed { 1.2f };
     // TODO -- remove these after tuning / debugging

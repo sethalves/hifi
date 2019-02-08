@@ -88,18 +88,18 @@ float checkerboard(vec2 R, float scale) {
 //     return v / (1.0 + abs(v));
 // }
 
-// float sigmoid(float v) {
-//     return 1.0 / (1.0 + exp(-2.0 * v));
-// }
+float sigmoid(float v) {
+    return 1.0 / (1.0 + exp(-2.0 * v));
+}
 
 // float sigmoid(float v) {
 //     if (v < 0.5) return 0;
 //     return 1;
 // }
 
-float sigmoid(float v) {
-    return v;
-}
+// float sigmoid(float v) {
+//     return v;
+// }
 
 
 LAYOUT(binding=RENDER_UTILS_TEXTURE_TM_COLOR) uniform sampler2D colorMap;
@@ -126,8 +126,8 @@ void main(void) {
     } // else None toned = src
 
     // darken the edges of the view to avoid sickness
-    float visionSqueezeX = 1.0 - getVisionSqueezeX();
-    float visionSqueezeY = 1.0 - getVisionSqueezeY();
+    float visionSqueezeX = 0.5 - getVisionSqueezeX();
+    float visionSqueezeY = 0.5 - getVisionSqueezeY();
 
     float dst;
     if (getVisionSqueezePerEye() > 0) {
@@ -138,6 +138,11 @@ void main(void) {
         // one tube in front of face
         // dst = distance(varTexCoord0, vec2(0.5, 0.5)); // fragment distance from screen center
         dst = pow(varTexCoord0.x - 0.5, 2.0) / visionSqueezeX + pow(varTexCoord0.y - 0.5, 2.0) / visionSqueezeY;
+        if (dst < 1.0) {
+            dst = 0.0;
+        } else {
+            dst = 1.0;
+        }
     }
 
     float transitionRatio = getVisionSqueezeTransitionRatio();

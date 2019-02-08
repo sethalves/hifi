@@ -171,7 +171,8 @@ MyAvatar::MyAvatar(QThread* thread) :
     _flyingHMDSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "flyingHMD", _flyingPrefHMD),
     _avatarEntityCountSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "avatarEntityData" << "size", 0),
     _userRecenterModelSetting(QStringList() << AVATAR_SETTINGS_GROUP_NAME << "userRecenterModel", USER_RECENTER_MODEL_AUTO),
-    _visionSqueezeRatio(_visionSqueezeRatioSetting.get())
+    _visionSqueezeRatioX(_visionSqueezeRatioXSetting.get()),
+    _visionSqueezeRatioY(_visionSqueezeRatioYSetting.get())
 {
     _clientTraitsHandler.reset(new ClientTraitsHandler(this));
 
@@ -5329,9 +5330,16 @@ float MyAvatar::getVisionSqueezeRatioY() const {
     return _visionSqueezeRatioY;
 }
 
-void MyAvatar::setVisionSqueezeRatio(float value) {
-    if (value != _visionSqueezeRatio) {
-        _visionSqueezeRatio = value;
-        _visionSqueezeRatioSetting.set(_visionSqueezeRatio);
+void MyAvatar::setVisionSqueezeRatioX(float value) {
+    if (value != _visionSqueezeRatioX) {
+        _visionSqueezeRatioX = value;
+        _visionSqueezeRatioXSetting.set(_visionSqueezeRatioX);
+    }
+}
+
+void MyAvatar::setVisionSqueezeRatioY(float value) {
+    if (value != _visionSqueezeRatioY) {
+        _visionSqueezeRatioY = value;
+        _visionSqueezeRatioYSetting.set(_visionSqueezeRatioY);
     }
 }
