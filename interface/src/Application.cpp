@@ -6574,9 +6574,13 @@ void Application::update(float deltaTime) {
         PerformanceTimer perfTimer("squeezeVision");
 
         const float SENSOR_TO_WORLD_TRANS_EPSILON = 0.0001f;
-        const float SENSOR_TO_WORLD_TRANS_Y_EPSILON = 0.03f;
+
+        // const float SENSOR_TO_WORLD_TRANS_Y_EPSILON = 0.03f; // ok
+        const float SENSOR_TO_WORLD_TRANS_Y_EPSILON = 0.01f;
+        // const float SENSOR_TO_WORLD_TRANS_Y_EPSILON = 0.003f; // not ok
+
         const float SENSOR_TO_WORLD_TRANS_ITS_A_TELEPORT = 0.5f;
-        const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
+        // const float SENSOR_TO_WORLD_ROT_EPSILON = 0.001f;
         const float SENSOR_TO_WORLD_ROT_ITS_A_SNAP_TURN = 0.99f;
         const float VISION_SQUEEZE_TP_LOCKOUT = 0.1f; // seconds
 
