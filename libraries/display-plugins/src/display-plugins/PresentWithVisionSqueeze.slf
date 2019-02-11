@@ -1,0 +1,136 @@
+
+
+struct PresentWithVisionSqueezeParams {
+    float _visionSqueezeX;
+    float _visionSqueezeY;
+    float _spareA;
+    float _spareB;
+    mat4 _leftProjection;
+    mat4 _rightProjection;
+    mat4 _hmdSensorMatrix;
+    float _visionSqueezeTransition;
+    int _visionSqueezePerEye;
+    float _visionSqueezeGroundPlaneY;
+    float _visionSqueezeSpotlightSize;
+};
+
+LAYOUT(binding=0) uniform sampler2D colorMap;
+
+// binding=1 must match presentWithVisionSqueezeParamsSlot in OpenGLDisplayPlugin.h
+LAYOUT(binding=1) uniform presentWithSqueezeMappingParamsBuffer {
+    PresentWithVisionSqueezeParams params;
+};
+
+layout(location=0) in vec2 varTexCoord0;
+
+layout(location=0) out vec4 outFragColor;
+
+float sRGBFloatToLinear(float value) {
+    const float SRGB_ELBOW = 0.04045;
+
+    return mix(pow((value + 0.055) / 1.055, 2.4), value / 12.92, float(value <= SRGB_ELBOW));
+}
+
+vec3 colorToLinearRGB(vec3 srgb) {
+    return vec3(sRGBFloatToLinear(srgb.r), sRGBFloatToLinear(srgb.g), sRGBFloatToLinear(srgb.b));
+}
+
+float getVisionSqueezeX() {
+    return params._visionSqueezeX;
+}
+float getVisionSqueezeY() {
+    return params._visionSqueezeY;
+}
+float getVisionSqueezeTransitionRatio() {
+    return params._visionSqueezeTransition;
+}
+int getVisionSqueezePerEye() {
+    return params._visionSqueezePerEye;
+}
+float getVisionSqueezeGroundPlaneY() {
+    return params._visionSqueezeGroundPlaneY;
+}
+float getVisionSqueezeSpotlightSize() {
+    return params._visionSqueezeSpotlightSize;
+}
+mat4 getProjectionMatrix(int eye) {
+    if (eye == 0) {
+        return params._leftProjection;
+    } else {
+        return params._rightProjection;
+    }
+}
+mat4 getHMDSensorMatrix() {
+    return params._hmdSensorMatrix;
+}
+
+float ellipse(vec2 coord, vec2 center, vec2 semiAxis) {
+    return pow(coord.x - center.x, 2.0) / semiAxis.x + pow(coord.y - center.y, 2.0) / semiAxis.y;
+}
+
+float checkerboard(vec2 R, float scale) {
+	return float((int(floor(R.x / scale)) + int(floor(R.y / scale))) % 2);
+}
+
+float sigmoid(float v) {
+    return 1.0 / (1.0 + exp(-2.0 * v));
+}
+
+void main(void) {
+    outFragColor.a = 1.0;
+    // outFragColor.rgb = colorToLinearRGB(texture(colorMap, varTexCoord0).rgb);
+
+    vec3 linearColor = colorToLinearRGB(texture(colorMap, varTexCoord0).rgb);
+
+    bool perEye = getVisionSqueezePerEye() > 0;
+    vec2 center;
+    float visionSqueezeX;
+    float visionSqueezeY;
+    if (perEye) {
+        // tubes in front of each eye
+        center = varTexCoord0.x < 0.5 ? vec2(0.25, 0.5) : vec2(0.75, 0.5);
+        visionSqueezeX = 0.25 - getVisionSqueezeX() * 0.25;
+        visionSqueezeY = 0.25 - getVisionSqueezeY() * 0.25;
+    } else {
+        // one tube in front of face
+        center = vec2(0.5, 0.5);
+        visionSqueezeX = 0.5 - getVisionSqueezeX() * 0.5;
+        visionSqueezeY = 0.5 - getVisionSqueezeY() * 0.5;
+    }
+    float ellipseValue = ellipse(varTexCoord0, center, vec2(visionSqueezeX, visionSqueezeY));
+    float transitionRatio = getVisionSqueezeTransitionRatio();
+    float frac = clamp((ellipseValue - 1.0) / clamp(transitionRatio, 0.01, 0.7), 0.0, 1.0);
+
+    // put a grid on the floor
+    int side = int(varTexCoord0.x > 0.5);
+    mat4 hmdSensorMatrix = getHMDSensorMatrix();
+    mat4 projectionInverse = inverse(getProjectionMatrix(side));
+
+    vec4 ndc;
+    if (varTexCoord0.x < 0.5) {
+        ndc = vec4(varTexCoord0.x * 4.0 - 1.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    } else {
+        ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    }
+
+    vec4 fragmentEyeCoords = hmdSensorMatrix * projectionInverse * ndc;
+    vec4 near4 = hmdSensorMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+
+    vec3 near = (near4 / near4.w).xyz;
+    vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
+
+    // intersect a line from near to far with the plane y = groundPlaneY
+    float t = -(near.y - getVisionSqueezeGroundPlaneY()) / (far.y - near.y);
+    vec3 R = near + t * (far - near);
+    // use (x, z) from that intersection to determine grid color for this fragment
+    float c =
+        checkerboard(R.xz, 1.0) * 0.3 +
+        checkerboard(R.xz, 10.0) * 0.2 +
+        checkerboard(R.xz, 100.0) * 0.1 +
+        0.1;
+    c = c * float(t > 0.0);
+    float spotlight = min(1.0, 1.5 - getVisionSqueezeSpotlightSize() * length(R.xz));
+    vec3 gridColor = vec3(c * spotlight);
+
+    outFragColor.rgb = mix(linearColor, gridColor, frac);
+}
