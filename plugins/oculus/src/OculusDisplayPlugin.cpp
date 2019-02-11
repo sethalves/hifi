@@ -160,7 +160,7 @@ void OculusDisplayPlugin::hmdPresent() {
 
             _parametersBuffer.edit<Parameters>()._leftProjection = _eyeProjections[0];
             _parametersBuffer.edit<Parameters>()._rightProjection = _eyeProjections[1];
-            _parametersBuffer.edit<Parameters>()._hmdSensorMatrix = getHeadPose();
+            _parametersBuffer.edit<Parameters>()._hmdSensorMatrix = _currentPresentFrameInfo.presentPose;
 
             batch.enableStereo(false);
             batch.setFramebuffer(_outputFramebuffer);
