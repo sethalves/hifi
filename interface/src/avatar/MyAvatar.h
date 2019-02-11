@@ -953,7 +953,6 @@ public:
     controller::Pose getControllerPoseInAvatarFrame(controller::Action action) const;
 
     bool hasDriveInput() const;
-    bool hasRotateInput() const;
 
     /**jsdoc
     * Function returns list of avatar entities

@@ -41,17 +41,6 @@ public:
     void setToneCurve(ToneCurve curve);
     ToneCurve getToneCurve() const { return (ToneCurve)_parametersBuffer.get<Parameters>()._toneCurve; }
 
-    void setVisionSqueeze(float visionSqueezeX, float visionSqueezeY);
-    void setSensorToCameraTransform(glm::mat4 sensorToCameraTransform);
-
-    // TODO -- remove these after tuning / debugging
-    void setVisionSqueezeTransition(float value);
-    void setVisionSqueezePerEye(float value);
-    // void setVisionSqueezeSensorSpaceEyeOffset(float value);
-    void setVisionSqueezeEyeOffsets(glm::mat4 value[2]);
-    void setVisionSqueezeGroundPlaneY(float value);
-    void setVisionSqueezeSpotlightSize(float value);
-
 private:
 
     gpu::PipelinePointer _blitLightBuffer;
@@ -61,18 +50,9 @@ private:
     public:
         float _exposure = 0.0f;
         float _twoPowExposure = 1.0f;
-        float _visionSqueezeX = 0.0f;
-        float _visionSqueezeY = 0.0f;
+        glm::vec2 spareA;
         int _toneCurve = Gamma22;
         glm::vec3 spareB;
-        glm::mat4 _sensorToCameraTransform;
-
-        glm::mat4 _leftEyeOffset;
-        glm::mat4 _rightEyeOffset;
-        float _visionSqueezeTransition = 0.15f;
-        int _visionSqueezePerEye = 0;
-        float _visionSqueezeGroundPlaneY = 0.0f;
-        float _visionSqueezeSpotlightSize = 0.0f;
 
         Parameters() {}
     };

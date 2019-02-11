@@ -6581,7 +6581,7 @@ void Application::updateRenderArgs(float deltaTime) {
                 quint64 now = usecTimestampNow();
                 static float visionSqueezeX = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
                 static float visionSqueezeY = 0.0f; // 0.0 -- unobstructed, 1.0 -- fully blocked
-                if (_squeezeVision) {
+                if (_squeezeVision && getActiveDisplayPlugin()->isStereo()) {
                     float ratioX = myAvatar->getVisionSqueezeRatioX();
                     float ratioY = myAvatar->getVisionSqueezeRatioY();
                     if (ratioX > 0.0f && ratioY > 0.0f) {

@@ -102,10 +102,6 @@ mat4 getPreviousViewInverse() {
     return cameraCorrection._prevViewInverse;
 }
 
-mat4 getCorrectionInverse() {
-    return cameraCorrection._correctionInverse;
-}
-
 DeferredFrameTransform getDeferredFrameTransform() {
     DeferredFrameTransform result = frameTransform;
     result._view = getView();  
