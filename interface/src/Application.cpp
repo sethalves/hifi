@@ -6607,12 +6607,11 @@ void Application::updateRenderArgs(float deltaTime) {
                     }
                 }
 
-                appRenderArgs._renderArgs._visionSqueezeX = visionSqueezeX;
-                appRenderArgs._renderArgs._visionSqueezeY = visionSqueezeY;
-                appRenderArgs._renderArgs._visionSqueezeTransition = myAvatar->getVisionSqueezeTransition();
-                appRenderArgs._renderArgs._visionSqueezePerEye = myAvatar->getVisionSqueezePerEye();
-                appRenderArgs._renderArgs._visionSqueezeGroundPlaneY = myAvatar->getVisionSqueezeGroundPlaneY();
-                appRenderArgs._renderArgs._visionSqueezeSpotlightSize = myAvatar->getVisionSqueezeSpotlightSize();
+                getActiveDisplayPlugin()->updateParameters(visionSqueezeX, visionSqueezeY,
+                                                           myAvatar->getVisionSqueezeTransition(),
+                                                           myAvatar->getVisionSqueezePerEye(),
+                                                           myAvatar->getVisionSqueezeGroundPlaneY(),
+                                                           myAvatar->getVisionSqueezeSpotlightSize());
             }
 
             {

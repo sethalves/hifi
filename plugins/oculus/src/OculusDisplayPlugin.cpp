@@ -157,6 +157,11 @@ void OculusDisplayPlugin::hmdPresent() {
         auto fbo = getGLBackend()->getFramebufferID(_outputFramebuffer);
         glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, curTexId, 0);
         render([&](gpu::Batch& batch) {
+
+            _parametersBuffer.edit<Parameters>()._leftProjection = _eyeProjections[0];
+            _parametersBuffer.edit<Parameters>()._rightProjection = _eyeProjections[1];
+            _parametersBuffer.edit<Parameters>()._hmdSensorMatrix = getHeadPose();
+
             batch.enableStereo(false);
             batch.setFramebuffer(_outputFramebuffer);
             batch.setViewportTransform(ivec4(uvec2(), _outputFramebuffer->getSize()));
@@ -164,6 +169,7 @@ void OculusDisplayPlugin::hmdPresent() {
             batch.resetViewTransform();
             batch.setProjectionTransform(mat4());
             batch.setPipeline(_presentPipeline);
+            batch.setUniformBuffer(presentWithVisionSqueezeParamsSlot, _parametersBuffer);
             batch.setResourceTexture(0, _compositeFramebuffer->getRenderBuffer(0));
             batch.draw(gpu::TRIANGLE_STRIP, 4);
         });

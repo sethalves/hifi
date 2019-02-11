@@ -47,81 +47,10 @@ void ToneMappingEffect::setToneCurve(ToneCurve curve) {
     }
 }
 
-void ToneMappingEffect::setVisionSqueeze(float visionSqueezeX, float visionSqueezeY) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueezeX != visionSqueezeX ||
-        params._visionSqueezeY != visionSqueezeY) {
-        _parametersBuffer.edit<Parameters>()._visionSqueezeX = visionSqueezeX;
-        _parametersBuffer.edit<Parameters>()._visionSqueezeY = visionSqueezeY;
-    }
-}
-
-void ToneMappingEffect::setSensorToCameraTransform(glm::mat4 sensorToCameraTransform) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._sensorToCameraTransform != sensorToCameraTransform) {
-        _parametersBuffer.edit<Parameters>()._sensorToCameraTransform = sensorToCameraTransform;
-    }
-}
-
-void ToneMappingEffect::setVisionSqueezeTransition(float value) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueezeTransition != value) {
-        _parametersBuffer.edit<Parameters>()._visionSqueezeTransition = value;
-    }
-}
-
-void ToneMappingEffect::setVisionSqueezePerEye(float value) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueezePerEye != value) {
-        _parametersBuffer.edit<Parameters>()._visionSqueezePerEye = value;
-    }
-}
-
-void ToneMappingEffect::setVisionSqueezeEyeOffsets(glm::mat4 value[2]) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._leftEyeOffset != value[0] || params._rightEyeOffset != value[1]) {
-        _parametersBuffer.edit<Parameters>()._leftEyeOffset = value[0];
-        _parametersBuffer.edit<Parameters>()._rightEyeOffset = value[1];
-    }
-}
-
-void ToneMappingEffect::setVisionSqueezeGroundPlaneY(float value) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueezeGroundPlaneY != value) {
-        _parametersBuffer.edit<Parameters>()._visionSqueezeGroundPlaneY = value;
-    }
-}
-
-void ToneMappingEffect::setVisionSqueezeSpotlightSize(float value) {
-    auto& params = _parametersBuffer.get<Parameters>();
-    if (params._visionSqueezeSpotlightSize != value) {
-        _parametersBuffer.edit<Parameters>()._visionSqueezeSpotlightSize = value;
-    }
-}
-
-
 void ToneMappingEffect::render(RenderArgs* args, const gpu::TexturePointer& lightingBuffer, const gpu::FramebufferPointer& requestedDestinationFramebuffer) {
     if (!_blitLightBuffer) {
         init(args);
     }
-
-    setSensorToCameraTransform(args->_context->getHeadPose());
-    if (args->isStereo()) {
-        setVisionSqueeze(args->_visionSqueezeX, args->_visionSqueezeY);
-    } else {
-        setVisionSqueeze(0.0f, 0.0f);
-    }
-    setVisionSqueezeTransition(args->_visionSqueezeTransition);
-    setVisionSqueezePerEye(args->_visionSqueezePerEye);
-    mat4 eyeOffsets[2];
-    eyeOffsets[0] = args->_context->getEyeOffset(0);
-    eyeOffsets[1] = args->_context->getEyeOffset(1);
-    eyeOffsets[0][3][0] = -0.3f; // XXX
-    eyeOffsets[1][3][0] = 0.3f; // XXX
-    setVisionSqueezeEyeOffsets(eyeOffsets);
-    setVisionSqueezeGroundPlaneY(args->_visionSqueezeGroundPlaneY);
-    setVisionSqueezeSpotlightSize(args->_visionSqueezeSpotlightSize);
-
 
     auto destinationFramebuffer = requestedDestinationFramebuffer;
     if (!destinationFramebuffer) {

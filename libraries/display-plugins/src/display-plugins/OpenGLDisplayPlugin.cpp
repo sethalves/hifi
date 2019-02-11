@@ -386,7 +386,8 @@ void OpenGLDisplayPlugin::customizeContext() {
         }
 
         {
-            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::SrgbToLinear);
+            // gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::SrgbToLinear);
+            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::PresentWithVisionSqueeze);
             _presentPipeline = gpu::Pipeline::create(program, scissorState);
         }
 
@@ -513,6 +514,7 @@ void OpenGLDisplayPlugin::renderFromTexture(gpu::Batch& batch, const gpu::Textur
     batch.setStateScissorRect(scissor);
     batch.setViewportTransform(viewport);
     batch.setResourceTexture(0, texture);
+    batch.setUniformBuffer(presentWithVisionSqueezeParamsSlot, _parametersBuffer);
 #ifndef USE_GLES
     batch.setPipeline(_presentPipeline);
 #else
@@ -878,6 +880,11 @@ void OpenGLDisplayPlugin::render(std::function<void(gpu::Batch& batch)> f) {
     _gpuContext->executeBatch(batch);
 }
 
+OpenGLDisplayPlugin::OpenGLDisplayPlugin() {
+    Parameters parameters;
+    _parametersBuffer = gpu::BufferView(std::make_shared<gpu::Buffer>(sizeof(Parameters), (const gpu::Byte*) &parameters));
+}
+
 OpenGLDisplayPlugin::~OpenGLDisplayPlugin() {
 }
 
@@ -940,3 +947,27 @@ void OpenGLDisplayPlugin::copyTextureToQuickFramebuffer(NetworkTexturePointer ne
 #endif
 }
 
+
+void OpenGLDisplayPlugin::updateParameters(float visionSqueezeX, float visionSqueezeY, float visionSqueezeTransition,
+                                           int visionSqueezePerEye, float visionSqueezeGroundPlaneY,
+                                           float visionSqueezeSpotlightSize) {
+    auto& params = _parametersBuffer.get<Parameters>();
+    if (params._visionSqueezeX != visionSqueezeX) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeX = visionSqueezeX;
+    }
+    if (params._visionSqueezeY != visionSqueezeY) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeY = visionSqueezeY;
+    }
+    if (params._visionSqueezeTransition != visionSqueezeTransition) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeTransition = visionSqueezeTransition;
+    }
+    if (params._visionSqueezePerEye != visionSqueezePerEye) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezePerEye = visionSqueezePerEye;
+    }
+    if (params._visionSqueezeGroundPlaneY != visionSqueezeGroundPlaneY) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeGroundPlaneY = visionSqueezeGroundPlaneY;
+    }
+    if (params._visionSqueezeSpotlightSize != visionSqueezeSpotlightSize) {
+        _parametersBuffer.edit<Parameters>()._visionSqueezeSpotlightSize = visionSqueezeSpotlightSize;
+    }
+}

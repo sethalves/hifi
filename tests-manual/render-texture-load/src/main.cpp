@@ -192,6 +192,7 @@ public:
                 presentBatch.resetViewTransform();
                 presentBatch.setFramebuffer(gpu::FramebufferPointer());
                 presentBatch.setResourceTexture(0, frame->framebuffer->getRenderBuffer(0));
+                presentBatch.setUniformBuffer(presentWithVisionSqueezeParamsSlot, _parametersBuffer);
                 presentBatch.setPipeline(_presentPipeline);
                 presentBatch.draw(gpu::TRIANGLE_STRIP, 4);
                 _gpuContext->executeBatch(presentBatch);

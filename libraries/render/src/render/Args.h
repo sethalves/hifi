@@ -133,13 +133,6 @@ namespace render {
 
         std::function<void(gpu::Batch&, const gpu::TexturePointer&, bool mirror)> _hudOperator;
         gpu::TexturePointer _hudTexture;
-
-        float _visionSqueezeX { 0.0f };
-        float _visionSqueezeY { 0.0f };
-        float _visionSqueezeTransition { 0.15f };
-        int _visionSqueezePerEye { 0 };
-        float _visionSqueezeGroundPlaneY { 0.0f };
-        float _visionSqueezeSpotlightSize { 0.02f };
     };
 
 }

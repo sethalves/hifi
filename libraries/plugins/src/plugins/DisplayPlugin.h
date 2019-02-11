@@ -221,6 +221,11 @@ public:
     // for updating plugin-related commands. Mimics the input plugin.
     virtual void pluginUpdate() = 0;
 
+    virtual void updateParameters(float visionSqueezeX, float visionSqueezeY, float visionSqueezeTransition,
+                                  int visionSqueezePerEye, float visionSqueezeGroundPlaneY,
+                                  float visionSqueezeSpotlightSize) {}
+
+
 signals:
     void recommendedFramebufferSizeChanged(const QSize& size);
     void resetSensorsRequested();

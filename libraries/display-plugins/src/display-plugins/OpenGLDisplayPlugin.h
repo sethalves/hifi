@@ -38,6 +38,7 @@ protected:
     using Lock = std::unique_lock<Mutex>;
     using Condition = std::condition_variable;
 public:
+    OpenGLDisplayPlugin();
     ~OpenGLDisplayPlugin();
     // These must be final to ensure proper ordering of operations
     // between the main thread and the presentation thread
@@ -82,6 +83,10 @@ public:
     int getRequiredThreadCount() const override { return 3; }
 
     void copyTextureToQuickFramebuffer(NetworkTexturePointer source, QOpenGLFramebufferObject* target, GLsync* fenceSync) override;
+
+    virtual void updateParameters(float visionSqueezeX, float visionSqueezeY, float visionSqueezeTransition,
+                                  int visionSqueezePerEye, float visionSqueezeGroundPlaneY,
+                                  float visionSqueezeSpotlightSize) override;
 
 protected:
     friend class PresentThread;
@@ -180,5 +185,25 @@ protected:
     // be serialized through this mutex
     mutable Mutex _presentMutex;
     float _hudAlpha{ 1.0f };
+
+    class Parameters {
+    public:
+        float _visionSqueezeX = 0.0f;
+        float _visionSqueezeY = 0.0f;
+        float _spareA = 0.0f;
+        float _spareB = 0.0f;
+        glm::mat4 _leftProjection;
+        glm::mat4 _rightProjection;
+        glm::mat4 _hmdSensorMatrix;
+        float _visionSqueezeTransition = 0.15f;
+        int _visionSqueezePerEye = 0;
+        float _visionSqueezeGroundPlaneY = 0.0f;
+        float _visionSqueezeSpotlightSize = 0.0f;
+
+        Parameters() {}
+    };
+    typedef gpu::BufferView UniformBufferView;
+    gpu::BufferView _parametersBuffer;
 };
 
+const int presentWithVisionSqueezeParamsSlot = 1; // XXX must match binding in PresentWithVisionSqueeze.slf
