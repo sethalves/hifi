@@ -1,0 +1,80 @@
+
+
+struct OpenVRReprojectParams {
+    mat4 _projections0;
+    mat4 _projections1;
+    mat4 _inverseProjections0;
+    mat4 _inverseProjections1;
+    mat4 _reprojection;
+};
+
+LAYOUT(binding=0) uniform sampler2D colorMap;
+
+LAYOUT(binding=1) uniform Reprojection {
+    OpenVRReprojectParams params;
+};
+
+layout(location=0) in vec3 vPosition;
+layout(location=1) in vec2 vTexCoord;
+
+layout(location=0) out vec4 FragColor;
+
+
+void main(void) {
+    vec2 uv = vTexCoord;
+
+    mat4 eyeInverseProjection;
+    mat4 eyeProjection;
+
+    float xoffset = 1.0;
+    vec2 uvmin = vec2(0.0);
+    vec2 uvmax = vec2(1.0);
+    // determine the correct projection and inverse projection to use.
+    if (vTexCoord.x < 0.5) {
+        uvmax.x = 0.5;
+        eyeInverseProjection = params._inverseProjections0;
+        eyeProjection = params._projections0;
+    } else {
+        xoffset = -1.0;
+        uvmin.x = 0.5;
+        uvmax.x = 1.0;
+        eyeInverseProjection = params._inverseProjections1;
+        eyeProjection = params._projections1;
+    }
+
+    // Account for stereo in calculating the per-eye NDC coordinates
+    vec4 ndcSpace = vec4(vPosition, 1.0);
+    ndcSpace.x *= 2.0;
+    ndcSpace.x += xoffset;
+
+    // Convert from NDC to eyespace
+    vec4 eyeSpace = eyeInverseProjection * ndcSpace;
+    eyeSpace /= eyeSpace.w;
+
+    // Convert to a noramlized ray
+    vec3 ray = eyeSpace.xyz;
+    ray = normalize(ray);
+
+    // Adjust the ray by the rotation
+    ray = mat3(params._reprojection) * ray;
+
+    // Project back on to the texture plane
+    ray *= eyeSpace.z / ray.z;
+
+    // Update the eyespace vector
+    eyeSpace.xyz = ray;
+
+    // Reproject back into NDC
+    ndcSpace = eyeProjection * eyeSpace;
+    ndcSpace /= ndcSpace.w;
+    ndcSpace.x -= xoffset;
+    ndcSpace.x /= 2.0;
+
+    // Calculate the new UV coordinates
+    uv = (ndcSpace.xy / 2.0) + 0.5;
+    if (any(greaterThan(uv, uvmax)) || any(lessThan(uv, uvmin))) {
+        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    } else {
+        FragColor = texture(colorMap, uv);
+    }
+}

@@ -51,104 +51,6 @@ static vr::VRTextureBounds_t OPENVR_TEXTURE_BOUNDS_RIGHT{ 0.5f, 0, 1, 1 };
 
 #define REPROJECTION_BINDING 1
 
-static const char* HMD_REPROJECTION_VERT = R"SHADER(
-#version 450 core
-
-out vec3 vPosition;
-out vec2 vTexCoord;
-
-void main(void) {
-    const float depth = 0.0;
-    const vec4 UNIT_QUAD[4] = vec4[4](
-        vec4(-1.0, -1.0, depth, 1.0),
-        vec4(1.0, -1.0, depth, 1.0),
-        vec4(-1.0, 1.0, depth, 1.0),
-        vec4(1.0, 1.0, depth, 1.0)
-    );
-    vec4 pos = UNIT_QUAD[gl_VertexID];
-
-    gl_Position = pos;
-    vPosition = pos.xyz;
-    vTexCoord = (pos.xy + 1.0) * 0.5;
-}
-)SHADER";
-
-static const char* HMD_REPROJECTION_FRAG = R"SHADER(
-#version 450 core
-
-uniform sampler2D sampler;
-layout(binding = 1, std140) uniform Reprojection
-{
-    mat4 projections[2];
-    mat4 inverseProjections[2];
-    mat4 reprojection;
-};
-
-in vec3 vPosition;
-in vec2 vTexCoord;
-
-out vec4 FragColor;
-
-void main() {
-    vec2 uv = vTexCoord;
-    
-    mat4 eyeInverseProjection;
-    mat4 eyeProjection;
-    
-    float xoffset = 1.0;
-    vec2 uvmin = vec2(0.0);
-    vec2 uvmax = vec2(1.0);
-    // determine the correct projection and inverse projection to use.
-    if (vTexCoord.x < 0.5) {
-        uvmax.x = 0.5;
-        eyeInverseProjection = inverseProjections[0];
-        eyeProjection = projections[0];
-    } else {
-        xoffset = -1.0;
-        uvmin.x = 0.5;
-        uvmax.x = 1.0;
-        eyeInverseProjection = inverseProjections[1];
-        eyeProjection = projections[1];
-    }
-
-    // Account for stereo in calculating the per-eye NDC coordinates
-    vec4 ndcSpace = vec4(vPosition, 1.0);
-    ndcSpace.x *= 2.0;
-    ndcSpace.x += xoffset;
-    
-    // Convert from NDC to eyespace
-    vec4 eyeSpace = eyeInverseProjection * ndcSpace;
-    eyeSpace /= eyeSpace.w;
-
-    // Convert to a noramlized ray 
-    vec3 ray = eyeSpace.xyz;
-    ray = normalize(ray);
-
-    // Adjust the ray by the rotation
-    ray = mat3(reprojection) * ray;
-
-    // Project back on to the texture plane
-    ray *= eyeSpace.z / ray.z;
-
-    // Update the eyespace vector
-    eyeSpace.xyz = ray;
-
-    // Reproject back into NDC
-    ndcSpace = eyeProjection * eyeSpace;
-    ndcSpace /= ndcSpace.w;
-    ndcSpace.x -= xoffset;
-    ndcSpace.x /= 2.0;
-    
-    // Calculate the new UV coordinates
-    uv = (ndcSpace.xy / 2.0) + 0.5;
-    if (any(greaterThan(uv, uvmax)) || any(lessThan(uv, uvmin))) {
-        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-    } else {
-        FragColor = texture(sampler, uv);
-    }
-}
-)SHADER";
-
 struct Reprojection {
     mat4 projections[2];
     mat4 inverseProjections[2];
@@ -191,8 +93,14 @@ public:
 
     void updateProgram() {
         if (!_program) {
-            std::string vsSource = HMD_REPROJECTION_VERT;
-            std::string fsSource = HMD_REPROJECTION_FRAG;
+            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::OpenVRReproject);
+            uint32_t vertexShaderID = shader::getVertexId(program->getID());
+            uint32_t fragmentShaderID = shader::getFragmentId(program->getID());
+            shader::Dialect dialect = shader::Dialect::glsl450;
+            shader::Variant variant = shader::Variant::Stereo;
+
+            std::string vsSource = gpu::Shader::getVertexShaderSource(vertexShaderID).getSource(dialect, variant);
+            std::string fsSource = gpu::Shader::getFragmentShaderSource(fragmentShaderID).getSource(dialect, variant);
             GLuint vertexShader{ 0 }, fragmentShader{ 0 };
             std::string error;
             ::gl::compileShader(GL_VERTEX_SHADER, vsSource, vertexShader, error);
@@ -201,7 +109,7 @@ public:
             ::gl::linkProgram(_program, error);
             glDeleteShader(vertexShader);
             glDeleteShader(fragmentShader);
-            qDebug() << "Rebuild proigram";
+            qDebug() << "Rebuild program";
         }
     }
 
