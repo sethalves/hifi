@@ -3,7 +3,7 @@
 struct PresentWithVisionSqueezeParams {
     float _visionSqueezeX;
     float _visionSqueezeY;
-    float _spareA;
+    float _ipd;
     float _spareB;
     mat4 _leftProjection;
     mat4 _rightProjection;
@@ -41,6 +41,9 @@ float getVisionSqueezeX() {
 float getVisionSqueezeY() {
     return params._visionSqueezeY;
 }
+float getIPD() {
+    return params._ipd;
+}
 float getVisionSqueezeTransitionRatio() {
     return params._visionSqueezeTransition;
 }
@@ -64,8 +67,8 @@ mat4 getHMDSensorMatrix() {
     return params._hmdSensorMatrix;
 }
 
-float ellipse(vec2 coord, vec2 center, vec2 semiAxis) {
-    return pow(coord.x - center.x, 2.0) / semiAxis.x + pow(coord.y - center.y, 2.0) / semiAxis.y;
+float ellipse(vec2 coord, vec2 centerUV, vec2 semiAxis) {
+    return pow(coord.x - centerUV.x, 2.0) / semiAxis.x + pow(coord.y - centerUV.y, 2.0) / semiAxis.y;
 }
 
 float checkerboard(vec2 R, float scale) {
@@ -76,36 +79,93 @@ float sigmoid(float v) {
     return 1.0 / (1.0 + exp(-2.0 * v));
 }
 
+vec4 extractFov(mat4 m) {
+    mat4 mt = transpose(m);
+    vec4 v;
+    vec4 result;
+
+    // Left
+    v = mt * vec4(1.0, 0.0, 0.0, 1.0);
+    result.x = -atan(v.z / v.x);
+    // Right
+    v = mt * vec4(-1.0, 0.0, 0.0, 1.0);
+    result.y = atan(v.z / v.x);
+    // Down
+    v = mt * vec4(0.0, 1.0, 0.0, 1.0);
+    result.z = -atan(v.z / v.y);
+    // Up
+    v = mt * vec4(0.0, -1.0, 0.0, 1.0);
+    result.w = atan(v.z / v.y);
+    return result;
+}
+
+// returns NDC for right eye.  to get left, invert sign on x coord of result.
+vec2 extractFocalPoint(mat4 projection) {
+    vec4 fov = extractFov(projection);
+    float fovwidth = fov.x + fov.y;
+    float fovheight = fov.z + fov.w;
+    vec2 focalPoint = vec2(fov.y / fovwidth, (fov.z / fovheight) - 0.5f);
+    return focalPoint;
+}
+
+
 void main(void) {
     outFragColor.a = 1.0;
-    // outFragColor.rgb = colorToLinearRGB(texture(colorMap, varTexCoord0).rgb);
-
     vec3 linearColor = colorToLinearRGB(texture(colorMap, varTexCoord0).rgb);
 
+    int side = int(varTexCoord0.x > 0.5);
+    mat4 hmdSensorMatrix = getHMDSensorMatrix();
+    mat4 projectionMatrix = getProjectionMatrix(side);
+    mat4 projectionInverse = inverse(projectionMatrix);
+
+    // block edges of vision to avoid sickness
     bool perEye = getVisionSqueezePerEye() > 0;
-    vec2 center;
+    vec2 centerUV;
     float visionSqueezeX;
     float visionSqueezeY;
     if (perEye) {
         // tubes in front of each eye
-        center = varTexCoord0.x < 0.5 ? vec2(0.25, 0.5) : vec2(0.75, 0.5);
+
+        // float ipd = getIPD();
+        // vec4 halfIPD = projectionMatrix * hmdSensorMatrix * vec4(ipd / 2.0, 0.0, 0.0, 1.0);
+        // halfIPD /= halfIPD.w;
+        // float halfIpdUvX = (halfIPD.x + 1.0) / 2.0;
+        // centerUV = varTexCoord0.x < 0.5 ? vec2(0.5 - halfIpdUvX, 0.5) : vec2(0.5 + halfIpdUvX, 0.5);
+
+        // vec2 centerNDC = extractFocalPoint(projectionMatrix);
+        // if (varTexCoord0.x < 0.5) {
+        //     centerUV = (centerNDC + vec2(0.0, 1.0)) / 2.0;
+        // } else {
+        //     centerUV = (centerNDC + vec2(1.0, 1.0)) / 2.0;
+        // }
+
+        // // this almost works
+        // vec2 centerNDC = extractFocalPoint(projectionMatrix);
+        // if (varTexCoord0.x < 0.5) {
+        //     centerNDC.x *= -1.0;
+        // }
+        // centerUV = (centerNDC + vec2(1.0, 1.0)) / 2.0;
+
+        float fuh = 0.2; // XXX I don't know how to find this number.
+        if (varTexCoord0.x < 0.5) {
+            centerUV = vec2(0.5 - fuh, 0.5);
+        } else {
+            centerUV = vec2(0.5 + fuh, 0.5);
+        }
+
         visionSqueezeX = 0.25 - getVisionSqueezeX() * 0.25;
         visionSqueezeY = 0.25 - getVisionSqueezeY() * 0.25;
     } else {
         // one tube in front of face
-        center = vec2(0.5, 0.5);
+        centerUV = vec2(0.5, 0.5);
         visionSqueezeX = 0.5 - getVisionSqueezeX() * 0.5;
         visionSqueezeY = 0.5 - getVisionSqueezeY() * 0.5;
     }
-    float ellipseValue = ellipse(varTexCoord0, center, vec2(visionSqueezeX, visionSqueezeY));
+    float ellipseValue = ellipse(varTexCoord0, centerUV, vec2(visionSqueezeX, visionSqueezeY));
     float transitionRatio = getVisionSqueezeTransitionRatio();
     float frac = clamp((ellipseValue - 1.0) / clamp(transitionRatio, 0.01, 0.7), 0.0, 1.0);
 
     // put a grid on the floor
-    int side = int(varTexCoord0.x > 0.5);
-    mat4 hmdSensorMatrix = getHMDSensorMatrix();
-    mat4 projectionInverse = inverse(getProjectionMatrix(side));
-
     vec4 ndc;
     if (varTexCoord0.x < 0.5) {
         ndc = vec4(varTexCoord0.x * 4.0 - 1.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);

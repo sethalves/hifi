@@ -190,7 +190,7 @@ protected:
     public:
         float _visionSqueezeX = 0.0f;
         float _visionSqueezeY = 0.0f;
-        float _spareA = 0.0f;
+        float _ipd = 0.064f;
         float _spareB = 0.0f;
         glm::mat4 _leftProjection;
         glm::mat4 _rightProjection;
