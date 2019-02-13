@@ -58,7 +58,7 @@ static const float DEFAULT_VISION_SQUEEZE_Y = 0.7f;
 static const float DEFAULT_VISION_SQUEEZE_UNSQUEEZE_DELAY = 0.2f; // seconds
 static const float DEFAULT_VISION_SQUEEZE_UNSQUEEZE_SPEED =  1.2f;
 static const float DEFAULT_VISION_SQUEEZE_TRANSITION =  0.25f;
-static const int DEFAULT_VISION_SQUEEZE_PER_EYE = 0;
+static const int DEFAULT_VISION_SQUEEZE_PER_EYE = 1;
 static const float DEFAULT_VISION_SQUEEZE_GROUND_PLANE_Y =  -1.5f;
 static const float DEFAULT_VISION_SQUEEZE_SPOTLIGHT_SIZE =  0.02f;
 
