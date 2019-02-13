@@ -1,0 +1,137 @@
+//  Generated on <$_SCRIBE_DATE$>
+//
+//  Created by Seth Alves on 2019-2-13.
+//  Copyright 2019 High Fidelity, Inc.
+//
+//  Distributed under the Apache License, Version 2.0.
+//  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
+//
+
+<@if not VISION_SQUEEZE_SLH@>
+<@def VISION_SQUEEZE_SLH@>
+
+
+float ellipse(vec2 coord, vec2 centerUV, vec2 semiAxis) {
+    return pow(coord.x - centerUV.x, 2.0) / semiAxis.x + pow(coord.y - centerUV.y, 2.0) / semiAxis.y;
+}
+
+float checkerboard(vec2 R, float scale) {
+	return float((int(floor(R.x / scale)) + int(floor(R.y / scale))) % 2);
+}
+
+float sigmoid(float v) {
+    return 1.0 / (1.0 + exp(-2.0 * v));
+}
+
+vec4 extractFov(mat4 m) {
+    mat4 mt = transpose(m);
+    vec4 v;
+    vec4 result;
+
+    // Left
+    v = mt * vec4(1.0, 0.0, 0.0, 1.0);
+    result.x = -atan(v.z / v.x);
+    // Right
+    v = mt * vec4(-1.0, 0.0, 0.0, 1.0);
+    result.y = atan(v.z / v.x);
+    // Down
+    v = mt * vec4(0.0, 1.0, 0.0, 1.0);
+    result.z = -atan(v.z / v.y);
+    // Up
+    v = mt * vec4(0.0, -1.0, 0.0, 1.0);
+    result.w = atan(v.z / v.y);
+    return result;
+}
+
+// takes left-side projection matrix, returns NDC for right eye.  to get left, invert sign on x coord of result.
+vec2 extractFocalPoint(mat4 projection) {
+    vec4 fov = extractFov(projection);
+    float fovwidth = fov.x + fov.y;
+    float fovheight = fov.z + fov.w;
+    vec2 focalPoint = vec2(fov.y / fovwidth, (fov.z / fovheight) - 0.5f);
+    return focalPoint;
+}
+
+float squeezeVision(bool perEye, vec2 varTexCoord0, vec2 visionSqueezeRatios, float transitionRatio) {
+    if (visionSqueezeRatios.x == 0.0 && visionSqueezeRatios.y == 0.0) {
+        return 0.0;
+    }
+
+    vec2 centerUV;
+    float visionSqueezeX;
+    float visionSqueezeY;
+    if (perEye) {
+        // tubes in front of each eye
+
+        // float ipd = getIPD();
+        // vec4 halfIPD = projectionMatrix * hmdSensorMatrix * vec4(ipd / 2.0, 0.0, 0.0, 1.0);
+        // halfIPD /= halfIPD.w;
+        // float halfIpdUvX = (halfIPD.x + 1.0) / 2.0;
+        // centerUV = varTexCoord0.x < 0.5 ? vec2(0.5 - halfIpdUvX, 0.5) : vec2(0.5 + halfIpdUvX, 0.5);
+
+        // vec2 centerNDC = extractFocalPoint(projectionMatrix);
+        // if (varTexCoord0.x < 0.5) {
+        //     centerUV = (centerNDC + vec2(0.0, 1.0)) / 2.0;
+        // } else {
+        //     centerUV = (centerNDC + vec2(1.0, 1.0)) / 2.0;
+        // }
+
+        // // this almost works
+        // vec2 centerNDC = extractFocalPoint(getProjectionMatrix(0));
+        // if (varTexCoord0.x < 0.5) {
+        //     centerNDC.x *= -1.0;
+        // }
+        // centerUV = (centerNDC + vec2(1.0, 1.0)) / 2.0;
+
+        float fuh = 0.2; // XXX I don't know how to find this number.
+        if (varTexCoord0.x < 0.5) {
+            centerUV = vec2(0.5 - fuh, 0.5);
+        } else {
+            centerUV = vec2(0.5 + fuh, 0.5);
+        }
+
+        visionSqueezeX = 0.25 - visionSqueezeRatios.x * 0.25;
+        visionSqueezeY = 0.25 - visionSqueezeRatios.y * 0.25;
+    } else {
+        // one tube in front of face
+        centerUV = vec2(0.5, 0.5);
+        visionSqueezeX = 0.5 - visionSqueezeRatios.x * 0.5;
+        visionSqueezeY = 0.5 - visionSqueezeRatios.y * 0.5;
+    }
+    float ellipseValue = ellipse(varTexCoord0, centerUV, vec2(visionSqueezeX, visionSqueezeY));
+    float frac = clamp((ellipseValue - 1.0) / clamp(transitionRatio, 0.01, 0.7), 0.0, 1.0);
+
+    return frac;
+}
+
+vec3 gridFloor(vec2 varTexCoord0, mat4 hmdSensorMatrix, mat4 projectionInverse, float groundPlaneY, float spotLightSize) {
+    vec4 ndc;
+    if (varTexCoord0.x < 0.5) {
+        ndc = vec4(varTexCoord0.x * 4.0 - 1.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    } else {
+        ndc = vec4(varTexCoord0.x * 4.0 - 3.0, varTexCoord0.y * 2.0 - 1.0, -1.0, 1.0);
+    }
+
+    vec4 fragmentEyeCoords = hmdSensorMatrix * projectionInverse * ndc;
+    vec4 near4 = hmdSensorMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+
+    vec3 near = (near4 / near4.w).xyz;
+    vec3 far = fragmentEyeCoords.xyz / fragmentEyeCoords.w;
+
+    // intersect a line from near to far with the plane y = groundPlaneY
+    float t = -(near.y - groundPlaneY) / (far.y - near.y);
+    vec3 R = near + t * (far - near);
+    // use (x, z) from that intersection to determine grid color for this fragment
+    float c =
+        checkerboard(R.xz, 1.0) * 0.3 +
+        checkerboard(R.xz, 10.0) * 0.2 +
+        checkerboard(R.xz, 100.0) * 0.1 +
+        0.1;
+    c = c * float(t > 0.0);
+    float spotlight = min(1.0, 1.5 - spotLightSize * length(R.xz));
+    vec3 gridColor = vec3(c * spotlight);
+
+    return gridColor;
+}
+
+<@endif@>
