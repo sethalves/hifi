@@ -15,14 +15,6 @@ float ellipse(vec2 coord, vec2 centerUV, vec2 semiAxis) {
     return pow(coord.x - centerUV.x, 2.0) / semiAxis.x + pow(coord.y - centerUV.y, 2.0) / semiAxis.y;
 }
 
-float checkerboard(vec2 R, float scale) {
-	return float((int(floor(R.x / scale)) + int(floor(R.y / scale))) % 2);
-}
-
-float sigmoid(float v) {
-    return 1.0 / (1.0 + exp(-2.0 * v));
-}
-
 vec4 extractFov(mat4 m) {
     mat4 mt = transpose(m);
     vec4 v;
@@ -122,15 +114,16 @@ vec3 gridFloor(vec2 varTexCoord0, mat4 hmdSensorMatrix, mat4 projectionInverse, 
     float t = -(near.y - groundPlaneY) / (far.y - near.y);
     vec3 R = near + t * (far - near);
     // use (x, z) from that intersection to determine grid color for this fragment
-    float c =
-        checkerboard(R.xz, 1.0) * 0.3 +
-        checkerboard(R.xz, 10.0) * 0.2 +
-        checkerboard(R.xz, 100.0) * 0.1 +
-        0.1;
-    c = c * float(t > 0.0);
-    float spotlight = min(1.0, 1.5 - spotLightSize * length(R.xz));
-    vec3 gridColor = vec3(c * spotlight);
 
+    vec2 grid = abs(fract(R.xz - 0.5) - 0.5) / fwidth(R.xz);
+    float line = min(grid.x, grid.y);
+    float c = 1.0 - min(line, 1.0);
+
+    c = clamp(c, 0.2, 0.8);
+    c = c * float(t > 0.0);
+
+    float spotlight = clamp(min(1.0, 1.5 - spotLightSize * length(R.xz)), 0.2, 0.8);
+    vec3 gridColor = vec3(c * (1.0 - spotlight));
     return gridColor;
 }
 

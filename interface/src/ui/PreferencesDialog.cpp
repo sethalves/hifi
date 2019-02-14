@@ -284,7 +284,10 @@ void setupPreferences() {
     }
     {
         auto getter = [myAvatar]()->float { return myAvatar->getVisionSqueezeRatioX(); };
-        auto setter = [myAvatar](float value) { myAvatar->setVisionSqueezeRatioX(value); };
+        auto setter = [myAvatar](float value) {
+            myAvatar->setVisionSqueezeRatioX(value);
+            myAvatar->setVisionSqueezeRatioY(value);
+        };
         auto preference = new SpinnerSliderPreference(VR_MOVEMENT, "Vision Squeeze", getter, setter);
         preference->setMin(0.0f);
         preference->setMax(1.0f);

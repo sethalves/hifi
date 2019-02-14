@@ -6572,10 +6572,10 @@ void Application::updateRenderArgs(float deltaTime) {
 
             // Squeeze edges of vision while moving, to avoid sickness
             {
-                // const float VISION_SQUEEZE_PRACTICAL_MIN = 0.3f;
-                // const float VISION_SQUEEZE_PRACTICAL_MAX = 0.65f;
-                const float VISION_SQUEEZE_PRACTICAL_MIN = 0.0f;
-                const float VISION_SQUEEZE_PRACTICAL_MAX = 1.0f;
+                const float VISION_SQUEEZE_PRACTICAL_X_MIN = 0.8f;
+                const float VISION_SQUEEZE_PRACTICAL_X_MAX = 0.98f;
+                const float VISION_SQUEEZE_PRACTICAL_Y_MIN = 0.3f;
+                const float VISION_SQUEEZE_PRACTICAL_Y_MAX = 0.7f;
 
                 static quint64 lastSqueezeTime = 0;
                 quint64 now = usecTimestampNow();
@@ -6585,10 +6585,10 @@ void Application::updateRenderArgs(float deltaTime) {
                     float ratioX = myAvatar->getVisionSqueezeRatioX();
                     float ratioY = myAvatar->getVisionSqueezeRatioY();
                     if (ratioX > 0.0f && ratioY > 0.0f) {
-                        visionSqueezeX = ratioX * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
-                            VISION_SQUEEZE_PRACTICAL_MIN;
-                        visionSqueezeY = ratioY * (VISION_SQUEEZE_PRACTICAL_MAX - VISION_SQUEEZE_PRACTICAL_MIN) +
-                            VISION_SQUEEZE_PRACTICAL_MIN;
+                        visionSqueezeX = ratioX * (VISION_SQUEEZE_PRACTICAL_X_MAX - VISION_SQUEEZE_PRACTICAL_X_MIN) +
+                            VISION_SQUEEZE_PRACTICAL_X_MIN;
+                        visionSqueezeY = ratioY * (VISION_SQUEEZE_PRACTICAL_Y_MAX - VISION_SQUEEZE_PRACTICAL_Y_MIN) +
+                            VISION_SQUEEZE_PRACTICAL_Y_MIN;
                     } else {
                         visionSqueezeX = 0.0f;
                         visionSqueezeY = 0.0f;
