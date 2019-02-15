@@ -646,7 +646,7 @@ void OpenVrDisplayPlugin::compositeLayers() {
 }
 
 void OpenVrDisplayPlugin::hmdPresent() {
-    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
+    // PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
 
     if (_threadedSubmit) {
         _submitThread->waitForPresent();
@@ -667,7 +667,7 @@ void OpenVrDisplayPlugin::hmdPresent() {
 }
 
 void OpenVrDisplayPlugin::postPreview() {
-    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
+    // PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
     PoseData nextRender, nextSim;
     nextRender.frameIndex = presentCount();
 
