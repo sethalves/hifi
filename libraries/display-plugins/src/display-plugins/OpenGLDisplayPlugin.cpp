@@ -388,8 +388,8 @@ void OpenGLDisplayPlugin::customizeContext() {
         }
 
         {
-            // gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::SrgbToLinear);
-            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::PresentWithVisionSqueeze);
+            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::SrgbToLinear);
+            // gpu::ShaderPointer program = gpu::Shader::createProgram(shader::display_plugins::program::PresentWithVisionSqueeze);
             _presentPipeline = gpu::Pipeline::create(program, scissorState);
         }
 
@@ -516,7 +516,7 @@ void OpenGLDisplayPlugin::renderFromTexture(gpu::Batch& batch, const gpu::Textur
     batch.setStateScissorRect(scissor);
     batch.setViewportTransform(viewport);
     batch.setResourceTexture(0, texture);
-    batch.setUniformBuffer(presentWithVisionSqueezeParamsSlot, _parametersBuffer);
+    batch.setUniformBuffer(drawTextureWithVisionSqueezeParamsSlot, _parametersBuffer);
 #ifndef USE_GLES
     batch.setPipeline(_presentPipeline);
 #else

@@ -206,5 +206,4 @@ protected:
     gpu::BufferView _parametersBuffer;
 };
 
-const int presentWithVisionSqueezeParamsSlot = 1; // must match binding in PresentWithVisionSqueeze.slf
 const int drawTextureWithVisionSqueezeParamsSlot = 1; // must match binding in DrawTextureWithVisionSqueeze.slf
