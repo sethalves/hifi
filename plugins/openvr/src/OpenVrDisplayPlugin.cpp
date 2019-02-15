@@ -55,7 +55,25 @@ struct Reprojection {
     mat4 projections[2];
     mat4 inverseProjections[2];
     mat4 reprojection;
+
+    float visionSqueezeX;
+    float visionSqueezeY;
+    float ipd;
+    float spareB;
+    mat4 hmdSensorMatrix;
+    float visionSqueezeTransition;
+    int visionSqueezePerEye;
+    float visionSqueezeGroundPlaneY;
+    float visionSqueezeSpotlightSize;
 };
+
+glm::mat4 hmd34_to_mat4(const vr::HmdMatrix34_t &m) {
+    return glm::mat4(
+        m.m[0][0], m.m[1][0], m.m[2][0], 0.f,
+        m.m[0][1], m.m[1][1], m.m[2][1], 0.f,
+        m.m[0][2], m.m[1][2], m.m[2][2], 0.f,
+        m.m[0][3], m.m[1][3], m.m[2][3], 1.f);
+}
 
 class OpenVrSubmitThread : public QThread, public Dependency {
 public:
@@ -115,6 +133,7 @@ public:
 
 #define COLOR_BUFFER_COUNT 4
 
+
     void run() override {
         GLuint _framebuffer{ 0 };
         std::array<GLuint, COLOR_BUFFER_COUNT> _colors;
@@ -164,7 +183,17 @@ public:
                     _reprojection.projections[i] = _plugin._eyeProjections[i];
                     _reprojection.inverseProjections[i] = _plugin._eyeInverseProjections[i];
                 }
+
                 _reprojection.reprojection = glm::inverse(renderRotation) * presentRotation;
+                _reprojection.visionSqueezeX = _plugin._visionSqueezeX;
+                _reprojection.visionSqueezeY = _plugin._visionSqueezeY;
+                _reprojection.visionSqueezeTransition = _plugin._visionSqueezeTransition;
+                _reprojection.visionSqueezePerEye = _plugin._visionSqueezePerEye;
+                _reprojection.visionSqueezeGroundPlaneY = _plugin._visionSqueezeGroundPlaneY;
+                _reprojection.visionSqueezeSpotlightSize = _plugin._visionSqueezeSpotlightSize;
+                _reprojection.hmdSensorMatrix = hmd34_to_mat4(_plugin._lastGoodHMDPose);
+                // ipd is currently unused
+
                 glNamedBufferSubData(_uniformBuffer, 0, sizeof(Reprojection), &_reprojection);
                 glNamedFramebufferTexture(_framebuffer, GL_COLOR_ATTACHMENT0, _colors[currentColorBuffer], 0);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, _framebuffer);
@@ -554,11 +583,20 @@ void OpenVrDisplayPlugin::compositeLayers() {
 }
 
 void OpenVrDisplayPlugin::hmdPresent() {
-    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
+//    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
 
     if (_threadedSubmit) {
         _submitThread->waitForPresent();
     } else {
+
+        _parametersBuffer.edit<Parameters>()._visionSqueezeX = _visionSqueezeX;
+        _parametersBuffer.edit<Parameters>()._visionSqueezeY = _visionSqueezeY;
+
+        // _parametersBuffer.edit<Parameters>()._leftProjection = _eyeProjections[0];
+        // _parametersBuffer.edit<Parameters>()._rightProjection = _eyeProjections[1];
+        // _parametersBuffer.edit<Parameters>()._hmdSensorMatrix = _currentPresentFrameInfo.presentPose;
+        // _parametersBuffer.edit<Parameters>()._ipd = _ipd;
+
         GLuint glTexId = getGLBackend()->getTextureID(_compositeFramebuffer->getRenderBuffer(0));
         vr::Texture_t vrTexture{ (void*)(uintptr_t)glTexId, vr::TextureType_OpenGL, vr::ColorSpace_Auto };
         vr::VRCompositor()->Submit(vr::Eye_Left, &vrTexture, &OPENVR_TEXTURE_BOUNDS_LEFT);
@@ -575,7 +613,7 @@ void OpenVrDisplayPlugin::hmdPresent() {
 }
 
 void OpenVrDisplayPlugin::postPreview() {
-    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
+//    PROFILE_RANGE_EX(render, __FUNCTION__, 0xff00ff00, (uint64_t)_currentFrame->frameIndex)
     PoseData nextRender, nextSim;
     nextRender.frameIndex = presentCount();
 
@@ -691,4 +729,15 @@ QRectF OpenVrDisplayPlugin::getPlayAreaRect() {
     glm::vec2 dimensions = glm::vec2(maxXZ.x - minXZ.x, maxXZ.z - minXZ.z);
 
     return QRectF(center.x, center.y, dimensions.x, dimensions.y);
+}
+
+void OpenVrDisplayPlugin::updateParameters(float visionSqueezeX, float visionSqueezeY, float visionSqueezeTransition,
+                                           int visionSqueezePerEye, float visionSqueezeGroundPlaneY,
+                                           float visionSqueezeSpotlightSize) {
+    _visionSqueezeX = visionSqueezeX;
+    _visionSqueezeY = visionSqueezeY;
+    _visionSqueezeTransition = visionSqueezeTransition;
+    _visionSqueezePerEye = visionSqueezePerEye;
+    _visionSqueezeGroundPlaneY = visionSqueezeGroundPlaneY;
+    _visionSqueezeSpotlightSize = visionSqueezeSpotlightSize;
 }

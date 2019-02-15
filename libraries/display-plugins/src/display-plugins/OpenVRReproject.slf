@@ -1,4 +1,6 @@
 
+<@include display-plugins/VisionSqueeze.slh@>
+
 
 struct OpenVRReprojectParams {
     mat4 _projections0;
@@ -6,6 +8,16 @@ struct OpenVRReprojectParams {
     mat4 _inverseProjections0;
     mat4 _inverseProjections1;
     mat4 _reprojection;
+
+    float _visionSqueezeX;
+    float _visionSqueezeY;
+    float _ipd;
+    float _spareB;
+    mat4 _hmdSensorMatrix;
+    float _visionSqueezeTransition;
+    int _visionSqueezePerEye;
+    float _visionSqueezeGroundPlaneY;
+    float _visionSqueezeSpotlightSize;
 };
 
 LAYOUT(binding=0) uniform sampler2D colorMap;
@@ -18,6 +30,40 @@ layout(location=0) in vec3 vPosition;
 layout(location=1) in vec2 vTexCoord;
 
 layout(location=0) out vec4 FragColor;
+
+
+
+float getVisionSqueezeX() {
+    return params._visionSqueezeX;
+}
+float getVisionSqueezeY() {
+    return params._visionSqueezeY;
+}
+float getIPD() {
+    return params._ipd;
+}
+float getVisionSqueezeTransitionRatio() {
+    return params._visionSqueezeTransition;
+}
+int getVisionSqueezePerEye() {
+    return params._visionSqueezePerEye;
+}
+float getVisionSqueezeGroundPlaneY() {
+    return params._visionSqueezeGroundPlaneY;
+}
+float getVisionSqueezeSpotlightSize() {
+    return params._visionSqueezeSpotlightSize;
+}
+mat4 getProjectionMatrix(int eye) {
+    if (eye == 0) {
+        return params._projections0;
+    } else {
+        return params._projections1;
+    }
+}
+mat4 getHMDSensorMatrix() {
+    return params._hmdSensorMatrix;
+}
 
 
 void main(void) {
@@ -71,10 +117,28 @@ void main(void) {
     ndcSpace.x /= 2.0;
 
     // Calculate the new UV coordinates
+    vec4 preSqueezeColor;
     uv = (ndcSpace.xy / 2.0) + 0.5;
     if (any(greaterThan(uv, uvmax)) || any(lessThan(uv, uvmin))) {
-        FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+        preSqueezeColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
-        FragColor = texture(colorMap, uv);
+        preSqueezeColor = texture(colorMap, uv);
     }
+
+    // block edges of vision to avoid sickness
+    vec2 visionSqueezeRatios = vec2(getVisionSqueezeX(), getVisionSqueezeY());
+    bool perEye = getVisionSqueezePerEye() > 0;
+    float frac = squeezeVision(perEye, vTexCoord, visionSqueezeRatios, getVisionSqueezeTransitionRatio());
+
+    // put a grid on the floor
+    int side = int(vTexCoord.x > 0.5);
+    mat4 hmdSensorMatrix = getHMDSensorMatrix();
+    mat4 projectionMatrix = getProjectionMatrix(side);
+    mat4 projectionInverse = inverse(projectionMatrix);
+    float groundPlaneY = getVisionSqueezeGroundPlaneY();
+    float spotLightSize = getVisionSqueezeSpotlightSize();
+    vec3 gridColor = gridFloor(vTexCoord, hmdSensorMatrix, projectionInverse, groundPlaneY, spotLightSize);
+
+    // FragColor.rgb = mix(preSqueezeColor.rgb, gridColor, frac);
+    FragColor.rgb = vec3(0.0);
 }

@@ -380,7 +380,9 @@ void OpenGLDisplayPlugin::customizeContext() {
         scissorState->setScissorEnable(true);
 
         {
-            gpu::ShaderPointer program = gpu::Shader::createProgram(shader::gpu::program::DrawTexture);
+            // gpu::ShaderPointer program = gpu::Shader::createProgram(shader::gpu::program::DrawTexture);
+            gpu::ShaderPointer program =
+                gpu::Shader::createProgram(shader::display_plugins::program::DrawTextureWithVisionSqueeze);
             _simplePipeline = gpu::Pipeline::create(program, scissorState);
             _hudPipeline = gpu::Pipeline::create(program, blendState);
         }
@@ -634,6 +636,7 @@ void OpenGLDisplayPlugin::compositeScene() {
         batch.setProjectionTransform(mat4());
         batch.setPipeline(_simplePipeline);
         batch.setResourceTexture(0, _currentFrame->framebuffer->getRenderBuffer(0));
+        batch.setUniformBuffer(drawTextureWithVisionSqueezeParamsSlot, _parametersBuffer);
         batch.draw(gpu::TRIANGLE_STRIP, 4);
     });
 }

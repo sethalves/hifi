@@ -67,6 +67,10 @@ public:
 
     QRectF getPlayAreaRect() override;
 
+    virtual void updateParameters(float visionSqueezeX, float visionSqueezeY, float visionSqueezeTransition,
+                                  int visionSqueezePerEye, float visionSqueezeGroundPlaneY,
+                                  float visionSqueezeSpotlightSize) override;
+
 protected:
     bool internalActivate() override;
     void internalDeactivate() override;
@@ -94,4 +98,11 @@ private:
     bool _asyncReprojectionActive { false };
 
     bool _hmdMounted { false };
+
+    float _visionSqueezeX;
+    float _visionSqueezeY;
+    float _visionSqueezeTransition;
+    int _visionSqueezePerEye;
+    float _visionSqueezeGroundPlaneY;
+    float _visionSqueezeSpotlightSize;
 };

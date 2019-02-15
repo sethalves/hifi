@@ -89,5 +89,6 @@ void main(void) {
     float spotLightSize = getVisionSqueezeSpotlightSize();
     vec3 gridColor = gridFloor(varTexCoord0, hmdSensorMatrix, projectionInverse, groundPlaneY, spotLightSize);
 
+    outFragColor.a = 1.0;
     outFragColor.rgb = mix(linearColor, gridColor, frac);
 }
