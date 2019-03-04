@@ -18,21 +18,11 @@
 const float TRACTOR_MAX_SPEED = 10.0f;
 const float MAX_TRACTOR_TIMESCALE = 600.0f; // 10 min is a long time
 
-const uint16_t ObjectActionTractor::tractorVersion = 1;
+const uint16_t ObjectActionTractor::tractorVersion = 2;
 
 
 ObjectActionTractor::ObjectActionTractor(const QUuid& id, EntityItemPointer ownerEntity) :
-    ObjectAction(DYNAMIC_TYPE_TRACTOR, id, ownerEntity),
-    _positionalTarget(0.0f),
-    _desiredPositionalTarget(0.0f),
-    _linearTimeScale(FLT_MAX),
-    _positionalTargetSet(false),
-    _rotationalTarget(),
-    _desiredRotationalTarget(),
-    _angularTimeScale(FLT_MAX),
-    _rotationalTargetSet(true),
-    _linearVelocityTarget(0.0f)
-{
+    ObjectAction(DYNAMIC_TYPE_TRACTOR, id, ownerEntity) {
 #if WANT_DEBUG
     qCDebug(physics) << "ObjectActionTractor::ObjectActionTractor";
 #endif
@@ -200,10 +190,12 @@ void ObjectActionTractor::updateActionWorker(btScalar deltaTimeStep) {
             return;
         }
 
-        if (_linearTimeScale < MAX_TRACTOR_TIMESCALE) {
+        btVector3 offset = rigidBody->getCenterOfMassPosition() - glmToBullet(_positionalTarget);
+        float offsetLength = offset.length();
+        bool inActiveRange = offsetLength > _minimumActiveDistance && offsetLength < _maximumActiveDistance;
+
+        if (_linearTimeScale < MAX_TRACTOR_TIMESCALE && inActiveRange) {
             btVector3 offsetVelocity(0.0f, 0.0f, 0.0f);
-            btVector3 offset = rigidBody->getCenterOfMassPosition() - glmToBullet(_positionalTarget);
-            float offsetLength = offset.length();
             if (offsetLength > FLT_EPSILON) {
                 float speed = glm::min(offsetLength / _linearTimeScale, TRACTOR_MAX_SPEED);
                 offsetVelocity = (-speed / offsetLength) * offset;
@@ -216,7 +208,7 @@ void ObjectActionTractor::updateActionWorker(btScalar deltaTimeStep) {
             rigidBody->setLinearVelocity(glmToBullet(_linearVelocityTarget) + offsetVelocity);
         }
 
-        if (_angularTimeScale < MAX_TRACTOR_TIMESCALE) {
+        if (_angularTimeScale < MAX_TRACTOR_TIMESCALE && inActiveRange) {
             btVector3 targetVelocity(0.0f, 0.0f, 0.0f);
 
             btQuaternion bodyRotation = rigidBody->getOrientation();
@@ -257,6 +249,8 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
     float angularTimeScale;
     QUuid otherID;
     int otherJointIndex;
+    float minimumActiveDistance;
+    float maximumActiveDistance;
 
     bool needUpdate = false;
     bool somethingChanged = ObjectDynamic::updateArguments(arguments);
@@ -303,13 +297,29 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
             otherJointIndex = _otherJointIndex;
         }
 
+        ok = true;
+        minimumActiveDistance =
+            EntityDynamicInterface::extractFloatArgument("tractor action", arguments, "minimumActiveDistance", ok, false);
+        if (!ok) {
+            minimumActiveDistance = _minimumActiveDistance;
+        }
+
+        ok = true;
+        maximumActiveDistance =
+            EntityDynamicInterface::extractFloatArgument("tractor action", arguments, "maximumActiveDistance", ok, false);
+        if (!ok) {
+            maximumActiveDistance = _maximumActiveDistance;
+        }
+
         if (somethingChanged ||
             positionalTarget != _desiredPositionalTarget ||
             linearTimeScale != _linearTimeScale ||
             rotationalTarget != _desiredRotationalTarget ||
             angularTimeScale != _angularTimeScale ||
             otherID != _otherID ||
-            otherJointIndex != _otherJointIndex) {
+            otherJointIndex != _otherJointIndex ||
+            minimumActiveDistance != _minimumActiveDistance ||
+            maximumActiveDistance != _maximumActiveDistance) {
             // something changed
             needUpdate = true;
         }
@@ -324,6 +334,8 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
             _otherID = otherID;
             _otherJointIndex = otherJointIndex;
             _active = true;
+            _minimumActiveDistance = minimumActiveDistance;
+            _maximumActiveDistance = maximumActiveDistance;
 
             auto ownerEntity = _ownerEntity.lock();
             if (ownerEntity) {
@@ -355,6 +367,10 @@ bool ObjectActionTractor::updateArguments(QVariantMap arguments) {
  * @property {number} angularTimeScale=3.4e+38 - Controls how long it takes for the entity's orientation to catch up with the
  *     target orientation. The value is the time for the action to catch up to 1/e = 0.368 of the target value, where the
  *     action is applied using an exponential decay.
+ * @property {number} minimumActiveDistance=0 - The action will not act on the entity unless it is farther away from
+ *     the target position than this.
+ * @property {number} maximumActiveDistance=0 - The action will not act on the entity unless it is closer than
+ *     the target position than this.
  */
 QVariantMap ObjectActionTractor::getArguments() {
     QVariantMap arguments = ObjectDynamic::getArguments();
@@ -367,6 +383,9 @@ QVariantMap ObjectActionTractor::getArguments() {
 
         arguments["otherID"] = _otherID;
         arguments["otherJointIndex"] = _otherJointIndex;
+
+        arguments["minimumActiveDistance"] = _minimumActiveDistance;
+        arguments["maximumActiveDistance"] = _maximumActiveDistance;
     });
     return arguments;
 }
@@ -383,6 +402,8 @@ void ObjectActionTractor::serializeParameters(QDataStream& dataStream) const {
         dataStream << _tag;
         dataStream << _otherID;
         dataStream << _otherJointIndex;
+        dataStream << _minimumActiveDistance;
+        dataStream << _maximumActiveDistance;
     });
 }
 
@@ -418,6 +439,9 @@ void ObjectActionTractor::deserializeParameters(QByteArray serializedArguments, 
         dataStream >> _otherID;
         dataStream >> _otherJointIndex;
 
+        dataStream >> _minimumActiveDistance;
+        dataStream >> _maximumActiveDistance;
+
         _active = true;
     });
 }
@@ -435,8 +459,7 @@ void ObjectActionTractor::deserialize(QByteArray serializedArguments) {
 
     uint16_t serializationVersion;
     dataStream >> serializationVersion;
-    if (serializationVersion != ObjectActionTractor::tractorVersion) {
-        assert(false);
+    if (serializationVersion > ObjectActionTractor::tractorVersion) {
         return;
     }
 

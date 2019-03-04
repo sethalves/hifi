@@ -34,20 +34,23 @@ public:
 protected:
     static const uint16_t tractorVersion;
 
-    glm::vec3 _positionalTarget;
-    glm::vec3 _desiredPositionalTarget;
-    glm::vec3 _lastPositionTarget;
-    float _linearTimeScale;
-    bool _positionalTargetSet;
+    glm::vec3 _positionalTarget { glm::vec3(0.0f) };
+    glm::vec3 _desiredPositionalTarget { glm::vec3(0.0f) };
+    glm::vec3 _lastPositionTarget { glm::vec3(0.0f) };
+    float _linearTimeScale { FLT_MAX };
+    bool _positionalTargetSet { false };
     bool _havePositionTargetHistory { false };
 
-    glm::quat _rotationalTarget;
-    glm::quat _desiredRotationalTarget;
-    float _angularTimeScale;
-    bool _rotationalTargetSet;
+    glm::quat _rotationalTarget { glm::quat() };
+    glm::quat _desiredRotationalTarget { glm::quat() };
+    float _angularTimeScale { FLT_MAX };
+    bool _rotationalTargetSet { true };
 
-    glm::vec3 _linearVelocityTarget;
-    glm::vec3 _angularVelocityTarget;
+    glm::vec3 _linearVelocityTarget { glm::vec3(0.0f) };
+    glm::vec3 _angularVelocityTarget { glm::vec3(0.0f) };
+
+    float _minimumActiveDistance { 0.0f };
+    float _maximumActiveDistance { FLT_MAX };
 
     virtual bool prepareForTractorUpdate(btScalar deltaTimeStep);
 
