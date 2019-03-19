@@ -134,6 +134,7 @@ public:
         BulkAvatarTraits,
         AudioSoloRequest,
         BulkAvatarTraitsAck,
+        ChangeReputation,
         NUM_PACKET_TYPE
     };
 

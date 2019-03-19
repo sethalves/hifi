@@ -87,6 +87,7 @@ public:
     void kickNodeBySessionID(const QUuid& nodeID);
     void muteNodeBySessionID(const QUuid& nodeID);
     void requestUsernameFromSessionID(const QUuid& nodeID);
+    void changeReputation(const QUuid& nodeID, bool isUpRep, bool isCancel);
     bool getRequestsDomainListData() { return _requestsDomainListData; }
     void setRequestsDomainListData(bool isRequesting);
 

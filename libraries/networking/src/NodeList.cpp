@@ -1173,6 +1173,22 @@ void NodeList::processUsernameFromIDReply(QSharedPointer<ReceivedMessage> messag
     emit usernameFromIDReply(nodeUUIDString, username, machineFingerprintString, isAdmin);
 }
 
+void NodeList::changeReputation(const QUuid& nodeID, bool isUpRep, bool isCancel) {
+    auto changeReputationPacket = NLPacket::create(PacketType::ChangeReputation,
+                                                   NUM_BYTES_RFC4122_UUID + sizeof(bool) * 2,
+                                                   true);
+
+    // write the node ID to the packet
+    changeReputationPacket->write(nodeID.toRfc4122());
+    changeReputationPacket->writePrimitive(isUpRep);
+    changeReputationPacket->writePrimitive(isCancel);
+
+    qCDebug(networking) << "Sending packet to change reputation of node" << uuidStringWithoutCurlyBraces(nodeID) <<
+        isUpRep << isCancel;
+
+    sendPacket(std::move(changeReputationPacket), _domainHandler.getSockAddr());
+}
+
 void NodeList::setRequestsDomainListData(bool isRequesting) {
     // Tell the avatar mixer and audio mixer whether I want to receive any additional data to which I might be entitled
     if (_requestsDomainListData == isRequesting) {

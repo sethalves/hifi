@@ -142,6 +142,7 @@ private slots:
     void processSettingsRequestPacket(QSharedPointer<ReceivedMessage> message);
     void processNodeKickRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
     void processUsernameFromIDRequestPacket(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
+    void processReputationChange(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
 
 private:
     QJsonArray filteredDescriptionArray(bool isContentSettings);

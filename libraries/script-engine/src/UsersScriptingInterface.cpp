@@ -66,6 +66,11 @@ void UsersScriptingInterface::requestUsernameFromID(const QUuid& nodeID) {
     DependencyManager::get<NodeList>()->requestUsernameFromSessionID(nodeID);
 }
 
+void UsersScriptingInterface::changeReputation(const QUuid& nodeID, bool isUpRep, bool isCancel) {
+    // up or down-vote a sessionID
+    DependencyManager::get<NodeList>()->changeReputation(nodeID, isUpRep, isCancel);
+}
+
 bool UsersScriptingInterface::getCanKick() {
     // ask the NodeList to return our ability to kick
     return DependencyManager::get<NodeList>()->getThisNodeCanKick();

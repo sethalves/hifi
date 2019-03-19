@@ -116,6 +116,15 @@ public slots:
     void requestUsernameFromID(const QUuid& nodeID);
 
     /**jsdoc
+     * Tell the domain-server to up or down-vote (or cancel a previous up or down-vote of) a session-ID
+     * @function Users.changeReputation
+     * @param {Uuid} nodeID The node or session ID of the user who is being rated
+     * @param {boolean} isUpRep true for an up-vote, false for a down-vote
+     * @param {boolean} isCancel true to undo a previous vote, else false
+     */
+    void changeReputation(const QUuid& nodeID, bool isUpRep, bool isCancel);
+
+    /**jsdoc
      * Returns `true` if the DomainServer will allow this Node/Avatar to make kick.
      * @function Users.getCanKick
      * @returns {boolean} <code>true</code> if the domain server allows the client to kick (ban) other users, otherwise 

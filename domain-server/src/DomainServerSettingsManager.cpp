@@ -948,6 +948,35 @@ void DomainServerSettingsManager::processUsernameFromIDRequestPacket(QSharedPoin
     }
 }
 
+void DomainServerSettingsManager::processReputationChange(QSharedPointer<ReceivedMessage> message,
+                                                          SharedNodePointer sendingNode) {
+    // From the packet, pull the session-ID of the users who is getting liked / disliked
+    QUuid nodeUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
+    bool isUpRep; // true for up-vote, false for down-vote
+    message->readPrimitive(&isUpRep);
+    bool isCancel; // true for undo-previous, false for a new vote
+    message->readPrimitive(&isCancel);
+
+    if (!nodeUUID.isNull()) {
+        // turn session-ID into node
+        auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
+        auto matchingNode = limitedNodeList->nodeWithUUID(nodeUUID);
+
+        // If we do have a matching node...
+        if (matchingNode) {
+            QString voterName = sendingNode->getPermissions().getVerifiedUserName();
+            QString subjectName = matchingNode->getPermissions().getVerifiedUserName();
+
+            qDebug() << "QQQQ " << voterName << " votes on " << subjectName << isUpRep << isCancel;
+        } else {
+            qWarning() << "Reputation Change for unknown node. Refusing to process.";
+        }
+    } else {
+        qWarning() << "Reputation Change for null node. Refusing to process.";
+    }
+}
+
+
 QStringList DomainServerSettingsManager::getAllNames() const {
     QStringList result;
     foreach (auto key, _agentPermissions.keys()) {
