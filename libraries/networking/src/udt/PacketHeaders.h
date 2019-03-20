@@ -162,7 +162,8 @@ public:
             << PacketTypeEnum::Value::DomainDisconnectRequest
             << PacketTypeEnum::Value::UsernameFromIDRequest
             << PacketTypeEnum::Value::NodeKickRequest
-            << PacketTypeEnum::Value::NodeMuteRequest;
+            << PacketTypeEnum::Value::NodeMuteRequest
+            << PacketTypeEnum::Value::ChangeReputation;
         return NON_VERIFIED_PACKETS;
     }
 
