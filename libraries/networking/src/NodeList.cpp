@@ -1174,9 +1174,7 @@ void NodeList::processUsernameFromIDReply(QSharedPointer<ReceivedMessage> messag
 }
 
 void NodeList::changeReputation(const QUuid& nodeID, bool isUpRep, bool isCancel) {
-    auto changeReputationPacket = NLPacket::create(PacketType::ChangeReputation,
-                                                   NUM_BYTES_RFC4122_UUID + sizeof(bool) * 2,
-                                                   true);
+    auto changeReputationPacket = NLPacket::create(PacketType::ChangeReputation, -1, true);
 
     // write the node ID to the packet
     changeReputationPacket->write(nodeID.toRfc4122());
