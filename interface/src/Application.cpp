@@ -179,6 +179,7 @@
 #include "scripting/PlatformInfoScriptingInterface.h"
 #include "scripting/AssetMappingsScriptingInterface.h"
 #include "scripting/ClipboardScriptingInterface.h"
+#include "scripting/EntityScriptFilterScriptingInterface.h"
 #include "scripting/DesktopScriptingInterface.h"
 #include "scripting/AccountServicesScriptingInterface.h"
 #include "scripting/HMDScriptingInterface.h"
@@ -7246,6 +7247,11 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
     ClipboardScriptingInterface* clipboardScriptable = new ClipboardScriptingInterface();
     scriptEngine->registerGlobalObject("Clipboard", clipboardScriptable);
     connect(scriptEngine.data(), &ScriptEngine::finished, clipboardScriptable, &ClipboardScriptingInterface::deleteLater);
+
+    EntityScriptFilterScriptingInterface* entityScriptFilterScriptable = new EntityScriptFilterScriptingInterface();
+    scriptEngine->registerGlobalObject("EntityScriptFilter", entityScriptFilterScriptable);
+    connect(scriptEngine.data(), &ScriptEngine::finished,
+            entityScriptFilterScriptable, &EntityScriptFilterScriptingInterface::deleteLater);
 
     scriptEngine->registerGlobalObject("Overlays", &_overlays);
     qScriptRegisterMetaType(scriptEngine.data(), RayToOverlayIntersectionResultToScriptValue,
