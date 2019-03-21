@@ -144,6 +144,7 @@ render::ItemID EntityTreeRenderer::renderableIdForEntityId(const EntityItemID& i
 int EntityTreeRenderer::_entitiesScriptEngineCount = 0;
 
 void EntityTreeRenderer::resetEntitiesScriptEngine() {
+    clearEntityScriptURLs();
     _entitiesScriptEngine = scriptEngineFactory(ScriptEngine::ENTITY_CLIENT_SCRIPT, NO_SCRIPT,
                                                 QString("about:Entities %1").arg(++_entitiesScriptEngineCount));
     _scriptingServices->registerScriptEngineWithApplicationServices(_entitiesScriptEngine);
@@ -197,6 +198,7 @@ void EntityTreeRenderer::resetEntitiesScriptEngine() {
 }
 
 void EntityTreeRenderer::stopDomainAndNonOwnedEntities() {
+    clearEntityScriptURLs();
     leaveDomainAndNonOwnedEntities();
     // unload and stop the engine
     if (_entitiesScriptEngine) {
@@ -249,6 +251,7 @@ void EntityTreeRenderer::clear() {
         // do this here (instead of in deleter) to avoid marshalling unload signals back to this thread
         _entitiesScriptEngine->unloadAllEntityScripts();
         _entitiesScriptEngine->stop();
+        clearEntityScriptURLs();
     }
 
     // reset the engine
@@ -276,13 +279,37 @@ void EntityTreeRenderer::clear() {
     OctreeProcessor::clear();
 }
 
+bool EntityTreeRenderer::listsPermitEntityScript(const EntityItemID& entityID, const QString& scriptUrl) {
+    bool shouldLoad { false };
+    if (entityScriptURLMatchesWhitelist(scriptUrl)) {
+        if (entityScriptURLMatchesBlacklist(scriptUrl)) {
+            // if it matches both white and black lists, don't run it.
+            addToEntityScriptURLsInBlacklist(entityID, scriptUrl);
+        } else {
+            // it matches a whitelist regexp and none of the blacklist, so run it.
+            addToEntityScriptURLsInWhitelist(entityID, scriptUrl);
+            shouldLoad = true;
+        }
+    } else if (entityScriptURLMatchesBlacklist(scriptUrl)) {
+        // don't run this one.
+        addToEntityScriptURLsInBlacklist(entityID, scriptUrl);
+    } else {
+        // we don't know if we should run this one.
+        addToEntityScriptURLsInPurgatory(entityID, scriptUrl);
+    }
+
+    return shouldLoad;
+}
+
 void EntityTreeRenderer::reloadEntityScripts() {
     _entitiesScriptEngine->unloadAllEntityScripts();
     _entitiesScriptEngine->resetModuleCache();
+    clearEntityScriptURLs();
     for (const auto& entry : _entitiesInScene) {
         const auto& renderer = entry.second;
         const auto& entity = renderer->getEntity();
-        if (!entity->getScript().isEmpty()) {
+        if (!entity->getScript().isEmpty() &&
+            listsPermitEntityScript(entry.first, entity->getScript())) {
             _entitiesScriptEngine->loadEntityScript(entity->getEntityItemID(), resolveScriptURL(entity->getScript()), true);
         }
     }
@@ -305,6 +332,7 @@ void EntityTreeRenderer::init() {
 }
 
 void EntityTreeRenderer::shutdown() {
+    clearEntityScriptURLs();
     if (_entitiesScriptEngine) {
         _entitiesScriptEngine->disconnectNonEssentialSignals(); // disconnect all slots/signals from the script engine, except essential
     }
@@ -996,8 +1024,14 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
         return;
     }
 
+    auto renderable = itr->second;
+
     if (_tree && !_shuttingDown && _entitiesScriptEngine) {
         _entitiesScriptEngine->unloadEntityScript(entityID, true);
+        auto entity = renderable ? renderable->getEntity() : nullptr;
+        if (entity) {
+            removeEntityScriptURLFromLists(entityID, entity->getScript());
+        }
     }
 
     auto scene = _viewState->getMain3DScene();
@@ -1006,7 +1040,6 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
         return;
     }
 
-    auto renderable = itr->second;
     _entitiesInScene.erase(itr);
 
     if (!renderable) {
@@ -1043,6 +1076,11 @@ void EntityTreeRenderer::checkAndCallPreload(const EntityItemID& entityID, bool 
         }
         bool shouldLoad = entity->shouldPreloadScript() && _entitiesScriptEngine;
         QString scriptUrl = entity->getScript();
+
+        if (shouldLoad) {
+            shouldLoad = listsPermitEntityScript(entityID, scriptUrl);
+        }
+
         if ((shouldLoad && unloadFirst) || scriptUrl.isEmpty()) {
             if (_entitiesScriptEngine) {
                 _entitiesScriptEngine->unloadEntityScript(entityID);
@@ -1389,4 +1427,158 @@ bool EntityTreeRenderer::removeMaterialFromAvatar(const QUuid& avatarID, graphic
         return _removeMaterialFromAvatarOperator(avatarID, material, parentMaterialName);
     }
     return false;
+}
+
+
+void EntityTreeRenderer::addRegexToScriptURLWhitelist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLWhitelistRegexs.insert(QRegExp(regexPattern));
+}
+
+void EntityTreeRenderer::removeRegexFromScriptURLWhitelist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLWhitelistRegexs.remove(QRegExp(regexPattern));
+}
+
+void EntityTreeRenderer::clearRegexsFromScriptURLWhitelist() {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLWhitelistRegexs.clear();
+}
+
+void EntityTreeRenderer::addRegexToScriptURLBlacklist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLBlacklistRegexs.insert(QRegExp(regexPattern));
+}
+
+void EntityTreeRenderer::removeRegexFromScriptURLBlacklist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLBlacklistRegexs.remove(QRegExp(regexPattern));
+}
+
+void EntityTreeRenderer::clearRegexsFromScriptURLBlacklist() {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLBlacklistRegexs.clear();
+}
+
+bool EntityTreeRenderer::entityScriptURLMatchesWhitelist(QString scriptURL) const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    for (const QRegExp& whitelistRegex : _entityScriptURLWhitelistRegexs) {
+        if (whitelistRegex.indexIn(scriptURL) >= 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool EntityTreeRenderer::entityScriptURLMatchesBlacklist(QString scriptURL) const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    for (const QRegExp& blacklistRegex : _entityScriptURLBlacklistRegexs) {
+        if (blacklistRegex.indexIn(scriptURL) >= 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLWhitelistRegexs() const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    QStringList result;
+    for (const QRegExp& whitelistRegex : _entityScriptURLWhitelistRegexs) {
+        result += whitelistRegex.pattern();
+    }
+    return result;
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLBlacklistRegexs() const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    QStringList result;
+    for (const QRegExp& blacklistRegex : _entityScriptURLBlacklistRegexs) {
+        result += blacklistRegex.pattern();
+    }
+    return result;
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLsInList(const ScriptURLToEntityIDsMap& list) const {
+    QStringList result;
+    QHashIterator<QString, QSet<EntityItemID>> i(list);
+    while (i.hasNext()) {
+        i.next();
+        result += i.key();
+    }
+    return result;
+}
+
+void EntityTreeRenderer::addToEntityScriptURLsInList(ScriptURLToEntityIDsMap& list,
+                                             const EntityItemID& entityID, const QString& scriptURL) {
+    list[scriptURL].insert(entityID);
+}
+
+void EntityTreeRenderer::removeFromEntityScriptURLsInList(ScriptURLToEntityIDsMap& list,
+                                                  const EntityItemID& entityID, const QString& scriptURL) {
+    auto i = list.find(scriptURL);
+    if (i != list.end()) {
+        list[scriptURL].remove(entityID);
+        if (list[scriptURL].empty()) {
+            list.remove(scriptURL);
+        }
+    }
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLsInWhitelist() const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    return getEntityScriptURLsInList(_entityScriptURLsInWhitelist);
+}
+
+void EntityTreeRenderer::addToEntityScriptURLsInWhitelist(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    addToEntityScriptURLsInList(_entityScriptURLsInWhitelist, entityID, scriptURL);
+}
+
+void EntityTreeRenderer::removeFromEntityScriptURLsInWhitelist(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInWhitelist, entityID, scriptURL);
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLsInBlacklist() const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    return getEntityScriptURLsInList(_entityScriptURLsInBlacklist);
+}
+
+void EntityTreeRenderer::addToEntityScriptURLsInBlacklist(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    addToEntityScriptURLsInList(_entityScriptURLsInBlacklist, entityID, scriptURL);
+}
+
+void EntityTreeRenderer::removeFromEntityScriptURLsInBlacklist(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInBlacklist, entityID, scriptURL);
+}
+
+QStringList EntityTreeRenderer::getEntityScriptURLsInPurgatory() const {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    return getEntityScriptURLsInList(_entityScriptURLsInPurgatory);
+}
+
+void EntityTreeRenderer::addToEntityScriptURLsInPurgatory(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    addToEntityScriptURLsInList(_entityScriptURLsInPurgatory, entityID, scriptURL);
+}
+
+void EntityTreeRenderer::removeFromEntityScriptURLsInPurgatory(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInPurgatory, entityID, scriptURL);
+}
+
+void EntityTreeRenderer::clearEntityScriptURLs() {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLsInWhitelist.clear();
+    _entityScriptURLsInBlacklist.clear();
+    _entityScriptURLsInPurgatory.clear();
+}
+
+void EntityTreeRenderer::removeEntityScriptURLFromLists(const EntityItemID& entityID, const QString& scriptURL) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInWhitelist, entityID, scriptURL);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInBlacklist, entityID, scriptURL);
+    removeFromEntityScriptURLsInList(_entityScriptURLsInPurgatory, entityID, scriptURL);
 }

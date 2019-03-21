@@ -131,6 +131,30 @@ public:
     static bool addMaterialToAvatar(const QUuid& avatarID, graphics::MaterialLayer material, const std::string& parentMaterialName);
     static bool removeMaterialFromAvatar(const QUuid& avatarID, graphics::MaterialPointer material, const std::string& parentMaterialName);
 
+    void addRegexToScriptURLWhitelist(QString regexPattern);
+    void removeRegexFromScriptURLWhitelist(QString regexPattern);
+    void clearRegexsFromScriptURLWhitelist();
+    void addRegexToScriptURLBlacklist(QString regexPattern);
+    void removeRegexFromScriptURLBlacklist(QString regexPattern);
+    void clearRegexsFromScriptURLBlacklist();
+
+    QStringList getEntityScriptURLWhitelistRegexs() const;
+    QStringList getEntityScriptURLBlacklistRegexs() const;
+    bool entityScriptURLMatchesWhitelist(QString scriptURL) const;
+    bool entityScriptURLMatchesBlacklist(QString scriptURL) const;
+
+    QStringList getEntityScriptURLsInWhitelist() const;
+    void addToEntityScriptURLsInWhitelist(const EntityItemID& entityID, const QString& scriptURL);
+    void removeFromEntityScriptURLsInWhitelist(const EntityItemID& entityID, const QString& scriptURL);
+    QStringList getEntityScriptURLsInBlacklist() const;
+    void addToEntityScriptURLsInBlacklist(const EntityItemID& entityID, const QString& scriptURL);
+    void removeFromEntityScriptURLsInBlacklist(const EntityItemID& entityID, const QString& scriptURL);
+    QStringList getEntityScriptURLsInPurgatory() const;
+    void addToEntityScriptURLsInPurgatory(const EntityItemID& entityID, const QString& scriptURL);
+    void removeFromEntityScriptURLsInPurgatory(const EntityItemID& entityID, const QString& scriptURL);
+    void clearEntityScriptURLs();
+    void removeEntityScriptURLFromLists(const EntityItemID& entityID, const QString& scriptURL);
+
 signals:
     void enterEntity(const EntityItemID& entityItemID);
     void leaveEntity(const EntityItemID& entityItemID);
@@ -271,6 +295,20 @@ private:
     static std::function<bool(const QUuid&, graphics::MaterialLayer, const std::string&)> _addMaterialToAvatarOperator;
     static std::function<bool(const QUuid&, graphics::MaterialPointer, const std::string&)> _removeMaterialFromAvatarOperator;
 
+    bool listsPermitEntityScript(const EntityItemID& entityID, const QString& scriptUrl);
+
+    using RegExSet = QSet<QRegExp>;
+    using EntityIDSet = QSet<EntityItemID>;
+    using ScriptURLToEntityIDsMap = QHash<QString, EntityIDSet>;
+    mutable std::mutex _scriptListsLock;
+    RegExSet _entityScriptURLWhitelistRegexs;
+    RegExSet _entityScriptURLBlacklistRegexs;
+    ScriptURLToEntityIDsMap _entityScriptURLsInWhitelist;
+    ScriptURLToEntityIDsMap _entityScriptURLsInBlacklist;
+    ScriptURLToEntityIDsMap _entityScriptURLsInPurgatory;
+    QStringList getEntityScriptURLsInList(const ScriptURLToEntityIDsMap& list) const;
+    void addToEntityScriptURLsInList(ScriptURLToEntityIDsMap& list, const EntityItemID& entityID, const QString& scriptURL);
+    void removeFromEntityScriptURLsInList(ScriptURLToEntityIDsMap& list, const EntityItemID& entityID, const QString& scriptURL);
 };
 
 
