@@ -29,7 +29,7 @@ using NodePermissionsKeyList = QList<QPair<QString, QUuid>>;
 
 namespace std {
     template<>
-    struct hash<NodePermissionsKey> {    
+    struct hash<NodePermissionsKey> {
         size_t operator()(const NodePermissionsKey& key) const;
     };
 }
@@ -94,6 +94,9 @@ public:
     void set(Permission p) { permissions |= p; }
     bool can(Permission p) const { return permissions.testFlag(p); }
 
+    float getReputation() const { return _reputation; }
+    void setReputation(float value) { _reputation = value; }
+
 protected:
     QString _id;
     QUuid _rankID { QUuid() }; // 0 unless this is for a group
@@ -101,6 +104,8 @@ protected:
 
     bool _groupIDSet { false };
     QUuid _groupID;
+
+    float _reputation { 0.0f };
 };
 Q_DECLARE_OPERATORS_FOR_FLAGS(NodePermissions::Permissions)
 

@@ -152,6 +152,11 @@ public:
      *       <td><code>5</code></td>
      *       <td>Connecting to the domain timed out.</td>
      *     </tr>
+     *     <tr>
+     *       <td><strong>LowReputation</strong></td>
+     *       <td><code>6</code></td>
+     *       <td>You are not authorized to connect to the domain due to low reputation.</td>
+     *     </tr>
      *   </tbody>
      * </table>
      * @typedef {number} Window.ConnectionRefusedReason
@@ -162,7 +167,8 @@ public:
         LoginError,
         NotAuthorized,
         TooManyUsers,
-        TimedOut
+        TimedOut,
+        LowReputation
     };
 
 public slots:

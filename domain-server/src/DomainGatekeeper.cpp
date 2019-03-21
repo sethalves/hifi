@@ -312,6 +312,13 @@ void DomainGatekeeper::updateNodePermissions() {
             // hang up on this node
             nodesToKill << node;
         }
+
+        if (!hasMinimumReputation(userPerms) && !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
+            qDebug() << "node" << node->getUUID() << "no longer has required reputation to connect.";
+            // hang up on this node
+            nodesToKill << node;
+        }
+
     });
 
     foreach (auto node, nodesToKill) {
@@ -379,6 +386,7 @@ SharedNodePointer DomainGatekeeper::processAssignmentConnectRequest(const NodeCo
 }
 
 const QString MAXIMUM_USER_CAPACITY = "security.maximum_user_capacity";
+const QString MINIMUM_REPUTATION = "security.minimum_reputation";
 const QString MAXIMUM_USER_CAPACITY_REDIRECT_LOCATION = "security.maximum_user_capacity_redirect_location";
 
 SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnectionData& nodeConnection,
@@ -435,6 +443,11 @@ SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnect
         qDebug() << "stalling login due to permissions:" << username;
 #endif
         return SharedNodePointer();
+    }
+
+    if (!hasMinimumReputation(userPerms) && !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
+        sendConnectionDeniedPacket("You lack the required friendliness to connect to this domain.",
+                                   nodeConnection.senderSockAddr, DomainHandler::ConnectionRefusedReason::LowReputation);
     }
 
     if (!userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity) && !isWithinMaxCapacity()) {
@@ -641,6 +654,15 @@ bool DomainGatekeeper::isWithinMaxCapacity() {
     }
 
     return true;
+}
+
+bool DomainGatekeeper::hasMinimumReputation(NodePermissions& userPerms) {
+    QVariant minrepVariant = _server->_settingsManager.valueForKeyPath(MINIMUM_REPUTATION);
+
+    qDebug() << "QQQQ checking reputation of " << userPerms.getVerifiedUserName() << ": "
+             << userPerms.getReputation() << " vs domain req of " << minrepVariant.toFloat();
+
+    return userPerms.getReputation() >= minrepVariant.toFloat();
 }
 
 void DomainGatekeeper::requestUserPublicKey(const QString& username, bool isOptimistic) {
@@ -1010,9 +1032,10 @@ void DomainGatekeeper::refreshGroupsCache() {
     nodeList->eachNode([this](const SharedNodePointer& node) {
         if (!node->getPermissions().isAssignment) {
             // this node is an agent
-            const QString& verifiedUserName = node->getPermissions().getVerifiedUserName();
+            QString verifiedUserName = node->getPermissions().getVerifiedUserName();
             if (!verifiedUserName.isEmpty()) {
                 getGroupMemberships(verifiedUserName);
+                getReputation(verifiedUserName);
             }
         }
     });
@@ -1052,4 +1075,108 @@ Node::LocalID DomainGatekeeper::findOrCreateLocalID(const QUuid& uuid) {
     _uuidToLocalID.emplace(uuid, newLocalID);
     _localIDs.insert(newLocalID);
     return newLocalID;
+}
+
+void DomainGatekeeper::processReputationChange(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode) {
+    // From the packet, pull the session-ID of the users who is getting liked / disliked
+    QUuid nodeUUID = QUuid::fromRfc4122(message->readWithoutCopy(NUM_BYTES_RFC4122_UUID));
+    bool isUpRep; // true for up-vote, false for down-vote
+    message->readPrimitive(&isUpRep);
+    bool isCancel; // true for undo-previous, false for a new vote
+    message->readPrimitive(&isCancel);
+
+    if (!nodeUUID.isNull()) {
+        // turn session-ID into node
+        auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
+        auto matchingNode = limitedNodeList->nodeWithUUID(nodeUUID);
+
+        // If we do have a matching node...
+        if (matchingNode) {
+            QString voterName = sendingNode->getPermissions().getVerifiedUserName();
+            QString subjectName = matchingNode->getPermissions().getVerifiedUserName();
+
+            qDebug() << "QQQQ " << voterName << " votes on " << subjectName << isUpRep << isCancel;
+
+            // relay the vote to metaverse
+            JSONCallbackParameters callbackParams;
+            callbackParams.callbackReceiver = this;
+            callbackParams.jsonCallbackMethod = "getReputationJSONCallback";
+            callbackParams.errorCallbackMethod = "getReputationChangeErrorCallback";
+
+            const QString CHANGE_REPUTATION_PATH = isUpRep ? "api/v1/reputation/%1/like" : "api/v1/reputation/%1/dislike";
+            if (DependencyManager::get<AccountManager>()->hasValidAccessToken()) {
+                QJsonObject json;
+                json["voter"] = voterName;
+                json["votee"] = subjectName;
+                json["isUp"] = isUpRep;
+                json["isCancel"] = isCancel;
+                DependencyManager::get<AccountManager>()->sendRequest(CHANGE_REPUTATION_PATH.arg(subjectName),
+                                                                      AccountManagerAuth::Required,
+                                                                      QNetworkAccessManager::PostOperation,
+                                                                      callbackParams,
+                                                                      QJsonDocument(json).toJson());
+            }
+        } else {
+            qWarning() << "Reputation Change for unknown node. Refusing to process.";
+        }
+    } else {
+        qWarning() << "Reputation Change for null node. Refusing to process.";
+    }
+}
+
+void DomainGatekeeper::getReputation(QString verifiedUsername) {
+    const QString GET_REPUTATION_PATH = "api/v1/reputation/%1";
+    if (DependencyManager::get<AccountManager>()->hasValidAccessToken()) {
+        // ask metaverse for user's reputation score
+        JSONCallbackParameters callbackParams;
+        callbackParams.callbackReceiver = this;
+        callbackParams.jsonCallbackMethod = "getReputationJSONCallback";
+        callbackParams.errorCallbackMethod = "getReputationChangeErrorCallback";
+
+        QJsonObject json;
+        json["votee"] = verifiedUsername;
+        DependencyManager::get<AccountManager>()->sendRequest(GET_REPUTATION_PATH.arg(verifiedUsername),
+                                                              AccountManagerAuth::Required,
+                                                              QNetworkAccessManager::PostOperation,
+                                                              callbackParams,
+                                                              QJsonDocument(json).toJson());
+    }
+}
+
+void DomainGatekeeper::getReputationJSONCallback(QNetworkReply* requestReply) {
+    // {
+    //     status: "success",
+    //     data: {
+    //         user: "someone",
+    //         reputation: -0.6
+    //     }
+    // }
+    QJsonObject jsonObject = QJsonDocument::fromJson(requestReply->readAll()).object();
+    if (jsonObject["status"].toString() == "success") {
+        // jsonObject["data"].toObject()
+        qDebug() << "QQQQ DomainGatekeeper::getReputationJSONCallback success"
+                 << QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
+
+        QJsonObject dataObject = jsonObject["data"].toObject();
+        QString username = dataObject["user"].toString();
+        float reputation = (float)(dataObject["reputation"].toDouble());
+
+        auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
+        limitedNodeList->eachNode([this, username, reputation](const SharedNodePointer& node) {
+            NodePermissions userPerms = node->getPermissions();
+            QString verifiedUsername = userPerms.getVerifiedUserName();
+            if (verifiedUsername == username) {
+                userPerms.setReputation(reputation);
+                node->setPermissions(userPerms);
+                updateNodePermissions();
+            }
+        });
+
+    } else {
+        qDebug() << "processReputationChange api call returned:" << QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
+    }
+}
+
+void DomainGatekeeper::getReputationErrorCallback(QNetworkReply* requestReply) {
+    qDebug() << "processReputationChange api call failed:" << requestReply->error();
 }

@@ -54,6 +54,9 @@ NodePermissions::NodePermissions(QMap<QString, QVariant> perms) {
     if (perms.contains("rank_id")) {
         _rankID = QUuid(perms["rank_id"].toString());
     }
+    if (perms.contains("reputation")) {
+        _reputation = perms["reputation"].toFloat();
+    }
 
     permissions = NodePermissions::Permissions();
     permissions |= perms["id_can_connect"].toBool() ? Permission::canConnectToDomain : Permission::none;
@@ -84,6 +87,7 @@ QVariant NodePermissions::toVariant(QHash<QUuid, GroupRank> groupRanks) {
             values["rank_order"] = groupRanks[_rankID].order;
         }
     }
+    values["reputation"] = _reputation;
     values["id_can_connect"] = can(Permission::canConnectToDomain);
     values["id_can_adjust_locks"] = can(Permission::canAdjustLocks);
     values["id_can_rez"] = can(Permission::canRezPermanentEntities);
@@ -106,22 +110,26 @@ void NodePermissions::setAll(bool value) {
 
 NodePermissions& NodePermissions::operator|=(const NodePermissions& rhs) {
     permissions |= rhs.permissions;
+    _reputation = rhs.getReputation();
     return *this;
 }
 
 NodePermissions& NodePermissions::operator&=(const NodePermissions& rhs) {
     permissions &= rhs.permissions;
+    _reputation = rhs.getReputation();
     return *this;
 }
 
 NodePermissions NodePermissions::operator~() {
     NodePermissions result = *this;
     result.permissions = ~permissions;
+    result._reputation = _reputation;
     return result;
 }
 
 QDataStream& operator<<(QDataStream& out, const NodePermissions& perms) {
     out << (uint)perms.permissions;
+    out << perms.getReputation();
     return out;
 }
 
@@ -129,12 +137,16 @@ QDataStream& operator>>(QDataStream& in, NodePermissions& perms) {
     uint permissionsInt;
     in >> permissionsInt;
     perms.permissions = (NodePermissions::Permissions)permissionsInt;
+    float reputation;
+    in >> reputation;
+    perms.setReputation(reputation);
     return in;
 }
 
 QDebug operator<<(QDebug debug, const NodePermissions& perms) {
     debug.nospace() << "[permissions: " << perms.getID() << "/" << perms.getVerifiedUserName() << " -- ";
     debug.nospace() << "rank=" << perms.getRankID()
+                    << ", reputation=" << perms.getReputation()
                     << ", groupID=" << perms.getGroupID() << "/" << (perms.isGroup() ? "y" : "n");
     if (perms.can(NodePermissions::Permission::canConnectToDomain)) {
         debug << " connect";

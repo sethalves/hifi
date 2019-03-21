@@ -35,6 +35,7 @@ public:
     public:
         static const QString DESCRIPTION;
         static const QString CAPACITY;
+        static const QString MINIMUM_REPUTATION;
         static const QString RESTRICTION;
         static const QString MATURITY;
         static const QString HOSTS;

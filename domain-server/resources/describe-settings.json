@@ -196,6 +196,14 @@
           "advanced": false
         },
         {
+          "name": "minimum_reputation",
+          "label": "Minimum User Reputation",
+          "help": "The lowest reputation score a user can have and still connect.",
+          "placeholder": "-5",
+          "default": "-5",
+          "advanced": false
+        },
+        {
           "name": "maximum_user_capacity_redirect_location",
           "label": "Redirect to Location on Maximum Capacity",
           "help": "The location to redirect users to when the maximum number of avatars are connected.",

@@ -35,7 +35,7 @@ class DomainGatekeeper : public QObject {
     Q_OBJECT
 public:
     DomainGatekeeper(DomainServer* server);
-    
+
     void addPendingAssignedNode(const QUuid& nodeUUID, const QUuid& assignmentUUID,
                                 const QUuid& walletUUID, const QString& nodeVersion);
     QUuid assignmentUUIDForPendingAssignment(const QUuid& tempUUID);
@@ -60,7 +60,14 @@ public slots:
     void getDomainOwnerFriendsListJSONCallback(QNetworkReply* requestReply);
     void getDomainOwnerFriendsListErrorCallback(QNetworkReply* requestReply);
 
+    void processReputationChange(QSharedPointer<ReceivedMessage> message, SharedNodePointer sendingNode);
+    void getReputationJSONCallback(QNetworkReply* requestReply);
+    void getReputationErrorCallback(QNetworkReply* requestReply);
+
+    void getReputation(QString verifiedUsername);
+
     void refreshGroupsCache();
+
 
 signals:
     void killNode(SharedNodePointer node);
@@ -78,33 +85,31 @@ private:
                                                  const QString& username,
                                                  const QByteArray& usernameSignature);
     SharedNodePointer addVerifiedNodeFromConnectRequest(const NodeConnectionData& nodeConnection);
-    
+
     bool verifyUserSignature(const QString& username, const QByteArray& usernameSignature,
                              const HifiSockAddr& senderSockAddr);
     bool isWithinMaxCapacity();
-    
-    bool shouldAllowConnectionFromNode(const QString& username, const QByteArray& usernameSignature,
-                                       const HifiSockAddr& senderSockAddr);
-    
+    bool hasMinimumReputation(NodePermissions& userPerms);
+
     void sendConnectionTokenPacket(const QString& username, const HifiSockAddr& senderSockAddr);
     static void sendConnectionDeniedPacket(const QString& reason, const HifiSockAddr& senderSockAddr,
             DomainHandler::ConnectionRefusedReason reasonCode = DomainHandler::ConnectionRefusedReason::Unknown,
             QString extraInfo = QString());
-    
+
     void pingPunchForConnectingPeer(const SharedNetworkPeer& peer);
-    
+
     void requestUserPublicKey(const QString& username, bool isOptimistic = false);
-    
+
     DomainServer* _server;
-    
+
     std::unordered_map<QUuid, PendingAssignedNodeData> _pendingAssignedNodes;
-    
+
     QHash<QUuid, SharedNetworkPeer> _icePeers;
 
     using ConnectingNodeID = QUuid;
     using ICEPeerID = QUuid;
     QHash<ConnectingNodeID, ICEPeerID> _nodeToICEPeerIDs;
-    
+
     QHash<QString, QUuid> _connectionTokenHash;
 
     // the word "optimistic" below is used for keys that we request during user connection before the user has
@@ -120,7 +125,7 @@ private:
     QSet<QString> _domainOwnerFriends; // keep track of friends of the domain owner
     QSet<QString> _inFlightGroupMembershipsRequests; // keep track of which we've already asked for
 
-    NodePermissions setPermissionsForUser(bool isLocalUser, QString verifiedUsername, const QHostAddress& senderAddress, 
+    NodePermissions setPermissionsForUser(bool isLocalUser, QString verifiedUsername, const QHostAddress& senderAddress,
                                           const QString& hardwareAddress, const QUuid& machineFingerprint);
 
     void getGroupMemberships(const QString& username);

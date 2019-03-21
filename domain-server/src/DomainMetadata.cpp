@@ -31,6 +31,7 @@ const QString DomainMetadata::Users::HOSTNAMES = "user_hostnames";
 const QString DomainMetadata::DESCRIPTORS = "descriptors";
 const QString DomainMetadata::Descriptors::DESCRIPTION = "description";
 const QString DomainMetadata::Descriptors::CAPACITY = "capacity"; // parsed from security
+const QString DomainMetadata::Descriptors::MINIMUM_REPUTATION = "minimum_reputation"; // parsed from security
 const QString DomainMetadata::Descriptors::RESTRICTION = "restriction"; // parsed from ACL
 const QString DomainMetadata::Descriptors::MATURITY = "maturity";
 const QString DomainMetadata::Descriptors::HOSTS = "hosts";
@@ -101,6 +102,12 @@ void DomainMetadata::descriptorsChanged() {
     QVariant capacityVariant = static_cast<DomainServer*>(parent())->_settingsManager.valueForKeyPath(CAPACITY);
     unsigned int capacity = capacityVariant.isValid() ? capacityVariant.toUInt() : 0;
     state[Descriptors::CAPACITY] = capacity;
+
+    // parse minimum reputation
+    static const QString MINIMUM_REPUTATION = "security.minimum_reputation";
+    QVariant minrepVariant = static_cast<DomainServer*>(parent())->_settingsManager.valueForKeyPath(MINIMUM_REPUTATION);
+    float minrep = minrepVariant.isValid() ? minrepVariant.toFloat() : 0.0f;
+    state[Descriptors::MINIMUM_REPUTATION] = minrep;
 
 #if DEV_BUILD || PR_BUILD
     qDebug() << "Domain metadata descriptors set:" << QJsonObject::fromVariantMap(_metadata[DESCRIPTORS].toMap());

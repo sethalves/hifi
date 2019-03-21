@@ -38,7 +38,7 @@
 #include "UserActivityLogger.h"
 
 
-const bool VERBOSE_HTTP_REQUEST_DEBUGGING = false;
+const bool VERBOSE_HTTP_REQUEST_DEBUGGING = true;
 
 Q_DECLARE_METATYPE(OAuthAccessToken)
 Q_DECLARE_METATYPE(DataServerAccountInfo)
@@ -217,6 +217,14 @@ QNetworkRequest AccountManager::createRequest(QString path, AccountManagerAuth::
                                 uuidStringWithoutCurlyBraces(_sessionID).toLocal8Bit());
 
     QUrl requestURL = _authURL;
+
+    // XXX
+    if (path.startsWith("api/v1/reputation/")) {
+        requestURL = "http://headache.hungry.com";
+        path = "~seth/hifi/reputation/reputation-server.cgi";
+    }
+    // XXX
+
 
     if (requestURL.isEmpty()) {  // Assignment client doesn't set _authURL.
         requestURL = getMetaverseServerURL();
