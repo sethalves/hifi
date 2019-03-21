@@ -105,6 +105,9 @@ public:
     void recordGroupMembership(const QString& name, const QUuid groupID, QUuid rankID);
     QUuid isGroupMember(const QString& name, const QUuid& groupID); // returns rank or -1 if not a member
 
+    void setCachedReputation(const QString& name, float reputation) { _reputationCache[name.toLower()] = reputation; }
+    float getCachedReputation(const QString& name);
+
     // calls http api to refresh group information
     void apiRefreshGroupInformation();
 
@@ -200,6 +203,7 @@ private:
 
     // keep track of answers to api queries about which users are in which groups
     QHash<QString, QHash<QUuid, QUuid>> _groupMembership; // QHash<user-name, QHash<group-id, rank-id>>
+    QHash<QString, float> _reputationCache; // QHash<user-name, reputation>
 
     /// guard read/write access from multiple threads to settings 
     QReadWriteLock _settingsLock { QReadWriteLock::Recursive };

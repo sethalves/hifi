@@ -38,7 +38,7 @@
 #include "UserActivityLogger.h"
 
 
-const bool VERBOSE_HTTP_REQUEST_DEBUGGING = true;
+const bool VERBOSE_HTTP_REQUEST_DEBUGGING = false;
 
 Q_DECLARE_METATYPE(OAuthAccessToken)
 Q_DECLARE_METATYPE(DataServerAccountInfo)

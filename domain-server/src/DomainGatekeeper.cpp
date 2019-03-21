@@ -136,8 +136,10 @@ void DomainGatekeeper::processConnectRequestPacket(QSharedPointer<ReceivedMessag
     }
 }
 
-NodePermissions DomainGatekeeper::setPermissionsForUser(bool isLocalUser, QString verifiedUsername, const QHostAddress& senderAddress,
-                                                        const QString& hardwareAddress, const QUuid& machineFingerprint) {
+NodePermissions DomainGatekeeper::setPermissionsForUser(bool isLocalUser, QString verifiedUsername,
+                                                        const QHostAddress& senderAddress,
+                                                        const QString& hardwareAddress, const QUuid& machineFingerprint,
+                                                        float reputation) {
     NodePermissions userPerms;
 
     userPerms.setAll(false);
@@ -250,6 +252,8 @@ NodePermissions DomainGatekeeper::setPermissionsForUser(bool isLocalUser, QStrin
         userPerms.setVerifiedUserName(verifiedUsername);
     }
 
+    userPerms.setReputation(reputation);
+
 #ifdef WANT_DEBUG
     qDebug() << "|  user-permissions: final:" << userPerms;
 #endif
@@ -302,7 +306,9 @@ void DomainGatekeeper::updateNodePermissions() {
                                sendingAddress == QHostAddress::LocalHost);
             }
 
-            userPerms = setPermissionsForUser(isLocalUser, verifiedUsername, connectingAddr.getAddress(), hardwareAddress, machineFingerprint);
+            float reputation = _server->_settingsManager.getCachedReputation(verifiedUsername);
+            userPerms = setPermissionsForUser(isLocalUser, verifiedUsername, connectingAddr.getAddress(),
+                                              hardwareAddress, machineFingerprint, reputation);
         }
 
         node->setPermissions(userPerms);
@@ -313,7 +319,9 @@ void DomainGatekeeper::updateNodePermissions() {
             nodesToKill << node;
         }
 
-        if (!hasMinimumReputation(userPerms) && !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
+        if (!node->getPermissions().isAssignment &&
+            !hasMinimumReputation(userPerms) &&
+            !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
             qDebug() << "node" << node->getUUID() << "no longer has required reputation to connect.";
             // hang up on this node
             nodesToKill << node;
@@ -423,6 +431,7 @@ SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnect
             // they sent us a username and the signature verifies it
             getGroupMemberships(username);
             verifiedUsername = username.toLower();
+            getReputation(verifiedUsername);
         } else {
             // they sent us a username, but it didn't check out
             requestUserPublicKey(username);
@@ -433,8 +442,9 @@ SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnect
         }
     }
 
+    float reputation = _server->_settingsManager.getCachedReputation(verifiedUsername);
     userPerms = setPermissionsForUser(isLocalUser, verifiedUsername, nodeConnection.senderSockAddr.getAddress(),
-                                      nodeConnection.hardwareAddress, nodeConnection.machineFingerprint);
+                                      nodeConnection.hardwareAddress, nodeConnection.machineFingerprint, reputation);
 
     if (!userPerms.can(NodePermissions::Permission::canConnectToDomain)) {
         sendConnectionDeniedPacket("You lack the required permissions to connect to this domain.",
@@ -445,9 +455,12 @@ SharedNodePointer DomainGatekeeper::processAgentConnectRequest(const NodeConnect
         return SharedNodePointer();
     }
 
-    if (!hasMinimumReputation(userPerms) && !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
+    if (!userPerms.isAssignment &&
+        !hasMinimumReputation(userPerms) &&
+        !userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity)) {
         sendConnectionDeniedPacket("You lack the required friendliness to connect to this domain.",
                                    nodeConnection.senderSockAddr, DomainHandler::ConnectionRefusedReason::LowReputation);
+        return SharedNodePointer();
     }
 
     if (!userPerms.can(NodePermissions::Permission::canConnectPastMaxCapacity) && !isWithinMaxCapacity()) {
@@ -1153,24 +1166,27 @@ void DomainGatekeeper::getReputationJSONCallback(QNetworkReply* requestReply) {
     // }
     QJsonObject jsonObject = QJsonDocument::fromJson(requestReply->readAll()).object();
     if (jsonObject["status"].toString() == "success") {
-        // jsonObject["data"].toObject()
         qDebug() << "QQQQ DomainGatekeeper::getReputationJSONCallback success"
                  << QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
 
         QJsonObject dataObject = jsonObject["data"].toObject();
         QString username = dataObject["user"].toString();
         float reputation = (float)(dataObject["reputation"].toDouble());
+        qDebug() << "QQQQ XXXXXXXXXXXXXXX username=" << username << " reputation=" << reputation;
+
+        _server->_settingsManager.setCachedReputation(username, reputation);
 
         auto limitedNodeList = DependencyManager::get<LimitedNodeList>();
-        limitedNodeList->eachNode([this, username, reputation](const SharedNodePointer& node) {
+        limitedNodeList->eachNode([username, reputation](const SharedNodePointer& node) {
             NodePermissions userPerms = node->getPermissions();
             QString verifiedUsername = userPerms.getVerifiedUserName();
             if (verifiedUsername == username) {
                 userPerms.setReputation(reputation);
                 node->setPermissions(userPerms);
-                updateNodePermissions();
+                qDebug() << "QQQQ XXXX after setPermissions" << node->getPermissions();
             }
         });
+        updateNodePermissions();
 
     } else {
         qDebug() << "processReputationChange api call returned:" << QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);

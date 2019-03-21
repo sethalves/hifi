@@ -1981,6 +1981,14 @@ QUuid DomainServerSettingsManager::isGroupMember(const QString& name, const QUui
     return QUuid();
 }
 
+float DomainServerSettingsManager::getCachedReputation(const QString& name) {
+    QString nameLower = name.toLower();
+    if (_reputationCache.contains(nameLower)) {
+        return _reputationCache[nameLower];
+    }
+    return 0.0f;
+}
+
 QList<QUuid> DomainServerSettingsManager::getGroupIDs() {
     QSet<QUuid> result;
     foreach (NodePermissionsKey groupKey, _groupPermissions.keys()) {
