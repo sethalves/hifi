@@ -13,24 +13,26 @@
 #define hifi_EntityScriptFilterScriptingInterface_h
 
 #include <QObject>
-
+#include <DependencyManager.h>
 #include <EntityItemID.h>
 
 /**jsdoc
- * The EntityScriptFilter API enables you to export and import entities to and from JSON files.
+ * The EntityScriptFilter API enables you to manage a list of regular-expressions which determine
+ * which entity-scripts are loaded and which are forbidden.
  *
  * @namespace EntityScriptFilter
  *
  * @hifi-interface
- * @hifi-client-entity
- * @hifi-avatar
  */
-class EntityScriptFilterScriptingInterface : public QObject {
+class EntityScriptFilterScriptingInterface : public QObject, public Dependency {
     Q_OBJECT
 public:
     EntityScriptFilterScriptingInterface();
 
 public:
+    void loadSettings();
+    void saveSettings();
+
     /**jsdoc
      * Get the URLs of all the entity-scripts which have been allowed to run
      * @function Entities.getEntityScriptURLsInWhitelist
@@ -52,7 +54,18 @@ public:
      */
     Q_INVOKABLE QStringList getEntityScriptURLsInPurgatory();
 
+    /**jsdoc
+     * Add to the list of regular-expressions which control which entity-script URLs will be allowed to run.
+     * @function Entities.addRegexToScriptURLWhitelist
+     * @param {string} regexPattern - regular-expression against which entity-script URLs will be matched and permitted.
+     */
     Q_INVOKABLE void addRegexToScriptURLWhitelist(QString regexPattern);
+
+    /**jsdoc
+     * Remove from the list of regular-expressions which control which entity-script URLs will be allowed to run.
+     * @function Entities.removeRegexFromScriptURLWhitelist
+     * @param {string} regexPattern - regular-expression against which entity-script URLs will no longer be matched.
+     */
     Q_INVOKABLE void removeRegexFromScriptURLWhitelist(QString regexPattern);
 
     /**jsdoc
@@ -62,6 +75,21 @@ public:
      * match the blacklist).
      */
     Q_INVOKABLE QStringList getEntityScriptURLWhitelistRegexs() const;
+
+    /**jsdoc
+     * Add to the list of regular-expressions which control which entity-script URLs will not be allowed to run.
+     * @function Entities.addRegexToScriptURLBlacklist
+     * @param {string} regexPattern - regular-expression against which entity-script URLs will be matched and
+     * forbidden to run.
+     */
+    Q_INVOKABLE void addRegexToScriptURLBlacklist(QString regexPattern);
+
+    /**jsdoc
+     * Remove from the list of regular-expressions which control which entity-script URLs will not be allowed to run.
+     * @function Entities.removeRegexFromScriptURLBlacklist
+     * @param {string} regexPattern - regular-expression against which entity-script URLs will no longer be matched.
+     */
+    Q_INVOKABLE void removeRegexFromScriptURLBlacklist(QString regexPattern);
 
     /**jsdoc
      * Get the list of black-listed regular-expressions against which entity-script URLs are compared.

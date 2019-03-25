@@ -2095,17 +2095,6 @@ signals:
      */
     void webEventReceived(const EntityItemID& entityItemID, const QVariant& message);
 
-
-    /**jsdoc
-     * Triggered when an entity script would be loaded, but it doesn't match either the blacklist or the whitelist.
-     * @function Entities.unknownEntityScript
-     * @param {Uuid} entityID - The ID of the entity that was double-pressed.
-     * @param {string} url - URL of the not-yet loaded entity script.
-     * @returns {Signal}
-     */
-    void unknownEntityScript(const EntityItemID& entityItemID, const QString& scriptURL);
-
-
 protected:
     void withEntitiesScriptEngine(std::function<void(QSharedPointer<EntitiesScriptEngineProvider>)> function) {
         std::lock_guard<std::recursive_mutex> lock(_entitiesScriptEngineLock);

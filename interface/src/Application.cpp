@@ -928,6 +928,7 @@ bool setupEssentials(int& argc, char** argv, bool runningMarkerExisted) {
     DependencyManager::set<KeyboardScriptingInterface>();
     DependencyManager::set<GrabManager>();
     DependencyManager::set<AvatarPackager>();
+    DependencyManager::set<EntityScriptFilterScriptingInterface>();
 
     return previousSessionCrashed;
 }
@@ -5228,6 +5229,7 @@ void Application::loadSettings() {
     sessionRunTime.set(0); // Just clean living. We're about to saveSettings, which will update value.
     DependencyManager::get<AudioClient>()->loadSettings();
     DependencyManager::get<LODManager>()->loadSettings();
+    DependencyManager::get<EntityScriptFilterScriptingInterface>()->loadSettings();
 
     // DONT CHECK IN
     //DependencyManager::get<LODManager>()->setAutomaticLODAdjust(false);
@@ -5306,6 +5308,7 @@ void Application::saveSettings() const {
     sessionRunTime.set(_sessionRunTimer.elapsed() / MSECS_PER_SECOND);
     DependencyManager::get<AudioClient>()->saveSettings();
     DependencyManager::get<LODManager>()->saveSettings();
+    DependencyManager::get<EntityScriptFilterScriptingInterface>()->saveSettings();
 
     auto audioScriptingInterface = reinterpret_cast<scripting::Audio*>(DependencyManager::get<AudioScriptingInterface>().data());
     audioScriptingInterface->saveData();
@@ -7248,10 +7251,8 @@ void Application::registerScriptEngineWithApplicationServices(ScriptEnginePointe
     scriptEngine->registerGlobalObject("Clipboard", clipboardScriptable);
     connect(scriptEngine.data(), &ScriptEngine::finished, clipboardScriptable, &ClipboardScriptingInterface::deleteLater);
 
-    EntityScriptFilterScriptingInterface* entityScriptFilterScriptable = new EntityScriptFilterScriptingInterface();
-    scriptEngine->registerGlobalObject("EntityScriptFilter", entityScriptFilterScriptable);
-    connect(scriptEngine.data(), &ScriptEngine::finished,
-            entityScriptFilterScriptable, &EntityScriptFilterScriptingInterface::deleteLater);
+    scriptEngine->registerGlobalObject("EntityScriptFilter",
+                                       DependencyManager::get<EntityScriptFilterScriptingInterface>().data());
 
     scriptEngine->registerGlobalObject("Overlays", &_overlays);
     qScriptRegisterMetaType(scriptEngine.data(), RayToOverlayIntersectionResultToScriptValue,

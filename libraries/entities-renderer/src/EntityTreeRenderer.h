@@ -133,8 +133,10 @@ public:
 
     void addRegexToScriptURLWhitelist(QString regexPattern);
     void removeRegexFromScriptURLWhitelist(QString regexPattern);
+    void clearRegexsFromScriptURLWhitelist();
     void addRegexToScriptURLBlacklist(QString regexPattern);
     void removeRegexFromScriptURLBlacklist(QString regexPattern);
+    void clearRegexsFromScriptURLBlacklist();
 
     QStringList getEntityScriptURLWhitelistRegexs() const;
     QStringList getEntityScriptURLBlacklistRegexs() const;
@@ -295,9 +297,6 @@ private:
 
     bool listsPermitEntityScript(const EntityItemID& entityID, const QString& scriptUrl);
 
-    // using RegExSet = std::set<std::regex>;
-    // using EntityIDSet = std::set<EntityItemID>;
-    // using ScriptURLToEntityIDsMap = std::unordered_map<QString, EntityIDSet>;
     using RegExSet = QSet<QRegExp>;
     using EntityIDSet = QSet<EntityItemID>;
     using ScriptURLToEntityIDsMap = QHash<QString, EntityIDSet>;

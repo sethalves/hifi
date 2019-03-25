@@ -280,12 +280,9 @@ void EntityTreeRenderer::clear() {
 }
 
 bool EntityTreeRenderer::listsPermitEntityScript(const EntityItemID& entityID, const QString& scriptUrl) {
-    qDebug() << "QQQQ checking " << scriptUrl;
     bool shouldLoad { false };
     if (entityScriptURLMatchesWhitelist(scriptUrl)) {
-        qDebug() << "QQQQ whitelist matches";
         if (entityScriptURLMatchesBlacklist(scriptUrl)) {
-            qDebug() << "QQQQ and blacklist matches";
             // if it matches both white and black lists, don't run it.
             addToEntityScriptURLsInBlacklist(entityID, scriptUrl);
         } else {
@@ -294,22 +291,18 @@ bool EntityTreeRenderer::listsPermitEntityScript(const EntityItemID& entityID, c
             shouldLoad = true;
         }
     } else if (entityScriptURLMatchesBlacklist(scriptUrl)) {
-        qDebug() << "QQQQ blacklist matches";
         // don't run this one.
         addToEntityScriptURLsInBlacklist(entityID, scriptUrl);
     } else {
-        qDebug() << "QQQQ neither matches";
         // we don't know if we should run this one.
         addToEntityScriptURLsInPurgatory(entityID, scriptUrl);
-        auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
-        emit entityScriptingInterface->unknownEntityScript(entityID, scriptUrl);
     }
 
     return shouldLoad;
 }
 
 void EntityTreeRenderer::reloadEntityScripts() {
-    EntityTreePointer tree = getTree();
+    _entitiesScriptEngine->unloadAllEntityScripts();
     _entitiesScriptEngine->resetModuleCache();
     clearEntityScriptURLs();
     for (const auto& entry : _entitiesInScene) {
@@ -1030,12 +1023,12 @@ void EntityTreeRenderer::deletingEntity(const EntityItemID& entityID) {
         // Not in the scene, and no longer potentially in the pending queue, we're done
         return;
     }
-    auto renderable = itr->second;
-    auto entity = renderable ? renderable->getEntity() : nullptr;
-    auto tree = getTree();
 
-    if (tree && !_shuttingDown && _entitiesScriptEngine) {
+    auto renderable = itr->second;
+
+    if (_tree && !_shuttingDown && _entitiesScriptEngine) {
         _entitiesScriptEngine->unloadEntityScript(entityID, true);
+        auto entity = renderable ? renderable->getEntity() : nullptr;
         if (entity) {
             removeEntityScriptURLFromLists(entityID, entity->getScript());
         }
@@ -1438,19 +1431,33 @@ bool EntityTreeRenderer::removeMaterialFromAvatar(const QUuid& avatarID, graphic
 
 
 void EntityTreeRenderer::addRegexToScriptURLWhitelist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
     _entityScriptURLWhitelistRegexs.insert(QRegExp(regexPattern));
 }
 
 void EntityTreeRenderer::removeRegexFromScriptURLWhitelist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
     _entityScriptURLWhitelistRegexs.remove(QRegExp(regexPattern));
 }
 
+void EntityTreeRenderer::clearRegexsFromScriptURLWhitelist() {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLWhitelistRegexs.clear();
+}
+
 void EntityTreeRenderer::addRegexToScriptURLBlacklist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
     _entityScriptURLBlacklistRegexs.insert(QRegExp(regexPattern));
 }
 
 void EntityTreeRenderer::removeRegexFromScriptURLBlacklist(QString regexPattern) {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
     _entityScriptURLBlacklistRegexs.remove(QRegExp(regexPattern));
+}
+
+void EntityTreeRenderer::clearRegexsFromScriptURLBlacklist() {
+    std::unique_lock<std::mutex> lock(_scriptListsLock);
+    _entityScriptURLBlacklistRegexs.clear();
 }
 
 bool EntityTreeRenderer::entityScriptURLMatchesWhitelist(QString scriptURL) const {
@@ -1493,11 +1500,6 @@ QStringList EntityTreeRenderer::getEntityScriptURLBlacklistRegexs() const {
 
 QStringList EntityTreeRenderer::getEntityScriptURLsInList(const ScriptURLToEntityIDsMap& list) const {
     QStringList result;
-
-    // for (auto& kvp : list) {
-    //     result += kvp.first;
-    // }
-
     QHashIterator<QString, QSet<EntityItemID>> i(list);
     while (i.hasNext()) {
         i.next();
