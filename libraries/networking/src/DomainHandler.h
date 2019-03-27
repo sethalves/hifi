@@ -107,6 +107,9 @@ public:
 
     void softReset();
 
+    void addToServerScriptPrefixWhitelist(QString prefixToAdd);
+    void removeFromServerScriptPrefixWhitelist(QString prefixToRemove);
+
     int getCheckInPacketsSinceLastReply() const { return _checkInPacketsSinceLastReply; }
     bool checkInPacketTimeout();
     void clearPendingCheckins() { _checkInPacketsSinceLastReply = 0; }

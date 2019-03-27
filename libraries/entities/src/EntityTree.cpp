@@ -64,8 +64,15 @@ EntityTree::~EntityTree() {
     //eraseAllOctreeElements(false); // KEEP THIS
 }
 
+QStringList EntityTree::getEntityScriptSourceWhitelist() const {
+    std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+    return _entityScriptSourceWhitelist;
+}
+
 void EntityTree::setEntityScriptSourceWhitelist(const QString& entityScriptSourceWhitelist) { 
+    std::unique_lock<std::mutex> lock(_blockedScriptsLock);
     _entityScriptSourceWhitelist = entityScriptSourceWhitelist.split(',', QString::SkipEmptyParts);
+    _entityScriptSourceWhitelistSet = true;
 }
 
 
@@ -1408,6 +1415,7 @@ bool EntityTree::isScriptInWhitelist(const QString& scriptProperty) {
     // grab a URL representation of the entity script so we can check the host for this script
     auto entityScriptURL = QUrl::fromUserInput(scriptProperty);
 
+    std::unique_lock<std::mutex> lock(_blockedScriptsLock);
     for (const auto& whiteListedPrefix : _entityScriptSourceWhitelist) {
         auto whiteListURL = QUrl::fromUserInput(whiteListedPrefix);
 
@@ -1729,6 +1737,8 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                 }
             }
 
+            // XXX? std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+
             if (validEditPacket && !_entityScriptSourceWhitelist.isEmpty()) {
 
                 bool wasDeletedBecauseOfClientScript = false;
@@ -1742,6 +1752,12 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                             qCDebug(entities) << "User [" << senderNode->getUUID()
                                 << "] attempting to set entity script not on whitelist, edit rejected";
                         }
+
+                        {
+                            std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+                            rememberBlockedScript(properties.getScript(), senderNode->getUUID());
+                        }
+                        emit blockedScriptListChanged();
 
                         // If this was an add, we also want to tell the client that sent this edit that the entity was not added.
                         if (isAdd) {
@@ -1764,6 +1780,12 @@ int EntityTree::processEditPacketData(ReceivedMessage& message, const unsigned c
                             qCDebug(entities) << "User [" << senderNode->getUUID()
                                 << "] attempting to set server entity script not on whitelist, edit rejected";
                         }
+
+                        {
+                            std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+                            rememberBlockedScript(properties.getServerScripts(), senderNode->getUUID());
+                        }
+                        emit blockedScriptListChanged();
 
                         // If this was an add, we also want to tell the client that sent this edit that the entity was not added.
                         if (isAdd) {
@@ -3063,4 +3085,82 @@ void EntityTree::updateEntityQueryAACube(SpatiallyNestablePointer object, Entity
         PerformanceTimer perfTimer("recurseTreeWithOperator");
         recurseTreeWithOperator(&moveOperator);
     }
+}
+
+void EntityTree::rememberBlockedScript(QString scriptURL, QUuid senderNodeID) {
+    std::unordered_map<QString, std::unordered_set<QUuid>>::iterator itr = _blockedScripts.find(scriptURL);
+    if (itr == _blockedScripts.end()) {
+        std::unordered_set<QUuid> editorSet;
+        editorSet.insert(senderNodeID);
+        _blockedScripts.insert(std::pair<QString, std::unordered_set<QUuid>>(scriptURL, editorSet));
+    } else {
+        itr->second.insert(senderNodeID);
+    }
+}
+
+QStringList EntityTree::getBlockedScripts() const {
+    QStringList result;
+    for (auto itr = _blockedScripts.begin(); itr != _blockedScripts.end(); ++itr) {
+        result += itr->first;
+    }
+    return result;
+}
+
+QStringList EntityTree::getServerBlockedScriptEditors(const QString& blockedScriptURL) const {
+    QStringList result;
+    auto itr = _blockedScripts.find(blockedScriptURL);
+    if (itr != _blockedScripts.end()) {
+        for (auto editorItr = itr->first.begin(); editorItr != itr->first.end(); ++editorItr) {
+            result += *editorItr;
+        }
+    }
+    return result;
+}
+
+QJsonDocument EntityTree::getScriptFilterStateJSON() const {
+    std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+    QJsonObject result;
+
+    QJsonObject scriptsThatHaveBeenBlocked;
+    for (auto itr = _blockedScripts.begin(); itr != _blockedScripts.end(); ++itr) {
+        const std::unordered_set<QUuid>& editorIDs = itr->second;
+        QJsonArray editorIDsVariant;
+        for (const auto& editorID : editorIDs) {
+            editorIDsVariant += editorID.toString();
+        }
+        scriptsThatHaveBeenBlocked[itr->first] = editorIDsVariant;
+    }
+    result["blockedScripts"] = scriptsThatHaveBeenBlocked;
+
+    QJsonArray whitelistEntries;
+    for (const auto& whitelistEntry : _entityScriptSourceWhitelist) {
+        whitelistEntries += whitelistEntry;
+    }
+    result["whitelist"] = whitelistEntries;
+
+    return QJsonDocument(result);
+}
+
+void EntityTree::setBlockedScriptListFromJSON(const QJsonDocument& json) {
+    QJsonObject topObject = json.object();
+
+    QJsonObject blockedScriptData = topObject["blockedScripts"].toObject();
+    std::unique_lock<std::mutex> lock(_blockedScriptsLock);
+    _blockedScripts.clear();
+    for (auto itr = blockedScriptData.begin(); itr != blockedScriptData.end(); ++itr) {
+        QString scriptURL = itr.key();
+        QJsonArray editorIDs = itr.value().toArray();
+        for (const auto& editorID : editorIDs) {
+            rememberBlockedScript(scriptURL, QUuid(editorID.toString()));
+        }
+    }
+
+    QJsonArray whiteList = topObject["whitelist"].toArray();
+    _entityScriptSourceWhitelist.clear();
+    for (const auto& whiteListEntry : whiteList) {
+        _entityScriptSourceWhitelist += whiteListEntry.toString();
+    }
+    _entityScriptSourceWhitelistSet = true;
+
+    emit blockedScriptListChanged();
 }

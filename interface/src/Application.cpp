@@ -6540,6 +6540,14 @@ void Application::update(float deltaTime) {
             }
             queryAvatars();
 
+            const auto& nodeList = DependencyManager::get<NodeList>();
+            if (nodeList->isAllowedEditor()) {
+                auto tree = getEntities()->getTree();
+                if (tree && !tree->getEntityScriptSourceWhitelistSet()) {
+                    queryScriptFilterState();
+                }
+            }
+
             _lastQueriedViews = _conicalViews;
             _queryExpiry = now + MIN_PERIOD_BETWEEN_QUERIES;
         }
@@ -6850,6 +6858,14 @@ void Application::queryOctree(NodeType_t serverType, PacketType packetType) {
     }
 }
 
+void Application::queryScriptFilterState() {
+    auto nodeList = DependencyManager::get<NodeList>();
+    auto node = nodeList->soloNodeOfType(NodeType::EntityServer);
+    if (node && node->getActiveSocket()) {
+        auto queryPacket = NLPacket::create(PacketType::RequestScriptFilterState);
+        nodeList->sendUnreliablePacket(*queryPacket, *node);
+    }
+}
 
 bool Application::isHMDMode() const {
     return getActiveDisplayPlugin()->isHmd();
@@ -7007,6 +7023,11 @@ void Application::clearDomainOctreeDetails(bool clearAll) {
 
     // reset the model renderer
     clearAll ? getEntities()->clear() : getEntities()->clearDomainAndNonOwnedEntities();
+
+    auto tree = getEntities()->getTree();
+    if (tree) {
+        tree->clearEntityScriptSourceWhitelistSet();
+    }
 
     auto skyStage = DependencyManager::get<SceneScriptingInterface>()->getSkyStage();
 

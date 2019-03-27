@@ -14,6 +14,8 @@
 #include "../Application.h"
 
 QString EntityScriptBlockerSettings = "io.highfidelity.entity-script-blocker";
+QStringList DefaultWhitelist { ".*" };
+QStringList DefaultBlacklist;
 
 EntityScriptFilterScriptingInterface::EntityScriptFilterScriptingInterface() {
 }
@@ -21,8 +23,8 @@ EntityScriptFilterScriptingInterface::EntityScriptFilterScriptingInterface() {
 void EntityScriptFilterScriptingInterface::loadSettings() {
     QSharedPointer<EntityTreeRenderer> entityTree = qApp->getEntities();
     if (entityTree) {
-        Setting::Handle<QStringList> whitelistHandle { EntityScriptBlockerSettings + ".whitelist", QStringList() };
-        Setting::Handle<QStringList> blacklistHandle { EntityScriptBlockerSettings + ".blacklist", QStringList() };
+        Setting::Handle<QStringList> whitelistHandle { EntityScriptBlockerSettings + ".whitelist", DefaultWhitelist };
+        Setting::Handle<QStringList> blacklistHandle { EntityScriptBlockerSettings + ".blacklist", DefaultBlacklist };
         entityTree->clearRegexsFromScriptURLWhitelist();
         entityTree->clearRegexsFromScriptURLBlacklist();
 
@@ -38,8 +40,8 @@ void EntityScriptFilterScriptingInterface::loadSettings() {
 void EntityScriptFilterScriptingInterface::saveSettings() {
     QSharedPointer<EntityTreeRenderer> entityTree = qApp->getEntities();
     if (entityTree) {
-        Setting::Handle<QStringList> whitelistHandle { EntityScriptBlockerSettings + ".whitelist", QStringList() };
-        Setting::Handle<QStringList> blacklistHandle { EntityScriptBlockerSettings + ".blacklist", QStringList() };
+        Setting::Handle<QStringList> whitelistHandle { EntityScriptBlockerSettings + ".whitelist", DefaultWhitelist };
+        Setting::Handle<QStringList> blacklistHandle { EntityScriptBlockerSettings + ".blacklist", DefaultBlacklist };
 
         whitelistHandle.set(getEntityScriptURLWhitelistRegexs());
         blacklistHandle.set(getEntityScriptURLBlacklistRegexs());
@@ -118,4 +120,44 @@ QStringList EntityScriptFilterScriptingInterface::getEntityScriptURLBlacklistReg
     } else {
         return QStringList();
     }
+}
+
+QStringList EntityScriptFilterScriptingInterface::getServerScriptWhitelist() const {
+    QSharedPointer<EntityTreeRenderer> entityTree = qApp->getEntities();
+    if (entityTree) {
+        EntityTreePointer tree = entityTree->getTree();
+        return tree ? tree->getEntityScriptSourceWhitelist() : QStringList();
+    } else {
+        return QStringList();
+    }
+}
+
+QStringList EntityScriptFilterScriptingInterface::getServerBlockedScripts() const {
+    QSharedPointer<EntityTreeRenderer> entityTree = qApp->getEntities();
+    if (entityTree) {
+        EntityTreePointer tree = entityTree->getTree();
+        return tree ? tree->getBlockedScripts() : QStringList();
+    } else {
+        return QStringList();
+    }
+}
+
+QStringList EntityScriptFilterScriptingInterface::getServerBlockedScriptEditors(QString blockedScriptURL) const {
+    QSharedPointer<EntityTreeRenderer> entityTree = qApp->getEntities();
+    if (entityTree) {
+        EntityTreePointer tree = entityTree->getTree();
+        return tree ? tree->getServerBlockedScriptEditors(blockedScriptURL) : QStringList();
+    } else {
+        return QStringList();
+    }
+}
+
+void EntityScriptFilterScriptingInterface::addToServerScriptPrefixWhitelist(QString prefixToAdd) {
+    auto nodeList = DependencyManager::get<NodeList>();
+    nodeList->getDomainHandler().addToServerScriptPrefixWhitelist(prefixToAdd);
+}
+
+void EntityScriptFilterScriptingInterface::removeFromServerScriptPrefixWhitelist(QString prefixToRemove) {
+    auto nodeList = DependencyManager::get<NodeList>();
+    nodeList->getDomainHandler().removeFromServerScriptPrefixWhitelist(prefixToRemove);
 }

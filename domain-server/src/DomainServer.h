@@ -134,6 +134,11 @@ private slots:
     void tokenGrantFinished();
     void profileRequestFinished();
 
+    void handleAddToServerScriptWhitelist(QSharedPointer<ReceivedMessage> packetList,
+                                          SharedNodePointer sendingNode);
+    void handleRemoveFromServerScriptWhitelist(QSharedPointer<ReceivedMessage> packetList,
+                                               SharedNodePointer sendingNode);
+
 signals:
     void iceServerChanged();
     void userConnected();

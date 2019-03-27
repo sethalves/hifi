@@ -14,6 +14,8 @@
 
 #include <QSet>
 #include <QVector>
+#include <unordered_set>
+#include <unordered_map>
 
 #include <Octree.h>
 #include <SpatialParentFinder.h>
@@ -61,6 +63,9 @@ public:
 
 
     void setEntityMaxTmpLifetime(float maxTmpEntityLifetime) { _maxTmpEntityLifetime = maxTmpEntityLifetime; }
+    QStringList getEntityScriptSourceWhitelist() const;
+    bool getEntityScriptSourceWhitelistSet() const { return _entityScriptSourceWhitelistSet; }
+    void clearEntityScriptSourceWhitelistSet() { _entityScriptSourceWhitelistSet = false; }
     void setEntityScriptSourceWhitelist(const QString& entityScriptSourceWhitelist);
 
     /// Implements our type specific root element factory
@@ -280,6 +285,11 @@ public:
     void updateEntityQueryAACube(SpatiallyNestablePointer object, EntityEditPacketSender* packetSender,
                                  bool force, bool tellServer);
 
+    QStringList getBlockedScripts() const;
+    QStringList getServerBlockedScriptEditors(const QString& blockedScriptURL) const;
+    QJsonDocument getScriptFilterStateJSON() const;
+    void setBlockedScriptListFromJSON(const QJsonDocument& json);
+
 signals:
     void deletingEntity(const EntityItemID& entityID);
     void deletingEntityPointer(EntityItem* entityID);
@@ -291,6 +301,7 @@ signals:
     void newCollisionSoundURL(const QUrl& url, const EntityItemID& entityID);
     void clearingEntities();
     void killChallengeOwnershipTimeoutTimer(const QString& certID);
+    void blockedScriptListChanged();
 
 protected:
 
@@ -370,6 +381,7 @@ protected:
     bool filterProperties(EntityItemPointer& existingEntity, EntityItemProperties& propertiesIn, EntityItemProperties& propertiesOut, bool& wasChanged, FilterType filterType);
     bool _hasEntityEditFilter{ false };
     QStringList _entityScriptSourceWhitelist;
+    bool _entityScriptSourceWhitelistSet { false };
 
     MovingEntitiesOperator _entityMover;
     QHash<EntityItemID, EntityItemPointer> _entitiesToAdd;
@@ -396,6 +408,10 @@ private:
 
     void updateEntityQueryAACubeWorker(SpatiallyNestablePointer object, EntityEditPacketSender* packetSender,
                                        MovingEntitiesOperator& moveOperator, bool force, bool tellServer);
+
+    mutable std::mutex _blockedScriptsLock;
+    void rememberBlockedScript(QString scriptURL, QUuid senderNodeID);
+    std::unordered_map<QString, std::unordered_set<QUuid>> _blockedScripts;
 };
 
 void convertGrabUserDataToProperties(EntityItemProperties& properties);

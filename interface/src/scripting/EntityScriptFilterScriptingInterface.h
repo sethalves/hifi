@@ -97,6 +97,13 @@ public:
      * @returns {string[]} List of regular-expressions which will deny a script to run
      */
     Q_INVOKABLE QStringList getEntityScriptURLBlacklistRegexs() const;
+
+
+    Q_INVOKABLE QStringList getServerScriptWhitelist() const;
+    Q_INVOKABLE QStringList getServerBlockedScripts() const;
+    Q_INVOKABLE QStringList getServerBlockedScriptEditors(QString blockedScriptURL) const;
+    Q_INVOKABLE void addToServerScriptPrefixWhitelist(QString prefixToAdd);
+    Q_INVOKABLE void removeFromServerScriptPrefixWhitelist(QString prefixToRemove);
 };
 
 #endif // hifi_EntityScriptFilterScriptingInterface_h

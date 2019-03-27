@@ -1582,3 +1582,12 @@ void EntityTreeRenderer::removeEntityScriptURLFromLists(const EntityItemID& enti
     removeFromEntityScriptURLsInList(_entityScriptURLsInBlacklist, entityID, scriptURL);
     removeFromEntityScriptURLsInList(_entityScriptURLsInPurgatory, entityID, scriptURL);
 }
+
+void EntityTreeRenderer::processScriptFilterState(ReceivedMessage& message, const SharedNodePointer& sourceNode) {
+    if (sourceNode->getType() == NodeType::EntityServer) {
+        auto dataSize = message.getBytesLeftToRead();
+        QByteArray data = message.read(dataSize);
+        QJsonDocument json = QJsonDocument::fromJson(data);
+        std::static_pointer_cast<EntityTree>(_tree)->setBlockedScriptListFromJSON(json);
+    }
+}

@@ -155,6 +155,8 @@ public:
     void clearEntityScriptURLs();
     void removeEntityScriptURLFromLists(const EntityItemID& entityID, const QString& scriptURL);
 
+    void processScriptFilterState(ReceivedMessage& message, const SharedNodePointer& sourceNode);
+
 signals:
     void enterEntity(const EntityItemID& entityItemID);
     void leaveEntity(const EntityItemID& entityItemID);

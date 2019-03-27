@@ -2046,3 +2046,53 @@ void DomainServerSettingsManager::debugDumpGroupsState() {
         qDebug() << "|  " << userName << line;
     }
 }
+
+void DomainServerSettingsManager::changeServerScriptWhitelist(std::function<void(QSet<QString>&)> actor) {
+    const QString ENTITY_SERVER_SETTINGS_KEY = "entity_server_settings";
+    const QString ENTITY_SCRIPT_SOURCE_WHITELIST_KEY = "entityScriptSourceWhitelist";
+
+    QString entityScriptSourceWhitelistStr;
+    {
+        QWriteLocker locker(&_settingsLock);
+        QVariantMap& config = _configMap.getConfig();
+
+        // unpack
+        QMap<QString, QVariant> entityServerSettings = config[ENTITY_SERVER_SETTINGS_KEY].toMap();
+        entityScriptSourceWhitelistStr = entityServerSettings[ENTITY_SCRIPT_SOURCE_WHITELIST_KEY].toString();
+        QStringList entityScriptSourceWhitelist = entityScriptSourceWhitelistStr.split(',', QString::SkipEmptyParts);
+        QSet<QString> entityScriptSourceWhitelistSet = QSet<QString>::fromList(entityScriptSourceWhitelist);
+
+        // update
+        actor(entityScriptSourceWhitelistSet);
+
+        // repack
+        entityScriptSourceWhitelist = entityScriptSourceWhitelistSet.toList();
+        entityScriptSourceWhitelistStr = entityScriptSourceWhitelist.join(',');
+        entityServerSettings[ENTITY_SCRIPT_SOURCE_WHITELIST_KEY] = QVariant(entityScriptSourceWhitelistStr);
+        config[ENTITY_SERVER_SETTINGS_KEY] = QVariant(entityServerSettings);
+    }
+
+    // save to disk
+    persistToFile();
+
+    // tell entity-server
+    auto nodeList = DependencyManager::get<LimitedNodeList>();
+    SharedNodePointer entityServerNode = nodeList->soloNodeOfType(NodeType::EntityServer);
+    if (entityServerNode) {
+        auto packetList = NLPacketList::create(PacketType::UpdateScriptFilter, QByteArray(), true, true);
+        packetList->write(entityScriptSourceWhitelistStr.toUtf8());
+        nodeList->sendPacketList(std::move(packetList), *entityServerNode);
+    }
+}
+
+void DomainServerSettingsManager::handleAddToServerScriptWhitelist(const QString& urlPrefix) {
+    changeServerScriptWhitelist([&](QSet<QString>& entityScriptSourceWhitelistSet) {
+        entityScriptSourceWhitelistSet += urlPrefix;
+    });
+}
+
+void DomainServerSettingsManager::handleRemoveFromServerScriptWhitelist(const QString& urlPrefix) {
+    changeServerScriptWhitelist([&](QSet<QString>& entityScriptSourceWhitelistSet) {
+        entityScriptSourceWhitelistSet.remove(urlPrefix);
+    });
+}
