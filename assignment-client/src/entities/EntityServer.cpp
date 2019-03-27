@@ -61,6 +61,9 @@ EntityServer::EntityServer(ReceivedMessage& message) :
         this,
         "handleEntityPacket");
 
+    packetReceiver.registerListener(PacketType::RequestScriptFilterState, this, "handleRequestScriptFilterState");
+    packetReceiver.registerListener(PacketType::UpdateScriptFilter, this, "handleUpdateScriptFilter");
+
     connect(&_dynamicDomainVerificationTimer, &QTimer::timeout, this, &EntityServer::startDynamicDomainVerification);
     _dynamicDomainVerificationTimer.setSingleShot(true);
 }
@@ -107,6 +110,8 @@ OctreePointer EntityServer::createTree() {
     DependencyManager::registerInheritance<SpatialParentFinder, AssignmentParentFinder>();
     DependencyManager::set<AssignmentParentFinder>(tree);
     DependencyManager::set<EntityEditFilters>(std::static_pointer_cast<EntityTree>(tree));
+
+    connect(tree.get(), &EntityTree::blockedScriptListChanged, this, &EntityServer::sendBlockedScriptList);
 
     return tree;
 }
@@ -546,4 +551,46 @@ void EntityServer::startDynamicDomainVerification() {
     int nextInterval = qrand() % ((_MAXIMUM_DYNAMIC_DOMAIN_VERIFICATION_TIMER_MS + 1) - _MINIMUM_DYNAMIC_DOMAIN_VERIFICATION_TIMER_MS) + _MINIMUM_DYNAMIC_DOMAIN_VERIFICATION_TIMER_MS;
     qCDebug(entities) << "Restarting Dynamic Domain Verification timer for" << nextInterval / 1000 << "seconds";
     _dynamicDomainVerificationTimer.start(nextInterval);
+}
+
+
+void EntityServer::sendBlockedScriptListToNode(const SharedNodePointer& node, const QByteArray& blockedScriptsJSON) {
+    if (node->isAllowedEditor()) {
+        auto blockedScriptsPacketList = NLPacketList::create(PacketType::ScriptFilterState, QByteArray(), true, true);
+        blockedScriptsPacketList->write(blockedScriptsJSON);
+        auto nodeList = DependencyManager::get<NodeList>();
+        nodeList->sendPacketList(std::move(blockedScriptsPacketList), *node);
+    }
+}
+
+void EntityServer::handleRequestScriptFilterState(QSharedPointer<ReceivedMessage> packetList, SharedNodePointer senderNode) {
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    if (tree) {
+        sendBlockedScriptListToNode(senderNode, tree->getScriptFilterStateJSON().toJson());
+    }
+}
+
+void EntityServer::handleUpdateScriptFilter(QSharedPointer<ReceivedMessage> packetList) {
+    QByteArray data = packetList->getMessage();
+    QString entityScriptSourceWhitelistStr(QString::fromUtf8(data));
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    if (tree) {
+        tree->setEntityScriptSourceWhitelist(entityScriptSourceWhitelistStr);
+    }
+    sendBlockedScriptList();
+}
+
+void EntityServer::sendBlockedScriptList() {
+    auto nodeList = DependencyManager::get<NodeList>();
+    EntityTreePointer tree = std::static_pointer_cast<EntityTree>(_tree);
+    if (!tree) {
+        return;
+    }
+
+    QJsonDocument json = tree->getScriptFilterStateJSON();
+    QByteArray blockedScriptsJSON = json.toJson();
+
+    nodeList->eachNode([this, blockedScriptsJSON](const SharedNodePointer& node) {
+        sendBlockedScriptListToNode(node, blockedScriptsJSON);
+    });
 }

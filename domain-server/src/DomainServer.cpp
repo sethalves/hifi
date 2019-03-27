@@ -759,6 +759,9 @@ void DomainServer::setupNodeListAndAssignments() {
     packetReceiver.registerListener(PacketType::OctreeFileReplacement, this, "handleOctreeFileReplacementRequest");
     packetReceiver.registerListener(PacketType::DomainContentReplacementFromUrl, this, "handleDomainContentReplacementFromURLRequest");
 
+    packetReceiver.registerListener(PacketType::AddToServerScriptWhitelist, this, "handleAddToServerScriptWhitelist");
+    packetReceiver.registerListener(PacketType::RemoveFromServerScriptWhitelist, this, "handleRemoveFromServerScriptWhitelist");
+
     // set a custom packetVersionMatch as the verify packet operator for the udt::Socket
     nodeList->setPacketFilterOperator(&DomainServer::isPacketVerified);
 
@@ -3516,4 +3519,18 @@ void DomainServer::handleOctreeFileReplacementRequest(QSharedPointer<ReceivedMes
     if (node->getCanReplaceContent()) {
         handleOctreeFileReplacement(message->readAll());
     }
+}
+
+void DomainServer::handleAddToServerScriptWhitelist(QSharedPointer<ReceivedMessage> packetList,
+                                                    SharedNodePointer sendingNode) {
+    QByteArray data = packetList->getMessage();
+    QString urlPrefix(QString::fromUtf8(data));
+    _settingsManager.handleAddToServerScriptWhitelist(urlPrefix);
+}
+
+void DomainServer::handleRemoveFromServerScriptWhitelist(QSharedPointer<ReceivedMessage> packetList,
+                                                         SharedNodePointer sendingNode) {
+    QByteArray data = packetList->getMessage();
+    QString urlPrefix(QString::fromUtf8(data));
+    _settingsManager.handleRemoveFromServerScriptWhitelist(urlPrefix);
 }

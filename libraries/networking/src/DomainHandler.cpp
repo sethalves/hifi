@@ -556,3 +556,20 @@ bool DomainHandler::checkInPacketTimeout() {
         return false;
     }
 }
+
+void DomainHandler::addToServerScriptPrefixWhitelist(QString prefixToAdd) {
+    qCDebug(networking) << "adding to server script prefix whitelist: " << prefixToAdd;
+    auto prefixPacketList = NLPacketList::create(PacketType::AddToServerScriptWhitelist, QByteArray(), true, true);
+    prefixPacketList->write(prefixToAdd.toUtf8());
+    auto nodeList = DependencyManager::get<LimitedNodeList>();
+    nodeList->sendPacketList(std::move(prefixPacketList), _sockAddr);
+}
+
+void DomainHandler::removeFromServerScriptPrefixWhitelist(QString prefixToRemove) {
+    qCDebug(networking) << "removing from server script prefix whitelist: " << prefixToRemove;
+    auto prefixPacketList = NLPacketList::create(PacketType::RemoveFromServerScriptWhitelist, QByteArray(), true, true);
+    QByteArray data = prefixToRemove.toUtf8();
+    prefixPacketList->write(data);
+    auto nodeList = DependencyManager::get<LimitedNodeList>();
+    nodeList->sendPacketList(std::move(prefixPacketList), _sockAddr);
+}

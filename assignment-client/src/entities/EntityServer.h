@@ -65,6 +65,10 @@ public slots:
     virtual void nodeKilled(SharedNodePointer node) override;
     void pruneDeletedEntities();
     void entityFilterAdded(EntityItemID id, bool success);
+    void sendBlockedScriptListToNode(const SharedNodePointer& node, const QByteArray& blockedScriptsJSON);
+    void handleRequestScriptFilterState(QSharedPointer<ReceivedMessage> packetList, SharedNodePointer senderNode);
+    void handleUpdateScriptFilter(QSharedPointer<ReceivedMessage> packetList);
+    void sendBlockedScriptList();
 
 protected:
     virtual OctreePointer createTree() override;

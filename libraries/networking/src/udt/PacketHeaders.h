@@ -134,6 +134,11 @@ public:
         BulkAvatarTraits,
         AudioSoloRequest,
         BulkAvatarTraitsAck,
+        ScriptFilterState,
+        RequestScriptFilterState,
+        UpdateScriptFilter,
+        AddToServerScriptWhitelist,
+        RemoveFromServerScriptWhitelist,
         NUM_PACKET_TYPE
     };
 
@@ -161,7 +166,9 @@ public:
             << PacketTypeEnum::Value::DomainDisconnectRequest
             << PacketTypeEnum::Value::UsernameFromIDRequest
             << PacketTypeEnum::Value::NodeKickRequest
-            << PacketTypeEnum::Value::NodeMuteRequest;
+            << PacketTypeEnum::Value::NodeMuteRequest
+            << PacketTypeEnum::Value::AddToServerScriptWhitelist
+            << PacketTypeEnum::Value::RemoveFromServerScriptWhitelist;
         return NON_VERIFIED_PACKETS;
     }
 
@@ -184,7 +191,8 @@ public:
             << PacketTypeEnum::Value::OctreeFileReplacement << PacketTypeEnum::Value::ReplicatedMicrophoneAudioNoEcho
             << PacketTypeEnum::Value::ReplicatedMicrophoneAudioWithEcho << PacketTypeEnum::Value::ReplicatedInjectAudio
             << PacketTypeEnum::Value::ReplicatedSilentAudioFrame << PacketTypeEnum::Value::ReplicatedAvatarIdentity
-            << PacketTypeEnum::Value::ReplicatedKillAvatar << PacketTypeEnum::Value::ReplicatedBulkAvatarData;
+            << PacketTypeEnum::Value::ReplicatedKillAvatar << PacketTypeEnum::Value::ReplicatedBulkAvatarData
+            << PacketTypeEnum::Value::UpdateScriptFilter;
         return NON_SOURCED_PACKETS;
     }
 
@@ -267,6 +275,7 @@ enum class EntityVersion : PacketVersion {
     ReOrderParentIDProperties,
     CertificateTypeProperty,
     DisableWebMedia,
+    BlockedScriptList,
 
     // Add new versions above here
     NUM_PACKET_TYPE,

@@ -128,6 +128,9 @@ public:
 
     bool recurseJSONObjectAndOverwriteSettings(const QJsonObject& postedObject, SettingsType settingsType);
 
+    void handleAddToServerScriptWhitelist(const QString& urlPrefix);
+    void handleRemoveFromServerScriptWhitelist(const QString& urlPrefix);
+
 signals:
     void updateNodePermissions();
     void settingsUpdated();
@@ -203,6 +206,8 @@ private:
 
     /// guard read/write access from multiple threads to settings 
     QReadWriteLock _settingsLock { QReadWriteLock::Recursive };
+
+    void changeServerScriptWhitelist(std::function<void(QSet<QString>&)> actor);
 };
 
 #endif // hifi_DomainServerSettingsManager_h

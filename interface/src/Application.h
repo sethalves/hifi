@@ -548,6 +548,7 @@ private:
 
     void queryOctree(NodeType_t serverType, PacketType packetType);
     void queryAvatars();
+    void queryScriptFilterState();
 
     int sendNackPackets();
 
