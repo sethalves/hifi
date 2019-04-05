@@ -17,8 +17,7 @@
 #include <EntityItemID.h>
 
 /**jsdoc
- * The EntityScriptFilter API enables you to manage a list of regular-expressions which determine
- * which entity-scripts are loaded and which are forbidden.
+ * The EntityScriptFilter API enables you to manage the entity-server's entity-script filter.
  *
  * @namespace EntityScriptFilter
  *
