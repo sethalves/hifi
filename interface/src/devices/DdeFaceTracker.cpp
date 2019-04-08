@@ -306,7 +306,8 @@ bool DdeFaceTracker::isActive() const {
 }
 
 bool DdeFaceTracker::isTracking() const {
-    static const quint64 ACTIVE_TIMEOUT_USECS = 3000000; //3 secs
+    // static const quint64 ACTIVE_TIMEOUT_USECS = 3000000; // 3 secs
+    static const quint64 ACTIVE_TIMEOUT_USECS = 300000; // 0.3 secs
     return (usecTimestampNow() - _lastReceiveTimestamp < ACTIVE_TIMEOUT_USECS);
 }
 
