@@ -386,7 +386,6 @@ void DdeFaceTracker::decodePacket(const QByteArray& buffer) {
         float LEAN_DAMPING_FACTOR = 75.0f;
         translation -= _referenceTranslation;
         translation /= LEAN_DAMPING_FACTOR;
-        translation.x *= -1;
         if (isFiltering) {
             glm::vec3 linearVelocity = (translation - _lastHeadTranslation) / _averageMessageTime;
             const float LINEAR_VELOCITY_FILTER_STRENGTH = 0.3f;
