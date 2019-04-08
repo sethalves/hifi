@@ -2543,6 +2543,20 @@ controller::Pose MyAvatar::getControllerPoseInWorldFrame(controller::Action acti
     if (pose.valid) {
         return pose.transform(getSensorToWorldMatrix());
     } else {
+        if (action == controller::Action::HEAD) {
+            FaceTracker* tracker = qApp->getActiveFaceTracker();
+            const Rig& rig = _skeletonModel->getRig();
+            int headIndex = rig.indexOfJoint("Head");
+            if (tracker && !FaceTracker::isMuted() && headIndex != -1) {
+                const Head* head = getHead();
+                auto rigHeadPose = rig.getAbsoluteDefaultPose(headIndex);
+                glm::mat4 avatarMatrix = createMatFromQuatAndPos(getWorldOrientation(), getWorldPosition());
+                glm::vec3 pos = rigHeadPose.trans() + tracker->getHeadTranslation() / 10.0f;
+                glm::quat rot = tracker->getHeadRotation() * rigHeadPose.rot() * Quaternions::Y_180;
+                controller::Pose headPose = controller::Pose(pos, rot);
+                return headPose.transform(avatarMatrix);
+            }
+        }
         return controller::Pose(); // invalid pose
     }
 }
