@@ -17,7 +17,7 @@ macro(TARGET_BULLET)
         list(APPEND BULLET_LIBRARIES ${LIB_DIR}/libBulletSoftBody.a)
     else()
         find_package(Bullet REQUIRED)
-   endif()
+    endif()
     # perform the system include hack for OS X to ignore warnings
     if (APPLE)
       SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem ${BULLET_INCLUDE_DIRS}")

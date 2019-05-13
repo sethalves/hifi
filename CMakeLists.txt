@@ -17,27 +17,30 @@ if (APPLE)
   set(ENV{MACOSX_DEPLOYMENT_TARGET} 10.9)
 endif()
 
-if (HIFI_ANDROID)
-    execute_process(
-        COMMAND ${HIFI_PYTHON_EXEC} ${CMAKE_CURRENT_SOURCE_DIR}/prebuild.py --android ${HIFI_ANDROID_APP} --build-root ${CMAKE_BINARY_DIR}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-else()
-    execute_process(
-        COMMAND ${HIFI_PYTHON_EXEC} ${CMAKE_CURRENT_SOURCE_DIR}/prebuild.py --build-root ${CMAKE_BINARY_DIR}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-    # squelch the Policy CMP0074 warning without requiring an update to cmake 3.12.
-    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-        cmake_policy(SET CMP0074 NEW)
+if(NOT DISABLE_VCPKG)
+    if (HIFI_ANDROID)
+        execute_process(
+            COMMAND ${HIFI_PYTHON_EXEC} ${CMAKE_CURRENT_SOURCE_DIR}/prebuild.py --android ${HIFI_ANDROID_APP} --build-root ${CMAKE_BINARY_DIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+    else()
+        execute_process(
+            COMMAND ${HIFI_PYTHON_EXEC} ${CMAKE_CURRENT_SOURCE_DIR}/prebuild.py --build-root ${CMAKE_BINARY_DIR}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+        # squelch the Policy CMP0074 warning without requiring an update to cmake 3.12.
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
+            cmake_policy(SET CMP0074 NEW)
+        endif()
     endif()
+
+    if(NOT EXISTS "${CMAKE_BINARY_DIR}/vcpkg.cmake")
+        message(FATAL_ERROR "vcpkg configuration missing.")
+    endif()
+
+    include("${CMAKE_BINARY_DIR}/vcpkg.cmake")
 endif()
 
-if(NOT EXISTS "${CMAKE_BINARY_DIR}/vcpkg.cmake")
-    message(FATAL_ERROR "vcpkg configuration missing.")
-endif()
-
-include("${CMAKE_BINARY_DIR}/vcpkg.cmake")
 project(hifi)
 include("cmake/init.cmake")
 include("cmake/compiler.cmake")
@@ -72,6 +75,7 @@ set(BUILD_INSTALLER_OPTION ON)
 set(GLES_OPTION OFF)
 set(DISABLE_QML_OPTION OFF)
 set(DOWNLOAD_SERVERLESS_CONTENT_OPTION OFF)
+set(DISABLE_VCPKG OFF)
 
 if (ANDROID OR UWP)
   set(BUILD_SERVER_OPTION OFF)
@@ -141,6 +145,11 @@ option(
   "Download and setup default serverless content beside Interface"
   ${DOWNLOAD_SERVERLESS_CONTENT_OPTION}
 )
+option(
+  DISABLE_VCPKG
+  "Don't use vcpkg to build dependencies."
+  ${DISABLE_VCPKG_OPTION}
+)
 
 set(PLATFORM_QT_GL OpenGL)
 
@@ -165,6 +174,7 @@ MESSAGE(STATUS "Build tools:           " ${BUILD_TOOLS})
 MESSAGE(STATUS "Build installer:       " ${BUILD_INSTALLER})
 MESSAGE(STATUS "GL ES:                 " ${USE_GLES})
 MESSAGE(STATUS "DL serverless content: " ${DOWNLOAD_SERVERLESS_CONTENT})
+MESSAGE(STATUS "Disable vcpkg:         " ${DISABLE_VCPKG})
 
 if (DISABLE_QML)
   MESSAGE(STATUS "QML disabled!")

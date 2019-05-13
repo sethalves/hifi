@@ -21,9 +21,11 @@ elseif(APPLE)
     target_link_libraries(${TARGET_NAME} ${TBB_LIBRARIES})
     target_include_directories(${TARGET_NAME} SYSTEM PUBLIC ${TBB_INCLUDE_DIRS})
 else()
-   	# using VCPKG for TBB
-    find_package(TBB CONFIG REQUIRED)
-    target_link_libraries(${TARGET_NAME} TBB::tbb)
+    if(NOT DISABLE_VCPKG)
+        # using VCPKG for TBB
+        find_package(TBB CONFIG REQUIRED)
+        target_link_libraries(${TARGET_NAME} TBB::tbb)
+    endif()
 endif()
 
 endmacro()

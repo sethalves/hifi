@@ -6,7 +6,30 @@
 #  See the accompanying file LICENSE or http://www.apache.org/licenses/LICENSE-2.0.html
 #
 macro(TARGET_OPENEXR)
-    if (NOT ANDROID)
+
+    if (DISABLE_VCPKG)
+
+        foreach(OPENEXR_LIB
+            IlmImf
+            IlmImfUtil
+            Half
+            Iex
+            IexMath
+            Imath
+            IlmThread)
+
+            find_library(OPENEXR_${OPENEXR_LIB}_LIBRARY_RELEASE NAMES ${OPENEXR_LIB})
+
+            if(OPENEXR_${OPENEXR_LIB}_LIBRARY_RELEASE)
+                list(APPEND OPENEXR_LIBRARY_RELEASE ${OPENEXR_${OPENEXR_LIB}_LIBRARY_RELEASE})
+            endif()
+
+        endforeach(OPENEXR_LIB)
+
+        select_library_configurations(OPENEXR)
+        target_link_libraries(${TARGET_NAME} ${OPENEXR_LIBRARY})
+
+    elseif (NOT ANDROID)
         set(openexr_config_file "${VCPKG_INSTALL_ROOT}/include/OpenEXR/OpenEXRConfig.h")
         if(EXISTS ${openexr_config_file})
             file(STRINGS
