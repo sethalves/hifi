@@ -31,6 +31,13 @@ if (ANDROID)
     COMMAND "${QT_DIR}/bin/rcc"
     ARGS ${RESOURCES_QRC} -no-compress -binary -o ${RESOURCES_RCC}
   )
+elseif (DISABLE_VCPKG)
+  add_custom_command(
+    OUTPUT ${RESOURCES_RCC}
+    DEPENDS ${RESOURCES_QRC} ${GENERATE_QRC_DEPENDS}
+    COMMAND "rcc"
+    ARGS ${RESOURCES_QRC} -binary -o ${RESOURCES_RCC}
+  )
 else ()
   add_custom_command(
     OUTPUT ${RESOURCES_RCC}
