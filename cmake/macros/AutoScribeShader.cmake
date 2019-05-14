@@ -281,7 +281,7 @@ macro(AUTOSCRIBE_SHADER_LIBS)
     endif()
 
     if (DISABLE_VCPKG)
-        set(SHADERGEN_TOOLS_DIR "/usr/tools")
+        set(SHADERGEN_TOOLS_DIR "/usr/bin")
     else()
         set(SHADERGEN_TOOLS_DIR ${VCPKG_TOOLS_DIR})
     endif()
