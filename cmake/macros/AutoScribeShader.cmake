@@ -280,13 +280,19 @@ macro(AUTOSCRIBE_SHADER_LIBS)
         endif()
     endif()
 
+    if (DISABLE_VCPKG)
+        set(SHADERGEN_TOOLS_DIR "/usr/tools")
+    else()
+        set(SHADERGEN_TOOLS_DIR ${VCPKG_TOOLS_DIR})
+    endif()
+
     # A custom python script which will generate all our shader artifacts
     add_custom_command(
         OUTPUT ${SCRIBED_SHADERS} ${SPIRV_SHADERS} ${REFLECTED_SHADERS}
         COMMENT "Generating/updating shaders"
         COMMAND ${HIFI_PYTHON_EXEC} ${CMAKE_SOURCE_DIR}/tools/shadergen.py 
             --commands ${AUTOSCRIBE_SHADERGEN_COMMANDS_FILE} 
-            --tools-dir ${VCPKG_TOOLS_DIR}
+            --tools-dir ${SHADERGEN_TOOLS_DIR}
             --build-dir ${CMAKE_CURRENT_BINARY_DIR}
             --source-dir ${CMAKE_SOURCE_DIR}
             ${EXTRA_SHADERGEN_ARGS}
