@@ -27,7 +27,7 @@ macro(TARGET_NVTT)
     endif()
 
     target_link_libraries(${TARGET_NAME} ${NVTT_LIBRARIES})
-    if ((NOT WIN32) AND (NOT ANDROID) AND (NOT APPLE))
+    if ((NOT WIN32) AND (NOT ANDROID) AND (NOT APPLE) AND (NOT DISABLE_VCPKG))
         find_package(OpenMP)
         target_link_libraries(${TARGET_NAME} OpenMP::OpenMP_C OpenMP::OpenMP_CXX)
     endif()
