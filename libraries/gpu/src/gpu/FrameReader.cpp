@@ -332,7 +332,7 @@ TexturePointer Deserializer::readTexture(const json& node, uint32_t external) {
         Texture::evalTextureFormat(ktxObject->getHeader(), ktxTexelFormat, ktxMipFormat);
     }
 
-    TextureUsageType usageType = node[keys::usageType];
+    TextureUsageType usageType = (TextureUsageType)(int)node[keys::usageType];
     Texture::Type type = node[keys::type];
     glm::u16vec4 dims;
     dims.x = node[keys::width];

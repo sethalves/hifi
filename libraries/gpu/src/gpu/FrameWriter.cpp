@@ -365,7 +365,7 @@ json Serializer::writeTexture(const TexturePointer& texturePointer) {
         result[keys::source] = texture.source();
     }
     const auto usageType = texture.getUsageType();
-    result[keys::usageType] = usageType;
+    result[keys::usageType] = (int)usageType;
     result[keys::type] = texture.getType();
     result[keys::width] = texture._width;
     result[keys::height] = texture._height;
