@@ -30,7 +30,25 @@
 
 namespace render { namespace entities {
 class PolyVoxEntityRenderer;
-} } 
+} }
+
+
+enum class PolyVoxState {
+    Ready,
+    Uncompressing,
+    UncompressingFinished,
+    BakingMesh,
+    BakingMeshFinished,
+    BakingMeshNoCompress,
+    BakingMeshNoCompressFinished,
+    Compressing,
+    CompressingFinished,
+    BakingShape,
+    BakingShapeFinished
+};
+
+QDebug operator<<(QDebug debug, PolyVoxState state);
+
 
 class RenderablePolyVoxEntityItem : public PolyVoxEntityItem, public scriptable::ModelProvider {
     friend class render::entities::PolyVoxEntityRenderer;
@@ -114,8 +132,8 @@ public:
     uint8_t getVoxelInternal(const ivec3& v) const;
     bool setVoxelInternal(const ivec3& v, uint8_t toValue);
 
-    void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _meshReady = false; }); }
-    void compressFinished() { withWriteLock([&] { _compressRunning = false; }); }
+    void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); }
+    void compressFinished() { withWriteLock([&] { _state = PolyVoxState::CompressingFinished; }); }
 
 
     bool getMeshes(MeshProxyList& result) override; // deprecated
@@ -129,6 +147,7 @@ private:
     PolyVox::RaycastResult doRayCast(glm::vec4 originInVoxel, glm::vec4 farInVoxel, glm::vec4& result) const;
 
     void startUpdates();
+    void stopUpdates();
 
     void recomputeMesh();
     void cacheNeighbors();
@@ -143,14 +162,11 @@ private:
 
     // The PolyVoxEntityItem class has _voxelData which contains dimensions and compressed voxel data.  The dimensions
     // may not match _voxelVolumeSize.
+    bool _meshReady { false }; // do we have something to give scripts that ask for the mesh?
     bool _voxelDataDirty { true };
     bool _volDataDirty { false }; // does recomputeMesh need to be called?
-    bool _meshDirty { true }; // does collision-shape need to be recomputed?
-    bool _meshReady { false };
-    bool _decompressRunning { false };
-    bool _recomputeMeshRunning { false };
-    bool _compressRunning { false };
-    int _state { 0 };
+    bool _shapeReady { false };
+    PolyVoxState _state { PolyVoxState::Ready };
     bool _updateNeeded { true };
 
     graphics::MeshPointer _mesh;
