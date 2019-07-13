@@ -134,7 +134,6 @@ public:
     bool setVoxelInternal(const ivec3& v, uint8_t toValue);
     void setVoxelMarkNeighbors(int x, int y, int z, uint8_t toValue);
 
-    // void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); startUpdates(); }
     void compressVolumeDataFinished(const QByteArray& voxelData);
     void neighborXEdgeChanged() { withWriteLock([&] { _updateFromNeighborXEdge = true; }); startUpdates(); }
     void neighborYEdgeChanged() { withWriteLock([&] { _updateFromNeighborYEdge = true; }); startUpdates(); }
@@ -156,7 +155,7 @@ private:
     void recomputeMesh();
     void cacheNeighbors();
     void copyUpperEdgesFromNeighbors();
-    void tellNeighborsToRecopyEdges();
+    void tellNeighborsToRecopyEdges(bool force);
     bool updateDependents();
 
     // these are run off the main thread
@@ -167,9 +166,9 @@ private:
     // The PolyVoxEntityItem class has _voxelData which contains dimensions and compressed voxel data.  The dimensions
     // may not match _voxelVolumeSize.
     bool _meshReady { false }; // do we have something to give scripts that ask for the mesh?
-    bool _voxelDataDirty { true };
+    bool _voxelDataDirty { true }; // do we need to uncompress data and expand it into _volData?
     bool _volDataDirty { false }; // does recomputeMesh need to be called?
-    bool _shapeReady { false };
+    bool _shapeReady { false }; // are we ready to tell bullet our shape?
     PolyVoxState _state { PolyVoxState::Ready };
     bool _updateNeeded { true };
 
@@ -180,7 +179,6 @@ private:
     std::shared_ptr<PolyVox::SimpleVolume<uint8_t>> _volData;
     int _onCount; // how many non-zero voxels are in _volData
 
-    // bool _neighborsNeedUpdate { false };
     bool _neighborXNeedsUpdate { false };
     bool _neighborYNeedsUpdate { false };
     bool _neighborZNeedsUpdate { false };
@@ -231,7 +229,6 @@ private:
     glm::mat4 _lastVoxelToWorldMatrix;
     PolyVoxEntityItem::PolyVoxSurfaceStyle _lastSurfaceStyle { PolyVoxEntityItem::SURFACE_MARCHING_CUBES };
     std::array<QString, 3> _xyzTextureUrls;
-    // bool _neighborsNeedUpdate{ false };
 };
 
 } }

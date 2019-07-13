@@ -168,7 +168,7 @@ bool isEdged(PolyVoxEntityItem::PolyVoxSurfaceStyle surfaceStyle) {
 }
 
 void RenderablePolyVoxEntityItem::setVoxelData(const QByteArray& voxelData) {
-    // compressed voxel information from the entity-server
+    // accept compressed voxel information from the entity-server
     withWriteLock([&] {
         if (_voxelData != voxelData) {
             _voxelData = voxelData;
@@ -208,7 +208,7 @@ void RenderablePolyVoxEntityItem::setVoxelSurfaceStyle(PolyVoxSurfaceStyle voxel
     }
 
     _updateFromNeighborXEdge = _updateFromNeighborYEdge = _updateFromNeighborZEdge = true;
-    tellNeighborsToRecopyEdges();
+    tellNeighborsToRecopyEdges(true);
 }
 
 glm::vec3 RenderablePolyVoxEntityItem::getSurfacePositionAdjustment() const {
@@ -755,42 +755,15 @@ void RenderablePolyVoxEntityItem::update(const quint64& now) {
 
     auto id = getID();
 
-    cacheNeighbors();
     copyUpperEdgesFromNeighbors();
 
     withWriteLock([&] {
 
         qDebug() << "QQQQ RenderablePolyVoxEntityItem::updateDependents" << _state << "volD=" << _volDataDirty << "voxD=" << _voxelDataDirty << id;
 
-        // if this polyvox has changed any of its voxels with a zero coord (in x, y, or z) notify neighbor, if there is one
-        if (_neighborXNeedsUpdate || _neighborYNeedsUpdate || _neighborZNeedsUpdate) {
-            cacheNeighbors();
-
-            if (_neighborXNeedsUpdate) {
-                _neighborXNeedsUpdate = false;
-                auto currentXNNeighbor = getXNNeighbor();
-                if (currentXNNeighbor) {
-                    currentXNNeighbor->neighborXEdgeChanged();
-                }
-            }
-            if (_neighborYNeedsUpdate) {
-                _neighborYNeedsUpdate = false;
-                auto currentYNNeighbor = getYNNeighbor();
-                if (currentYNNeighbor) {
-                    currentYNNeighbor->neighborYEdgeChanged();
-                }
-            }
-            if (_neighborZNeedsUpdate) {
-                _neighborZNeedsUpdate = false;
-                auto currentZNNeighbor = getZNNeighbor();
-                if (currentZNNeighbor) {
-                    currentZNNeighbor->neighborZEdgeChanged();
-                }
-            }
-        }
+        tellNeighborsToRecopyEdges(false);
 
         switch (_state) {
-
             case PolyVoxState::Ready: {
                 if (_voxelDataDirty) {
                     _voxelDataDirty = false;
@@ -940,7 +913,7 @@ void RenderablePolyVoxEntityItem::setVoxelVolumeSize(const glm::vec3& voxelVolum
         _volData->setBorderValue(255);
     });
 
-    tellNeighborsToRecopyEdges();
+    tellNeighborsToRecopyEdges(true);
 }
 
 bool inUserBounds(const std::shared_ptr<PolyVox::SimpleVolume<uint8_t>> vol,
@@ -1273,6 +1246,36 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
         }
     }
 }
+
+void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
+    // if this polyvox has changed any of its voxels with a zero coord (in x, y, or z) notify neighbors, if there are any
+    if (force || _neighborXNeedsUpdate || _neighborYNeedsUpdate || _neighborZNeedsUpdate) {
+        cacheNeighbors();
+
+        if (force || _neighborXNeedsUpdate) {
+            _neighborXNeedsUpdate = false;
+            auto currentXNNeighbor = getXNNeighbor();
+            if (currentXNNeighbor) {
+                currentXNNeighbor->neighborXEdgeChanged();
+            }
+        }
+        if (force || _neighborYNeedsUpdate) {
+            _neighborYNeedsUpdate = false;
+            auto currentYNNeighbor = getYNNeighbor();
+            if (currentYNNeighbor) {
+                currentYNNeighbor->neighborYEdgeChanged();
+            }
+        }
+        if (force || _neighborZNeedsUpdate) {
+            _neighborZNeedsUpdate = false;
+            auto currentZNNeighbor = getZNNeighbor();
+            if (currentZNNeighbor) {
+                currentZNNeighbor->neighborZEdgeChanged();
+            }
+        }
+    }
+}
+
 
 void RenderablePolyVoxEntityItem::recomputeMesh() {
     // use _volData to make a renderable mesh
@@ -1615,25 +1618,6 @@ std::shared_ptr<RenderablePolyVoxEntityItem> RenderablePolyVoxEntityItem::getYPN
 
 std::shared_ptr<RenderablePolyVoxEntityItem> RenderablePolyVoxEntityItem::getZPNeighbor() {
     return std::dynamic_pointer_cast<RenderablePolyVoxEntityItem>(_zPNeighbor.lock());
-}
-
-void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges() {
-    // flag neighbors to the negative of this entity as needing to recopy their edges and rebake their meshes.
-    cacheNeighbors();
-
-    auto currentXNNeighbor = getXNNeighbor();
-    auto currentYNNeighbor = getYNNeighbor();
-    auto currentZNNeighbor = getZNNeighbor();
-
-    if (currentXNNeighbor) {
-        currentXNNeighbor->neighborXEdgeChanged();
-    }
-    if (currentYNNeighbor) {
-        currentYNNeighbor->neighborYEdgeChanged();
-    }
-    if (currentZNNeighbor) {
-        currentZNNeighbor->neighborZEdgeChanged();
-    }
 }
 
 // deprecated
