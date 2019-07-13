@@ -97,6 +97,7 @@ public:
     virtual bool setSphereInVolume(const vec3& center, float radius, uint8_t toValue) override;
     virtual bool setVoxelInVolume(const vec3& position, uint8_t toValue) override;
 
+
     // coords are in world-space
     virtual bool setSphere(const vec3& center, float radius, uint8_t toValue) override;
     virtual bool setCapsule(const vec3& startWorldCoords, const vec3& endWorldCoords,
@@ -131,9 +132,13 @@ public:
 
     uint8_t getVoxelInternal(const ivec3& v) const;
     bool setVoxelInternal(const ivec3& v, uint8_t toValue);
+    void setVoxelMarkNeighbors(int x, int y, int z, uint8_t toValue);
 
-    void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); startUpdates(); }
+    // void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); startUpdates(); }
     void compressVolumeDataFinished(const QByteArray& voxelData);
+    void neighborXEdgeChanged() { withWriteLock([&] { _updateFromNeighborXEdge = true; }); startUpdates(); }
+    void neighborYEdgeChanged() { withWriteLock([&] { _updateFromNeighborYEdge = true; }); startUpdates(); }
+    void neighborZEdgeChanged() { withWriteLock([&] { _updateFromNeighborZEdge = true; }); startUpdates(); }
 
     bool getMeshes(MeshProxyList& result) override; // deprecated
     virtual scriptable::ScriptableModelBase getScriptableModel() override;
@@ -151,11 +156,11 @@ private:
     void recomputeMesh();
     void cacheNeighbors();
     void copyUpperEdgesFromNeighbors();
-    void bonkNeighbors();
+    void tellNeighborsToRecopyEdges();
     bool updateDependents();
 
     // these are run off the main thread
-    void decompressVolumeData();
+    void uncompressVolumeData();
     void compressVolumeDataAndSendEditPacket();
     void computeShapeInfoWorker();
 
@@ -175,7 +180,14 @@ private:
     std::shared_ptr<PolyVox::SimpleVolume<uint8_t>> _volData;
     int _onCount; // how many non-zero voxels are in _volData
 
-    bool _neighborsNeedUpdate { false };
+    // bool _neighborsNeedUpdate { false };
+    bool _neighborXNeedsUpdate { false };
+    bool _neighborYNeedsUpdate { false };
+    bool _neighborZNeedsUpdate { false };
+
+    bool _updateFromNeighborXEdge { false };
+    bool _updateFromNeighborYEdge { false };
+    bool _updateFromNeighborZEdge { false };
 
     // these are cached lookups of _xNNeighborID, _yNNeighborID, _zNNeighborID, _xPNeighborID, _yPNeighborID, _zPNeighborID
     EntityItemWeakPointer _xNNeighbor; // neighbor found by going along negative X axis
@@ -219,7 +231,7 @@ private:
     glm::mat4 _lastVoxelToWorldMatrix;
     PolyVoxEntityItem::PolyVoxSurfaceStyle _lastSurfaceStyle { PolyVoxEntityItem::SURFACE_MARCHING_CUBES };
     std::array<QString, 3> _xyzTextureUrls;
-    bool _neighborsNeedUpdate{ false };
+    // bool _neighborsNeedUpdate{ false };
 };
 
 } }
