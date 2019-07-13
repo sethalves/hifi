@@ -132,9 +132,8 @@ public:
     uint8_t getVoxelInternal(const ivec3& v) const;
     bool setVoxelInternal(const ivec3& v, uint8_t toValue);
 
-    void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); }
-    void compressFinished() { withWriteLock([&] { _state = PolyVoxState::CompressingFinished; }); }
-
+    void setVolDataDirty() { withWriteLock([&] { _volDataDirty = true; _voxelDataDirty = false; _shapeReady = false; }); startUpdates(); }
+    void compressVolumeDataFinished(const QByteArray& voxelData);
 
     bool getMeshes(MeshProxyList& result) override; // deprecated
     virtual scriptable::ScriptableModelBase getScriptableModel() override;
@@ -185,7 +184,6 @@ private:
     EntityItemWeakPointer _xPNeighbor; // neighbor found by going along positive X axis
     EntityItemWeakPointer _yPNeighbor;
     EntityItemWeakPointer _zPNeighbor;
-
 };
 
 namespace render { namespace entities {
@@ -199,7 +197,7 @@ public:
     virtual scriptable::ScriptableModelBase getScriptableModel() override {
         return asTypedEntity<RenderablePolyVoxEntityItem>()->getScriptableModel();
     }
-    
+
 protected:
     virtual ItemKey getKey() override { return ItemKey::Builder::opaqueShape().withTagBits(getTagMask()).withLayer(getHifiRenderLayer()); }
     virtual ShapeKey getShapeKey() override;
