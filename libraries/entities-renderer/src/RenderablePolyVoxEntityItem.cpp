@@ -757,8 +757,6 @@ void RenderablePolyVoxEntityItem::update(const quint64& now) {
     bool doCompress { false };
     bool doRecomputeShape { false };
 
-    auto id = getID();
-
     copyUpperEdgesFromNeighbors();
 
     withWriteLock([&] {
@@ -1308,10 +1306,7 @@ void RenderablePolyVoxEntityItem::recomputeMesh() {
 
     auto entity = std::static_pointer_cast<RenderablePolyVoxEntityItem>(getThisPointer());
 
-    // QThreadPool::globalInstance()->setMaxThreadCount(8);
-    auto id = getID();
-
-    QtConcurrent::run([entity, voxelSurfaceStyle, id] {
+    QtConcurrent::run([entity, voxelSurfaceStyle] {
         graphics::MeshPointer mesh(new graphics::Mesh());
 
         // A mesh object to hold the result of surface extraction
