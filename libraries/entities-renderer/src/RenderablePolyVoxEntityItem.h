@@ -149,6 +149,7 @@ private:
     bool updateOnCount(const ivec3& v, uint8_t toValue);
     PolyVox::RaycastResult doRayCast(glm::vec4 originInVoxel, glm::vec4 farInVoxel, glm::vec4& result) const;
 
+    void changeUpdates(bool value);
     void startUpdates();
     void stopUpdates();
 

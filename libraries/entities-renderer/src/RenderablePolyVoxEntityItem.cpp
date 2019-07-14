@@ -730,22 +730,26 @@ void RenderablePolyVoxEntityItem::computeShapeInfo(ShapeInfo& info) {
     });
 }
 
+void RenderablePolyVoxEntityItem::changeUpdates(bool value) {
+    if (_updateNeeded != value) {
+        _updateNeeded = value;
+        _flags |= Simulation::DIRTY_UPDATEABLE;
+
+        EntityTreePointer entityTree = getTree();
+        assert(entityTree);
+        EntitySimulationPointer simulation = entityTree->getSimulation();
+        assert(simulation);
+        simulation->changeEntity(getThisPointer());
+    }
+}
 
 void RenderablePolyVoxEntityItem::startUpdates() {
-    if (!_updateNeeded) {
-        _updateNeeded = true;
-        _flags |= Simulation::DIRTY_UPDATEABLE;
-    }
+    changeUpdates(true);
 }
-
 
 void RenderablePolyVoxEntityItem::stopUpdates() {
-    if (_updateNeeded) {
-        _updateNeeded = false;
-        _flags |= Simulation::DIRTY_UPDATEABLE;
-    }
+    changeUpdates(false);
 }
-
 
 void RenderablePolyVoxEntityItem::update(const quint64& now) {
     bool doRecomputeMesh { false };
@@ -758,9 +762,6 @@ void RenderablePolyVoxEntityItem::update(const quint64& now) {
     copyUpperEdgesFromNeighbors();
 
     withWriteLock([&] {
-
-        qDebug() << "QQQQ RenderablePolyVoxEntityItem::updateDependents" << _state << "volD=" << _volDataDirty << "voxD=" << _voxelDataDirty << id;
-
         tellNeighborsToRecopyEdges(false);
 
         switch (_state) {
@@ -1206,6 +1207,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
     cacheNeighbors();
 
     if (_updateFromNeighborXEdge) {
+        _updateFromNeighborXEdge = false;
         auto currentXPNeighbor = getXPNeighbor();
         if (currentXPNeighbor && currentXPNeighbor->getVoxelVolumeSize() == _voxelVolumeSize) {
             withWriteLock([&] {
@@ -1213,7 +1215,11 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int y = 0; y < _volData->getHeight(); y++) {
                     for (int z = 0; z < _volData->getDepth(); z++) {
                         uint8_t neighborValue = currentXPNeighbor->getVoxel({ 0, y, z });
-                        _volData->setVoxelAt(x, y, z, neighborValue);
+                        uint8_t prevValue = _volData->getVoxelAt(x, y, z);
+                        if (prevValue != neighborValue) {
+                            _volData->setVoxelAt(x, y, z, neighborValue);
+                            _volDataDirty = true;
+                        }
                     }
                 }
             });
@@ -1221,6 +1227,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
     }
 
     if (_updateFromNeighborYEdge) {
+        _updateFromNeighborYEdge = false;
         auto currentYPNeighbor = getYPNeighbor();
         if (currentYPNeighbor && currentYPNeighbor->getVoxelVolumeSize() == _voxelVolumeSize) {
             withWriteLock([&] {
@@ -1229,6 +1236,11 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                     for (int z = 0; z < _volData->getDepth(); z++) {
                         uint8_t neighborValue = currentYPNeighbor->getVoxel({ x, 0, z });
                         _volData->setVoxelAt(x, y, z, neighborValue);
+                        uint8_t prevValue = _volData->getVoxelAt(x, y, z);
+                        if (prevValue != neighborValue) {
+                            _volData->setVoxelAt(x, y, z, neighborValue);
+                            _volDataDirty = true;
+                        }
                     }
                 }
             });
@@ -1236,6 +1248,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
     }
 
     if (_updateFromNeighborZEdge) {
+        _updateFromNeighborZEdge = false;
         auto currentZPNeighbor = getZPNeighbor();
         if (currentZPNeighbor && currentZPNeighbor->getVoxelVolumeSize() == _voxelVolumeSize) {
             withWriteLock([&] {
@@ -1244,6 +1257,11 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                     for (int y = 0; y < _volData->getHeight(); y++) {
                         uint8_t neighborValue = currentZPNeighbor->getVoxel({ x, y, 0 });
                         _volData->setVoxelAt(x, y, z, neighborValue);
+                        uint8_t prevValue = _volData->getVoxelAt(x, y, z);
+                        if (prevValue != neighborValue) {
+                            _volData->setVoxelAt(x, y, z, neighborValue);
+                            _volDataDirty = true;
+                        }
                     }
                 }
             });
@@ -1261,7 +1279,6 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentXNNeighbor = getXNNeighbor();
             if (currentXNNeighbor) {
                 currentXNNeighbor->neighborXEdgeChanged();
-                currentXNNeighbor->startUpdates();
             }
         }
         if (force || _neighborYNeedsUpdate) {
@@ -1269,7 +1286,6 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentYNNeighbor = getYNNeighbor();
             if (currentYNNeighbor) {
                 currentYNNeighbor->neighborYEdgeChanged();
-                currentYNNeighbor->startUpdates();
             }
         }
         if (force || _neighborZNeedsUpdate) {
@@ -1277,7 +1293,6 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentZNNeighbor = getZNNeighbor();
             if (currentZNNeighbor) {
                 currentZNNeighbor->neighborZEdgeChanged();
-                currentZNNeighbor->startUpdates();
             }
         }
     }
@@ -1295,12 +1310,8 @@ void RenderablePolyVoxEntityItem::recomputeMesh() {
 
     // QThreadPool::globalInstance()->setMaxThreadCount(8);
     auto id = getID();
-    qDebug() << "QQQQ compute mesh -- active:" << QThreadPool::globalInstance()->activeThreadCount()
-             << "max:" << QThreadPool::globalInstance()->maxThreadCount()
-             << "id:" << id;
 
     QtConcurrent::run([entity, voxelSurfaceStyle, id] {
-        qDebug() << "QQQQ running" << id;
         graphics::MeshPointer mesh(new graphics::Mesh());
 
         // A mesh object to hold the result of surface extraction
