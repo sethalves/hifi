@@ -1233,7 +1233,6 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int x = 0; x < _volData->getWidth(); x++) {
                     for (int z = 0; z < _volData->getDepth(); z++) {
                         uint8_t neighborValue = currentYPNeighbor->getVoxel({ x, 0, z });
-                        _volData->setVoxelAt(x, y, z, neighborValue);
                         uint8_t prevValue = _volData->getVoxelAt(x, y, z);
                         if (prevValue != neighborValue) {
                             _volData->setVoxelAt(x, y, z, neighborValue);
@@ -1254,7 +1253,6 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int x = 0; x < _volData->getWidth(); x++) {
                     for (int y = 0; y < _volData->getHeight(); y++) {
                         uint8_t neighborValue = currentZPNeighbor->getVoxel({ x, y, 0 });
-                        _volData->setVoxelAt(x, y, z, neighborValue);
                         uint8_t prevValue = _volData->getVoxelAt(x, y, z);
                         if (prevValue != neighborValue) {
                             _volData->setVoxelAt(x, y, z, neighborValue);
