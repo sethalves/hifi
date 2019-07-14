@@ -971,7 +971,7 @@ void RenderablePolyVoxEntityItem::setVoxelMarkNeighbors(int x, int y, int z, uin
         _neighborYNeedsUpdate = true;
         startUpdates();
     }
-    if (y == 0) {
+    if (z == 0) {
         _neighborZNeedsUpdate = true;
         startUpdates();
     }
@@ -1069,7 +1069,11 @@ void RenderablePolyVoxEntityItem::setVoxelsFromData(QByteArray uncompressedData,
 
         _state = PolyVoxState::UncompressingFinished;
         startUpdates();
+
+        // _updateFromNeighborXEdge = _updateFromNeighborYEdge = _updateFromNeighborZEdge = true;
     });
+
+    // tellNeighborsToRecopyEdges(true);
 }
 
 void RenderablePolyVoxEntityItem::compressVolumeDataAndSendEditPacket() {
@@ -1209,7 +1213,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int y = 0; y < _volData->getHeight(); y++) {
                     for (int z = 0; z < _volData->getDepth(); z++) {
                         uint8_t neighborValue = currentXPNeighbor->getVoxel({ 0, y, z });
-                        setVoxelMarkNeighbors(x, y, z, neighborValue);
+                        _volData->setVoxelAt(x, y, z, neighborValue);
                     }
                 }
             });
@@ -1224,7 +1228,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int x = 0; x < _volData->getWidth(); x++) {
                     for (int z = 0; z < _volData->getDepth(); z++) {
                         uint8_t neighborValue = currentYPNeighbor->getVoxel({ x, 0, z });
-                        setVoxelMarkNeighbors(x, y, z, neighborValue);
+                        _volData->setVoxelAt(x, y, z, neighborValue);
                     }
                 }
             });
@@ -1239,7 +1243,7 @@ void RenderablePolyVoxEntityItem::copyUpperEdgesFromNeighbors() {
                 for (int x = 0; x < _volData->getWidth(); x++) {
                     for (int y = 0; y < _volData->getHeight(); y++) {
                         uint8_t neighborValue = currentZPNeighbor->getVoxel({ x, y, 0 });
-                        setVoxelMarkNeighbors(x, y, z, neighborValue);
+                        _volData->setVoxelAt(x, y, z, neighborValue);
                     }
                 }
             });
@@ -1257,6 +1261,7 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentXNNeighbor = getXNNeighbor();
             if (currentXNNeighbor) {
                 currentXNNeighbor->neighborXEdgeChanged();
+                currentXNNeighbor->startUpdates();
             }
         }
         if (force || _neighborYNeedsUpdate) {
@@ -1264,6 +1269,7 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentYNNeighbor = getYNNeighbor();
             if (currentYNNeighbor) {
                 currentYNNeighbor->neighborYEdgeChanged();
+                currentYNNeighbor->startUpdates();
             }
         }
         if (force || _neighborZNeedsUpdate) {
@@ -1271,6 +1277,7 @@ void RenderablePolyVoxEntityItem::tellNeighborsToRecopyEdges(bool force) {
             auto currentZNNeighbor = getZNNeighbor();
             if (currentZNNeighbor) {
                 currentZNNeighbor->neighborZEdgeChanged();
+                currentZNNeighbor->startUpdates();
             }
         }
     }
@@ -1540,6 +1547,8 @@ void RenderablePolyVoxEntityItem::setXNNeighborID(const EntityItemID& xNNeighbor
 
     if (xNNeighborID != _xNNeighborID) {
         PolyVoxEntityItem::setXNNeighborID(xNNeighborID);
+        _neighborXNeedsUpdate = true;
+        startUpdates();
     }
 }
 
@@ -1550,6 +1559,8 @@ void RenderablePolyVoxEntityItem::setYNNeighborID(const EntityItemID& yNNeighbor
 
     if (yNNeighborID != _yNNeighborID) {
         PolyVoxEntityItem::setYNNeighborID(yNNeighborID);
+        _neighborYNeedsUpdate = true;
+        startUpdates();
     }
 }
 
@@ -1560,6 +1571,8 @@ void RenderablePolyVoxEntityItem::setZNNeighborID(const EntityItemID& zNNeighbor
 
     if (zNNeighborID != _zNNeighborID) {
         PolyVoxEntityItem::setZNNeighborID(zNNeighborID);
+        _neighborZNeedsUpdate = true;
+        startUpdates();
     }
 }
 
