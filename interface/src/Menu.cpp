@@ -534,24 +534,6 @@ Menu::Menu() {
     addCheckableActionToQMenuAndActionHash(faceTrackingMenu, MenuOption::AutoMuteAudio, 0, false);
 #endif
 
-#ifdef HAVE_IVIEWHMD
-    // Developer > Avatar > Eye Tracking
-    MenuWrapper* eyeTrackingMenu = avatarDebugMenu->addMenu("Eye Tracking");
-    addCheckableActionToQMenuAndActionHash(eyeTrackingMenu, MenuOption::SMIEyeTracking, 0, false,
-        qApp, SLOT(setActiveEyeTracker()));
-    {
-        MenuWrapper* calibrateEyeTrackingMenu = eyeTrackingMenu->addMenu("Calibrate");
-        addActionToQMenuAndActionHash(calibrateEyeTrackingMenu, MenuOption::OnePointCalibration, 0,
-            qApp, SLOT(calibrateEyeTracker1Point()));
-        addActionToQMenuAndActionHash(calibrateEyeTrackingMenu, MenuOption::ThreePointCalibration, 0,
-            qApp, SLOT(calibrateEyeTracker3Points()));
-        addActionToQMenuAndActionHash(calibrateEyeTrackingMenu, MenuOption::FivePointCalibration, 0,
-            qApp, SLOT(calibrateEyeTracker5Points()));
-    }
-    addCheckableActionToQMenuAndActionHash(eyeTrackingMenu, MenuOption::SimulateEyeTracking, 0, false,
-        qApp, SLOT(setActiveEyeTracker()));
-#endif
-
     action = addCheckableActionToQMenuAndActionHash(avatarDebugMenu, MenuOption::AvatarReceiveStats, 0, false);
     connect(action, &QAction::triggered, [this]{ Avatar::setShowReceiveStats(isOptionChecked(MenuOption::AvatarReceiveStats)); });
     action = addCheckableActionToQMenuAndActionHash(avatarDebugMenu, MenuOption::ShowBoundingCollisionShapes, 0, false);

@@ -17,7 +17,6 @@
 #include <DependencyManager.h>
 #include <GeometryUtil.h>
 #include <trackers/FaceTracker.h>
-#include <trackers/EyeTracker.h>
 #include <Rig.h>
 #include "Logging.h"
 

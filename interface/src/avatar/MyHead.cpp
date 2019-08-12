@@ -15,7 +15,6 @@
 #include <recording/Deck.h>
 #include <Rig.h>
 #include <trackers/FaceTracker.h>
-#include <trackers/EyeTracker.h>
 
 #include "devices/DdeFaceTracker.h"
 #include "Application.h"
@@ -54,10 +53,6 @@ void MyHead::simulate(float deltaTime) {
                 _blendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
             }
         }
-
-        auto eyeTracker = DependencyManager::get<EyeTracker>();
-        _isEyeTrackerConnected = eyeTracker->isTracking();
-        // if eye tracker is connected we should get the data here.
     }
     Parent::simulate(deltaTime);
 }
