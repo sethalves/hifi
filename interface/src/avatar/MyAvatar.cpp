@@ -772,6 +772,16 @@ void MyAvatar::update(float deltaTime) {
     emit energyChanged(currentEnergy);
 
     updateEyeContactTarget(deltaTime);
+
+    if (getControllerPoseInAvatarFrame(controller::Action::LEFT_EYE).valid) { // XXX make is-eye-tracked function
+        auto userInputMapper = DependencyManager::get<UserInputMapper>();
+        float leftEyeBlink = userInputMapper->getActionState(controller::Action::LEFT_EYE_BLINK);
+        float rightEyeBlink = userInputMapper->getActionState(controller::Action::RIGHT_EYE_BLINK);
+        _headData->setEyeBlinkValues(leftEyeBlink, rightEyeBlink);
+        _headData->setEyeTrackerConnected(true);
+    } else {
+        _headData->setEyeTrackerConnected(false);
+    }
 }
 
 void MyAvatar::updateEyeContactTarget(float deltaTime) {
@@ -6271,5 +6281,4 @@ void MyAvatar::endSit(const glm::vec3& position, const glm::quat& rotation) {
             setSitDriveKeysStatus(true);
         });
     }
-
 }

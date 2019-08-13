@@ -13,9 +13,19 @@
 #include <algorithm>
 #include <string>
 
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning( disable : 4091 )
+#pragma warning( disable : 4334 )
+#endif
+
 #include <SRanipal.h>
 #include <SRanipal_Eye.h>
 #include <SRanipal_Enums.h>
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
 
 #include <PerfStat.h>
 #include <PathUtils.h>
@@ -335,7 +345,23 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
             float leftEyeLen = glm::length2(leftVec);
             float rightEyeLen = glm::length2(rightVec);
 
-            eyesValid = leftEyeLen > 0.01 && rightEyeLen > 0.01 && _inputDevice->_poseStateMap[controller::HEAD].valid;
+            bool leftDirectionValid =
+                (eye_data.verbose_data.left.eye_data_validata_bit_mask &
+                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
+            bool rightDirectionValid =
+                (eye_data.verbose_data.right.eye_data_validata_bit_mask &
+                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
+            bool leftOpennessValid =
+                (eye_data.verbose_data.left.eye_data_validata_bit_mask &
+                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
+            bool rightOpennessValid =
+                (eye_data.verbose_data.right.eye_data_validata_bit_mask &
+                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
+
+            // eyesValid = leftEyeLen > 0.01 && rightEyeLen > 0.01 && _inputDevice->_poseStateMap[controller::HEAD].valid;
+            eyesValid = _inputDevice->_poseStateMap[controller::HEAD].valid &&
+                leftDirectionValid && rightDirectionValid && leftOpennessValid && rightOpennessValid;
+
             if (eyesValid) {
                 // in the data from sranipal, left=+x, up=+y, forward=+z
                 mat4 localLeftEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), leftVec, vec3(0.0f, 1.0f, 0.0f));
@@ -349,6 +375,12 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
 
                 _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
                 _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
+
+                quint64 now = usecTimestampNow();
+                _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
+                    controller::AxisValue(1.0f - eye_data.verbose_data.left.eye_openness, now);
+                _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
+                    controller::AxisValue(1.0f - eye_data.verbose_data.right.eye_openness, now);
             }
         }
     }
@@ -1472,6 +1504,8 @@ controller::Input::NamedVector ViveControllerManager::InputDevice::getAvailableI
         makePair(RIGHT_ARM, "RightArm"),
         makePair(LEFT_EYE, "LeftEye"),
         makePair(RIGHT_EYE, "RightEye"),
+        makePair(LEFT_EYE_BLINK, "LeftEyeBlink"),
+        makePair(RIGHT_EYE_BLINK, "RightEyeBlink"),
 
         // 16 tracked poses
         makePair(TRACKED_OBJECT_00, "TrackedObject00"),

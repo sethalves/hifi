@@ -183,6 +183,8 @@ enum class Action {
 
     LEFT_EYE,
     RIGHT_EYE,
+    LEFT_EYE_BLINK,
+    RIGHT_EYE_BLINK,
 
     NUM_ACTIONS
 };

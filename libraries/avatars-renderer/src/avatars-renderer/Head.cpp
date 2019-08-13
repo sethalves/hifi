@@ -80,7 +80,9 @@ void Head::simulate(float deltaTime) {
     const float BLINK_START_VARIABILITY = 0.25f;
     const float FULLY_OPEN = 0.0f;
     const float FULLY_CLOSED = 1.0f;
-    if (getHasProceduralBlinkFaceMovement()) {
+    if (_isEyeTrackerConnected) {
+        // _rightEyeBlink and _leftEyeBlink will have already been set from MyAvatar::update
+    } else if (getHasProceduralBlinkFaceMovement()) {
         // Detect transition from talking to not; force blink after that and a delay
         bool forceBlink = false;
         const float TALKING_LOUDNESS = 100.0f;
@@ -128,7 +130,7 @@ void Head::simulate(float deltaTime) {
         _leftEyeBlink = FULLY_OPEN;
     }
 
-        // use data to update fake Faceshift blendshape coefficients
+    // use data to update fake Faceshift blendshape coefficients
     if (getHasAudioEnabledFaceMovement()) {
         // Update audio attack data for facial animation (eyebrows and mouth)
         float audioAttackAveragingRate = (10.0f - deltaTime * NORMAL_HZ) / 10.0f; // --> 0.9 at 60 Hz
@@ -151,7 +153,8 @@ void Head::simulate(float deltaTime) {
         _mouthTime = 0.0f;
     }
 
-    FaceTracker::updateFakeCoefficients(_leftEyeBlink,
+    FaceTracker::updateFakeCoefficients(
+        _leftEyeBlink,
         _rightEyeBlink,
         _browAudioLift,
         _audioJawOpen,
@@ -160,7 +163,7 @@ void Head::simulate(float deltaTime) {
         _mouth4,
         _transientBlendshapeCoefficients);
 
-    if (getHasProceduralEyeFaceMovement()) {
+    if (!_isEyeTrackerConnected && getHasProceduralEyeFaceMovement()) {
         applyEyelidOffset(getOrientation());
     }
 

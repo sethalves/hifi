@@ -95,6 +95,12 @@ public:
     QJsonObject toJson() const;
     void fromJson(const QJsonObject& json);
 
+    void setEyeTrackerConnected(bool value) { _isEyeTrackerConnected = value; }
+    void setEyeBlinkValues(float leftEyeBlink, float rightEyeBlink) {
+        _leftEyeBlink = leftEyeBlink;
+        _rightEyeBlink = rightEyeBlink;
+    }
+
 protected:
     // degrees
     float _baseYaw;

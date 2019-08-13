@@ -90,6 +90,8 @@ namespace controller {
         // Grips
         LEFT_GRIP,
         RIGHT_GRIP,
+        LEFT_EYE_BLINK,
+        RIGHT_EYE_BLINK,
         NUM_STANDARD_AXES,
         LZ = LT,
         RZ = RT

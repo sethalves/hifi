@@ -61,6 +61,9 @@
         { "from": "Standard.LeftEye", "to": "Actions.LeftEye" },
         { "from": "Standard.RightEye", "to": "Actions.RightEye" },
 
+        { "from": "Standard.LeftEyeBlink", "to": "Actions.LeftEyeBlink" },
+        { "from": "Standard.RightEyeBlink", "to": "Actions.RightEyeBlink" },
+
         { "from": "Standard.TrackedObject00", "to" : "Actions.TrackedObject00" },
         { "from": "Standard.TrackedObject01", "to" : "Actions.TrackedObject01" },
         { "from": "Standard.TrackedObject02", "to" : "Actions.TrackedObject02" },

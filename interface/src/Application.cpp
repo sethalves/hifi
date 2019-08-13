@@ -5753,7 +5753,6 @@ void Application::updateMyAvatarLookAtPosition() {
     FaceTracker* faceTracker = getActiveFaceTracker();
 
     bool isLookingAtSomeone = false;
-    bool isHMD = qApp->isHMDMode();
     glm::vec3 lookAtSpot;
 
     controller::Pose leftEyePose = myAvatar->getControllerPoseInAvatarFrame(controller::Action::LEFT_EYE);
