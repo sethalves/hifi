@@ -13,6 +13,10 @@
 #include <algorithm>
 #include <string>
 
+#include <SRanipal.h>
+#include <SRanipal_Eye.h>
+#include <SRanipal_Enums.h>
+
 #include <PerfStat.h>
 #include <PathUtils.h>
 #include <GeometryCache.h>
@@ -230,6 +234,23 @@ bool ViveControllerManager::activate() {
     auto userInputMapper = DependencyManager::get<controller::UserInputMapper>();
     userInputMapper->registerDevice(_inputDevice);
     _registeredWithInputMapper = true;
+
+	if (ViveSR::anipal::Eye::IsViveProEye()) {
+        qDebug() << "Vive Pro eye-tracking detected";
+
+        int error = ViveSR::anipal::Initial(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE, NULL);
+        if (error == ViveSR::Error::WORK) {
+            _viveProEye = true;
+            qDebug() << "Successfully initialize Eye engine.";
+        } else if (error == ViveSR::Error::RUNTIME_NOT_FOUND) {
+            _viveProEye = false;
+            qDebug() << "please follows SRanipal SDK guide to install SR_Runtime first";
+        } else {
+            _viveProEye = false;
+            qDebug() << "Failed to initialize Eye engine. please refer to ViveSR error code:" << error;
+        }
+    }
+
     return true;
 }
 
@@ -250,6 +271,10 @@ void ViveControllerManager::deactivate() {
     auto userInputMapper = DependencyManager::get<controller::UserInputMapper>();
     userInputMapper->removeDevice(_inputDevice->_deviceID);
     _registeredWithInputMapper = false;
+
+    if (_viveProEye) {
+        ViveSR::anipal::Release(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE);
+    }
 
     saveSettings();
 }
@@ -296,6 +321,40 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
     if (!_registeredWithInputMapper && _inputDevice->_trackedControllers > 0) {
         userInputMapper->registerDevice(_inputDevice);
         _registeredWithInputMapper = true;
+    }
+
+    bool eyesValid = false;
+    if (_viveProEye) {
+        ViveSR::anipal::Eye::EyeData eye_data;
+        int result = ViveSR::anipal::Eye::GetEyeData(&eye_data);
+        if (result == ViveSR::Error::WORK) {
+            float *leftGaze = eye_data.verbose_data.left.gaze_direction_normalized.elem_;
+            float *rightGaze = eye_data.verbose_data.right.gaze_direction_normalized.elem_;
+            glm::vec3 leftVec = glm::vec3(-leftGaze[0], leftGaze[1], leftGaze[2]);
+            glm::vec3 rightVec = glm::vec3(-rightGaze[0], rightGaze[1], rightGaze[2]);
+            float leftEyeLen = glm::length2(leftVec);
+            float rightEyeLen = glm::length2(rightVec);
+
+            eyesValid = leftEyeLen > 0.01 && rightEyeLen > 0.01 && _inputDevice->_poseStateMap[controller::HEAD].valid;
+            if (eyesValid) {
+                // in the data from sranipal, left=+x, up=+y, forward=+z
+                mat4 localLeftEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), leftVec, vec3(0.0f, 1.0f, 0.0f));
+                // rotate by 180 to make -z forward for eye.
+                quat localLeftEyeRot = glm::quat_cast(localLeftEyeMat) /* * Quaternions::Y_180 */;
+                quat avatarLeftEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localLeftEyeRot;
+
+                mat4 localRightEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), rightVec, vec3(0.0f, 1.0f, 0.0f));
+                quat localRightEyeRot = glm::quat_cast(localRightEyeMat) /* * Quaternions::Y_180 */;
+                quat avatarRightEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localRightEyeRot;
+
+                _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
+                _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
+            }
+        }
+    }
+    if (!eyesValid) {
+        _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
+        _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
     }
 }
 
@@ -1411,6 +1470,8 @@ controller::Input::NamedVector ViveControllerManager::InputDevice::getAvailableI
         makePair(HEAD, "Head"),
         makePair(LEFT_ARM, "LeftArm"),
         makePair(RIGHT_ARM, "RightArm"),
+        makePair(LEFT_EYE, "LeftEye"),
+        makePair(RIGHT_EYE, "RightEye"),
 
         // 16 tracked poses
         makePair(TRACKED_OBJECT_00, "TrackedObject00"),

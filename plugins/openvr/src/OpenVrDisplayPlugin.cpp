@@ -31,10 +31,6 @@
 #include <ui-plugins/PluginContainer.h>
 #include <gl/OffscreenGLCanvas.h>
 
-#include <SRanipal.h>
-#include <SRanipal_Eye.h>
-#include <SRanipal_Enums.h>
-
 #include "OpenVrHelpers.h"
 
 Q_DECLARE_LOGGING_CATEGORY(displayplugins)
@@ -406,12 +402,6 @@ void OpenVrDisplayPlugin::init() {
     _visionSqueezeDeviceHighX = 0.98f;
     _visionSqueezeDeviceLowY = 0.8f;
     _visionSqueezeDeviceHighY = 0.9f;
-
-	if (ViveSR::anipal::Eye::IsViveProEye()){
-        qDebug() << "ViveSR::anipal::Eye::IsViveProEye detected";
-	} else {
-        qDebug() << "ViveSR::anipal::Eye::IsViveProEye not detected";
-    }
 
     emit deviceConnected(getName());
 }

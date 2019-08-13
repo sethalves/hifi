@@ -229,6 +229,8 @@ private:
     vr::IVRSystem* _system { nullptr };
     std::shared_ptr<InputDevice> _inputDevice { std::make_shared<InputDevice>(_system) };
 
+    bool _viveProEye { false };
+
     static const char* NAME;
 };
 

@@ -5755,64 +5755,71 @@ void Application::updateMyAvatarLookAtPosition() {
     bool isLookingAtSomeone = false;
     bool isHMD = qApp->isHMDMode();
     glm::vec3 lookAtSpot;
-    AvatarSharedPointer lookingAt = myAvatar->getLookAtTargetAvatar().lock();
-    bool haveLookAtCandidate = lookingAt && myAvatar.get() != lookingAt.get();
-    auto avatar = static_pointer_cast<Avatar>(lookingAt);
-    bool mutualLookAtSnappingEnabled = avatar && avatar->getLookAtSnappingEnabled() && myAvatar->getLookAtSnappingEnabled();
-    if (haveLookAtCandidate && mutualLookAtSnappingEnabled) {
-        //  If I am looking at someone else, look directly at one of their eyes
-        isLookingAtSomeone = true;
-        auto lookingAtHead = avatar->getHead();
 
-        const float MAXIMUM_FACE_ANGLE = 65.0f * RADIANS_PER_DEGREE;
-        glm::vec3 lookingAtFaceOrientation = lookingAtHead->getFinalOrientationInWorldFrame() * IDENTITY_FORWARD;
-        glm::vec3 fromLookingAtToMe = glm::normalize(myAvatar->getHead()->getEyePosition()
-                                                     - lookingAtHead->getEyePosition());
-        float faceAngle = glm::angle(lookingAtFaceOrientation, fromLookingAtToMe);
+    controller::Pose leftEyePose = myAvatar->getControllerPoseInAvatarFrame(controller::Action::LEFT_EYE);
+    if (leftEyePose.isValid()) {
+        lookAtSpot = myAvatar->getHead()->getEyePosition() +
+            (myAvatar->getWorldOrientation() * leftEyePose.rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+    } else {
+        AvatarSharedPointer lookingAt = myAvatar->getLookAtTargetAvatar().lock();
+        bool haveLookAtCandidate = lookingAt && myAvatar.get() != lookingAt.get();
+        auto avatar = static_pointer_cast<Avatar>(lookingAt);
+        bool mutualLookAtSnappingEnabled = avatar && avatar->getLookAtSnappingEnabled() && myAvatar->getLookAtSnappingEnabled();
+        if (haveLookAtCandidate && mutualLookAtSnappingEnabled) {
+            //  If I am looking at someone else, look directly at one of their eyes
+            isLookingAtSomeone = true;
+            auto lookingAtHead = avatar->getHead();
 
-        if (faceAngle < MAXIMUM_FACE_ANGLE) {
-            // Randomly look back and forth between look targets
-            eyeContactTarget target = Menu::getInstance()->isOptionChecked(MenuOption::FixGaze) ?
-                LEFT_EYE : myAvatar->getEyeContactTarget();
-            switch (target) {
-                case LEFT_EYE:
-                    lookAtSpot = lookingAtHead->getLeftEyePosition();
-                    break;
-                case RIGHT_EYE:
-                    lookAtSpot = lookingAtHead->getRightEyePosition();
-                    break;
-                case MOUTH:
-                    lookAtSpot = lookingAtHead->getMouthPosition();
-                    break;
+            const float MAXIMUM_FACE_ANGLE = 65.0f * RADIANS_PER_DEGREE;
+            glm::vec3 lookingAtFaceOrientation = lookingAtHead->getFinalOrientationInWorldFrame() * IDENTITY_FORWARD;
+            glm::vec3 fromLookingAtToMe = glm::normalize(myAvatar->getHead()->getEyePosition()
+                - lookingAtHead->getEyePosition());
+            float faceAngle = glm::angle(lookingAtFaceOrientation, fromLookingAtToMe);
+
+            if (faceAngle < MAXIMUM_FACE_ANGLE) {
+                // Randomly look back and forth between look targets
+                eyeContactTarget target = Menu::getInstance()->isOptionChecked(MenuOption::FixGaze) ?
+                    LEFT_EYE : myAvatar->getEyeContactTarget();
+                switch (target) {
+                    case LEFT_EYE:
+                        lookAtSpot = lookingAtHead->getLeftEyePosition();
+                        break;
+                    case RIGHT_EYE:
+                        lookAtSpot = lookingAtHead->getRightEyePosition();
+                        break;
+                    case MOUTH:
+                        lookAtSpot = lookingAtHead->getMouthPosition();
+                        break;
+                }
+            } else {
+                // Just look at their head (mid point between eyes)
+                lookAtSpot = lookingAtHead->getEyePosition();
             }
         } else {
-            // Just look at their head (mid point between eyes)
-            lookAtSpot = lookingAtHead->getEyePosition();
+            //  I am not looking at anyone else, so just look forward
+            auto headPose = myAvatar->getControllerPoseInWorldFrame(controller::Action::HEAD);
+            if (headPose.isValid()) {
+                lookAtSpot = transformPoint(headPose.getMatrix(), glm::vec3(0.0f, 0.0f, TREE_SCALE));
+            } else {
+                lookAtSpot = myAvatar->getHead()->getEyePosition() +
+                    (myAvatar->getHead()->getFinalOrientationInWorldFrame() * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
+            }
         }
-    } else {
-        //  I am not looking at anyone else, so just look forward
-        auto headPose = myAvatar->getControllerPoseInWorldFrame(controller::Action::HEAD);
-        if (headPose.isValid()) {
-            lookAtSpot = transformPoint(headPose.getMatrix(), glm::vec3(0.0f, 0.0f, TREE_SCALE));
-        } else {
-            lookAtSpot = myAvatar->getHead()->getEyePosition() +
-                (myAvatar->getHead()->getFinalOrientationInWorldFrame() * glm::vec3(0.0f, 0.0f, -TREE_SCALE));
-        }
-    }
 
-    // Deflect the eyes a bit to match the detected gaze from the face tracker if active.
-    if (faceTracker && !faceTracker->isMuted()) {
-        float eyePitch = faceTracker->getEstimatedEyePitch();
-        float eyeYaw = faceTracker->getEstimatedEyeYaw();
-        const float GAZE_DEFLECTION_REDUCTION_DURING_EYE_CONTACT = 0.1f;
-        glm::vec3 origin = myAvatar->getHead()->getEyePosition();
-        float deflection = faceTracker->getEyeDeflection();
-        if (isLookingAtSomeone) {
-            deflection *= GAZE_DEFLECTION_REDUCTION_DURING_EYE_CONTACT;
+        // Deflect the eyes a bit to match the detected gaze from the face tracker if active.
+        if (faceTracker && !faceTracker->isMuted()) {
+            float eyePitch = faceTracker->getEstimatedEyePitch();
+            float eyeYaw = faceTracker->getEstimatedEyeYaw();
+            const float GAZE_DEFLECTION_REDUCTION_DURING_EYE_CONTACT = 0.1f;
+            glm::vec3 origin = myAvatar->getHead()->getEyePosition();
+            float deflection = faceTracker->getEyeDeflection();
+            if (isLookingAtSomeone) {
+                deflection *= GAZE_DEFLECTION_REDUCTION_DURING_EYE_CONTACT;
+            }
+            lookAtSpot = origin + _myCamera.getOrientation() * glm::quat(glm::radians(glm::vec3(
+                eyePitch * deflection, eyeYaw * deflection, 0.0f))) *
+                glm::inverse(_myCamera.getOrientation()) * (lookAtSpot - origin);
         }
-        lookAtSpot = origin + _myCamera.getOrientation() * glm::quat(glm::radians(glm::vec3(
-                                                                                      eyePitch * deflection, eyeYaw * deflection, 0.0f))) *
-            glm::inverse(_myCamera.getOrientation()) * (lookAtSpot - origin);
     }
 
     myAvatar->getHead()->setLookAtPosition(lookAtSpot);
@@ -6385,7 +6392,10 @@ void Application::update(float deltaTime) {
             controller::Action::LEFT_UP_LEG,
             controller::Action::RIGHT_UP_LEG,
             controller::Action::LEFT_TOE_BASE,
-            controller::Action::RIGHT_TOE_BASE
+            controller::Action::RIGHT_TOE_BASE,
+            controller::Action::LEFT_EYE,
+            controller::Action::RIGHT_EYE
+
         };
 
         // copy controller poses from userInputMapper to myAvatar.

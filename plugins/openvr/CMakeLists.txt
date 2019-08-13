@@ -13,6 +13,7 @@ if (WIN32 AND (NOT USE_GLES))
         plugins display-plugins ui-plugins input-plugins script-engine
         audio-client render-utils graphics shaders gpu render material-networking model-networking model-baker hfm fbx ktx image procedural ${PLATFORM_GL_BACKEND})
     include_hifi_library_headers(octree)
+
     target_openvr()
     target_sranipal()
     target_link_libraries(${TARGET_NAME} Winmm.lib)

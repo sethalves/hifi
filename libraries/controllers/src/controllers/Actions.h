@@ -181,6 +181,9 @@ enum class Action {
     TRACKED_OBJECT_15,
     SPRINT,
 
+    LEFT_EYE,
+    RIGHT_EYE,
+
     NUM_ACTIONS
 };
 

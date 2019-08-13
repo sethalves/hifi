@@ -56,6 +56,8 @@
         { "from": "Vive.LeftHand", "to": "Standard.LeftHand" },
         { "from": "Vive.RightHand", "to": "Standard.RightHand" },
         { "from": "Vive.Head", "to" : "Standard.Head" },
+        { "from": "Vive.LeftEye", "to" : "Standard.LeftEye" },
+        { "from": "Vive.RightEye", "to" : "Standard.RightEye" },
 
         {
             "from": "Vive.LeftFoot", "to" : "Standard.LeftFoot",

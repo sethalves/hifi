@@ -174,6 +174,8 @@ namespace controller {
         TRACKED_OBJECT_13,
         TRACKED_OBJECT_14,
         TRACKED_OBJECT_15,
+        LEFT_EYE,
+        RIGHT_EYE,
         NUM_STANDARD_POSES
     };
 
