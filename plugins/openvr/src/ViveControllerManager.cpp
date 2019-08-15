@@ -13,6 +13,20 @@
 #include <algorithm>
 #include <string>
 
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning( disable : 4091 )
+#pragma warning( disable : 4334 )
+#endif
+
+#include <SRanipal.h>
+#include <SRanipal_Eye.h>
+#include <SRanipal_Enums.h>
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
+
 #include <PerfStat.h>
 #include <PathUtils.h>
 #include <GeometryCache.h>
@@ -130,7 +144,6 @@ static glm::mat4 calculateResetMat() {
     return glm::mat4();
 }
 
-#ifdef VIVE_PRO_EYE_READ_THREADED
 class ViveProEyeReadThread : public QThread {
 public:
     ViveProEyeReadThread() {
@@ -140,18 +153,40 @@ public:
         while (!quit) {
             ViveSR::anipal::Eye::EyeData eyeData;
             int result = ViveSR::anipal::Eye::GetEyeData(&eyeData);
-            if (result == ViveSR::Error::WORK) {
+            {
                 QMutexLocker locker(&eyeDataMutex);
-                memcpy(&eyeDataBuffer, &eyeData, sizeof(eyeData));
+                eyeDataBuffer.getEyeDataResult = result;
+                if (result == ViveSR::Error::WORK) {
+                    uint64_t leftValids = eyeData.verbose_data.left.eye_data_validata_bit_mask;
+                    uint64_t rightValids = eyeData.verbose_data.right.eye_data_validata_bit_mask;
+
+                    eyeDataBuffer.leftDirectionValid =
+                        (leftValids & (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
+                    eyeDataBuffer.rightDirectionValid =
+                        (rightValids & (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
+                    eyeDataBuffer.leftOpennessValid =
+                        (leftValids & (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
+                    eyeDataBuffer.rightOpennessValid =
+                        (rightValids & (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
+
+                    float *leftGaze = eyeData.verbose_data.left.gaze_direction_normalized.elem_;
+                    float *rightGaze = eyeData.verbose_data.right.gaze_direction_normalized.elem_;
+                    eyeDataBuffer.leftEyeGaze = glm::vec3(leftGaze[0], leftGaze[1], leftGaze[2]);
+                    eyeDataBuffer.rightEyeGaze = glm::vec3(rightGaze[0], rightGaze[1], rightGaze[2]);
+
+                    eyeDataBuffer.leftEyeOpenness = eyeData.verbose_data.left.eye_openness;
+                    eyeDataBuffer.rightEyeOpenness = eyeData.verbose_data.right.eye_openness;
+                }
             }
         }
     }
 
     bool quit { false };
-    ViveSR::anipal::Eye::EyeData eyeDataBuffer;
+
+    // mutex and buffer for moving data from this thread to the other one
     QMutex eyeDataMutex;
+    EyeDataBuffer eyeDataBuffer;
 };
-#endif // VIVE_PRO_EYE_READ_THREADED
 
 
 static QString outOfRangeDataStrategyToString(ViveControllerManager::OutOfRangeDataStrategy strategy) {
@@ -271,10 +306,8 @@ bool ViveControllerManager::activate() {
         }
 
         if (_viveProEye) {
-#ifdef VIVE_PRO_EYE_READ_THREADED
             _viveProEyeReadThread = std::make_shared<ViveProEyeReadThread>();
             _viveProEyeReadThread->start(QThread::HighPriority);
-#endif
         }
     }
 
@@ -299,14 +332,12 @@ void ViveControllerManager::deactivate() {
     userInputMapper->removeDevice(_inputDevice->_deviceID);
     _registeredWithInputMapper = false;
 
-#ifdef VIVE_PRO_EYE_READ_THREADED
     if (_viveProEyeReadThread) {
         _viveProEyeReadThread->quit = true;
         _viveProEyeReadThread->wait();
         _viveProEyeReadThread = nullptr;
         ViveSR::anipal::Release(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE);
     }
-#endif
 
     saveSettings();
 }
@@ -317,6 +348,87 @@ bool ViveControllerManager::isHeadControllerMounted() const {
     }
     vr::EDeviceActivityLevel activityLevel = _system->GetTrackedDeviceActivityLevel(vr::k_unTrackedDeviceIndex_Hmd);
     return activityLevel == vr::k_EDeviceActivityLevel_UserInteraction;
+}
+
+void ViveControllerManager::invalidateEyeInputs() {
+    _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
+    _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
+    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK].valid = false;
+    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK].valid = false;
+}
+
+
+void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) {
+    if (!isHeadControllerMounted()) {
+        invalidateEyeInputs();
+        return;
+    }
+
+    EyeDataBuffer eyeDataBuffer;
+    {
+        // GetEyeData takes around 4ms to finish, so we run it on a thread.
+        QMutexLocker locker(&_viveProEyeReadThread->eyeDataMutex);
+        memcpy(&eyeDataBuffer, &_viveProEyeReadThread->eyeDataBuffer, sizeof(eyeDataBuffer));
+    }
+
+    if (eyeDataBuffer.getEyeDataResult != ViveSR::Error::WORK) {
+        invalidateEyeInputs();
+        return;
+    }
+
+    // only update from buffer values if the new data is "valid"
+    if (!eyeDataBuffer.leftDirectionValid) {
+        eyeDataBuffer.leftEyeGaze = _prevEyeData.leftEyeGaze;
+        eyeDataBuffer.leftDirectionValid = _prevEyeData.leftDirectionValid;
+    }
+    if (!eyeDataBuffer.rightDirectionValid) {
+        eyeDataBuffer.rightEyeGaze = _prevEyeData.rightEyeGaze;
+        eyeDataBuffer.rightDirectionValid = _prevEyeData.rightDirectionValid;
+    }
+    if (!eyeDataBuffer.leftOpennessValid) {
+        eyeDataBuffer.leftEyeOpenness = _prevEyeData.leftEyeOpenness;
+        eyeDataBuffer.leftOpennessValid = _prevEyeData.leftOpennessValid;
+    }
+    if (!eyeDataBuffer.rightOpennessValid) {
+        eyeDataBuffer.rightEyeOpenness = _prevEyeData.rightEyeOpenness;
+        eyeDataBuffer.rightOpennessValid = _prevEyeData.rightOpennessValid;
+    }
+    _prevEyeData = eyeDataBuffer;
+
+    // transform data into what the controller system expects.
+
+    // in the data from sranipal, left=+x, up=+y, forward=+z
+    mat4 localLeftEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f),
+                                       glm::vec3(-eyeDataBuffer.leftEyeGaze[0],
+                                                 eyeDataBuffer.leftEyeGaze[1],
+                                                 eyeDataBuffer.leftEyeGaze[2]),
+                                       vec3(0.0f, 1.0f, 0.0f));
+    quat localLeftEyeRot = glm::quat_cast(localLeftEyeMat);
+    quat avatarLeftEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localLeftEyeRot;
+
+    mat4 localRightEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f),
+                                        glm::vec3(-eyeDataBuffer.rightEyeGaze[0],
+                                                  eyeDataBuffer.rightEyeGaze[1],
+                                                  eyeDataBuffer.rightEyeGaze[2]),
+                                        vec3(0.0f, 1.0f, 0.0f));
+    quat localRightEyeRot = glm::quat_cast(localRightEyeMat);
+    quat avatarRightEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localRightEyeRot;
+
+    // TODO -- figure out translations for eyes
+    _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
+    _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
+
+    quint64 now = usecTimestampNow();
+    // in hifi, 0 is open 1 is closed.  in SRanipal 1 is open, 0 is closed.
+    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
+        controller::AxisValue(1.0f - eyeDataBuffer.leftEyeOpenness, now);
+    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
+        controller::AxisValue(1.0f - eyeDataBuffer.rightEyeOpenness, now);
+
+    _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = eyeDataBuffer.leftDirectionValid;
+    _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = eyeDataBuffer.rightDirectionValid;
+    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK].valid = eyeDataBuffer.leftOpennessValid;
+    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK].valid = eyeDataBuffer.rightOpennessValid;
 }
 
 void ViveControllerManager::pluginUpdate(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) {
@@ -355,70 +467,8 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
         _registeredWithInputMapper = true;
     }
 
-    bool eyesValid = false;
-    int result = 0;
     if (_viveProEye) {
-        ViveSR::anipal::Eye::EyeData eyeData;
-        // GetEyeData takes around 4ms to finish, so we run it on a thread.
-#ifdef VIVE_PRO_EYE_READ_THREADED
-        {
-            QMutexLocker locker(&_viveProEyeReadThread->eyeDataMutex);
-            memcpy(&eyeData, &_viveProEyeReadThread->eyeDataBuffer, sizeof(eyeData));
-            result = ViveSR::Error::WORK;
-        }
-#else
-        result = ViveSR::anipal::Eye::GetEyeData(&eyeData);
-#endif
-        if (result == ViveSR::Error::WORK) {
-            float *leftGaze = eyeData.verbose_data.left.gaze_direction_normalized.elem_;
-            float *rightGaze = eyeData.verbose_data.right.gaze_direction_normalized.elem_;
-            glm::vec3 leftVec = glm::vec3(-leftGaze[0], leftGaze[1], leftGaze[2]);
-            glm::vec3 rightVec = glm::vec3(-rightGaze[0], rightGaze[1], rightGaze[2]);
-            float leftEyeLen = glm::length2(leftVec);
-            float rightEyeLen = glm::length2(rightVec);
-
-            bool leftDirectionValid =
-                (eyeData.verbose_data.left.eye_data_validata_bit_mask &
-                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
-            bool rightDirectionValid =
-                (eyeData.verbose_data.right.eye_data_validata_bit_mask &
-                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
-            bool leftOpennessValid =
-                (eyeData.verbose_data.left.eye_data_validata_bit_mask &
-                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
-            bool rightOpennessValid =
-                (eyeData.verbose_data.right.eye_data_validata_bit_mask &
-                 (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
-
-            // eyesValid = leftEyeLen > 0.01 && rightEyeLen > 0.01 && _inputDevice->_poseStateMap[controller::HEAD].valid;
-            eyesValid = _inputDevice->_poseStateMap[controller::HEAD].valid &&
-                leftDirectionValid && rightDirectionValid && leftOpennessValid && rightOpennessValid;
-
-            if (eyesValid) {
-                // in the data from sranipal, left=+x, up=+y, forward=+z
-                mat4 localLeftEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), leftVec, vec3(0.0f, 1.0f, 0.0f));
-                // rotate by 180 to make -z forward for eye.
-                quat localLeftEyeRot = glm::quat_cast(localLeftEyeMat) /* * Quaternions::Y_180 */;
-                quat avatarLeftEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localLeftEyeRot;
-
-                mat4 localRightEyeMat = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), rightVec, vec3(0.0f, 1.0f, 0.0f));
-                quat localRightEyeRot = glm::quat_cast(localRightEyeMat) /* * Quaternions::Y_180 */;
-                quat avatarRightEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localRightEyeRot;
-
-                _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
-                _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
-
-                quint64 now = usecTimestampNow();
-                _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
-                    controller::AxisValue(1.0f - eyeData.verbose_data.left.eye_openness, now);
-                _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
-                    controller::AxisValue(1.0f - eyeData.verbose_data.right.eye_openness, now);
-            }
-        }
-    }
-    if (!eyesValid) {
-        _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
-        _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
+        updateEyeTracker(deltaTime, inputCalibrationData);
     }
 }
 

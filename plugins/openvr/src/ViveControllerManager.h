@@ -18,20 +18,6 @@
 #include <map>
 #include <utility>
 
-#ifdef _WIN32
-#pragma warning( push )
-#pragma warning( disable : 4091 )
-#pragma warning( disable : 4334 )
-#endif
-
-#include <SRanipal.h>
-#include <SRanipal_Eye.h>
-#include <SRanipal_Enums.h>
-
-#ifdef _WIN32
-#pragma warning( pop )
-#endif
-
 #include <GLMHelpers.h>
 #include <graphics/Geometry.h>
 #include <gpu/Texture.h>
@@ -39,7 +25,6 @@
 #include <plugins/InputPlugin.h>
 #include "OpenVrHelpers.h"
 
-#define VIVE_PRO_EYE_READ_THREADED 1
 
 using PuckPosePair = std::pair<uint32_t, controller::Pose>;
 
@@ -48,6 +33,21 @@ namespace vr {
 }
 
 class ViveProEyeReadThread;
+
+class EyeDataBuffer {
+public:
+    int getEyeDataResult { 0 };
+    bool leftDirectionValid { false };
+    bool rightDirectionValid { false };
+    bool leftOpennessValid { false };
+    bool rightOpennessValid { false };
+    glm::vec3 leftEyeGaze;
+    glm::vec3 rightEyeGaze;
+    float leftEyeOpenness { 0.0f };
+    float rightEyeOpenness { 0.0f };
+};
+
+
 
 class ViveControllerManager : public InputPlugin {
     Q_OBJECT
@@ -73,6 +73,8 @@ public:
     QString getDeviceName() { return QString::fromStdString(_inputDevice->_headsetName); }
 
     void pluginFocusOutEvent() override { _inputDevice->focusOutEvent(); }
+    void invalidateEyeInputs();
+    void updateEyeTracker(float deltaTime, const controller::InputCalibrationData& inputCalibrationData);
     void pluginUpdate(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) override;
 
     virtual void saveSettings() const override;
@@ -248,10 +250,9 @@ private:
     std::shared_ptr<InputDevice> _inputDevice { std::make_shared<InputDevice>(_system) };
 
     bool _viveProEye { false };
-#ifdef VIVE_PRO_EYE_READ_THREADED
     mutable std::recursive_mutex _getEyeDataLock;
     std::shared_ptr<ViveProEyeReadThread> _viveProEyeReadThread;
-#endif
+    EyeDataBuffer _prevEyeData;
 
     static const char* NAME;
 };
