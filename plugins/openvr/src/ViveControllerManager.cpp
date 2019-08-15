@@ -13,20 +13,6 @@
 #include <algorithm>
 #include <string>
 
-#ifdef _WIN32
-#pragma warning( push )
-#pragma warning( disable : 4091 )
-#pragma warning( disable : 4334 )
-#endif
-
-#include <SRanipal.h>
-#include <SRanipal_Eye.h>
-#include <SRanipal_Enums.h>
-
-#ifdef _WIN32
-#pragma warning( pop )
-#endif
-
 #include <PerfStat.h>
 #include <PathUtils.h>
 #include <GeometryCache.h>
@@ -144,6 +130,30 @@ static glm::mat4 calculateResetMat() {
     return glm::mat4();
 }
 
+#ifdef VIVE_PRO_EYE_READ_THREADED
+class ViveProEyeReadThread : public QThread {
+public:
+    ViveProEyeReadThread() {
+        setObjectName("OpenVR ViveProEye Read Thread");
+    }
+    void run() override {
+        while (!quit) {
+            ViveSR::anipal::Eye::EyeData eyeData;
+            int result = ViveSR::anipal::Eye::GetEyeData(&eyeData);
+            if (result == ViveSR::Error::WORK) {
+                QMutexLocker locker(&eyeDataMutex);
+                memcpy(&eyeDataBuffer, &eyeData, sizeof(eyeData));
+            }
+        }
+    }
+
+    bool quit { false };
+    ViveSR::anipal::Eye::EyeData eyeDataBuffer;
+    QMutex eyeDataMutex;
+};
+#endif // VIVE_PRO_EYE_READ_THREADED
+
+
 static QString outOfRangeDataStrategyToString(ViveControllerManager::OutOfRangeDataStrategy strategy) {
     switch (strategy) {
     default:
@@ -259,6 +269,13 @@ bool ViveControllerManager::activate() {
             _viveProEye = false;
             qDebug() << "Failed to initialize Eye engine. please refer to ViveSR error code:" << error;
         }
+
+        if (_viveProEye) {
+#ifdef VIVE_PRO_EYE_READ_THREADED
+            _viveProEyeReadThread = std::make_shared<ViveProEyeReadThread>();
+            _viveProEyeReadThread->start(QThread::HighPriority);
+#endif
+        }
     }
 
     return true;
@@ -282,9 +299,14 @@ void ViveControllerManager::deactivate() {
     userInputMapper->removeDevice(_inputDevice->_deviceID);
     _registeredWithInputMapper = false;
 
-    if (_viveProEye) {
+#ifdef VIVE_PRO_EYE_READ_THREADED
+    if (_viveProEyeReadThread) {
+        _viveProEyeReadThread->quit = true;
+        _viveProEyeReadThread->wait();
+        _viveProEyeReadThread = nullptr;
         ViveSR::anipal::Release(ViveSR::anipal::Eye::ANIPAL_TYPE_EYE);
     }
+#endif
 
     saveSettings();
 }
@@ -334,28 +356,38 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
     }
 
     bool eyesValid = false;
+    int result = 0;
     if (_viveProEye) {
-        ViveSR::anipal::Eye::EyeData eye_data;
-        int result = ViveSR::anipal::Eye::GetEyeData(&eye_data);
+        ViveSR::anipal::Eye::EyeData eyeData;
+        // GetEyeData takes around 4ms to finish, so we run it on a thread.
+#ifdef VIVE_PRO_EYE_READ_THREADED
+        {
+            QMutexLocker locker(&_viveProEyeReadThread->eyeDataMutex);
+            memcpy(&eyeData, &_viveProEyeReadThread->eyeDataBuffer, sizeof(eyeData));
+            result = ViveSR::Error::WORK;
+        }
+#else
+        result = ViveSR::anipal::Eye::GetEyeData(&eyeData);
+#endif
         if (result == ViveSR::Error::WORK) {
-            float *leftGaze = eye_data.verbose_data.left.gaze_direction_normalized.elem_;
-            float *rightGaze = eye_data.verbose_data.right.gaze_direction_normalized.elem_;
+            float *leftGaze = eyeData.verbose_data.left.gaze_direction_normalized.elem_;
+            float *rightGaze = eyeData.verbose_data.right.gaze_direction_normalized.elem_;
             glm::vec3 leftVec = glm::vec3(-leftGaze[0], leftGaze[1], leftGaze[2]);
             glm::vec3 rightVec = glm::vec3(-rightGaze[0], rightGaze[1], rightGaze[2]);
             float leftEyeLen = glm::length2(leftVec);
             float rightEyeLen = glm::length2(rightVec);
 
             bool leftDirectionValid =
-                (eye_data.verbose_data.left.eye_data_validata_bit_mask &
+                (eyeData.verbose_data.left.eye_data_validata_bit_mask &
                  (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
             bool rightDirectionValid =
-                (eye_data.verbose_data.right.eye_data_validata_bit_mask &
+                (eyeData.verbose_data.right.eye_data_validata_bit_mask &
                  (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_GAZE_DIRECTION_VALIDITY) > (uint64_t)0;
             bool leftOpennessValid =
-                (eye_data.verbose_data.left.eye_data_validata_bit_mask &
+                (eyeData.verbose_data.left.eye_data_validata_bit_mask &
                  (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
             bool rightOpennessValid =
-                (eye_data.verbose_data.right.eye_data_validata_bit_mask &
+                (eyeData.verbose_data.right.eye_data_validata_bit_mask &
                  (uint64_t)ViveSR::anipal::Eye::SINGLE_EYE_DATA_EYE_OPENNESS_VALIDITY) > (uint64_t)0;
 
             // eyesValid = leftEyeLen > 0.01 && rightEyeLen > 0.01 && _inputDevice->_poseStateMap[controller::HEAD].valid;
@@ -378,9 +410,9 @@ void ViveControllerManager::pluginUpdate(float deltaTime, const controller::Inpu
 
                 quint64 now = usecTimestampNow();
                 _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
-                    controller::AxisValue(1.0f - eye_data.verbose_data.left.eye_openness, now);
+                    controller::AxisValue(1.0f - eyeData.verbose_data.left.eye_openness, now);
                 _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
-                    controller::AxisValue(1.0f - eye_data.verbose_data.right.eye_openness, now);
+                    controller::AxisValue(1.0f - eyeData.verbose_data.right.eye_openness, now);
             }
         }
     }

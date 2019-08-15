@@ -18,6 +18,20 @@
 #include <map>
 #include <utility>
 
+#ifdef _WIN32
+#pragma warning( push )
+#pragma warning( disable : 4091 )
+#pragma warning( disable : 4334 )
+#endif
+
+#include <SRanipal.h>
+#include <SRanipal_Eye.h>
+#include <SRanipal_Enums.h>
+
+#ifdef _WIN32
+#pragma warning( pop )
+#endif
+
 #include <GLMHelpers.h>
 #include <graphics/Geometry.h>
 #include <gpu/Texture.h>
@@ -25,11 +39,15 @@
 #include <plugins/InputPlugin.h>
 #include "OpenVrHelpers.h"
 
+#define VIVE_PRO_EYE_READ_THREADED 1
+
 using PuckPosePair = std::pair<uint32_t, controller::Pose>;
 
 namespace vr {
     class IVRSystem;
 }
+
+class ViveProEyeReadThread;
 
 class ViveControllerManager : public InputPlugin {
     Q_OBJECT
@@ -230,6 +248,10 @@ private:
     std::shared_ptr<InputDevice> _inputDevice { std::make_shared<InputDevice>(_system) };
 
     bool _viveProEye { false };
+#ifdef VIVE_PRO_EYE_READ_THREADED
+    mutable std::recursive_mutex _getEyeDataLock;
+    std::shared_ptr<ViveProEyeReadThread> _viveProEyeReadThread;
+#endif
 
     static const char* NAME;
 };
