@@ -371,7 +371,7 @@ void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::
         memcpy(&eyeDataBuffer, &_viveProEyeReadThread->eyeDataBuffer, sizeof(eyeDataBuffer));
     }
 
-    if (eyeDataBuffer.getEyeDataResult != ViveSR::Error::WORK) {
+    if (!isHeadControllerMounted() || eyeDataBuffer.getEyeDataResult != ViveSR::Error::WORK) {
         invalidateEyeInputs();
         return;
     }
