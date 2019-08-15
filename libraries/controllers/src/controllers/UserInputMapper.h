@@ -87,8 +87,8 @@ namespace controller {
         QVector<QString> getActionNames() const;
         Input inputFromAction(Action action) const { return getActionInputs()[toInt(action)].first; }
 
-        void setActionState(Action action, float value) { _actionStates[toInt(action)] = value; }
-        void deltaActionState(Action action, float delta) { _actionStates[toInt(action)] += delta; }
+        void setActionState(Action action, float value, bool valid = true) { _actionStates[toInt(action)] = value; }
+        void deltaActionState(Action action, float delta, bool valid = true) { _actionStates[toInt(action)] += delta; }
         void setActionState(Action action, const Pose& value) { _poseStates[toInt(action)] = value; }
         bool triggerHapticPulse(float strength, float duration, controller::Hand hand);
         bool triggerHapticPulseOnDevice(uint16 deviceID, float strength, float duration, controller::Hand hand);

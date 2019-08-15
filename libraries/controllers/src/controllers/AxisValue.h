@@ -21,7 +21,6 @@ namespace controller {
         float value { 0.0f };
         // The value can be timestamped to determine if consecutive identical values should be output (e.g., mouse movement).
         quint64 timestamp { 0 };
-        bool valid { true };
 
         AxisValue() {}
         AxisValue(const float value, const quint64 timestamp);

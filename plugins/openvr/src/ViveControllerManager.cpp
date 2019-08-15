@@ -353,8 +353,6 @@ bool ViveControllerManager::isHeadControllerMounted() const {
 void ViveControllerManager::invalidateEyeInputs() {
     _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
     _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
-    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK].valid = false;
-    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK].valid = false;
 }
 
 
@@ -427,8 +425,6 @@ void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::
 
     _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = eyeDataBuffer.leftDirectionValid;
     _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = eyeDataBuffer.rightDirectionValid;
-    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK].valid = eyeDataBuffer.leftOpennessValid;
-    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK].valid = eyeDataBuffer.rightOpennessValid;
 }
 
 void ViveControllerManager::pluginUpdate(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) {
