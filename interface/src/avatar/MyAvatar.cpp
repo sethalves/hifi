@@ -774,14 +774,16 @@ void MyAvatar::update(float deltaTime) {
     updateEyeContactTarget(deltaTime);
 
     // if an eye-tracker is providing eyelid openness, use that data
-    if (getControllerPoseInAvatarFrame(controller::Action::LEFT_EYE).valid) { // XXX make is-eye-tracked function
+    if (getControllerPoseInSensorFrame(controller::Action::LEFT_EYE).valid) { // XXX make is-eye-tracked function
         auto userInputMapper = DependencyManager::get<UserInputMapper>();
         float leftEyeBlink = userInputMapper->getActionState(controller::Action::LEFT_EYE_BLINK);
         float rightEyeBlink = userInputMapper->getActionState(controller::Action::RIGHT_EYE_BLINK);
         _headData->setEyeBlinkValues(leftEyeBlink, rightEyeBlink);
         _headData->setEyeTrackerConnected(true);
+        _headData->setHasProceduralBlinkFaceMovement(false);
     } else {
         _headData->setEyeTrackerConnected(false);
+        _headData->setHasProceduralBlinkFaceMovement(true);
     }
 }
 

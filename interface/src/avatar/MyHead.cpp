@@ -45,9 +45,14 @@ void MyHead::simulate(float deltaTime) {
     auto player = DependencyManager::get<recording::Deck>();
     // Only use face trackers when not playing back a recording.
     if (!player->isPlaying()) {
+
+        MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
+        bool eyeLidsTracked =
+            myAvatar->getControllerPoseInSensorFrame(controller::Action::LEFT_EYE).valid; // XXX make is-eye-tracked function
+
         auto faceTracker = qApp->getActiveFaceTracker();
         const bool hasActualFaceTrackerConnected = faceTracker && !faceTracker->isMuted();
-        _isFaceTrackerConnected = hasActualFaceTrackerConnected || _owningAvatar->getHasScriptedBlendshapes();
+        _isFaceTrackerConnected = eyeLidsTracked || hasActualFaceTrackerConnected || _owningAvatar->getHasScriptedBlendshapes();
         if (_isFaceTrackerConnected) {
             if (hasActualFaceTrackerConnected) {
                 _blendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
