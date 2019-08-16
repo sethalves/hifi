@@ -80,9 +80,8 @@ void Head::simulate(float deltaTime) {
     const float BLINK_START_VARIABILITY = 0.25f;
     const float FULLY_OPEN = 0.0f;
     const float FULLY_CLOSED = 1.0f;
-    if (_isEyeTrackerConnected) {
-        // _rightEyeBlink and _leftEyeBlink will have already been set from MyAvatar::update
-    } else if (getHasProceduralBlinkFaceMovement()) {
+
+    if (getHasProceduralBlinkFaceMovement()) {
         // Detect transition from talking to not; force blink after that and a delay
         bool forceBlink = false;
         const float TALKING_LOUDNESS = 100.0f;

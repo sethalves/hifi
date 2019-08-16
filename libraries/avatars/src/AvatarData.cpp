@@ -245,9 +245,10 @@ QByteArray AvatarData::toByteArrayStateful(AvatarDataDetail dataDetail, bool dro
 }
 
 QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSentTime,
-                                   const QVector<JointData>& lastSentJointData,
-    AvatarDataPacket::SendStatus& sendStatus, bool dropFaceTracking, bool distanceAdjust,
-    glm::vec3 viewerPosition, QVector<JointData>* sentJointDataOut, int maxDataSize, AvatarDataRate* outboundDataRateOut) const {
+                                   const QVector<JointData>& lastSentJointData, AvatarDataPacket::SendStatus& sendStatus,
+                                   bool dropFaceTracking, bool distanceAdjust, glm::vec3 viewerPosition,
+                                   QVector<JointData>* sentJointDataOut,
+                                   int maxDataSize, AvatarDataRate* outboundDataRateOut) const {
 
     bool cullSmallChanges = (dataDetail == CullSmallData);
     bool sendAll = (dataDetail == SendAllData);
