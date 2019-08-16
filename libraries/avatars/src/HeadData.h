@@ -72,13 +72,17 @@ public:
     }
     bool lookAtPositionChangedSince(quint64 time) { return _lookAtPositionChanged >= time; }
 
-    bool getHasProceduralEyeFaceMovement() const { return _hasProceduralEyeFaceMovement; }
+    bool getHasProceduralEyeFaceMovement() const {
+        return _hasProceduralEyeFaceMovement && !_isEyeTrackerConnected;
+    }
 
     void setHasProceduralEyeFaceMovement(const bool hasProceduralEyeFaceMovement) {
         _hasProceduralEyeFaceMovement = hasProceduralEyeFaceMovement;
     }
 
-    bool getHasProceduralBlinkFaceMovement() const { return _hasProceduralBlinkFaceMovement; }
+    bool getHasProceduralBlinkFaceMovement() const {
+        return _hasProceduralBlinkFaceMovement && !_isFaceTrackerConnected;
+    }
 
     void setHasProceduralBlinkFaceMovement(const bool hasProceduralBlinkFaceMovement) {
         _hasProceduralBlinkFaceMovement = hasProceduralBlinkFaceMovement;
@@ -96,10 +100,7 @@ public:
     void fromJson(const QJsonObject& json);
 
     void setEyeTrackerConnected(bool value) { _isEyeTrackerConnected = value; }
-    /* void setEyeBlinkValues(float leftEyeBlink, float rightEyeBlink) { */
-    /*     _leftEyeBlink = leftEyeBlink; */
-    /*     _rightEyeBlink = rightEyeBlink; */
-    /* } */
+    void setFaceTrackerConnected(bool value) { _isFaceTrackerConnected = value; }
 
 protected:
     // degrees
@@ -113,8 +114,6 @@ protected:
     bool _hasAudioEnabledFaceMovement { true };
     bool _hasProceduralBlinkFaceMovement { true };
     bool _hasProceduralEyeFaceMovement { true };
-    bool _isFaceTrackerConnected { false };
-    bool _isEyeTrackerConnected { false };
     float _leftEyeBlink { 0.0f };
     float _rightEyeBlink { 0.0f };
     float _averageLoudness { 0.0f };
@@ -133,6 +132,9 @@ private:
 
     void setHeadOrientation(const glm::quat& orientation);
     void computeBlendshapesLookupMap();
+
+    bool _isFaceTrackerConnected { false };
+    bool _isEyeTrackerConnected { false };
 };
 
 #endif // hifi_HeadData_h

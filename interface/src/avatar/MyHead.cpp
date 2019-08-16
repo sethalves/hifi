@@ -45,20 +45,21 @@ void MyHead::simulate(float deltaTime) {
     auto player = DependencyManager::get<recording::Deck>();
     // Only use face trackers when not playing back a recording.
     if (!player->isPlaying()) {
-        auto faceTracker = qApp->getActiveFaceTracker();
-        const bool hasActualFaceTrackerConnected = faceTracker && !faceTracker->isMuted();
-        _isFaceTrackerConnected = hasActualFaceTrackerConnected || _owningAvatar->getHasScriptedBlendshapes();
-        if (_isFaceTrackerConnected) {
-            if (hasActualFaceTrackerConnected) {
-                _blendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
-            }
-        }
+        // auto faceTracker = qApp->getActiveFaceTracker();
+        // const bool hasActualFaceTrackerConnected = faceTracker && !faceTracker->isMuted();
+        // _isFaceTrackerConnected = hasActualFaceTrackerConnected || _owningAvatar->getHasScriptedBlendshapes();
+        // if (_isFaceTrackerConnected) {
+        //     if (hasActualFaceTrackerConnected) {
+        //         _blendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
+        //     }
+        // }
 
         auto userInputMapper = DependencyManager::get<UserInputMapper>();
-        bool eyeLidsTracked = userInputMapper->getActionStateValid(controller::Action::LEFT_EYE_BLINK) &&
+        bool eyeLidsTracked =
+            userInputMapper->getActionStateValid(controller::Action::LEFT_EYE_BLINK) &&
             userInputMapper->getActionStateValid(controller::Action::RIGHT_EYE_BLINK);
+        setFaceTrackerConnected(eyeLidsTracked);
         if (eyeLidsTracked) {
-            _isFaceTrackerConnected = true;
             float leftEyeBlink = userInputMapper->getActionState(controller::Action::LEFT_EYE_BLINK);
             float rightEyeBlink = userInputMapper->getActionState(controller::Action::RIGHT_EYE_BLINK);
             _blendshapeCoefficients.resize(std::max(_blendshapeCoefficients.size(), 2));
