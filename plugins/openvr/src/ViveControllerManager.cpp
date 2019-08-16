@@ -353,6 +353,8 @@ bool ViveControllerManager::isHeadControllerMounted() const {
 void ViveControllerManager::invalidateEyeInputs() {
     _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
     _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
+    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK].valid = false;
+    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK].valid = false;
 }
 
 

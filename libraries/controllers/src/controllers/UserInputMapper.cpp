@@ -1233,5 +1233,17 @@ void UserInputMapper::disableMapping(const Mapping::Pointer& mapping) {
     }
 }
 
+void UserInputMapper::setActionState(Action action, float value, bool valid) {
+    _actionStates[toInt(action)] = value;
+    _actionStatesValid[toInt(action)] = valid;
+}
+
+void UserInputMapper::deltaActionState(Action action, float delta, bool valid) {
+    _actionStates[toInt(action)] += delta;
+    bool wasValid = _actionStatesValid[toInt(action)];
+    _actionStatesValid[toInt(action)] = wasValid & valid;
+}
+
+
 }
 
