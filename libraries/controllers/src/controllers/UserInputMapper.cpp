@@ -256,6 +256,9 @@ void UserInputMapper::update(float deltaTime) {
     for (auto& channel : _actionStates) {
         channel = 0.0f;
     }
+    for (auto& channelValid : _actionStatesValid) {
+        channelValid = true;
+    }
 
     for (auto& channel : _poseStates) {
         channel = Pose();
@@ -1240,6 +1243,7 @@ void UserInputMapper::setActionState(Action action, float value, bool valid) {
 
 void UserInputMapper::deltaActionState(Action action, float delta, bool valid) {
     _actionStates[toInt(action)] += delta;
+
     bool wasValid = _actionStatesValid[toInt(action)];
     _actionStatesValid[toInt(action)] = wasValid & valid;
 }

@@ -45,7 +45,6 @@ void MyHead::simulate(float deltaTime) {
     auto player = DependencyManager::get<recording::Deck>();
     // Only use face trackers when not playing back a recording.
     if (!player->isPlaying()) {
-
         auto faceTracker = qApp->getActiveFaceTracker();
         const bool hasActualFaceTrackerConnected = faceTracker && !faceTracker->isMuted();
         _isFaceTrackerConnected = hasActualFaceTrackerConnected || _owningAvatar->getHasScriptedBlendshapes();
@@ -54,24 +53,6 @@ void MyHead::simulate(float deltaTime) {
                 _blendshapeCoefficients = faceTracker->getBlendshapeCoefficients();
             }
         }
-
-        // MyAvatar* myAvatar = static_cast<MyAvatar*>(_owningAvatar);
-        // bool eyeLidsTracked =
-        //     myAvatar->getControllerPoseInSensorFrame(controller::Action::LEFT_EYE).valid; // XXX make is-eye-tracked function
-        // if (eyeLidsTracked) {
-        //     _isFaceTrackerConnected = true;
-        //     auto userInputMapper = DependencyManager::get<UserInputMapper>();
-        //     float leftEyeBlink = userInputMapper->getActionState(controller::Action::LEFT_EYE_BLINK);
-        //     float rightEyeBlink = userInputMapper->getActionState(controller::Action::RIGHT_EYE_BLINK);
-        //     _blendshapeCoefficients.resize(std::max(_blendshapeCoefficients.size(), 2));
-        //     _blendshapeCoefficients[0] = leftEyeBlink;
-        //     _blendshapeCoefficients[1] = rightEyeBlink;
-        // } else {
-        //     const float FULLY_OPEN = 0.0f;
-        //     _blendshapeCoefficients.resize(std::max(_blendshapeCoefficients.size(), 2));
-        //     _blendshapeCoefficients[0] = FULLY_OPEN;
-        //     _blendshapeCoefficients[1] = FULLY_OPEN;
-        // }
 
         auto userInputMapper = DependencyManager::get<UserInputMapper>();
         bool eyeLidsTracked = userInputMapper->getActionStateValid(controller::Action::LEFT_EYE_BLINK) &&

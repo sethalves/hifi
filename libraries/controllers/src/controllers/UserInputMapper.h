@@ -169,7 +169,7 @@ namespace controller {
         ConditionalPointer conditionalFor(const QJSValue& endpoint);
         ConditionalPointer conditionalFor(const QScriptValue& endpoint);
         ConditionalPointer conditionalFor(const Input& endpoint) const;
-        
+
         MappingPointer parseMapping(const QJsonValue& json);
         RoutePointer parseRoute(const QJsonValue& value);
         EndpointPointer parseDestination(const QJsonValue& value);

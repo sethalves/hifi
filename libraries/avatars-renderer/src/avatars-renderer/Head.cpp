@@ -80,7 +80,6 @@ void Head::simulate(float deltaTime) {
     const float BLINK_START_VARIABILITY = 0.25f;
     const float FULLY_OPEN = 0.0f;
     const float FULLY_CLOSED = 1.0f;
-
     if (getHasProceduralBlinkFaceMovement()) {
         // Detect transition from talking to not; force blink after that and a delay
         bool forceBlink = false;
