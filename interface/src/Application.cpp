@@ -59,6 +59,7 @@
 #include <shared/FileUtils.h>
 #include <shared/QtHelpers.h>
 #include <shared/GlobalAppProperties.h>
+#include <GeometryUtil.h>
 #include <StatTracker.h>
 #include <Trace.h>
 #include <ResourceScriptingInterface.h>
@@ -5756,9 +5757,23 @@ void Application::updateMyAvatarLookAtPosition() {
     glm::vec3 lookAtSpot;
 
     controller::Pose leftEyePose = myAvatar->getControllerPoseInAvatarFrame(controller::Action::LEFT_EYE);
-    if (leftEyePose.isValid()) {
-        lookAtSpot = myAvatar->getHead()->getEyePosition() +
-            (myAvatar->getWorldOrientation() * leftEyePose.rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+    controller::Pose rightEyePose = myAvatar->getControllerPoseInAvatarFrame(controller::Action::RIGHT_EYE);
+    if (leftEyePose.isValid() && rightEyePose.isValid()) {
+
+        glm::vec3 leftVec = myAvatar->getWorldOrientation() * leftEyePose.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+        glm::vec3 rightVec = myAvatar->getWorldOrientation() * rightEyePose.rotation * glm::vec3(0.0f, 0.0f, -1.0f);
+
+        glm::vec3 leftEyePosition = myAvatar->getHead()->getLeftEyePosition();
+        glm::vec3 rightEyePosition = myAvatar->getHead()->getRightEyePosition();
+        float t1, t2;
+        bool success = findClosestApproachOfLines(leftEyePosition, leftVec, rightEyePosition, rightVec, t1, t2);
+        if (success && t1 > 0.0f && t2 > 0.0f) {
+            glm::vec3 leftFocus = leftEyePosition + leftVec * t1;
+            glm::vec3 rightFocus = rightEyePosition + rightVec * t2;
+            lookAtSpot = (leftFocus + rightFocus) / 2.0f; // average
+        } else {
+            lookAtSpot = myAvatar->getHead()->getEyePosition() + glm::normalize(leftVec) * 1000.0f;
+        }
     } else {
         AvatarSharedPointer lookingAt = myAvatar->getLookAtTargetAvatar().lock();
         bool haveLookAtCandidate = lookingAt && myAvatar.get() != lookingAt.get();
