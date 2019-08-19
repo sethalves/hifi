@@ -371,7 +371,7 @@ void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::
         memcpy(&eyeDataBuffer, &_viveProEyeReadThread->eyeDataBuffer, sizeof(eyeDataBuffer));
     }
 
-    if (!isHeadControllerMounted() || eyeDataBuffer.getEyeDataResult != ViveSR::Error::WORK) {
+    if (eyeDataBuffer.getEyeDataResult != ViveSR::Error::WORK) {
         invalidateEyeInputs();
         return;
     }
@@ -415,18 +415,34 @@ void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::
     quat avatarRightEyeRot = _inputDevice->_poseStateMap[controller::HEAD].rotation * localRightEyeRot;
 
     // TODO -- figure out translations for eyes
-    _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
-    _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
+    if (eyeDataBuffer.leftDirectionValid) {
+        _inputDevice->_poseStateMap[controller::LEFT_EYE] = controller::Pose(glm::vec3(), avatarLeftEyeRot);
+        _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = true;
+    } else {
+        _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = false;
+    }
+    if (eyeDataBuffer.rightDirectionValid) {
+        _inputDevice->_poseStateMap[controller::RIGHT_EYE] = controller::Pose(glm::vec3(), avatarRightEyeRot);
+        _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = true;
+    } else {
+        _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = false;
+    }
 
     quint64 now = usecTimestampNow();
-    // in hifi, 0 is open 1 is closed.  in SRanipal 1 is open, 0 is closed.
-    _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
-        controller::AxisValue(1.0f - eyeDataBuffer.leftEyeOpenness, now);
-    _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
-        controller::AxisValue(1.0f - eyeDataBuffer.rightEyeOpenness, now);
 
-    _inputDevice->_poseStateMap[controller::LEFT_EYE].valid = eyeDataBuffer.leftDirectionValid;
-    _inputDevice->_poseStateMap[controller::RIGHT_EYE].valid = eyeDataBuffer.rightDirectionValid;
+    // in hifi, 0 is open 1 is closed.  in SRanipal 1 is open, 0 is closed.
+    if (eyeDataBuffer.leftOpennessValid) {
+        _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
+            controller::AxisValue(1.0f - eyeDataBuffer.leftEyeOpenness, now);
+    } else {
+        _inputDevice->_poseStateMap[controller::LEFT_EYE_BLINK].valid = false;
+    }
+    if (eyeDataBuffer.rightOpennessValid) {
+        _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
+            controller::AxisValue(1.0f - eyeDataBuffer.rightEyeOpenness, now);
+    } else {
+        _inputDevice->_poseStateMap[controller::RIGHT_EYE_BLINK].valid = false;
+    }
 }
 
 void ViveControllerManager::pluginUpdate(float deltaTime, const controller::InputCalibrationData& inputCalibrationData) {

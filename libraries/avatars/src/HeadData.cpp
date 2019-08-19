@@ -196,3 +196,39 @@ void HeadData::fromJson(const QJsonObject& json) {
         setHeadOrientation(quatFromJsonValue(json[JSON_AVATAR_HEAD_ROTATION]));
     }
 }
+
+bool HeadData::getHasProceduralEyeFaceMovement() const {
+    return _hasProceduralEyeFaceMovement && !_isEyeTrackerConnected;
+}
+
+void HeadData::setHasProceduralEyeFaceMovement(const bool hasProceduralEyeFaceMovement) {
+    _hasProceduralEyeFaceMovement = hasProceduralEyeFaceMovement;
+}
+
+bool HeadData::getHasProceduralBlinkFaceMovement() const {
+    return _hasProceduralBlinkFaceMovement && !_isFaceTrackerConnected;
+}
+
+void HeadData::setHasProceduralBlinkFaceMovement(const bool hasProceduralBlinkFaceMovement) {
+    _hasProceduralBlinkFaceMovement = hasProceduralBlinkFaceMovement;
+}
+
+bool HeadData::getHasAudioEnabledFaceMovement() const { return _hasAudioEnabledFaceMovement; }
+
+void HeadData::setHasAudioEnabledFaceMovement(const bool hasAudioEnabledFaceMovement) {
+    _hasAudioEnabledFaceMovement = hasAudioEnabledFaceMovement;
+}
+
+void HeadData::setEyeTrackerConnected(bool value) {
+    if (_isEyeTrackerConnected != value) {
+        qDebug() << "QQQQ setEyeTrackerConnected " << value;
+    }
+    _isEyeTrackerConnected = value;
+}
+
+void HeadData::setFaceTrackerConnected(bool value) {
+    if (_isFaceTrackerConnected != value) {
+        qDebug() << "QQQQ setFaceTrackerConnected " << value;
+    }
+    _isFaceTrackerConnected = value;
+}
