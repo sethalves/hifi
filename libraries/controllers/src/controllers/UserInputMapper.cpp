@@ -256,8 +256,8 @@ void UserInputMapper::update(float deltaTime) {
     for (auto& channel : _actionStates) {
         channel = 0.0f;
     }
-    for (auto& channelValid : _actionStatesValid) {
-        channelValid = true;
+    for (int i = 0; i < _actionStatesValid.size(); i++) {
+        _actionStatesValid[i] = true;
     }
 
     for (auto& channel : _poseStates) {
