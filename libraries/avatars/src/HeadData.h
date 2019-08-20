@@ -110,6 +110,9 @@ protected:
     QMap<QString, int> _blendshapeLookupMap;
     AvatarData* _owningAvatar;
 
+    bool _isFaceTrackerConnected { false };
+    bool _isEyeTrackerConnected { false };
+
 private:
     // privatize copy ctor and assignment operator so copies of this object cannot be made
     HeadData(const HeadData&);
@@ -117,9 +120,6 @@ private:
 
     void setHeadOrientation(const glm::quat& orientation);
     void computeBlendshapesLookupMap();
-
-    bool _isFaceTrackerConnected { false };
-    bool _isEyeTrackerConnected { false };
 };
 
 #endif // hifi_HeadData_h

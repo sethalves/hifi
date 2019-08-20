@@ -198,7 +198,8 @@ void HeadData::fromJson(const QJsonObject& json) {
 }
 
 bool HeadData::getHasProceduralEyeFaceMovement() const {
-    return _hasProceduralEyeFaceMovement && !_isEyeTrackerConnected;
+    return _hasProceduralEyeFaceMovement;
+    // return _hasProceduralEyeFaceMovement && !_isEyeTrackerConnected;
 }
 
 void HeadData::setHasProceduralEyeFaceMovement(const bool hasProceduralEyeFaceMovement) {
@@ -206,6 +207,7 @@ void HeadData::setHasProceduralEyeFaceMovement(const bool hasProceduralEyeFaceMo
 }
 
 bool HeadData::getHasProceduralBlinkFaceMovement() const {
+    // return _hasProceduralBlinkFaceMovement;
     return _hasProceduralBlinkFaceMovement && !_isFaceTrackerConnected;
 }
 

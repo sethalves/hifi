@@ -57,7 +57,7 @@ void Head::simulate(float deltaTime) {
         _longTermAverageLoudness = glm::mix(_longTermAverageLoudness, _averageLoudness, glm::min(deltaTime / AUDIO_LONG_TERM_AVERAGING_SECS, 1.0f));
     }
 
-    if (getHasProceduralEyeFaceMovement()) {
+    if (!_isEyeTrackerConnected) {
         // Update eye saccades
         const float AVERAGE_MICROSACCADE_INTERVAL = 1.0f;
         const float AVERAGE_SACCADE_INTERVAL = 6.0f;
