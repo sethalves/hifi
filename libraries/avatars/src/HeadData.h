@@ -82,6 +82,9 @@ public:
     void setEyeTrackerConnected(bool value);
     void setFaceTrackerConnected(bool value);
 
+    bool getEyeTrackerConnected() const { return _isEyeTrackerConnected; }
+    bool getFaceTrackerConnected() const { return _isFaceTrackerConnected; }
+
     friend class AvatarData;
 
     QJsonObject toJson() const;

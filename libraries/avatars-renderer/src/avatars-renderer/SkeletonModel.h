@@ -37,6 +37,7 @@ public:
     void initJointStates() override;
 
     void simulate(float deltaTime, bool fullUpdate = true) override;
+    glm::vec3 avoidCrossedEyes(const glm::vec3& lookAt);
     void updateRig(float deltaTime, glm::mat4 parentTransform) override;
     void updateAttitude(const glm::quat& orientation);
 
