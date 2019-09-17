@@ -208,14 +208,14 @@ int encodeBitVector(bool* bitVector, int numBits, uint8_t* codeBytes, int maxCod
 
     // encode run lengths
     for (int i = 0; i < numRunLengths; i++) {
-        bs.encodeGR(runLengths[i], k);        
+        bs.encodeGR(runLengths[i], k);
     }
 
     // return bytes encoded
     return bs.flush();
 }
 
-int decodeBitVector(uint8_t* codeBytes, int maxCodeBytes, bool* bitVector, int numBits) {
+int decodeBitVector(const uint8_t* codeBytes, int maxCodeBytes, bool* bitVector, int numBits) {
     assert(numBits > 0);
     assert(numBits <= MAX_BITVECTOR_BITS);
 
@@ -224,7 +224,7 @@ int decodeBitVector(uint8_t* codeBytes, int maxCodeBytes, bool* bitVector, int n
     //
     // Decode the bits
     //
-    BitStream bs(codeBytes, maxCodeBytes, false);
+    BitStream bs(const_cast<uint8_t*>(codeBytes), maxCodeBytes, false);
 
     // decode k index
     int ki = bs.getBit();

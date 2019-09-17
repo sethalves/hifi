@@ -17,58 +17,9 @@
 
 #include "NumericalConstants.h"
 
-int calcBitVectorSize(int numBits) {
-    return ((numBits - 1) >> 3) + 1;
-}
-
-// func should be of type bool func(int index)
-template <typename F>
-int writeBitVector(uint8_t* destinationBuffer, int numBits, const F& func) {
-    int totalBytes = calcBitVectorSize(numBits);
-    uint8_t* cursor = destinationBuffer;
-    uint8_t byte = 0;
-    uint8_t bit = 0;
-
-    for (int i = 0; i < numBits; i++) {
-        if (func(i)) {
-            byte |= (1 << bit);
-        }
-        if (++bit == BITS_IN_BYTE) {
-            *cursor++ = byte;
-            byte = 0;
-            bit = 0;
-        }
-    }
-    // write the last byte, if necessary
-    if (bit != 0) {
-        *cursor++ = byte;
-    }
-
-    assert((int)(cursor - destinationBuffer) == totalBytes);
-    return totalBytes;
-}
-
-// func should be of type 'void func(int index, bool value)'
-template <typename F>
-int readBitVector(const uint8_t* sourceBuffer, int numBits, const F& func) {
-    int totalBytes = calcBitVectorSize(numBits);
-    const uint8_t* cursor = sourceBuffer;
-    uint8_t bit = 0;
-
-    for (int i = 0; i < numBits; i++) {
-        bool value = (bool)(*cursor & (1 << bit));
-        func(i, value);
-        if (++bit == BITS_IN_BYTE) {
-            cursor++;
-            bit = 0;
-        }
-    }
-    return totalBytes;
-}
-
 //
 // BitVector compression
-// 
+//
 const int MAX_BITVECTOR_BITS = 256;
 const int MAX_BITVECTOR_BYTES = (MAX_BITVECTOR_BITS + 7) / 8;
 
@@ -83,6 +34,36 @@ int encodeBitVector(bool* bitVector, int numBits, uint8_t* codeBytes, int maxCod
 // Decode codeBytes[maxCodeBytes] into bitVector[numBits]
 // NOTE: numBits must already be known at the decoder
 // return the number of actual bytes used
-int decodeBitVector(uint8_t* codeBytes, int maxCodeBytes, bool* bitVector, int numBits);
+int decodeBitVector(const uint8_t* codeBytes, int maxCodeBytes, bool* bitVector, int numBits);
+
+
+static inline int calcBitVectorSize(int numBits) {
+    return ((numBits - 1) >> 3) + 1;
+}
+
+// func should be of type bool func(int index)
+template <typename F>
+int writeBitVector(uint8_t* destinationBuffer, int numBits, const F& func) {
+
+    bool bitVector[MAX_BITVECTOR_BITS];
+    for (int i = 0; i < numBits; i++) {
+        bitVector[i] = func(i);
+    }
+
+    return encodeBitVector(bitVector, numBits, destinationBuffer, MAX_CODE_BYTES);
+}
+
+// func should be of type 'void func(int index, bool value)'
+template <typename F>
+int readBitVector(const uint8_t* sourceBuffer, int numBits, const F& func) {
+
+    bool bitVector[MAX_BITVECTOR_BITS];
+    int totalBytes = decodeBitVector(sourceBuffer, MAX_CODE_BYTES, bitVector, numBits);
+
+    for (int i = 0; i < numBits; i++) {
+        func(i, bitVector[i]);
+    }
+    return totalBytes;
+}
 
 #endif
