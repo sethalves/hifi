@@ -643,7 +643,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
     }
     const int numJoints = jointData.size();
     assert(numJoints < MAX_BITVECTOR_BITS);
-    const int jointBitVectorSize = MAX_BITVECTOR_BYTES;
+    const int jointBitVectorSize = calcMaxCompressedBitVectorSize(numJoints);
 
     // include jointData if there is room for the most minimal section. i.e. no translations or rotations.
     IF_AVATAR_SPACE(PACKET_HAS_JOINT_DATA, AvatarDataPacket::minJointDataSize(numJoints)) {
