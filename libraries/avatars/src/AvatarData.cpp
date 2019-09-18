@@ -642,8 +642,8 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         jointData = _jointData;
     }
     const int numJoints = jointData.size();
-    assert(numJoints <= 255);
-    const int jointBitVectorSize = calcBitVectorSize(numJoints);
+    assert(numJoints < MAX_BITVECTOR_BITS);
+    const int jointBitVectorSize = MAX_BITVECTOR_BYTES;
 
     // include jointData if there is room for the most minimal section. i.e. no translations or rotations.
     IF_AVATAR_SPACE(PACKET_HAS_JOINT_DATA, AvatarDataPacket::minJointDataSize(numJoints)) {
@@ -668,14 +668,15 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         *destinationBuffer++ = (uint8_t)numJoints;
 
         unsigned char* validityPosition = destinationBuffer;
-        memset(validityPosition, 0, jointBitVectorSize);
+        bool validityBits[MAX_BITVECTOR_BITS];
 
 #ifdef WANT_DEBUG
         int rotationSentCount = 0;
         unsigned char* beforeRotations = destinationBuffer;
 #endif
 
-        destinationBuffer += jointBitVectorSize; // Move pointer past the validity bytes
+        destinationBuffer += MAX_CODE_BYTES; // Move pointer past the validity bytes
+        unsigned char* rotDataStart = destinationBuffer;
 
         // sentJointDataOut and lastSentJointData might be the same vector
         if (sentJointDataOut) {
@@ -684,12 +685,14 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         const JointData *const joints = jointData.data();
         JointData *const sentJoints = sentJointDataOut ? sentJointDataOut->data() : nullptr;
 
-        float minRotationDOT = (distanceAdjust && cullSmallChanges) ? getDistanceBasedMinRotationDOT(viewerPosition) : AVATAR_MIN_ROTATION_DOT;
+        float minRotationDOT =
+            (distanceAdjust && cullSmallChanges) ? getDistanceBasedMinRotationDOT(viewerPosition) : AVATAR_MIN_ROTATION_DOT;
 
         int i = sendStatus.rotationsSent;
         for (; i < numJoints; ++i) {
             const JointData& data = joints[i];
             const JointData& last = lastSentJointData[i];
+            validityBits[i] = false;
 
             if (packetEnd - destinationBuffer >= minSizeForJoint) {
                 if (!data.rotationIsDefaultPose) {
@@ -697,7 +700,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
                     // so if the dot() is less than the value, then the rotation is a larger angle of rotation
                     if (sendAll || last.rotationIsDefaultPose || (!cullSmallChanges && last.rotation != data.rotation)
                         || (cullSmallChanges && fabsf(glm::dot(last.rotation, data.rotation)) < minRotationDOT)) {
-                        validityPosition[i / BITS_IN_BYTE] |= 1 << (i % BITS_IN_BYTE);
+                        validityBits[i] = true;
 #ifdef WANT_DEBUG
                         rotationSentCount++;
 #endif
@@ -719,6 +722,16 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         }
         sendStatus.rotationsSent = i;
 
+        // compress rotation validity bits.
+        int compressedRotBitSize = encodeBitVector(validityBits, numJoints, validityPosition, MAX_CODE_BYTES);
+
+        // we originally reserved MAX_CODE_BYTES for the validity bits, so slide the joint rotation data down to fit snugly
+        // against the now compressed bits.
+        if (compressedRotBitSize < MAX_CODE_BYTES) {
+            memmove(validityPosition + compressedRotBitSize, rotDataStart, destinationBuffer - rotDataStart);
+            destinationBuffer -= (MAX_CODE_BYTES - compressedRotBitSize);
+        }
+
         // joint translation data
         validityPosition = destinationBuffer;
 
@@ -727,8 +740,8 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         unsigned char* beforeTranslations = destinationBuffer;
 #endif
 
-        memset(destinationBuffer, 0, jointBitVectorSize);
-        destinationBuffer += jointBitVectorSize; // Move pointer past the validity bytes
+        destinationBuffer += MAX_CODE_BYTES; // Move pointer past the validity bytes
+        unsigned char* transDataStart = destinationBuffer;
 
         // write maxTranslationDimension
         AVATAR_MEMCPY(maxTranslationDimension);
@@ -739,17 +752,20 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         for (; i < numJoints; ++i) {
             const JointData& data = joints[i];
             const JointData& last = lastSentJointData[i];
+            validityBits[i] = false;
 
             // Note minSizeForJoint is conservative since there isn't a following bit-vector + scale.
             if (packetEnd - destinationBuffer >= minSizeForJoint) {
                 if (!data.translationIsDefaultPose) {
                     if (sendAll || last.translationIsDefaultPose || (!cullSmallChanges && last.translation != data.translation)
-                        || (cullSmallChanges && glm::distance(data.translation, lastSentJointData[i].translation) > minTranslation)) {
-                        validityPosition[i / BITS_IN_BYTE] |= 1 << (i % BITS_IN_BYTE);
+                        || (cullSmallChanges &&
+                            glm::distance(data.translation, lastSentJointData[i].translation) > minTranslation)) {
+                        validityBits[i] = true;
 #ifdef WANT_DEBUG
                         translationSentCount++;
 #endif
-                        destinationBuffer += packFloatVec3ToSignedTwoByteFixed(destinationBuffer, data.translation / maxTranslationDimension,
+                        destinationBuffer += packFloatVec3ToSignedTwoByteFixed(destinationBuffer,
+                                                                               data.translation / maxTranslationDimension,
                                                                                TRANSLATION_COMPRESSION_RADIX);
 
                         if (sentJoints) {
@@ -767,6 +783,15 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
 
         }
         sendStatus.translationsSent = i;
+
+        // compress translation validity bits.
+        int compressedTransBitSize = encodeBitVector(validityBits, numJoints, validityPosition, MAX_CODE_BYTES);
+
+        // slide joint translation data down against compressed validity bits
+        if (compressedTransBitSize < MAX_CODE_BYTES) {
+            memmove(validityPosition + compressedTransBitSize, transDataStart, destinationBuffer - transDataStart);
+            destinationBuffer -= (MAX_CODE_BYTES - compressedTransBitSize);
+        }
 
         IF_AVATAR_SPACE(PACKET_HAS_GRAB_JOINTS, sizeof (AvatarDataPacket::FarGrabJoints)) {
             // the far-grab joints may range further than 3 meters, so we can't use packFloatVec3ToSignedTwoByteFixed etc
@@ -820,7 +845,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         }
     }
 
-    IF_AVATAR_SPACE(PACKET_HAS_JOINT_DEFAULT_POSE_FLAGS, 1 + 2 * jointBitVectorSize) {
+    IF_AVATAR_SPACE(PACKET_HAS_JOINT_DEFAULT_POSE_FLAGS, 1 + 2 * MAX_CODE_BYTES) {
         auto startSection = destinationBuffer;
 
         // write numJoints
@@ -864,7 +889,7 @@ void AvatarData::doneEncoding(bool cullSmallChanges) {
     // The server has finished sending this version of the joint-data to other nodes.  Update _lastSentJointData.
     QReadLocker readLock(&_jointDataLock);
     _lastSentJointData.resize(_jointData.size());
-    for (int i = 0; i < _jointData.size(); i ++) {
+    for (int i = 0; i < _jointData.size(); i++) {
         const JointData& data = _jointData[ i ];
         if (_lastSentJointData[i].rotation != data.rotation) {
             if (!cullSmallChanges ||
@@ -1278,25 +1303,14 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
 
         PACKET_READ_CHECK(NumJoints, sizeof(uint8_t));
         int numJoints = *sourceBuffer++;
-        const int bytesOfValidity = (int)ceil((float)numJoints / (float)BITS_IN_BYTE);
-        PACKET_READ_CHECK(JointRotationValidityBits, bytesOfValidity);
 
+        bool validRotations[MAX_BITVECTOR_BITS];
+        int bytesOfValidity = decodeBitVector(sourceBuffer, endPosition - sourceBuffer, validRotations, numJoints);
+        sourceBuffer += bytesOfValidity;
         int numValidJointRotations = 0;
-        QVector<bool> validRotations;
-        validRotations.resize(numJoints);
-        { // rotation validity bits
-            unsigned char validity = 0;
-            int validityBit = 0;
-            for (int i = 0; i < numJoints; i++) {
-                if (validityBit == 0) {
-                    validity = *sourceBuffer++;
-                }
-                bool valid = (bool)(validity & (1 << validityBit));
-                if (valid) {
-                    ++numValidJointRotations;
-                }
-                validRotations[i] = valid;
-                validityBit = (validityBit + 1) % BITS_IN_BYTE;
+        for (int i = 0; i < numJoints; i++) {
+            if (validRotations[i]) {
+                numValidJointRotations++;
             }
         }
 
@@ -1315,27 +1329,16 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
             }
         }
 
-        PACKET_READ_CHECK(JointTranslationValidityBits, bytesOfValidity);
-
         // get translation validity bits -- these indicate which translations were packed
+        bool validTranslations[MAX_BITVECTOR_BITS];
+        bytesOfValidity = decodeBitVector(sourceBuffer, endPosition - sourceBuffer, validTranslations, numJoints);
+        sourceBuffer += bytesOfValidity;
         int numValidJointTranslations = 0;
-        QVector<bool> validTranslations;
-        validTranslations.resize(numJoints);
-        { // translation validity bits
-            unsigned char validity = 0;
-            int validityBit = 0;
-            for (int i = 0; i < numJoints; i++) {
-                if (validityBit == 0) {
-                    validity = *sourceBuffer++;
-                }
-                bool valid = (bool)(validity & (1 << validityBit));
-                if (valid) {
-                    ++numValidJointTranslations;
-                }
-                validTranslations[i] = valid;
-                validityBit = (validityBit + 1) % BITS_IN_BYTE;
+        for (int i = 0; i < numJoints; i++) {
+            if (validTranslations[i]) {
+                numValidJointTranslations++;
             }
-        } // 1 + bytesOfValidity bytes
+        }
 
         // read maxTranslationDimension
         float maxTranslationDimension;
@@ -1419,13 +1422,10 @@ int AvatarData::parseDataFromBuffer(const QByteArray& buffer) {
 
         _jointData.resize(numJoints);
 
-        size_t bitVectorSize = calcBitVectorSize(numJoints);
-        PACKET_READ_CHECK(JointDefaultPoseFlagsRotationFlags, bitVectorSize);
         sourceBuffer += readBitVector(sourceBuffer, numJoints, [&](int i, bool value) {
             _jointData[i].rotationIsDefaultPose = value;
         });
 
-        PACKET_READ_CHECK(JointDefaultPoseFlagsTranslationFlags, bitVectorSize);
         sourceBuffer += readBitVector(sourceBuffer, numJoints, [&](int i, bool value) {
             _jointData[i].translationIsDefaultPose = value;
         });
