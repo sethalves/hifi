@@ -150,7 +150,7 @@ public:
 
         // count the run of 1s
         uint32_t q = 0;
-        while (uint32_t bit = getBit()) {
+        while (getBit()) {
             q++;
         }
 
