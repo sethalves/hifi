@@ -845,21 +845,34 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         }
     }
 
-    IF_AVATAR_SPACE(PACKET_HAS_JOINT_DEFAULT_POSE_FLAGS, 1 + 2 * MAX_CODE_BYTES) {
+    // compress defaultPose bit-vectors before checking for space, because we don't know how big they
+    // will be until we compress them.
+    unsigned char defaultRotPoses[MAX_CODE_BYTES];
+    unsigned char defaultTransPoses[MAX_CODE_BYTES];
+    int defaultRotPosesBytes { 0 };
+    int defaultTransPosesBytes { 0 };
+    if (wantedFlags & AvatarDataPacket::PACKET_HAS_JOINT_DEFAULT_POSE_FLAGS) {
+        defaultRotPosesBytes = writeBitVector(defaultRotPoses, numJoints, [&](int i) {
+            return jointData[i].rotationIsDefaultPose;
+        });
+
+        // write translationIsDefaultPose bits
+        defaultTransPosesBytes = writeBitVector(defaultTransPoses, numJoints, [&](int i) {
+            return jointData[i].translationIsDefaultPose;
+        });
+    }
+
+    IF_AVATAR_SPACE(PACKET_HAS_JOINT_DEFAULT_POSE_FLAGS, 1 + defaultRotPosesBytes + defaultTransPosesBytes) {
         auto startSection = destinationBuffer;
 
         // write numJoints
         *destinationBuffer++ = (uint8_t)numJoints;
 
-        // write rotationIsDefaultPose bits
-        destinationBuffer += writeBitVector(destinationBuffer, numJoints, [&](int i) {
-            return jointData[i].rotationIsDefaultPose;
-        });
+        memcpy(destinationBuffer, defaultRotPoses, defaultRotPosesBytes);
+        destinationBuffer += defaultRotPosesBytes;
 
-        // write translationIsDefaultPose bits
-        destinationBuffer += writeBitVector(destinationBuffer, numJoints, [&](int i) {
-            return jointData[i].translationIsDefaultPose;
-        });
+        memcpy(destinationBuffer, defaultTransPoses, defaultTransPosesBytes);
+        destinationBuffer += defaultTransPosesBytes;
 
         if (outboundDataRateOut) {
             size_t numBytes = destinationBuffer - startSection;
