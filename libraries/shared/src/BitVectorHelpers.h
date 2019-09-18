@@ -38,7 +38,12 @@ int decodeBitVector(const uint8_t* codeBytes, int maxCodeBytes, bool* bitVector,
 
 
 static inline int calcBitVectorSize(int numBits) {
-    return ((numBits - 1) >> 3) + 1;
+    return (numBits + 7) / 8;
+}
+
+static inline int calcMaxCompressedBitVectorSize(int numBits) {
+    int bitVectorSize = calcBitVectorSize(numBits);
+    return 2 * bitVectorSize + 1;
 }
 
 // func should be of type bool func(int index)
