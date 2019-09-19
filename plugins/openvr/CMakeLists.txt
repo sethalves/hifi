@@ -15,5 +15,6 @@ if (WIN32 AND (NOT USE_GLES))
     include_hifi_library_headers(octree)
 
     target_openvr()
+    target_leapsdk()
     target_link_libraries(${TARGET_NAME} Winmm.lib)
 endif()

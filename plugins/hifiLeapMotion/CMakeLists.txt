@@ -6,10 +6,9 @@
 #  See the accompanying file LICENSE or http:#www.apache.org/licenses/LICENSE-2.0.html
 #
 
-find_package(LEAPMOTION)
-if (LEAPMOTION_FOUND) 
+if (LEAPSDK_LIBRARY)
     set(TARGET_NAME hifiLeapMotion)
     setup_hifi_plugin(Qml)
     link_hifi_libraries(shared controllers ui plugins input-plugins)
-    target_leapmotion()
+    target_leapsdk()
 endif()
