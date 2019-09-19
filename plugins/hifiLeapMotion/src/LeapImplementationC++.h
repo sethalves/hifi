@@ -1002,7 +1002,7 @@ protected:
       value.fValue = leapVar.fValue;
       break;
     case Config::TYPE_STRING:
-      value.strValue = leapVar.strValue ? strdup(leapVar.strValue) : nullptr;
+      value.strValue = leapVar.strValue ? _strdup(leapVar.strValue) : nullptr;
       break;
     default:
       break;

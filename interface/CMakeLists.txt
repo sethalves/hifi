@@ -232,6 +232,10 @@ add_crashpad()
 target_breakpad()
 target_json()
 
+if (LEAPSDK_LIBRARY)
+    target_leapsdk()
+endif()
+
 # perform standard include and linking for found externals
 foreach(EXTERNAL ${OPTIONAL_EXTERNALS})
 
