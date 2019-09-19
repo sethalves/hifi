@@ -14,8 +14,18 @@
 #include <controllers/InputDevice.h>
 #include <plugins/InputPlugin.h>
 
+
+#if defined(Q_OS_WIN32)
+#pragma warning( push )
+#pragma warning( disable : 4101)
+#endif
+
 // LeapMotion SDK
-#include <Leap.h>
+#include "LeapC++.h"
+
+#if defined(Q_OS_WIN32)
+#pragma warning( pop )
+#endif
 
 class LeapMotionPlugin : public InputPlugin {
     Q_OBJECT
