@@ -643,13 +643,13 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
     }
     const int numJoints = jointData.size();
     assert(numJoints < MAX_BITVECTOR_BITS);
-    const int jointBitVectorSize = calcMaxCompressedBitVectorSize(numJoints);
+    const int maxJointBitVectorSize = calcMaxCompressedBitVectorSize(numJoints);
 
     // include jointData if there is room for the most minimal section. i.e. no translations or rotations.
     IF_AVATAR_SPACE(PACKET_HAS_JOINT_DATA, AvatarDataPacket::minJointDataSize(numJoints)) {
         // Minimum space required for another rotation joint -
         // size of joint + following translation bit-vector + translation scale:
-        const ptrdiff_t minSizeForJoint = sizeof(AvatarDataPacket::SixByteQuat) + jointBitVectorSize + sizeof(float);
+        const ptrdiff_t minSizeForJoint = sizeof(AvatarDataPacket::SixByteQuat) + maxJointBitVectorSize + sizeof(float);
 
         auto startSection = destinationBuffer;
 
@@ -675,7 +675,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         unsigned char* beforeRotations = destinationBuffer;
 #endif
 
-        destinationBuffer += calcMaxCompressedBitVectorSize(numJoints); // Move pointer past the validity bytes
+        destinationBuffer += maxJointBitVectorSize; // Move pointer past the validity bytes
         unsigned char* rotDataStart = destinationBuffer;
 
         // sentJointDataOut and lastSentJointData might be the same vector
@@ -724,13 +724,13 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
 
         // compress rotation validity bits.
         int compressedRotBitSize =
-            encodeBitVector(validityBits, numJoints, validityPosition, calcMaxCompressedBitVectorSize(numJoints));
+            encodeBitVector(validityBits, numJoints, validityPosition, maxJointBitVectorSize);
 
-        // we originally reserved calcMaxCompressedBitVectorSize(numJoints) for the validity bits, so slide the joint
+        // we originally reserved maxJointBitVectorSize for the validity bits, so slide the joint
         // rotation data down to fit snugly against the now compressed bits.
-        if (compressedRotBitSize < calcMaxCompressedBitVectorSize(numJoints)) {
+        if (compressedRotBitSize < maxJointBitVectorSize) {
             memmove(validityPosition + compressedRotBitSize, rotDataStart, destinationBuffer - rotDataStart);
-            destinationBuffer -= (calcMaxCompressedBitVectorSize(numJoints) - compressedRotBitSize);
+            destinationBuffer -= (maxJointBitVectorSize - compressedRotBitSize);
         }
 
         // joint translation data
@@ -741,7 +741,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         unsigned char* beforeTranslations = destinationBuffer;
 #endif
 
-        destinationBuffer += calcMaxCompressedBitVectorSize(numJoints); // Move pointer past the validity bytes
+        destinationBuffer += maxJointBitVectorSize; // Move pointer past the validity bytes
         unsigned char* transDataStart = destinationBuffer;
 
         // write maxTranslationDimension
@@ -786,12 +786,12 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         sendStatus.translationsSent = i;
 
         // compress translation validity bits.
-        int compressedTransBitSize = encodeBitVector(validityBits, numJoints, validityPosition, calcMaxCompressedBitVectorSize(numJoints));
+        int compressedTransBitSize = encodeBitVector(validityBits, numJoints, validityPosition, maxJointBitVectorSize);
 
         // slide joint translation data down against compressed validity bits
-        if (compressedTransBitSize < calcMaxCompressedBitVectorSize(numJoints)) {
+        if (compressedTransBitSize < maxJointBitVectorSize) {
             memmove(validityPosition + compressedTransBitSize, transDataStart, destinationBuffer - transDataStart);
-            destinationBuffer -= (calcMaxCompressedBitVectorSize(numJoints) - compressedTransBitSize);
+            destinationBuffer -= (maxJointBitVectorSize - compressedTransBitSize);
         }
 
         IF_AVATAR_SPACE(PACKET_HAS_GRAB_JOINTS, sizeof (AvatarDataPacket::FarGrabJoints)) {
