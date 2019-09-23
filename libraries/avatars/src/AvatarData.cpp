@@ -669,6 +669,7 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
 
         unsigned char* validityPosition = destinationBuffer;
         bool validityBits[MAX_BITVECTOR_BITS];
+        memset(&validityBits, 0, sizeof(validityBits));
 
 #ifdef WANT_DEBUG
         int rotationSentCount = 0;
@@ -692,7 +693,6 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
         for (; i < numJoints; ++i) {
             const JointData& data = joints[i];
             const JointData& last = lastSentJointData[i];
-            validityBits[i] = false;
 
             if (packetEnd - destinationBuffer >= minSizeForJoint) {
                 if (!data.rotationIsDefaultPose) {
@@ -749,11 +749,11 @@ QByteArray AvatarData::toByteArray(AvatarDataDetail dataDetail, quint64 lastSent
 
         float minTranslation = (distanceAdjust && cullSmallChanges) ? getDistanceBasedMinTranslationDistance(viewerPosition) : AVATAR_MIN_TRANSLATION;
 
+        memset(&validityBits, 0, sizeof(validityBits));
         i = sendStatus.translationsSent;
         for (; i < numJoints; ++i) {
             const JointData& data = joints[i];
             const JointData& last = lastSentJointData[i];
-            validityBits[i] = false;
 
             // Note minSizeForJoint is conservative since there isn't a following bit-vector + scale.
             if (packetEnd - destinationBuffer >= minSizeForJoint) {
