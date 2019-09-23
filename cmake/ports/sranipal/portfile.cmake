@@ -6,7 +6,7 @@ if (WIN32)
     vcpkg_download_distfile(
         SRANIPAL_SOURCE_ARCHIVE
         URLS https://hifi-public.s3.amazonaws.com/seth/sranipal-1.1.0.1-windows.zip
-        SHA512 c5a339506bdac9735c98d6405816800ea8f14b4338b2f86e57e4b033e4999052154a5f9b9e9ad7ce1140e8f3d795868fd1841c70a34ded69d9b7cb26c74540de
+        SHA512 3c1d379115e9b73daaafd177cc17c98ae245d958ff56507d1c47e48e4b14c5cc14300245f011c5e70e78c420d77b0b744950ca40797a40d7f36c31b545d6d8bd
         FILENAME sranipal-1.1.0.1-windows.zip
     )
 
