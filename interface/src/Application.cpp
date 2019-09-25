@@ -3315,6 +3315,14 @@ void Application::initializeUi() {
                     });
 #endif
         }
+
+        connect(inputPlugin.get(), &InputPlugin::blink, this, [&]() {
+            auto myAvatar = getMyAvatar();
+            glm::vec3 position = myAvatar->getWorldPosition();
+            glm::quat orientation = myAvatar->getWorldOrientation();
+            glm::quat turn = glm::quat(glm::radians(glm::vec3(0.0f, 3.0f, 0.0f))); // 3 degrees left
+            myAvatar->nextAttitude(position, orientation * turn);
+        }, Qt::DirectConnection);
     }
 
     auto compositorHelper = DependencyManager::get<CompositorHelper>();

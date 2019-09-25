@@ -271,6 +271,8 @@ private:
                      controller::StandardPoseChannel joint3, controller::StandardPoseChannel joint4);
 
     static const char* NAME;
+
+    bool _blink { false };
 };
 
 #endif // hifi__ViveControllerManager

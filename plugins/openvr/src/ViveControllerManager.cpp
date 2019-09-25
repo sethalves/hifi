@@ -307,7 +307,7 @@ void ViveControllerManager::enableGestureDetection() {
     if (_viveCameraHandTracker) {
         return;
     }
-	if (!ViveSR::anipal::Eye::IsViveProEye()) {
+    if (!ViveSR::anipal::Eye::IsViveProEye()) {
         return;
     }
 
@@ -509,17 +509,39 @@ void ViveControllerManager::updateEyeTracker(float deltaTime, const controller::
     quint64 now = usecTimestampNow();
 
     // in hifi, 0 is open 1 is closed.  in SRanipal 1 is open, 0 is closed.
+    bool leftBlink { false }, rightBlink { false }, leftOpen { false }, rightOpen { false };
+    static const float OPEN_CUTOFF { 0.3f }, CLOSED_CUTOFF { 0.5f };
     if (eyeDataBuffer.leftOpennessValid) {
-        _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] =
-            controller::AxisValue(1.0f - eyeDataBuffer.leftEyeOpenness, now);
+        controller::AxisValue leftOpenness = controller::AxisValue(1.0f - eyeDataBuffer.leftEyeOpenness, now);
+        _inputDevice->_axisStateMap[controller::LEFT_EYE_BLINK] = leftOpenness;
+        if (leftOpenness.value > CLOSED_CUTOFF) {
+            leftBlink = true;
+        }
+        if (leftOpenness.value < OPEN_CUTOFF) {
+            leftOpen = true;
+        }
     } else {
         _inputDevice->_poseStateMap[controller::LEFT_EYE_BLINK].valid = false;
     }
     if (eyeDataBuffer.rightOpennessValid) {
-        _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] =
-            controller::AxisValue(1.0f - eyeDataBuffer.rightEyeOpenness, now);
+        controller::AxisValue rightOpenness = controller::AxisValue(1.0f - eyeDataBuffer.rightEyeOpenness, now);
+        _inputDevice->_axisStateMap[controller::RIGHT_EYE_BLINK] = rightOpenness;
+        if (rightOpenness.value > CLOSED_CUTOFF) {
+            rightBlink = true;
+        }
+        if (rightOpenness.value < OPEN_CUTOFF) {
+            rightOpen = true;
+        }
     } else {
         _inputDevice->_poseStateMap[controller::RIGHT_EYE_BLINK].valid = false;
+    }
+
+    if (leftBlink && rightBlink && !_blink) {
+        _blink = true;
+        emit blink();
+    }
+    if (leftOpen && rightOpen) {
+        _blink = false;
     }
 }
 
