@@ -34,8 +34,7 @@ var DEFAULT_SCRIPTS_COMBINED = [
     "system/emote.js",
     "system/miniTablet.js",
     "system/audioMuteOverlay.js",
-    "system/keyboardShortcuts/keyboardShortcuts.js",
-    "system/hand-track-walk.js"
+    "system/keyboardShortcuts/keyboardShortcuts.js"
 ];
 var DEFAULT_SCRIPTS_SEPARATE = [
     "system/controllers/controllerScripts.js"
