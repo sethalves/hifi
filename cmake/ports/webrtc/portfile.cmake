@@ -22,9 +22,9 @@ else ()
     # else Linux desktop
     vcpkg_download_distfile(
         WEBRTC_SOURCE_ARCHIVE
-        URLS https://hifi-public.s3.amazonaws.com/seth/webrtc-20190626-linux.tar.gz
-        SHA512 07d7776551aa78cb09a3ef088a8dee7762735c168c243053b262083d90a1d258cec66dc386f6903da5c4461921a3c2db157a1ee106a2b47e7756cb424b66cc43
-        FILENAME webrtc-20190626-linux.tar.gz
+        URLS https://hifi-public.s3.amazonaws.com/seth/webrtc-m78-linux.tar.gz
+        SHA512 50b3e116f8e70d3c16f734db5407b25cb6c468194eba43fab066bd401224a3ace63dd8a318d189e4c8077962b2231f5acc31aaa7fac1587bc01be3b4e28d51d0
+        FILENAME webrtc-m78-linux.tar.gz
     )
 endif ()
 

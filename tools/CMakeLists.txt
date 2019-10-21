@@ -29,6 +29,7 @@ if (BUILD_TOOLS)
         skeleton-dump
         atp-client
         oven
+        webrtc-server-test
     )
 
     # Allow different tools for stable builds

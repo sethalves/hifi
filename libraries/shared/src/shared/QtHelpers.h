@@ -14,7 +14,7 @@
 
 #if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
 // Enable event queue debugging
-#define DEBUG_EVENT_QUEUE
+// #define DEBUG_EVENT_QUEUE
 #endif
 
 namespace hifi { namespace qt {
